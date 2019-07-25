@@ -1405,21 +1405,20 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
 
             // if is in dungeon then all receive full reputation at kill
             // rewarded any alive/dead/near_corpse group member
-            pGroupGuy->RewardReputation(creatureVictim, is_dungeon ? 1.0f : 1.0f / count);
+			pGroupGuy->RewardReputation(creatureVictim, is_dungeon ? 1.0f : 1.0f / count);
 
             // XP updated only for alive group member
-            if (pGroupGuy->isAlive() && not_gray_member_with_max_level &&
-                pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
-            {
-                float itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? xp * rate : (xp * rate * 0.5f) + 1.0f;
+			if (pGroupGuy->isAlive() && not_gray_member_with_max_level)// && pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
+			{
+				float itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? xp * rate : (xp * rate * 0.5f) + 1.0f;
 
-                pGroupGuy->GiveXP((uint32)(std::round(itr_xp)), creatureVictim, group_rate);
+				pGroupGuy->GiveXP((uint32)(std::round(itr_xp)), creatureVictim, group_rate);
                 if (Pet* pet = pGroupGuy->GetPet())
-                {
-                    uint32 pet_xp = MaNGOS::XP::Gain(pet, creatureVictim);
-                    itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? pet_xp * rate : (pet_xp * rate * 0.5f) + 1.0f;
-                    pet->GivePetXP((uint32)(std::round(itr_xp * rate)));
-                }
+				{
+					uint32 pet_xp = MaNGOS::XP::Gain(pet, creatureVictim);
+					itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? pet_xp * rate : (pet_xp * rate * 0.5f) + 1.0f;
+					pet->GivePetXP((uint32)(std::round(itr_xp * rate)));
+				}
             }
 
             // quest objectives updated only for alive group member or dead but with not released body

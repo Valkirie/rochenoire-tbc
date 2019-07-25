@@ -23,123 +23,124 @@
 Quest::Quest(Field* questRecord)
 {
     QuestId = questRecord[0].GetUInt32();
-    QuestMethod = questRecord[1].GetUInt32();
-    ZoneOrSort = questRecord[2].GetInt32();
-    MinLevel = questRecord[3].GetUInt32();
-    QuestLevel = questRecord[4].GetInt32();
-    Type = questRecord[5].GetUInt32();
-    RequiredClasses = questRecord[6].GetUInt32();
-    RequiredRaces = questRecord[7].GetUInt32();
-    RequiredSkill = questRecord[8].GetUInt32();
-    RequiredSkillValue = questRecord[9].GetUInt32();
-    RepObjectiveFaction = questRecord[10].GetUInt32();
-    RepObjectiveValue = questRecord[11].GetInt32();
-    RequiredMinRepFaction = questRecord[12].GetUInt32();
-    RequiredMinRepValue = questRecord[13].GetInt32();
-    RequiredMaxRepFaction = questRecord[14].GetUInt32();
-    RequiredMaxRepValue = questRecord[15].GetInt32();
-    SuggestedPlayers = questRecord[16].GetUInt32();
-    LimitTime = questRecord[17].GetUInt32();
-    m_QuestFlags = questRecord[18].GetUInt16();
-    m_SpecialFlags = questRecord[19].GetUInt16();
-    CharTitleId = questRecord[20].GetUInt32();
-    PrevQuestId = questRecord[21].GetInt32();
-    NextQuestId = questRecord[22].GetInt32();
-    ExclusiveGroup = questRecord[23].GetInt32();
-    NextQuestInChain = questRecord[24].GetUInt32();
-    SrcItemId = questRecord[25].GetUInt32();
-    SrcItemCount = questRecord[26].GetUInt32();
-    SrcSpell = questRecord[27].GetUInt32();
-    Title = questRecord[28].GetCppString();
-    Details = questRecord[29].GetCppString();
-    Objectives = questRecord[30].GetCppString();
-    OfferRewardText = questRecord[31].GetCppString();
-    RequestItemsText = questRecord[32].GetCppString();
-    EndText = questRecord[33].GetCppString();
+	Patch = questRecord[1].GetUInt8();
+    QuestMethod = questRecord[2].GetUInt32();
+    ZoneOrSort = questRecord[3].GetInt32();
+    MinLevel = questRecord[4].GetUInt32();
+    QuestLevel = questRecord[5].GetInt32();
+    Type = questRecord[6].GetUInt32();
+    RequiredClasses = questRecord[7].GetUInt32();
+    RequiredRaces = questRecord[8].GetUInt32();
+    RequiredSkill = questRecord[9].GetUInt32();
+    RequiredSkillValue = questRecord[10].GetUInt32();
+    RepObjectiveFaction = questRecord[11].GetUInt32();
+    RepObjectiveValue = questRecord[12].GetInt32();
+    RequiredMinRepFaction = questRecord[13].GetUInt32();
+    RequiredMinRepValue = questRecord[14].GetInt32();
+    RequiredMaxRepFaction = questRecord[15].GetUInt32();
+    RequiredMaxRepValue = questRecord[16].GetInt32();
+    SuggestedPlayers = questRecord[17].GetUInt32();
+    LimitTime = questRecord[18].GetUInt32();
+    m_QuestFlags = questRecord[19].GetUInt16();
+    m_SpecialFlags = questRecord[20].GetUInt16();
+    CharTitleId = questRecord[21].GetUInt32();
+    PrevQuestId = questRecord[22].GetInt32();
+    NextQuestId = questRecord[23].GetInt32();
+    ExclusiveGroup = questRecord[24].GetInt32();
+    NextQuestInChain = questRecord[25].GetUInt32();
+    SrcItemId = questRecord[26].GetUInt32();
+    SrcItemCount = questRecord[27].GetUInt32();
+    SrcSpell = questRecord[28].GetUInt32();
+    Title = questRecord[29].GetCppString();
+    Details = questRecord[30].GetCppString();
+    Objectives = questRecord[31].GetCppString();
+    OfferRewardText = questRecord[32].GetCppString();
+    RequestItemsText = questRecord[33].GetCppString();
+    EndText = questRecord[34].GetCppString();
 
     for (int i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        ObjectiveText[i] = questRecord[34 + i].GetCppString();
+        ObjectiveText[i] = questRecord[35 + i].GetCppString();
 
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
-        ReqItemId[i] = questRecord[38 + i].GetUInt32();
+        ReqItemId[i] = questRecord[39 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        ReqItemCount[i] = questRecord[42 + i].GetUInt32();
+        ReqItemCount[i] = questRecord[43 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_SOURCE_ITEM_IDS_COUNT; ++i)
-        ReqSourceId[i] = questRecord[46 + i].GetUInt32();
+        ReqSourceId[i] = questRecord[47 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_SOURCE_ITEM_IDS_COUNT; ++i)
-        ReqSourceCount[i] = questRecord[50 + i].GetUInt32();
+        ReqSourceCount[i] = questRecord[51 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        ReqCreatureOrGOId[i] = questRecord[54 + i].GetInt32();
+        ReqCreatureOrGOId[i] = questRecord[55 + i].GetInt32();
 
     for (int i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        ReqCreatureOrGOCount[i] = questRecord[58 + i].GetUInt32();
+        ReqCreatureOrGOCount[i] = questRecord[59 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
-        ReqSpell[i] = questRecord[62 + i].GetUInt32();
+        ReqSpell[i] = questRecord[63 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REWARD_CHOICES_COUNT; ++i)
-        RewChoiceItemId[i] = questRecord[66 + i].GetUInt32();
+        RewChoiceItemId[i] = questRecord[67 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REWARD_CHOICES_COUNT; ++i)
-        RewChoiceItemCount[i] = questRecord[72 + i].GetUInt32();
+        RewChoiceItemCount[i] = questRecord[73 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REWARDS_COUNT; ++i)
-        RewItemId[i] = questRecord[78 + i].GetUInt32();
+        RewItemId[i] = questRecord[79 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REWARDS_COUNT; ++i)
-        RewItemCount[i] = questRecord[82 + i].GetUInt32();
+        RewItemCount[i] = questRecord[83 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REPUTATIONS_COUNT; ++i)
-        RewRepFaction[i] = questRecord[86 + i].GetUInt32();
+        RewRepFaction[i] = questRecord[87 + i].GetUInt32();
 
     for (int i = 0; i < QUEST_REPUTATIONS_COUNT; ++i)
-        RewRepValue[i] = questRecord[91 + i].GetInt32();
+        RewRepValue[i] = questRecord[92 + i].GetInt32();
 
-    RewHonorableKills = questRecord[96].GetUInt32();
-    RewOrReqMoney = questRecord[97].GetInt32();
-    RewMoneyMaxLevel = questRecord[98].GetUInt32();
-    RewSpell = questRecord[99].GetUInt32();
-    RewSpellCast = questRecord[100].GetUInt32();
-    RewMailTemplateId = questRecord[101].GetUInt32();
-    RewMailDelaySecs = questRecord[102].GetUInt32();
-    PointMapId = questRecord[103].GetUInt32();
-    PointX = questRecord[104].GetFloat();
-    PointY = questRecord[105].GetFloat();
-    PointOpt = questRecord[106].GetUInt32();
+    RewHonorableKills = questRecord[97].GetUInt32();
+    RewOrReqMoney = questRecord[98].GetInt32();
+    RewMoneyMaxLevel = questRecord[99].GetUInt32();
+    RewSpell = questRecord[100].GetUInt32();
+    RewSpellCast = questRecord[101].GetUInt32();
+    RewMailTemplateId = questRecord[102].GetUInt32();
+    RewMailDelaySecs = questRecord[103].GetUInt32();
+    PointMapId = questRecord[104].GetUInt32();
+    PointX = questRecord[105].GetFloat();
+    PointY = questRecord[106].GetFloat();
+    PointOpt = questRecord[107].GetUInt32();
 
     m_detailsemotecount = 0;
     for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
     {
-        DetailsEmote[i] = questRecord[107 + i].GetUInt32();
+        DetailsEmote[i] = questRecord[108 + i].GetUInt32();
         if (DetailsEmote[i] != 0)
             m_detailsemotecount = i + 1;
     }
 
     for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
-        DetailsEmoteDelay[i] = questRecord[111 + i].GetUInt32();
+        DetailsEmoteDelay[i] = questRecord[112 + i].GetUInt32();
 
-    IncompleteEmote = questRecord[115].GetUInt32();
-    IncompleteEmoteDelay = questRecord[116].GetUInt32();
-    CompleteEmote = questRecord[117].GetUInt32();
-    CompleteEmoteDelay = questRecord[118].GetUInt32();
-
-    for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
-        OfferRewardEmote[i] = questRecord[119 + i].GetInt32();
+    IncompleteEmote = questRecord[116].GetUInt32();
+	IncompleteEmoteDelay = questRecord[117].GetUInt32();
+    CompleteEmote = questRecord[118].GetUInt32();
+	CompleteEmoteDelay = questRecord[119].GetUInt32();
 
     for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
-        OfferRewardEmoteDelay[i] = questRecord[123 + i].GetInt32();
+        OfferRewardEmote[i] = questRecord[120 + i].GetInt32();
 
-    QuestStartScript = questRecord[127].GetUInt32();
-    QuestCompleteScript = questRecord[128].GetUInt32();
+    for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
+        OfferRewardEmoteDelay[i] = questRecord[124 + i].GetInt32();
+
+    QuestStartScript = questRecord[128].GetUInt32();
+    QuestCompleteScript = questRecord[129].GetUInt32();
 
     for (int i = 0; i < QUEST_REPUTATIONS_COUNT; ++i)
-        RewMaxRepValue[i] = questRecord[129 + i].GetInt32();
+        RewMaxRepValue[i] = questRecord[130 + i].GetInt32();
 
-    RequiredCondition = questRecord[134].GetUInt32();
+    RequiredCondition = questRecord[135].GetUInt32();
 
     m_isActive = true;
 
@@ -174,23 +175,26 @@ uint32 Quest::XPValue(Player* pPlayer) const
 {
     if (pPlayer)
     {
-        if (RewMoneyMaxLevel > 0)
+		uint32 RewMoneyMaxLevelS = GetRewMoneyMaxLevel(pPlayer);
+		if (RewMoneyMaxLevelS > 0)
         {
             uint32 pLevel = pPlayer->getLevel();
-            uint32 qLevel = QuestLevel > 0 ? (uint32)QuestLevel : 0;
+            uint32 qLevel_old = QuestLevel > 0 ? (uint32)QuestLevel : 0;
+			uint32 qLevel = pLevel + (GetQuestLevel() - GetMinLevel());
+
             float fullxp = 0;
-            if (qLevel >= 65)
-                fullxp = RewMoneyMaxLevel / 6.0f;
-            else if (qLevel == 64)
-                fullxp = RewMoneyMaxLevel / 4.8f;
-            else if (qLevel == 63)
-                fullxp = RewMoneyMaxLevel / 3.6f;
-            else if (qLevel == 62)
-                fullxp = RewMoneyMaxLevel / 2.4f;
-            else if (qLevel == 61)
-                fullxp = RewMoneyMaxLevel / 1.2f;
-            else if (qLevel > 0 && qLevel <= 60)
-                fullxp = RewMoneyMaxLevel / 0.6f;
+            if (qLevel_old >= 65)
+                fullxp = RewMoneyMaxLevelS / 6.0f;
+            else if (qLevel_old == 64)
+                fullxp = RewMoneyMaxLevelS / 4.8f;
+            else if (qLevel_old == 63)
+                fullxp = RewMoneyMaxLevelS / 3.6f;
+            else if (qLevel_old == 62)
+                fullxp = RewMoneyMaxLevelS / 2.4f;
+            else if (qLevel_old == 61)
+                fullxp = RewMoneyMaxLevelS / 1.2f;
+            else if (qLevel_old > 0 && qLevel_old <= 60)
+                fullxp = RewMoneyMaxLevelS / 0.6f;
 
             if (pLevel <= qLevel +  5)
                 return uint32(ceilf(fullxp));
@@ -210,12 +214,43 @@ uint32 Quest::XPValue(Player* pPlayer) const
     return 0;
 }
 
-int32  Quest::GetRewOrReqMoney() const
+int32 Quest::GetRewOrReqMoney(Player *p) const
 {
-    if (RewOrReqMoney <= 0)
-        return RewOrReqMoney;
+	if (p && p->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+	{
+		if (RewOrReqMoney <= 0)
+			return RewOrReqMoney;
 
-    return int32(RewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY));
+		uint32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
+
+		uint32 expected_RewOrReqMoney = uint32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
+		double difference_RewOrReqMoney = double((double)RewOrReqMoney / (double)expected_RewOrReqMoney);
+		uint32 leveled_RewOrReqMoney = uint32(0.0472 * pow(pQuest_slevel, 3) + 1.894 * pow(pQuest_slevel, 2) + 8.6352 * (pQuest_slevel));
+
+		double scaled_RewOrReqMoney = double((double)difference_RewOrReqMoney * (double)leveled_RewOrReqMoney);
+		uint32 return_value = uint32(scaled_RewOrReqMoney);
+
+		return return_value * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
+	}
+	return RewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
+}
+
+uint32 Quest::GetRewMoneyMaxLevel(Player *p) const
+{
+	if (p && p->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+	{
+		uint32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
+
+		uint32 expected_RewMoneyMaxLevel = uint32(0.0212 * pow(QuestLevel, 3) - 0.3874 * pow(QuestLevel, 2) + 32.809 * (QuestLevel));
+		float difference_RewMoneyMaxLevel = float((float)RewMoneyMaxLevel / (float)expected_RewMoneyMaxLevel);
+		uint32 leveled_RewMoneyMaxLevel = uint32(0.0212 * pow(pQuest_slevel, 3) - 0.3874 * pow(pQuest_slevel, 2) + 32.809 * (pQuest_slevel));
+
+		double scaled_RewMoneyMaxLevel = float((float)difference_RewMoneyMaxLevel * (float)leveled_RewMoneyMaxLevel);
+		uint32 return_value = uint32(scaled_RewMoneyMaxLevel);
+
+		return return_value;
+	}
+	return RewMoneyMaxLevel;
 }
 
 bool Quest::IsAllowedInRaid() const

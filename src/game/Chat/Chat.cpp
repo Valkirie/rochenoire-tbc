@@ -734,6 +734,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "info",           SEC_PLAYER,         true,  &ChatHandler::HandleServerInfoCommand,          "", nullptr },
         { "log",            SEC_CONSOLE,        true,  nullptr,                                        "", serverLogCommandTable },
         { "motd",           SEC_PLAYER,         true,  &ChatHandler::HandleServerMotdCommand,          "", nullptr },
+		{ "patch",          SEC_PLAYER,         true,  &ChatHandler::HandleServerPatchCommand,         "", nullptr },
         { "plimit",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerPLimitCommand,        "", nullptr },
         { "resetallraid",   SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerResetAllRaidCommand,  "", nullptr },
         { "restart",        SEC_ADMINISTRATOR,  true,  nullptr,                                        "", serverRestartCommandTable },

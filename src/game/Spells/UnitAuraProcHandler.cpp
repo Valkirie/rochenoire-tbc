@@ -644,6 +644,39 @@ bool Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder*
     }
     // Get chance from spell
     float chance = (float)spellProto->procChance;
+
+	// Scale ON_EQUIP spell procChance
+	if (GetTypeId() == TYPEID_PLAYER)
+	{
+		if (chance > 0 && chance < 100)
+		{
+			for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+			{
+				if (Item* pItem = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				{
+					uint32 parentItem = Item::LoadScaledParent(pItem->GetProto()->ItemId);
+					if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(parentItem))
+					{
+						for (const auto& spellData : pProto->Spells)
+						{
+							if (!spellData.SpellId)
+								continue;
+
+							if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_EQUIP)
+								continue;
+
+							if (spellData.SpellId == spellProto->Id)
+							{
+								uint32 rlevel = Item::ComputeRequiredLevel(pProto->Quality, pProto->ItemLevel);
+								chance = chance * std::pow(((float)getLevel() / (float)rlevel), 2.5f);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
     // If in spellProcEvent exist custom chance, chance = spellProcEvent->customChance;
     if (spellProcEvent && spellProcEvent->customChance)
         chance = spellProcEvent->customChance;

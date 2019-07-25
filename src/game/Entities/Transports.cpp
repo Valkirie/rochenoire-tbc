@@ -28,10 +28,11 @@
 #include "Server/DBCStores.h"
 #include "ProgressBar.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
+#include "World/World.h"
 
 void MapManager::LoadTransports()
 {
-    QueryResult* result = WorldDatabase.Query("SELECT entry, name, period FROM transports");
+    QueryResult* result = WorldDatabase.PQuery("SELECT entry, name, period FROM transports WHERE patch <= %u", sWorld.GetWowPatch());
 
     uint32 count = 0;
 

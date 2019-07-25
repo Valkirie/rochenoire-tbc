@@ -184,6 +184,7 @@ class WorldSession
         void SendPacket(WorldPacket const& packet, bool forcedSend = false) const;
         void SendExpectedSpamRecords();
         void SendMotd();
+		void SendPatch();
         void SendNotification(const char* format, ...) const ATTR_PRINTF(2, 3);
         void SendNotification(int32 string_id, ...) const;
         void SendPetNameInvalid(uint32 error, const std::string& name, DeclinedName* declinedName) const;
@@ -205,7 +206,7 @@ class WorldSession
         const std::string GetRemoteAddress() const { return m_Socket ? m_Socket->GetRemoteAddress() : "disconnected"; }
 #endif
         void SetPlayer(Player* plr) { _player = plr; }
-        uint8 Expansion() const { return m_expansion; }
+		uint8 Expansion() const;
 
         /// Session in auth.queue currently
         void SetInQueue(bool state) { m_inQueue = state; }

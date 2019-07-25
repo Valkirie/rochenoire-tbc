@@ -405,7 +405,7 @@ void ThreatManager::clearReferences()
 
 //============================================================
 
-void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell)
+void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell, bool isAssistThreat, bool isScaled, Unit *pSpellTarget)
 {
     // function deals with adding threat and adding players and pets into ThreatList
     // mobs, NPCs, guards have ThreatList and HateOfflineList
@@ -424,7 +424,15 @@ void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchool
     if (!victim->isAlive() || !getOwner()->isAlive())
         return;
 
-    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, threat, crit, schoolMask, threatSpell);
+	Unit *target = victim->GetCharmerOrOwnerOrSelf();
+	Unit *caster = getOwner()->GetCharmerOrOwnerOrSelf();
+
+	Unit *real_target = pSpellTarget ? pSpellTarget : target;
+	isScaled = pSpellTarget ? false : isScaled;
+
+	float scaledThreat = sObjectMgr.ScaleDamage(real_target, caster, threat, isScaled);
+
+    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, scaledThreat, crit, schoolMask, threatSpell);
 
     if (calculatedThreat > 0.0f)
     {

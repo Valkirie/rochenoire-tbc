@@ -102,6 +102,7 @@ World::World() : mail_timer(0), mail_timer_expires(0), m_NextDailyQuestReset(0),
     m_startTime = m_gameTime;
     m_maxActiveSessionCount = 0;
     m_maxQueuedSessionCount = 0;
+	m_wowPatch = WOW_PATCH_102;
 
     m_defaultDbcLocale = LOCALE_enUS;
     m_availableDbcLocaleMask = 0;
@@ -359,6 +360,8 @@ void World::LoadConfigSettings(bool reload)
         }
     }
 
+	m_wowPatch = sConfig.GetIntDefault("WowPatch", WOW_PATCH_102);
+
     ///- Read the player limit and the Message of the day from the config file
     SetPlayerLimit(sConfig.GetIntDefault("PlayerLimit", DEFAULT_PLAYER_LIMIT), true);
     SetMotd(sConfig.GetStringDefault("Motd", "Welcome to the Massive Network Game Object Server."));
@@ -505,8 +508,8 @@ void World::LoadConfigSettings(bool reload)
 
     setConfigMinMax(CONFIG_UINT32_SKIP_CINEMATICS, "SkipCinematics", 0, 0, 2);
 
-    if (configNoReload(reload, CONFIG_UINT32_MAX_PLAYER_LEVEL, "MaxPlayerLevel", DEFAULT_MAX_LEVEL))
-        setConfigMinMax(CONFIG_UINT32_MAX_PLAYER_LEVEL, "MaxPlayerLevel", DEFAULT_MAX_LEVEL, 1, MAX_LEVEL);
+    if (configNoReload(reload, CONFIG_UINT32_MAX_PLAYER_LEVEL, "MaxPlayerLevel", DEFAULT_TBC_MAX_LEVEL))
+        setConfigMinMax(CONFIG_UINT32_MAX_PLAYER_LEVEL, "MaxPlayerLevel", DEFAULT_TBC_MAX_LEVEL, 1, DEFAULT_TBC_MAX_LEVEL);
 
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_LEVEL, "StartPlayerLevel", 1, 1, getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
 
@@ -522,6 +525,22 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_LONG_TAXI_PATHS_PERSISTENCE, "LongFlightPathsPersistence", false);
     setConfig(CONFIG_BOOL_ALL_TAXI_PATHS, "AllFlightPaths", false);
+
+	setConfig(CONFIG_UINT32_APPRENTICE_MOUNT_COST, "Mount.Apprentice.Cost", 10000);
+	setConfigMin(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL, "Mount.Apprentice.Level", 20, 1);
+	setConfig(CONFIG_UINT32_APPRENTICE_TRAIN_COST, "Mount.Apprentice.Training.Cost", 40000);
+
+	setConfig(CONFIG_UINT32_JOURNEYMAN_MOUNT_COST, "Mount.Journeyman.Cost", 100000);
+	setConfigMin(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL, "Mount.Journeyman.Level", 40, 1);
+	setConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_COST, "Mount.Journeyman.Training.Cost", 500000);
+
+	setConfig(CONFIG_UINT32_EXPERT_MOUNT_COST, "Mount.Expert.Cost", 500000);
+	setConfigMin(CONFIG_UINT32_EXPERT_TRAIN_LEVEL, "Mount.Expert.Level", 60, 1);
+	setConfig(CONFIG_UINT32_EXPERT_TRAIN_COST, "Mount.Expert.Training.Cost", 2500000);
+
+	setConfig(CONFIG_UINT32_ARTISAN_MOUNT_COST, "Mount.Artisan.Cost", 1000000);
+	setConfigMin(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL, "Mount.Artisan.Level", 70, 1);
+	setConfig(CONFIG_UINT32_ARTISAN_TRAIN_COST, "Mount.Artisan.Training.Cost", 50000000);
 
     setConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL, "Instance.IgnoreLevel", false);
     setConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID,  "Instance.IgnoreRaid", false);
@@ -559,6 +578,16 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_FOGOFWAR_STEALTH, "Visibility.FogOfWar.Stealth", 0);
     setConfig(CONFIG_UINT32_FOGOFWAR_HEALTH, "Visibility.FogOfWar.Health", 0);
     setConfig(CONFIG_UINT32_FOGOFWAR_STATS, "Visibility.FogOfWar.Stats", 0);
+
+	setConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL, "Rochenoire.Scaling.MinLevel.Player", 10);
+	setConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL, "Rochenoire.Scaling.MinLevel.Creature", 1);
+	setConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL, "Rochenoire.Scaling.MinLevel.Expansion", 40);
+	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", 1);
+	setConfig(CONFIG_BOOL_SCALE_RAIDS, "Rochenoire.Scaling.Raids.Enabled", 1);
+	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", 1);
+
+	setConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP, "Rochenoire.Rate.Drop.Item.Group", 1.0f);
+	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);
 
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 
@@ -1167,6 +1196,15 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading Waypoints...");
     sWaypointMgr.Load();
 
+	sLog.outString("Loading Item Loot Scale...");
+	sObjectMgr.LoadLootScale();
+
+	sLog.outString("Loading Creature Flex Details...");
+	sObjectMgr.LoadFlexibleCreatures();
+
+	sLog.outString("Loading Spell Flex Details...");
+	sObjectMgr.LoadFlexibleSpells();
+
     sLog.outString("Loading ReservedNames...");
     sObjectMgr.LoadReservedPlayersNames();
 
@@ -1340,9 +1378,10 @@ void World::SetInitialWorldSettings()
 #ifdef BUILD_PLAYERBOT
     PlayerbotMgr::SetInitialWorldSettings();
 #endif
-    sLog.outString("---------------------------------------");
-    sLog.outString("      CMANGOS: World initialized       ");
-    sLog.outString("---------------------------------------");
+    sLog.outString("==========================================================");
+    sLog.outString("                CMANGOS: World initialized                ");
+	sLog.outString("Current content is set to %s.", ObjectMgr::GetPatchName());
+    sLog.outString("==========================================================");
     sLog.outString();
 
     uint32 uStartInterval = WorldTimer::getMSTimeDiff(startTime, WorldTimer::getMSTime());
@@ -2410,4 +2449,9 @@ void World::InvalidatePlayerDataToAllClient(ObjectGuid guid) const
     WorldPacket data(SMSG_INVALIDATE_PLAYER, 8);
     data << guid;
     SendGlobalMessage(data);
+}
+
+uint32 World::GetCurrentMaxLevel() const
+{
+	return GetWowPatch() >= WOW_PATCH_203 ? getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) : DEFAULT_VAN_MAX_LEVEL;
 }

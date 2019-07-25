@@ -162,9 +162,10 @@ enum QuestSpecialFlags
     QUEST_SPECIAL_FLAG_SPEAKTO              = 0x010,        // Internal flag computed only
     QUEST_SPECIAL_FLAG_KILL_OR_CAST         = 0x020,        // Internal flag computed only
     QUEST_SPECIAL_FLAG_TIMED                = 0x040,        // Internal flag computed only
+	QUEST_SPECIAL_FLAG_DISABLED             = 0x080,        // Internal flag computed only
 };
 
-#define QUEST_SPECIAL_FLAG_DB_ALLOWED (QUEST_SPECIAL_FLAG_REPEATABLE | QUEST_SPECIAL_FLAG_EXPLORATION_OR_EVENT | QUEST_SPECIAL_FLAG_MONTHLY)
+#define QUEST_SPECIAL_FLAG_DB_ALLOWED (QUEST_SPECIAL_FLAG_REPEATABLE | QUEST_SPECIAL_FLAG_EXPLORATION_OR_EVENT | QUEST_SPECIAL_FLAG_MONTHLY | QUEST_SPECIAL_FLAG_DISABLED)
 
 struct QuestLocale
 {
@@ -229,9 +230,9 @@ class Quest
         std::string GetOfferRewardText() const { return OfferRewardText; }
         std::string GetRequestItemsText() const { return RequestItemsText; }
         std::string GetEndText() const { return EndText; }
-        int32  GetRewOrReqMoney() const;
+        int32  GetRewOrReqMoney(Player *p) const;
         uint32 GetRewHonorableKills() const { return RewHonorableKills; }
-        uint32 GetRewMoneyMaxLevel() const { return RewMoneyMaxLevel; }
+		uint32 GetRewMoneyMaxLevel(Player *p) const;
         // use in XP calculation at client
         uint32 GetRewSpell() const { return RewSpell; }
         uint32 GetRewSpellCast() const { return RewSpellCast; }
@@ -260,6 +261,9 @@ class Quest
         // quest can be fully deactivated and will not be available for any player
         void SetQuestActiveState(bool state) { m_isActive = state; }
         bool IsActive() const { return m_isActive; }
+
+		// scaling
+		bool IsSpecificQuest() const { return (Type == 62 /* RAID */ || Type == 41 /* PVP */ || GetRequiredClasses() == 1 || GetRequiredClasses() == 2 || GetRequiredClasses() == 4 || GetRequiredClasses() == 8 || GetRequiredClasses() == 16 || GetRequiredClasses() == 32 || GetRequiredClasses() == 64 || GetRequiredClasses() == 128 || GetRequiredClasses() == 256 || GetRequiredClasses() == 512 || GetRequiredClasses() == 1024); }
 
         // multiple values
         std::string ObjectiveText[QUEST_OBJECTIVES_COUNT];
@@ -305,6 +309,7 @@ class Quest
         // table data
     protected:
         uint32 QuestId;
+		uint8  Patch;
         uint32 QuestMethod;
         int32  ZoneOrSort;
         uint32 MinLevel;

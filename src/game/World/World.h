@@ -67,6 +67,26 @@ enum ShutdownExitCode
     RESTART_EXIT_CODE  = 2,
 };
 
+enum WowPatch
+{
+	WOW_PATCH_102 = 0,
+	WOW_PATCH_103 = 1,
+	WOW_PATCH_104 = 2,
+	WOW_PATCH_105 = 3,
+	WOW_PATCH_106 = 4,
+	WOW_PATCH_107 = 5,
+	WOW_PATCH_108 = 6,
+	WOW_PATCH_109 = 7,
+	WOW_PATCH_110 = 8,
+	WOW_PATCH_111 = 9,
+	WOW_PATCH_112 = 10,
+	WOW_PATCH_203 = 11,
+	WOW_PATCH_210 = 12,
+	WOW_PATCH_220 = 13,
+	WOW_PATCH_230 = 14,
+	WOW_PATCH_240 = 15
+};
+
 /// Timers for different object refresh rates
 enum WorldTimers
 {
@@ -111,6 +131,18 @@ enum eConfigUInt32Values
     CONFIG_UINT32_INSTANCE_RESET_TIME_HOUR,
     CONFIG_UINT32_INSTANCE_UNLOAD_DELAY,
     CONFIG_UINT32_MAX_SPELL_CASTS_IN_CHAIN,
+	CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL,
+	CONFIG_UINT32_APPRENTICE_MOUNT_COST,
+	CONFIG_UINT32_APPRENTICE_TRAIN_COST,
+	CONFIG_UINT32_JOURNEYMAN_MOUNT_COST,
+	CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL,
+	CONFIG_UINT32_JOURNEYMAN_TRAIN_COST,
+	CONFIG_UINT32_EXPERT_MOUNT_COST,
+	CONFIG_UINT32_EXPERT_TRAIN_LEVEL,
+	CONFIG_UINT32_EXPERT_TRAIN_COST,
+	CONFIG_UINT32_ARTISAN_MOUNT_COST,
+	CONFIG_UINT32_ARTISAN_TRAIN_LEVEL,
+	CONFIG_UINT32_ARTISAN_TRAIN_COST,
     CONFIG_UINT32_RABBIT_DAY,
     CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL,
     CONFIG_UINT32_TRADE_SKILL_GMIGNORE_MAX_PRIMARY_COUNT,
@@ -185,6 +217,9 @@ enum eConfigUInt32Values
     CONFIG_UINT32_FOGOFWAR_STEALTH,
     CONFIG_UINT32_FOGOFWAR_HEALTH,
     CONFIG_UINT32_FOGOFWAR_STATS,
+	CONFIG_UINT32_SCALE_PLAYER_MINLEVEL,
+	CONFIG_UINT32_SCALE_CREATURE_MINLEVEL,
+	CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL,
     CONFIG_UINT32_VALUE_COUNT
 };
 
@@ -272,6 +307,8 @@ enum eConfigFloatValues
     CONFIG_FLOAT_THREAT_RADIUS,
     CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD,
     CONFIG_FLOAT_GHOST_RUN_SPEED_BG,
+	CONFIG_FLOAT_RATE_DROP_ITEM_GROUP,
+	CONFIG_FLOAT_RATE_XP_GROUP,
     CONFIG_FLOAT_VALUE_COUNT
 };
 
@@ -343,6 +380,9 @@ enum eConfigBoolValues
     CONFIG_BOOL_PLAYER_COMMANDS,
     CONFIG_BOOL_PATH_FIND_OPTIMIZE,
     CONFIG_BOOL_PATH_FIND_NORMALIZE_Z,
+	CONFIG_BOOL_SCALE_RAIDS,
+	CONFIG_BOOL_SCALE_DUNGEONS,
+	CONFIG_BOOL_SCALE_FORCE_PVP,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -481,6 +521,8 @@ class World
         void SetMotd(const std::string& motd) { m_motd = motd; }
         /// Get the current Message of the Day
         const char* GetMotd() const { return m_motd.c_str(); }
+		// Get current server's WoW Patch
+		uint8 GetWowPatch() const { return m_wowPatch; }
 
         LocaleConstant GetDefaultDbcLocale() const { return m_defaultDbcLocale; }
 
@@ -603,6 +645,8 @@ class World
         static TimePoint GetCurrentClockTime() { return m_currentTime; }
         static uint32 GetCurrentDiff() { return m_currentDiff; }
 
+		uint32 GetCurrentMaxLevel() const;
+
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -658,6 +702,7 @@ class World
         bool m_configBoolValues[CONFIG_BOOL_VALUE_COUNT];
 
         int32 m_playerLimit;
+		uint8 m_wowPatch;
         LocaleConstant m_defaultDbcLocale;                  // from config for one from loaded DBC locales
         uint32 m_availableDbcLocaleMask;                    // by loaded DBC
         void DetectDBCLang();

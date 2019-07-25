@@ -26,6 +26,7 @@
 #include "Entities/Item.h"
 #include "Entities/UpdateData.h"
 #include "Chat/Chat.h"
+#include "World/World.h"
 
 void WorldSession::HandleSplitItemOpcode(WorldPacket& recv_data)
 {
@@ -294,6 +295,26 @@ void WorldSession::HandleItemQuerySingleOpcode(WorldPacket& recv_data)
         std::string description = pProto->Description;
         sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &name, &description);
 
+		// override mount level requirements with the settings from the configuration file
+		int RequiredLevel = pProto->RequiredLevel;
+		if (pProto->RequiredSkill == 762)
+		{
+			switch (pProto->RequiredSkillRank) {
+			case 75: // apprentice mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL));
+				break;
+			case 150: // journeyman mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL));
+				break;
+			case 225: // expert mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL));
+				break;
+			case 300: // artisan mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL));
+				break;
+			}
+		}
+
         // guess size
         WorldPacket data(SMSG_ITEM_QUERY_SINGLE_RESPONSE, 600);
         data << pProto->ItemId;
@@ -313,7 +334,7 @@ void WorldSession::HandleItemQuerySingleOpcode(WorldPacket& recv_data)
         data << pProto->AllowableClass;
         data << pProto->AllowableRace;
         data << pProto->ItemLevel;
-        data << pProto->RequiredLevel;
+        data << RequiredLevel;
         data << pProto->RequiredSkill;
         data << pProto->RequiredSkillRank;
         data << pProto->RequiredSpell;
@@ -773,8 +794,25 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
 
                 ++count;
 
-                // reputation discount
-                uint32 price = uint32(floor(pProto->BuyPrice * discountMod));
+				uint32 price = uint32(floor(pProto->BuyPrice * discountMod));
+				// check mounts
+				if (pProto->RequiredSkill == 762)
+				{
+					switch (pProto->RequiredSkillRank) {
+					case 75: // apprentice mounts
+						price = uint32(floor(AccountTypes(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_MOUNT_COST)) * discountMod));
+						break;
+					case 150: // journeyman mounts
+						price = uint32(floor(AccountTypes(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_MOUNT_COST)) * discountMod));
+						break;
+					case 225: // expert mounts
+						price = uint32(floor(AccountTypes(sWorld.getConfig(CONFIG_UINT32_EXPERT_MOUNT_COST)) * discountMod));
+						break;
+					case 300: // artisan mounts
+						price = uint32(floor(AccountTypes(sWorld.getConfig(CONFIG_UINT32_ARTISAN_MOUNT_COST)) * discountMod));
+						break;
+					}
+				}
 
                 data << uint32(count);
                 data << uint32(itemId);

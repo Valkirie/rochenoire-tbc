@@ -173,6 +173,47 @@ ObjectMgr::~ObjectMgr()
         itr.second.Clear();
 }
 
+char* const ObjectMgr::GetPatchName()
+{
+	switch (sWorld.GetWowPatch())
+	{
+	case 0:
+		return "Patch 1.2: Mysteries of Maraudon";
+	case 1:
+		return "Patch 1.3: Ruins of the Dire Maul";
+	case 2:
+		return "Patch 1.4: The Call to War";
+	case 3:
+		return "Patch 1.5: Battlegrounds";
+	case 4:
+		return "Patch 1.6: Assault on Blackwing Lair";
+	case 5:
+		return "Patch 1.7: Rise of the Blood God";
+	case 6:
+		return "Patch 1.8: Dragons of Nightmare";
+	case 7:
+		return "Patch 1.9: The Gates of Ahn'Qiraj";
+	case 8:
+		return "Patch 1.10: Storms of Azeroth";
+	case 9:
+		return "Patch 1.11: Shadow of the Necropolis";
+	case 10:
+		return "Patch 1.12: Drums of War";
+	case 11:
+		return "Patch 2.0.3: The Burning Crusade";
+	case 12:
+		return "Patch 2.1.0: The Black Temple";
+	case 13:
+		return "Patch 2.2.0: Voice Chat!";
+	case 14:
+		return "Patch 2.3.0: The Gods of Zul'Aman";
+	case 15:
+		return "Patch 2.4.0: Fury of the Sunwell";
+	}
+
+	return "Invalid Patch!";
+}
+
 Group* ObjectMgr::GetGroupById(uint32 id) const
 {
     GroupMap::const_iterator itr = mGroupMap.find(id);
@@ -916,6 +957,482 @@ CreatureClassLvlStats const* ObjectMgr::GetCreatureClassLvlStats(uint32 level, u
     return nullptr;
 }
 
+float mingold_array[65] = { 1.33f,5.09f,6.4f,6.5f,7.28f,8.98f,9.4f,9.42f,14.26f,17.76f,19.84f,20.27f,20.35f,33.44f,42.58f,43.04f,50.08f,50.26f,59.76f,60.73f,61.03f,71.05f,79.18f,79.51f,80.94f,83.08f,88.93f,90.86f,92.47f,99.63f,100.31f,103.96f,110.63f,115.4f,131.43f,133.72f,135.77f,139.42f,151.96f,170.22f,170.48f,175.41f,176.06f,179.42f,181.38f,187.58f,190.36f,193.57f,201.26f,201.54f,212.49f,221.2f,225.94f,286.99f,297.95f,369.16f,442.04f,515.1f,588.1f,661.1f,734.1f,807.1f,880.1f,953.1f,1024.1f };
+float maxgold_array[65] = { 7.08f,11.96f,12.13f,13.15f,14.81f,17.12f,17.66f,18.75f,25.95f,31.68f,38.27f,38.86f,46.84f,48.81f,62.52f,66.07f,76.91f,86.15f,87.94f,100.73f,104.82f,106.03f,111.34f,118.17f,126.29f,130.69f,143.12f,152.31f,155.17f,157.88f,161.5f,176.44f,178.51f,204.82f,205.48f,206.91f,220.09f,230.24f,233.94f,278.17f,306.00f,306.71f,309.74f,327.00f,339.45f,341.09f,351.8f,359.08f,370.32f,488.16f,499.34f,514.34f,524.28f,550.51f,695.23f,850.22f,894.25f,1250.6f,1427.9f,1605.2f,1782.5f,1959.7f,2137.0f,2314.3f,2491.6f };
+float ObjectMgr::ScaleGold(uint32 level, bool min) const
+{
+	return min ? mingold_array[level - 1] : maxgold_array[level - 1];
+}
+
+bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
+{
+	if (!owner || !target)
+		return false;
+
+	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
+	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+
+	if (!target1 || !target2)
+		return false;
+	if (target1->IsPlayer() && target2->IsPlayer())
+		return false;
+	if (target1->IsCreature() && target2->IsCreature())
+		return false;
+
+	Creature* creature;
+	Player* player;
+
+	if (target1->IsCreature() && target2->IsPlayer())
+	{
+		creature = (Creature *)target1;
+		player = (Player *)target2;
+	}
+	else if (target2->IsCreature() && target1->IsPlayer())
+	{
+		player = (Player *)target1;
+		creature = (Creature *)target2;
+	}
+	else
+		return false;
+
+	if (!player || !creature)
+		return false;
+
+	if (player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+		return false;
+
+	if (creature->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL))
+		return false;
+
+	if (((Unit*)creature)->IsInStartLocation())
+		return false;
+
+	if (creature->IsFriend(player))
+		return false;
+
+	// Check creatures flags_extra for disable block
+	if (creature->GetTypeId() == TYPEID_UNIT)
+	{
+		if (creature->IsGuard())
+			return false;
+
+		if (creature->IsCivilian())
+			return false;
+
+		if (CreatureInfo const* cInfo = creature->GetCreatureInfo())
+		{
+			/* if (cInfo->flags_extra & CREATURE_FLAG_EXTRA_NO_AGGRO)
+				return false; */
+
+			if (cInfo->ExtraFlags & CREATURE_EXTRA_FLAG_GUARD)
+				return false;
+		}
+
+		if (creature->GetCreatureType() == CREATURE_TYPE_CRITTER && !creature->IsEnemy(player))
+			return false;
+
+		if (creature->IsWorldBoss() && !creature->GetMap()->IsDungeon())
+			return false;
+	}
+
+	Map* map = creature->GetMap();
+
+	if (map)
+	{
+		if (map->IsRaid() && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS))
+			return false;
+
+		if (map->IsNoRaid() && !sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS))
+			return false;
+	}
+
+	return true;
+}
+
+bool ObjectMgr::isAuraRestricted(uint32 EffectApplyAuraName) const
+{
+	int AURA_RESTRICTED[] = { SPELL_AURA_MOD_RESISTANCE };
+	return std::find(std::begin(AURA_RESTRICTED), std::end(AURA_RESTRICTED), EffectApplyAuraName) != std::end(AURA_RESTRICTED);;
+}
+
+bool ObjectMgr::isAuraSafe(uint32 EffectApplyAuraName) const
+{
+	int AURA_SAFE[] = { SPELL_AURA_NONE, SPELL_AURA_BIND_SIGHT, SPELL_AURA_MOD_POSSESS, SPELL_AURA_PERIODIC_DAMAGE,
+			SPELL_AURA_DUMMY, SPELL_AURA_MOD_CHARM, SPELL_AURA_PERIODIC_HEAL, SPELL_AURA_MOD_DAMAGE_DONE,
+			SPELL_AURA_MOD_DAMAGE_TAKEN, SPELL_AURA_DAMAGE_SHIELD, SPELL_AURA_OBS_MOD_HEALTH, SPELL_AURA_OBS_MOD_MANA,
+			SPELL_AURA_MOD_RESISTANCE, SPELL_AURA_PERIODIC_TRIGGER_SPELL, SPELL_AURA_PERIODIC_ENERGIZE, SPELL_AURA_MOD_STAT,
+			SPELL_AURA_MOD_SKILL, SPELL_AURA_MOD_INCREASE_HEALTH, SPELL_AURA_MOD_INCREASE_ENERGY, SPELL_AURA_46,
+			SPELL_AURA_48, SPELL_AURA_PERIODIC_LEECH, SPELL_AURA_MOD_DAMAGE_DONE_CREATURE, SPELL_AURA_PERIODIC_HEALTH_FUNNEL,
+			SPELL_AURA_PERIODIC_MANA_FUNNEL, SPELL_AURA_PERIODIC_MANA_LEECH, SPELL_AURA_MOD_STALKED, SPELL_AURA_SCHOOL_ABSORB,
+			SPELL_AURA_MOD_POWER_COST_SCHOOL, SPELL_AURA_MOD_BASE_RESISTANCE, SPELL_AURA_MOD_REGEN, SPELL_AURA_MOD_POWER_REGEN,
+			SPELL_AURA_CHANNEL_DEATH_ITEM, SPELL_AURA_MOD_DETECT_RANGE, SPELL_AURA_PREVENTS_FLEEING, SPELL_AURA_MOD_UNATTACKABLE,
+			SPELL_AURA_INTERRUPT_REGEN, SPELL_AURA_GHOST, SPELL_AURA_SPELL_MAGNET, SPELL_AURA_MANA_SHIELD,
+			SPELL_AURA_MOD_SKILL_TALENT, SPELL_AURA_MOD_ATTACK_POWER, SPELL_AURA_AURAS_VISIBLE, SPELL_AURA_MOD_MELEE_ATTACK_POWER_VERSUS,
+			SPELL_AURA_MOD_TOTAL_THREAT, SPELL_AURA_WATER_WALK, SPELL_AURA_FEATHER_FALL, SPELL_AURA_HOVER,
+			SPELL_AURA_ADD_FLAT_MODIFIER, SPELL_AURA_ADD_TARGET_TRIGGER, SPELL_AURA_ADD_CASTER_HIT_TRIGGER, SPELL_AURA_OVERRIDE_CLASS_SCRIPTS,
+			SPELL_AURA_MOD_RANGED_DAMAGE_TAKEN, SPELL_AURA_MOD_HEALING, SPELL_AURA_MOD_REGEN_DURING_COMBAT, SPELL_AURA_MOD_MECHANIC_RESISTANCE,
+			SPELL_AURA_SHARE_PET_TRACKING, SPELL_AURA_UNTRACKABLE, SPELL_AURA_EMPATHY, SPELL_AURA_MOD_TARGET_RESISTANCE,
+			SPELL_AURA_MOD_RANGED_ATTACK_POWER, SPELL_AURA_MOD_MELEE_DAMAGE_TAKEN, SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS, SPELL_AURA_MOD_POSSESS_PET,
+			SPELL_AURA_MOD_RANGED_ATTACK_POWER_VERSUS, SPELL_AURA_MOD_MANA_REGEN_INTERRUPT, SPELL_AURA_MOD_HEALING_DONE, SPELL_AURA_FORCE_REACTION,
+			SPELL_AURA_MOD_RESISTANCE_EXCLUSIVE, SPELL_AURA_SAFE_FALL, SPELL_AURA_CHARISMA, SPELL_AURA_PERSUADED,
+			SPELL_AURA_MECHANIC_IMMUNITY_MASK, SPELL_AURA_RESIST_PUSHBACK, SPELL_AURA_SPLIT_DAMAGE_FLAT, SPELL_AURA_PET_DAMAGE_MULTI,
+			SPELL_AURA_MOD_SHIELD_BLOCKVALUE, SPELL_AURA_NO_PVP_CREDIT, SPELL_AURA_MOD_AOE_AVOIDANCE, SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT,
+			SPELL_AURA_POWER_BURN_MANA, SPELL_AURA_MOD_CRIT_DAMAGE_BONUS, SPELL_AURA_164, SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS,
+			SPELL_AURA_MOD_DAMAGE_DONE_VERSUS, SPELL_AURA_DETECT_AMORE, SPELL_AURA_ALLOW_CHAMPION_SPELLS, SPELL_AURA_AOE_CHARM,
+			SPELL_AURA_MOD_DEBUFF_RESISTANCE, SPELL_AURA_MOD_FLAT_SPELL_DAMAGE_VERSUS, SPELL_AURA_MOD_FLAT_SPELL_CRIT_DAMAGE_VERSUS };
+	return std::find(std::begin(AURA_SAFE), std::end(AURA_SAFE), EffectApplyAuraName) != std::end(AURA_SAFE);
+}
+
+bool ObjectMgr::isEffectRestricted(uint32 Effect) const
+{
+	int SPELL_EFFECT_RESTRICTED[] = { SPELL_EFFECT_LEARN_SPELL, SPELL_EFFECT_SKILL_STEP, SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL, SPELL_EFFECT_WEAPON_DAMAGE, SPELL_EFFECT_NORMALIZED_WEAPON_DMG, SPELL_EFFECT_DISPEL }; // Do not scale those effects
+	return std::find(std::begin(SPELL_EFFECT_RESTRICTED), std::end(SPELL_EFFECT_RESTRICTED), Effect) == std::end(SPELL_EFFECT_RESTRICTED);
+}
+
+bool ObjectMgr::isEffectSafe(uint32 Effect) const
+{
+	return true;
+}
+
+bool ObjectMgr::isSafeExpansionZone(uint32 mapId, uint32 zoneId) const
+{
+	MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
+	if (mapEntry && mapEntry->addon != 0)
+	{
+		if(mapId == 530) // Outland
+		{
+			switch (zoneId)
+			{
+				case 3525: //Bloodmyst Isle
+				case 3524: //Azuremyst Isle
+				case 3557: //Exodar
+				case 3430: //Eversong Woods
+				case 3487: //Silvermoon
+					return true;
+			}
+		}
+		return false;
+	}
+	return true;
+}
+
+uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
+{
+	if (!owner)
+		return 1; // Extra protection...
+	if (!target)
+		return owner->getLevel();
+
+	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
+	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+
+	if (!target1 || !target2)
+		return target->getLevel();
+
+	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
+	bool IsDungeon = target1->GetMap() ? target1->GetMap()->IsDungeon() : false;
+
+	if (target1->IsCreature() && target2->IsCreature())
+		return target->getLevel();
+
+	Creature* creature;
+	Player* player;
+
+	if (target1->IsCreature() && target2->IsPlayer())
+	{
+		creature = (Creature *)target1;
+		player = (Player *)target2;
+	}
+	else if (target2->IsCreature() && target1->IsPlayer())
+	{
+		player = (Player *)target1;
+		creature = (Creature *)target2;
+	}
+	else if (target2->IsPlayer() && target1->IsPlayer() && (IsBattleGround || IsForcePVP))
+	{
+		return target2->getLevel() > target1->getLevel() ? target2->getLevel() : target1->getLevel();
+	}
+	else
+		return target->getLevel();
+
+	if (!IsScalable(target1, target2))
+		return creature->getLevel();
+
+	uint32 mapId = target1->GetMap() ? target1->GetMap()->GetId() : 0;
+	uint32 zoneId = target1->GetTerrain() ? target1->GetZoneId() : 0;
+
+	float p_level = player->getLevel();
+	float c_level = creature->getLevel();
+	int v_level = creature->getLevelVariation();
+
+	if (!isSafeExpansionZone(mapId, zoneId))
+	{
+		if(p_level < DEFAULT_TBC_MIN_LEVEL)
+			p_level = DEFAULT_TBC_MIN_LEVEL;
+	}
+
+	uint32 level = p_level + v_level;
+
+	if (!IsDungeon)
+	{
+		// var vars
+		float inc_lvl = 1.55f;    //De combien de level en moyenne doit-on augmenter les levels 
+		float red_lvl = 4.51f;    //De combien de level en moyenne doit-on réduire les levels (uniquement pour levelmax ,ce nombre est reduit pour le leveling)
+
+		float s_coeff = 0.4f / (1.0f + std::exp(-0.5f*((p_level)-(sWorld.GetCurrentMaxLevel() - 0.5f)))) + 0.08f;
+		float s_eps = std::log(inc_lvl / red_lvl);
+
+		level += round((inc_lvl + red_lvl) / (1.0f + std::exp(-s_coeff * (c_level - p_level) + s_eps)) - red_lvl);
+	}
+
+	if (level > sWorld.GetCurrentMaxLevel())
+		level = sWorld.GetCurrentMaxLevel();
+
+	return level;
+}
+
+int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
+{
+	if (!owner)
+		return 0; // Extra protection...
+	if (!target)
+		return 0;
+
+	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
+	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+
+	if (!target1 || !target2)
+		return 0;
+
+	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
+
+	Creature* creature;
+	Player* player;
+	int diff = owner->GetLevelForTarget(target) - target->GetLevelForTarget(owner);
+
+	if (target1->IsCreature() && target2->IsPlayer())
+	{
+		creature = (Creature *)target1;
+		player = (Player *)target2;
+	}
+	else if (target2->IsCreature() && target1->IsPlayer())
+	{
+		player = (Player *)target1;
+		creature = (Creature *)target2;
+	}
+	else
+		return diff;
+
+	if (!IsScalable(target1, target2))
+		return diff;
+
+	diff = (int)getLevelScaled(owner, target) - player->getLevel();
+
+	return diff;
+}
+
+uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
+{
+	if (oldarmor == 0)
+		return oldarmor;
+
+	uint32 armor = oldarmor;
+
+	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
+	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+
+	if (!target1 || !target2)
+		return oldarmor;
+	if (target1->IsPlayer() && target2->IsPlayer())
+		return oldarmor;
+	if (target1->IsCreature() && target2->IsCreature())
+		return oldarmor;
+
+	if (!IsScalable(target1, target2))
+		return oldarmor;
+
+	Creature* creature;
+	Player* player;
+
+	int pAggro = 0;
+
+	if (target1->IsCreature() && target2->IsPlayer())
+	{
+		creature = (Creature *)target1;
+		player = (Player *)target2;
+		pAggro = 2; // Creature is the attacker
+	}
+	else if (target2->IsCreature() && target1->IsPlayer())
+	{
+		player = (Player *)target1;
+		creature = (Creature *)target2;
+		pAggro = 1; // Player is the attacker
+	}
+	else
+		return oldarmor;
+
+	int32 scaled_level = getLevelScaled(creature, player);
+	int32 creature_level = creature->getLevel();
+
+	if (pAggro == 1)
+	{
+		// Scale creature armor based on player level
+		uint32 max_armor = (float)creature->GetArmor();
+
+		if (max_armor <= 1)
+			return armor;
+
+		float ratio_armor = 1.0f;
+		
+		// Check creatures flags_extra for disable block
+		if (creature->GetTypeId() == TYPEID_UNIT)
+		{
+			CreatureInfo const* cinfo = creature->GetCreatureInfo();
+			if (cinfo && cinfo->UnitClass != 0)
+			{
+				if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(creature_level, cinfo->UnitClass, cinfo->Expansion))
+					ratio_armor = armor / (cCLSS->BaseArmor * cinfo->ArmorMultiplier);
+
+				if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(scaled_level, cinfo->UnitClass, cinfo->Expansion))
+					armor = cCLSS->BaseArmor * cinfo->ArmorMultiplier * ratio_armor;
+			}
+		}
+	}
+
+	return armor;
+}
+
+float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool isScaled) const
+{
+	if (olddamage == 0)
+		return olddamage;
+
+	if (isScaled)
+		return olddamage;
+
+	float damage = olddamage;
+
+	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
+	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+
+	if (!target1 || !target2)
+		return damage;
+
+	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
+
+	// Mind Controlled creatures should not have scaled damage dealt/received
+	if (owner->IsCreature() && target->IsCreature())
+		if (owner->isCharmed() || target->isCharmed())
+			return damage;
+
+	if (target1->IsCreature() && target2->IsCreature())
+		return damage;
+
+	Creature* creature;
+	Player* player;
+	Player* player2;
+
+	int pAggro = 0;
+	bool isPvP = false;
+
+	if (target1->IsCreature() && target2->IsPlayer())
+	{
+		creature = (Creature *)target1;
+		player = (Player *)target2;
+		pAggro = 2; // PvE : Creature is the attacker
+	}
+	else if (target2->IsCreature() && target1->IsPlayer())
+	{
+		player = (Player *)target1;
+		creature = (Creature *)target2;
+		pAggro = 1; // PvE : Player is the attacker
+	}
+	else if (target2->IsPlayer() && target1->IsPlayer() && (IsBattleGround || IsForcePVP))
+	{
+		player = (Player *)target1;
+		player2 = (Player *)target2;
+		pAggro = 3; // PvP : Not important ?
+		isPvP = true;
+	}
+	else
+		return damage;
+
+	if (!isPvP && !IsScalable(target1, target2))
+		return damage;
+
+	int32 target_level = isPvP ? player2->getLevel() : getLevelScaled(creature, player);
+	int32 owner_level = isPvP ? player->getLevel() : creature->getLevel();
+
+	if (pAggro == 1)
+	{
+		uint32 max_health = (float)creature->GetMaxHealth();
+		uint32 expected_health = 1;
+		float difference_health = 1;
+		float scaled_health = 1;
+
+		if (max_health <= 1)
+			return olddamage;
+
+		// proper algorithm
+		if (creature->GetTypeId() == TYPEID_UNIT)
+		{
+			if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
+			{
+				CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(target_level, cinfo->UnitClass, cinfo->Expansion);
+				if (cCLSS && cinfo->UnitClass != 0)
+					scaled_health = cCLSS->BaseHealth * cinfo->HealthMultiplier;
+			}
+		}
+
+		float scaled_damage_ratio = float((float)max_health / (float)scaled_health);
+		float damage_scaled = scaled_damage_ratio * olddamage;
+
+		damage = damage_scaled;
+	}
+	else if (pAggro >= 2)
+	{
+		if (player->IsCharmerOrOwnerPlayerOrPlayerItself())
+			player = player->GetCharmerOrOwnerPlayerOrPlayerItself();
+
+		if (!player)
+			return olddamage;
+
+		PlayerClassLevelInfo target_classInfo;
+		PlayerClassLevelInfo owner_classInfo;
+
+		float targetBaseHealth = 0.0f;
+		float ownerBaseHealth = 0.0f;
+		int incBaseHealth = 0;
+
+		for (uint32 i = MIN_CLASSES; i < MAX_CLASSES; i++)
+		{
+			if (i == 6 || i == 10)
+				continue;
+
+			sObjectMgr.GetPlayerClassLevelInfo(i, target_level, &target_classInfo);
+			sObjectMgr.GetPlayerClassLevelInfo(i, owner_level, &owner_classInfo);
+
+			targetBaseHealth += target_classInfo.basehealth;
+			ownerBaseHealth += owner_classInfo.basehealth;
+
+			incBaseHealth++;
+		}
+
+		targetBaseHealth /= incBaseHealth;
+		ownerBaseHealth /= incBaseHealth;
+
+		float damage_percent = olddamage / ownerBaseHealth;
+		float damage_scaled = damage_percent * targetBaseHealth;
+
+		damage = damage_scaled;
+	}
+
+	return ceil(damage);
+}
+
 void ObjectMgr::LoadEquipmentTemplates()
 {
     sEquipmentStorage.Load(true);
@@ -1332,8 +1849,8 @@ void ObjectMgr::LoadCreatures()
                           "equipment_id, position_x, position_y, position_z, orientation, spawntimesecsmin, spawntimesecsmax, spawndist, currentwaypoint,"
                           //   13         14       15          16            17         18
                           "curhealth, curmana, DeathState, MovementType, spawnMask, event,"
-                          //   19                        20
-                          "pool_creature.pool_entry, pool_creature_template.pool_entry "
+                          //   19                        20                             21         22
+                          "pool_creature.pool_entry, pool_creature_template.pool_entry, patch_min, patch_max "
                           "FROM creature "
                           "LEFT OUTER JOIN game_event_creature ON creature.guid = game_event_creature.guid "
                           "LEFT OUTER JOIN pool_creature ON creature.guid = pool_creature.guid "
@@ -1364,13 +1881,19 @@ void ObjectMgr::LoadCreatures()
 
         uint32 guid         = fields[ 0].GetUInt32();
         uint32 entry        = fields[ 1].GetUInt32();
+		uint8 patch_min = fields[21].GetUInt8();
+		uint8 patch_max = fields[22].GetUInt8();
+		bool existsInPatch = true;
+
+		if (!((sWorld.GetWowPatch() >= patch_min) && (sWorld.GetWowPatch() <= patch_max)))
+			existsInPatch = false;
 
         // validate creature dual spawn template
         bool isConditional  = false;
         if (entry == 0)
         {
             CreatureConditionalSpawn const* cSpawn = GetCreatureConditionalSpawn(guid);
-            if (!cSpawn)
+            if (!cSpawn && existsInPatch)
             {
                 auto spawnEntriesMap = sObjectMgr.GetCreatureSpawnEntry();
                 auto itr = spawnEntriesMap.find(guid);
@@ -1394,7 +1917,7 @@ void ObjectMgr::LoadCreatures()
         }
 
         CreatureInfo const* cInfo = GetCreatureTemplate(entry);
-        if (!cInfo)
+        if (!cInfo && existsInPatch)
         {
             sLog.outErrorDb("Table `creature` has creature (GUID: %u) with non existing creature entry %u, skipped.", guid, entry);
             continue;
@@ -1429,6 +1952,9 @@ void ObjectMgr::LoadCreatures()
             sLog.outErrorDb("Table `creature` have creature (GUID: %u) that spawned at nonexistent map (Id: %u), skipped.", guid, data.mapid);
             continue;
         }
+		
+		if (!existsInPatch)
+			data.spawnFlags |= SPAWN_FLAG_DISABLED;
 
         if (!MaNGOS::IsValidMapCoord(data.posX, data.posY, data.posZ))
         {
@@ -1519,7 +2045,7 @@ void ObjectMgr::LoadCreatures()
         else
             data.OriginalZoneId = 0;
 
-        if (data.IsNotPartOfPoolOrEvent()) // if not this is to be managed by GameEvent System or Pool system
+        if (data.IsNotPartOfPoolOrEvent() && existsInPatch) // if not this is to be managed by GameEvent System or Pool system
         {
             AddCreatureToGrid(guid, &data);
 
@@ -1581,8 +2107,8 @@ void ObjectMgr::LoadGameObjects()
     QueryResult* result = WorldDatabase.Query("SELECT gameobject.guid, gameobject.id, map, position_x, position_y, position_z, orientation,"
                           //   7          8          9          10         11             12               13            14     15         16
                           "rotation0, rotation1, rotation2, rotation3, spawntimesecsmin, spawntimesecsmax, animprogress, state, spawnMask, event,"
-                          //   17                          18
-                          "pool_gameobject.pool_entry, pool_gameobject_template.pool_entry "
+                          //   17                          18                               19         20
+                          "pool_gameobject.pool_entry, pool_gameobject_template.pool_entry, patch_min, patch_max "
                           "FROM gameobject "
                           "LEFT OUTER JOIN game_event_gameobject ON gameobject.guid = game_event_gameobject.guid "
                           "LEFT OUTER JOIN pool_gameobject ON gameobject.guid = pool_gameobject.guid "
@@ -1606,9 +2132,15 @@ void ObjectMgr::LoadGameObjects()
 
         uint32 guid         = fields[ 0].GetUInt32();
         uint32 entry        = fields[ 1].GetUInt32();
+		uint8 patch_min = fields[19].GetUInt8();
+		uint8 patch_max = fields[20].GetUInt8();
+		bool existsInPatch = true;
+
+		if (!((sWorld.GetWowPatch() >= patch_min) && (sWorld.GetWowPatch() <= patch_max)))
+			existsInPatch = false;
 
         GameObjectInfo const* gInfo = GetGameObjectInfo(entry);
-        if (!gInfo)
+        if (!gInfo && existsInPatch)
         {
             sLog.outErrorDb("Table `gameobject` has gameobject (GUID: %u) with non existing gameobject entry %u, skipped.", guid, entry);
             continue;
@@ -1647,6 +2179,9 @@ void ObjectMgr::LoadGameObjects()
             sLog.outErrorDb("Table `gameobject` have gameobject (GUID: %u Entry: %u) that spawned at nonexistent map (Id: %u), skip", guid, data.id, data.mapid);
             continue;
         }
+
+		if (!existsInPatch)
+			data.spawnFlags |= SPAWN_FLAG_DISABLED;
 
         if (!MaNGOS::IsValidMapCoord(data.posX, data.posY, data.posZ))
         {
@@ -1722,7 +2257,7 @@ void ObjectMgr::LoadGameObjects()
         else
             data.OriginalZoneId = 0;
 
-        if (data.IsNotPartOfPoolOrEvent()) // if not this is to be managed by GameEvent System or Pool system
+        if (data.IsNotPartOfPoolOrEvent() && existsInPatch) // if not this is to be managed by GameEvent System or Pool system
             AddGameobjectToGrid(guid, &data);
 
         ++count;
@@ -1883,6 +2418,136 @@ uint32 ObjectMgr::GetPlayerAccountIdByPlayerName(const std::string& name) const
     return 0;
 }
 
+void ObjectMgr::LoadFlexibleSpells()
+{
+	mSpellFlexMap.clear();
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM spell_scaling");
+
+	if (!result)
+	{
+		BarGoLink bar(1);
+		bar.step();
+		sLog.outString();
+		sLog.outString(">> Loaded 0 Spell scaling details. DB table `spell_scaling` is empty.");
+		return;
+	}
+
+	BarGoLink bar(result->GetRowCount());
+
+	do
+	{
+		Field *fields = result->Fetch();
+		bar.step();
+
+		uint32 s_entry = fields[0].GetUInt32();
+		uint32 m_entry = fields[1].GetUInt32();
+		float ratio_spell = fields[2].GetFloat();
+
+		std::string s = std::to_string(s_entry) + ":" + std::to_string(m_entry);
+		SpellFlex& data = mSpellFlexMap[s];
+		data.s_entry = s_entry;
+		data.m_entry = m_entry;
+		data.ratio_spell = ratio_spell;
+
+	} while (result->NextRow());
+
+	delete result;
+	sLog.outString();
+	sLog.outString(">> Loaded %lu Spell scaling details", (unsigned long)mSpellFlexMap.size());
+}
+
+void ObjectMgr::LoadFlexibleCreatures()
+{
+	mCreatureFlexMap.clear();
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM creature_template_scaling");
+
+	if (!result)
+	{
+		BarGoLink bar(1);
+		bar.step();
+		sLog.outString();
+		sLog.outString(">> Loaded 0 Creature scaling details. DB table `creature_template_scaling` is empty.");
+		return;
+	}
+
+	BarGoLink bar(result->GetRowCount());
+
+	do
+	{
+		Field *fields = result->Fetch();
+		bar.step();
+
+		uint32 c_entry = fields[0].GetUInt32();
+		uint32 m_entry = fields[1].GetUInt32();
+		uint32 nb_tank = fields[2].GetUInt32();
+		uint32 nb_pack = fields[3].GetUInt32();
+		float ratio_hrht = fields[4].GetFloat();
+		float ratio_c1 = fields[5].GetFloat();
+		float ratio_c2 = fields[6].GetFloat();
+		bool is_flex = fields[7].GetBool();
+
+		std::string s = std::to_string(c_entry) + ":" + std::to_string(m_entry);
+		CreatureFlex& data = mCreatureFlexMap[s];
+		data.c_entry = c_entry;
+		data.m_entry = m_entry;
+		data.nb_tank = nb_tank;
+		data.nb_pack = nb_pack;
+		data.ratio_hrht = ratio_hrht;
+		data.ratio_c1 = ratio_c1;
+		data.ratio_c2 = ratio_c2;
+		data.is_flex = is_flex;
+
+	} while (result->NextRow());
+
+	delete result;
+	sLog.outString();
+	sLog.outString(">> Loaded %lu Creature scaling details", (unsigned long)mCreatureFlexMap.size());
+}
+
+void ObjectMgr::LoadLootScale()
+{
+	mLootScaleMap.clear();
+	mLootScaleParentingMap.clear();
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM item_loot_scale");
+
+	if (!result)
+	{
+		BarGoLink bar(1);
+		bar.step();
+		sLog.outString();
+		sLog.outString(">> Loaded 0 Item loot scale. DB table `item_loot_scale` is empty.");
+		return;
+	}
+
+	BarGoLink bar(result->GetRowCount());
+
+	do
+	{
+		Field *fields = result->Fetch();
+		bar.step();
+
+		uint32 entry = fields[0].GetUInt32();
+		uint32 item = fields[1].GetUInt32();
+		uint32 level = fields[2].GetUInt32();
+
+		ItemLootScale& data = mLootScaleParentingMap[item];
+		data.ItemId = entry;
+		data.ReplacementId = item;
+		data.plevel = level;
+
+		std::string s = std::to_string(entry) + ":" + std::to_string(level);
+		ItemLootScale& data2 = mLootScaleMap[s];
+		data2.ItemId = entry;
+		data2.ReplacementId = item;
+		data2.plevel = level;
+
+	} while (result->NextRow());
+
+	delete result;
+	sLog.outString();
+	sLog.outString(">> Loaded %lu Item Loot Scale", (unsigned long)mLootScaleMap.size());
+}
+
 void ObjectMgr::LoadItemLocales()
 {
     mItemLocaleMap.clear();                                 // need for reload case
@@ -1963,7 +2628,7 @@ struct SQLItemLoader : public SQLStorageLoaderBase<SQLItemLoader, SQLStorage>
 void ObjectMgr::LoadItemPrototypes()
 {
     SQLItemLoader loader;
-    loader.Load(sItemStorage);
+	loader.LoadProgressive(sItemStorage, sWorld.GetWowPatch());
 
     // check data correctness
     for (uint32 i = 1; i < sItemStorage.GetMaxEntry(); ++i)
@@ -2569,7 +3234,7 @@ void ObjectMgr::LoadPetLevelInfo()
         }
 
         uint32 current_level = fields[1].GetUInt32();
-        if (current_level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        if (current_level > sWorld.GetCurrentMaxLevel())
         {
             if (current_level > STRONG_MAX_LEVEL)       // hardcoded level maximum
                 sLog.outErrorDb("Wrong (> %u) level %u in `pet_levelstats` table, ignoring.", STRONG_MAX_LEVEL, current_level);
@@ -2589,7 +3254,7 @@ void ObjectMgr::LoadPetLevelInfo()
         PetLevelInfo*& pInfoMapEntry = petInfo[creature_id];
 
         if (pInfoMapEntry == nullptr)
-            pInfoMapEntry =  new PetLevelInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)];
+            pInfoMapEntry =  new PetLevelInfo[sWorld.GetCurrentMaxLevel()];
 
         // data for level 1 stored in [0] array element, ...
         PetLevelInfo* pLevelInfo = &pInfoMapEntry[current_level - 1];
@@ -2624,7 +3289,7 @@ void ObjectMgr::LoadPetLevelInfo()
         }
 
         // fill level gaps
-        for (uint32 level = 1; level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL); ++level)
+        for (uint32 level = 1; level < sWorld.GetCurrentMaxLevel(); ++level)
         {
             if (pInfo[level].health == 0)
             {
@@ -2640,8 +3305,8 @@ void ObjectMgr::LoadPetLevelInfo()
 
 PetLevelInfo const* ObjectMgr::GetPetLevelInfo(uint32 creature_id, uint32 level) const
 {
-    if (level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
-        level = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
+    if (level > sWorld.GetCurrentMaxLevel())
+        level = sWorld.GetCurrentMaxLevel();
 
     PetLevelInfoMap::const_iterator itr = petInfo.find(creature_id);
     if (itr == petInfo.end())
@@ -3079,7 +3744,7 @@ void ObjectMgr::LoadPlayerInfo()
                 sLog.outErrorDb("Wrong level %u in `player_classlevelstats` table, ignoring.", current_level);
                 continue;
             }
-            if (current_level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (current_level > sWorld.GetCurrentMaxLevel())
             {
                 if (current_level > STRONG_MAX_LEVEL)       // hardcoded level maximum
                     sLog.outErrorDb("Wrong (> %u) level %u in `player_classlevelstats` table, ignoring.", STRONG_MAX_LEVEL, current_level);
@@ -3094,7 +3759,7 @@ void ObjectMgr::LoadPlayerInfo()
             PlayerClassInfo* pClassInfo = &playerClassInfo[current_class];
 
             if (!pClassInfo->levelInfo)
-                pClassInfo->levelInfo = new PlayerClassLevelInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)];
+                pClassInfo->levelInfo = new PlayerClassLevelInfo[sWorld.GetCurrentMaxLevel()];
 
             PlayerClassLevelInfo* pClassLevelInfo = &pClassInfo->levelInfo[current_level - 1];
 
@@ -3130,7 +3795,7 @@ void ObjectMgr::LoadPlayerInfo()
         }
 
         // fill level gaps
-        for (uint32 level = 1; level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL); ++level)
+        for (uint32 level = 1; level < sWorld.GetCurrentMaxLevel(); ++level)
         {
             if (pClassInfo->levelInfo[level].basehealth == 0)
             {
@@ -3182,7 +3847,7 @@ void ObjectMgr::LoadPlayerInfo()
             }
 
             uint32 current_level = fields[2].GetUInt32();
-            if (current_level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (current_level > sWorld.GetCurrentMaxLevel())
             {
                 if (current_level > STRONG_MAX_LEVEL)       // hardcoded level maximum
                     sLog.outErrorDb("Wrong (> %u) level %u in `player_levelstats` table, ignoring.", STRONG_MAX_LEVEL, current_level);
@@ -3197,7 +3862,7 @@ void ObjectMgr::LoadPlayerInfo()
             PlayerInfo* pInfo = &playerInfo[current_race][current_class];
 
             if (!pInfo->levelInfo)
-                pInfo->levelInfo = new PlayerLevelInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)];
+                pInfo->levelInfo = new PlayerLevelInfo[sWorld.GetCurrentMaxLevel()];
 
             PlayerLevelInfo* pLevelInfo = &pInfo->levelInfo[current_level - 1];
 
@@ -3247,7 +3912,7 @@ void ObjectMgr::LoadPlayerInfo()
             }
 
             // fill level gaps
-            for (uint32 level = 1; level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL); ++level)
+            for (uint32 level = 1; level < sWorld.GetCurrentMaxLevel(); ++level)
             {
                 if (pInfo->levelInfo[level].stats[0] == 0)
                 {
@@ -3260,8 +3925,8 @@ void ObjectMgr::LoadPlayerInfo()
 
     // Loading xp per level data
     {
-        mPlayerXPperLevel.resize(sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
-        for (uint32 level = 0; level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL); ++level)
+        mPlayerXPperLevel.resize(sWorld.GetCurrentMaxLevel());
+        for (uint32 level = 0; level < sWorld.GetCurrentMaxLevel(); ++level)
             mPlayerXPperLevel[level] = 0;
 
         //                                                 0    1
@@ -3289,7 +3954,7 @@ void ObjectMgr::LoadPlayerInfo()
             uint32 current_level = fields[0].GetUInt32();
             uint32 current_xp    = fields[1].GetUInt32();
 
-            if (current_level >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (current_level >= sWorld.GetCurrentMaxLevel())
             {
                 if (current_level > STRONG_MAX_LEVEL)       // hardcoded level maximum
                     sLog.outErrorDb("Wrong (> %u) level %u in `player_xp_for_level` table, ignoring.", STRONG_MAX_LEVEL, current_level);
@@ -3314,7 +3979,7 @@ void ObjectMgr::LoadPlayerInfo()
     }
 
     // fill level gaps
-    for (uint32 level = 1; level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL); ++level)
+    for (uint32 level = 1; level < sWorld.GetCurrentMaxLevel(); ++level)
     {
         if (mPlayerXPperLevel[level] == 0)
         {
@@ -3331,8 +3996,8 @@ void ObjectMgr::GetPlayerClassLevelInfo(uint32 class_, uint32 level, PlayerClass
 
     PlayerClassInfo const* pInfo = &playerClassInfo[class_];
 
-    if (level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
-        level = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
+    if (level > sWorld.GetCurrentMaxLevel())
+        level = sWorld.GetCurrentMaxLevel();
 
     *info = pInfo->levelInfo[level - 1];
 }
@@ -3346,7 +4011,7 @@ void ObjectMgr::GetPlayerLevelInfo(uint32 race, uint32 class_, uint32 level, Pla
     if (pInfo->displayId_m == 0 || pInfo->displayId_f == 0)
         return;
 
-    if (level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (level <= sWorld.GetCurrentMaxLevel())
         *info = pInfo->levelInfo[level - 1];
     else
         BuildPlayerLevelInfo(race, class_, level, info);
@@ -3355,9 +4020,9 @@ void ObjectMgr::GetPlayerLevelInfo(uint32 race, uint32 class_, uint32 level, Pla
 void ObjectMgr::BuildPlayerLevelInfo(uint8 race, uint8 _class, uint8 level, PlayerLevelInfo* info) const
 {
     // base data (last known level)
-    *info = playerInfo[race][_class].levelInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) - 1];
+    *info = playerInfo[race][_class].levelInfo[sWorld.GetCurrentMaxLevel() - 1];
 
-    for (int lvl = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) - 1; lvl < level; ++lvl)
+    for (int lvl = sWorld.GetCurrentMaxLevel() - 1; lvl < level; ++lvl)
     {
         switch (_class)
         {
@@ -3681,7 +4346,7 @@ void ObjectMgr::LoadQuests()
     m_ExclusiveQuestGroups.clear();
 
     //                                                0      1       2           3         4           5     6                7              8              9
-    QueryResult* result = WorldDatabase.Query("SELECT entry, Method, ZoneOrSort, MinLevel, QuestLevel, Type, RequiredClasses, RequiredRaces, RequiredSkill, RequiredSkillValue,"
+    QueryResult* result = WorldDatabase.Query("SELECT entry, patch, Method, ZoneOrSort, MinLevel, QuestLevel, Type, RequiredClasses, RequiredRaces, RequiredSkill, RequiredSkillValue,"
                           //   10                   11                 12                     13                   14                     15                   16                17
                           "RepObjectiveFaction, RepObjectiveValue, RequiredMinRepFaction, RequiredMinRepValue, RequiredMaxRepFaction, RequiredMaxRepValue, SuggestedPlayers, LimitTime,"
                           //   18          19            20           21           22           23              24                25         26            27
@@ -3735,8 +4400,11 @@ void ObjectMgr::LoadQuests()
     {
         bar.step();
         Field* fields = result->Fetch();
-
         Quest* newQuest = new Quest(fields);
+
+		if (sWorld.GetWowPatch() < newQuest->Patch)
+			newQuest->SetSpecialFlag(QUEST_SPECIAL_FLAG_DISABLED);
+
         mQuestTemplates[newQuest->GetQuestId()] = newQuest;
     }
     while (result->NextRow());
@@ -6088,8 +6756,8 @@ void ObjectMgr::LoadAreaTriggerTeleports()
 
     uint32 count = 0;
 
-    //                                                0   1               2              3               4           5            6                    7                           8           9                  10                 11                 12                  13            14
-    QueryResult* result = WorldDatabase.Query("SELECT id, required_level, required_item, required_item2, heroic_key, heroic_key2, required_quest_done, required_quest_done_heroic, target_map, target_position_x, target_position_y, target_position_z, target_orientation, condition_id, status_failed_text FROM areatrigger_teleport");
+    //                                                0   1      2               3              4               5           6            7                    8                           9           10                 11                 12                 13                  14            15
+    QueryResult* result = WorldDatabase.PQuery("SELECT id, patch, required_level, required_item, required_item2, heroic_key, heroic_key2, required_quest_done, required_quest_done_heroic, target_map, target_position_x, target_position_y, target_position_z, target_orientation, condition_id, status_failed_text FROM areatrigger_teleport WHERE patch <= %u", sWorld.GetWowPatch());
     if (!result)
     {
         BarGoLink bar(1);
@@ -6112,20 +6780,21 @@ void ObjectMgr::LoadAreaTriggerTeleports()
         AreaTrigger at;
 
         at.entry                = fields[0].GetUInt32();
-        at.requiredLevel        = fields[1].GetUInt8();
-        at.requiredItem         = fields[2].GetUInt32();
-        at.requiredItem2        = fields[3].GetUInt32();
-        at.heroicKey            = fields[4].GetUInt32();
-        at.heroicKey2           = fields[5].GetUInt32();
-        at.requiredQuest        = fields[6].GetUInt32();
-        at.requiredQuestHeroic  = fields[7].GetUInt32();
-        at.target_mapId         = fields[8].GetUInt32();
-        at.target_X             = fields[9].GetFloat();
-        at.target_Y             = fields[10].GetFloat();
-        at.target_Z             = fields[11].GetFloat();
-        at.target_Orientation   = fields[12].GetFloat();
-        at.conditionId          = fields[13].GetUInt32();
-        at.status_failed_text   = fields[14].GetCppString();
+		at.patch                = fields[1].GetUInt8();
+        at.requiredLevel        = fields[2].GetUInt8();
+        at.requiredItem         = fields[3].GetUInt32();
+        at.requiredItem2        = fields[4].GetUInt32();
+        at.heroicKey            = fields[5].GetUInt32();
+        at.heroicKey2           = fields[6].GetUInt32();
+        at.requiredQuest        = fields[7].GetUInt32();
+        at.requiredQuestHeroic  = fields[8].GetUInt32();
+        at.target_mapId         = fields[9].GetUInt32();
+        at.target_X             = fields[10].GetFloat();
+        at.target_Y             = fields[11].GetFloat();
+        at.target_Z             = fields[12].GetFloat();
+        at.target_Orientation   = fields[13].GetFloat();
+        at.conditionId          = fields[14].GetUInt32();
+        at.status_failed_text   = fields[15].GetCppString();
 
         AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(at.entry);
         if (!atEntry)
@@ -7449,13 +8118,15 @@ void ObjectMgr::LoadQuestRelationsHelper(QuestRelationsMap& map, char const* tab
         uint32 id    = fields[0].GetUInt32();
         uint32 quest = fields[1].GetUInt32();
 
-        if (mQuestTemplates.find(quest) == mQuestTemplates.end())
+		QuestMap::iterator qQuest = mQuestTemplates.find(quest);
+		if (qQuest == mQuestTemplates.end())
         {
             sLog.outErrorDb("Table `%s: Quest %u listed for entry %u does not exist.", table, quest, id);
             continue;
         }
 
-        map.insert(QuestRelationsMap::value_type(id, quest));
+		if(!qQuest->second->HasSpecialFlag(QUEST_SPECIAL_FLAG_DISABLED))
+			map.insert(QuestRelationsMap::value_type(id, quest));
 
         ++count;
     }
@@ -8728,7 +9399,7 @@ bool PlayerCondition::IsValid(uint16 entry, ConditionType condition, uint32 valu
         }
         case CONDITION_LEVEL:
         {
-            if (!value1 || value1 > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (!value1 || value1 > sWorld.GetCurrentMaxLevel())
             {
                 sLog.outErrorDb("Level condition (entry %u, type %u)has invalid level %u, skipped", entry, condition, value1);
                 return false;

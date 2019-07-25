@@ -178,7 +178,7 @@ struct LootStoreItem
           group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId)
     {}
 
-    bool Roll(bool rate) const;                             // Checks if the entry takes it's chance (at loot generation)
+    bool Roll(bool rate, float count) const;                             // Checks if the entry takes it's chance (at loot generation)
     bool IsValid(LootStore const& store, uint32 entry) const;
     // Checks correctness of values
 };
@@ -199,6 +199,8 @@ struct LootItem
     bool         isUnderThreshold  : 1;
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
+	
+	std::vector<uint32> randomPropertyIdArray;
 
     // storing item prototype for fast access
     ItemPrototype const* itemProto;
@@ -208,6 +210,10 @@ struct LootItem
     explicit LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold);
 
     LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot);
+
+	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false);
+	void setRandomPropertyScaled();
+	uint32 loot_level = 0;
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot
     bool AllowedForPlayer(Player const* player, WorldObject const* lootTarget) const;

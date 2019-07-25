@@ -236,6 +236,7 @@ struct CreatureData
     uint16 GuidPoolId;
     uint16 EntryPoolId;
     uint16 OriginalZoneId;
+	uint32 spawnFlags;
 
     // helper function
     ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(CreatureInfo::GetHighGuid(), id, lowguid); }
@@ -255,6 +256,7 @@ enum SplineFlags
 struct CreatureDataAddon
 {
     uint32 guidOrEntry;
+	int32  lvar;											// Level variation
     uint32 mount;
     uint32 bytes1;
     uint8  sheath_state;                                    // SheathState
@@ -309,6 +311,26 @@ struct CreatureConditionalSpawn
 #else
 #pragma pack(pop)
 #endif
+
+struct CreatureFlex
+{
+	uint32 c_entry;
+	uint32 m_entry;
+	uint32 nb_tank;
+	uint32 nb_pack;
+	float ratio_hrht;
+	float ratio_c1;
+	float ratio_c2;
+	bool is_flex;
+};
+
+struct SpellFlex
+{
+	uint32 c_entry;
+	uint32 m_entry;
+	uint32 s_entry;
+	float ratio_spell;
+};
 
 struct CreatureLocale
 {
@@ -660,8 +682,6 @@ class Creature : public Unit
 
             return GetCreatureInfo()->Rank == CREATURE_ELITE_WORLDBOSS;
         }
-
-        uint32 GetLevelForTarget(Unit const* target) const override; // overwrite Unit::GetLevelForTarget for boss level support
 
         bool AIM_Initialize();
 

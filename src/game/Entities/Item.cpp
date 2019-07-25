@@ -25,6 +25,7 @@
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
 #include "Spells/SpellTargetDefines.h"
+#include "World/World.h"
 
 void AddItemsSetItem(Player* player, Item* item)
 {
@@ -690,6 +691,170 @@ int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
     }
 
     return -int32(random_id->ID);
+}
+
+uint32 Item::ComputeRequiredLevel(uint32 quality, uint32 ilevel)
+{
+	uint32 RequiredLevel = ilevel;
+	if (quality <= 2) // green
+	{
+		if (ilevel <= 70)
+			RequiredLevel = ilevel - 5; // vanilla
+		else
+			RequiredLevel = std::min((int)((ilevel - 90) / 3 + 60), 70); // tbc
+	}
+	else if (quality == 3) // blue
+	{
+		if (ilevel <= 80)
+			RequiredLevel = std::min((int)ilevel - 5, 60); // vanilla
+		else
+			RequiredLevel = std::min((int)((ilevel - 85) / 3 + 60), 70); // tbc
+	}
+	else if (quality >= 4) // orange / red
+	{
+		if (ilevel <= 93)
+			RequiredLevel = std::min((int)ilevel - 5, 60); // vanilla
+		else
+			RequiredLevel = std::min((int)(10 + 0.6 * (int)ilevel), 70); // tbc
+	}
+	return RequiredLevel;
+}
+
+uint32 Item::LoadScaledParent(uint32 itemid)
+{
+	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
+
+	if (!pProto)
+		return itemid;
+
+	if (pProto->Class == 0 || pProto->Class == 15)
+	{
+		ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid);
+		if (sItem)
+			return sItem->ItemId;
+	}
+	else
+	{
+		uint32 scaleid = std::floor((itemid - 41000 - 1)/(2 * 180));
+
+		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
+		if (pProtoScale)
+			return scaleid;
+	}
+
+	return itemid;
+}
+
+uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
+{
+	if (itemid && p)
+	{
+		// We need to make sure we're not replacing a currently needed quest item
+		for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+		{
+			uint32 quest = p->GetQuestSlotQuestId(slot);
+
+			if (!quest)
+				continue;
+
+			Quest const *pQuest = sObjectMgr.GetQuestTemplate(quest);
+
+			if (!pQuest)
+				continue;
+
+			for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
+			{
+				if (!pQuest->ReqItemId[i])
+					continue;
+
+				if (pQuest->ReqItemId[i] == itemid)
+					return itemid;
+			}
+		}
+
+		// We need to make sure we're not replacing a currently needed reagent
+		PlayerSpellMap spells = p->GetSpellMap();
+		for (PlayerSpellMap::iterator itr = spells.begin(); itr != spells.end(); ++itr)
+		{
+			if (itr->second.state == PLAYERSPELL_REMOVED || itr->second.disabled)
+				continue;
+			SpellEntry const *spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(itr->first);
+			if (!spellInfo)
+				continue;
+
+			for (uint32 x = 0; x < MAX_SPELL_REAGENTS; ++x)
+			{
+				if (spellInfo->Reagent[x] <= 0)
+					continue;
+
+				uint32 r_itemid = spellInfo->Reagent[x];
+				uint32 r_itemcount = spellInfo->ReagentCount[x];
+
+				if (r_itemid == itemid)
+					return itemid;
+			}
+		}
+
+		return LoadScaledLoot(itemid, p->getLevel());
+	}
+	return itemid;
+}
+
+uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
+{
+	if (plevel > sWorld.GetCurrentMaxLevel())
+		plevel = sWorld.GetCurrentMaxLevel();
+
+	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
+
+	if (!pProto)
+		return itemid;
+
+	if (pProto->Class == 0 || pProto->Class == 15)
+	{
+		// Junk | Consumables
+		for (uint32 j = 0; j < plevel; j++)
+		{
+			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel - j);
+
+			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
+				return sItem->ReplacementId;
+		}
+	}
+	else
+	{
+		// Weapons | Armors
+		uint32 ItemLevel = pProto->ItemLevel;
+
+		if (plevel < 60)
+			ItemLevel = plevel + 5;
+		else if (plevel = 60)
+			ItemLevel = plevel + 5 + std::max(0, int32(pProto->ItemLevel - 65));
+		else if (plevel > 60 && plevel < 70)
+		{
+			if (pProto->Quality < 3) // gray, white, green
+				ItemLevel = (plevel - 60) * 3 + 90;
+			else if (pProto->Quality == 3) // blue
+				ItemLevel = (plevel - 60) * 3 + 85;
+			else if (pProto->Quality > 3) // purple, yellow, orange
+				ItemLevel = (uint32)round((plevel - 10) / 0.6f);
+		}
+		else if (plevel == 70)
+		{
+			if (pProto->Quality >= 3)
+				ItemLevel = 115 + std::max(0, int32(pProto->ItemLevel - 115));
+			else
+				ItemLevel = 120;
+		}
+
+		uint32 scaleid = (41000 + itemid * 2 * 180 + 0 /* Bonus Quality */ * 180 + ItemLevel);
+
+		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
+		if (pProtoScale)
+			return scaleid;
+	}
+
+	return itemid;
 }
 
 void Item::SetItemRandomProperties(int32 randomPropId)

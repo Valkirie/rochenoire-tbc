@@ -117,14 +117,14 @@ namespace MaNGOS
                 uint32 nLevelDiff = mob_level - unit_level;
                 if (nLevelDiff > 4)
                     nLevelDiff = 4;
-                return nBaseExp * (1.0f + (0.05f * nLevelDiff));
+				return nBaseExp * (1.0f + (0.05f * nLevelDiff));
             }
             uint32 gray_level = GetGrayLevel(unit_level);
             if (mob_level > gray_level)
             {
-                uint32 ZD = GetZeroDifference(unit_level);
-                uint32 nLevelDiff = unit_level - mob_level;
-                return nBaseExp * (1.0f - (float(nLevelDiff) / ZD));
+				uint32 ZD = GetZeroDifference(unit_level);
+				uint32 nLevelDiff = unit_level - mob_level;
+				return nBaseExp * (1.0f - (float(nLevelDiff) / ZD));
             }
             return 0;
         }
@@ -134,8 +134,10 @@ namespace MaNGOS
             if (target->IsTotem() || target->IsPet() || target->IsNoXp() || target->IsCritter())
                 return 0;
 
-            uint32 xp_gain = BaseGain(unit->getLevel(), target->getLevel(), GetContentLevelsForMapAndZone(unit->GetMapId(), unit->GetZoneId()));
-            if (xp_gain == 0.0f)
+			/* If Creature is scalable, we use it's level */
+			uint32 target_level = sObjectMgr.getLevelScaled((Unit*)unit, target);
+            uint32 xp_gain = BaseGain(unit->getLevel(), target_level, GetContentLevelsForMapAndZone(unit->GetMapId(), unit->GetZoneId()));
+            if (xp_gain == 0)
                 return 0;
 
             if (target->IsElite())
@@ -148,28 +150,51 @@ namespace MaNGOS
 
             xp_gain *= target->GetCreatureInfo()->ExperienceMultiplier;
 
-            return (uint32)(std::nearbyint(xp_gain * sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL)));
+			return (uint32)(std::nearbyint(xp_gain * sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL)));
         }
 
-        inline float xp_in_group_rate(uint32 count, bool /*isRaid*/)
-        {
-            // TODO: this formula is completely guesswork only based on a logical assumption
-            switch (count)
-            {
-                case 0:
-                case 1:
-                case 2:
-                    return 1.0f;
-                case 3:
-                    return 1.166f;
-                case 4:
-                    return 1.3f;
-                case 5:
-                    return 1.4f;
-                default:
-                    return std::max(1.f - count * 0.05f, 0.01f);
-            }
-        }
+		inline float xp_in_group_rate(uint32 count, bool /*isRaid*/)
+		{
+			float xp_group = sWorld.getConfig(CONFIG_FLOAT_RATE_XP_GROUP);
+
+			switch (count)
+			{
+			default:
+			case 0:
+			case 1:
+			case 2:
+				return 2 * xp_group;
+			case 3:
+				return 3 * xp_group;
+			case 4:
+				return 4 * xp_group;
+			case 5:
+				return 5 * xp_group;
+			}
+		}
     }
+	namespace DROP
+	{
+		inline float drop_in_group_rate(uint32 count, bool isRaid)
+		{
+			float drop_group = sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP);
+
+			switch (count)
+			{
+			default:
+			case 0:
+			case 1:
+				return 1;
+			case 2:
+				return 1 + (2 * drop_group);
+			case 3:
+				return 1 + (3 * drop_group);
+			case 4:
+				return 1 + (4 * drop_group);
+			case 5:
+				return 1 + (5 * drop_group);
+			}
+		}
+	}
 }
 #endif

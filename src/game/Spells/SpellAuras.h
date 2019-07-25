@@ -139,6 +139,8 @@ class SpellAuraHolder
         bool IsDeleted() const { return m_deleted;}
         bool IsEmptyHolder() const;
 
+		bool isScaled = false;
+
         void SetDeleted() { m_deleted = true; m_spellAuraHolderState = SPELLAURAHOLDER_STATE_REMOVING; }
 
         void UpdateHolder(uint32 diff) { Update(diff); }

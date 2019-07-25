@@ -175,8 +175,9 @@ bool Bag::IsEmpty() const
 
 Item* Bag::GetItemByEntry(uint32 item) const
 {
-    for (uint32 i = 0; i < GetBagSize(); ++i)
-        if (m_bagslot[i] && m_bagslot[i]->GetEntry() == item)
+	item = Item::LoadScaledParent(item);
+	for (uint32 i = 0; i < GetBagSize(); ++i)
+        if (m_bagslot[i] && Item::LoadScaledParent(m_bagslot[i]->GetEntry()) == item)
             return m_bagslot[i];
 
     return nullptr;
@@ -184,11 +185,12 @@ Item* Bag::GetItemByEntry(uint32 item) const
 
 uint32 Bag::GetItemCount(uint32 item, Item* eItem) const
 {
-    uint32 count = 0;
+	item = Item::LoadScaledParent(item);
+	uint32 count = 0;
 
     for (uint32 i = 0; i < GetBagSize(); ++i)
         if (m_bagslot[i])
-            if (m_bagslot[i] != eItem && m_bagslot[i]->GetEntry() == item)
+            if (m_bagslot[i] != eItem && Item::LoadScaledParent(m_bagslot[i]->GetEntry()) == item)
                 count += m_bagslot[i]->GetCount();
 
     if (eItem && eItem->GetProto()->GemProperties)

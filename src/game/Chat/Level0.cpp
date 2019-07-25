@@ -283,3 +283,9 @@ bool ChatHandler::HandleServerMotdCommand(char* /*args*/)
     PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
     return true;
 }
+
+bool ChatHandler::HandleServerPatchCommand(char* /*args*/)
+{
+	SendSysMessage(ObjectMgr::GetPatchName());
+	return true;
+}

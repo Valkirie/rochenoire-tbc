@@ -348,6 +348,7 @@ bool ChatHandler::HandleReloadAllItemCommand(char* /*args*/)
     HandleReloadPageTextsCommand((char*)"a");
     HandleReloadItemEnchantementsCommand((char*)"a");
     HandleReloadItemRequiredTragetCommand((char*)"a");
+	HandleReloadLootScaleCommand((char*)"a");
     return true;
 }
 
@@ -830,6 +831,30 @@ bool ChatHandler::HandleReloadItemRequiredTragetCommand(char* /*args*/)
     sObjectMgr.LoadItemRequiredTarget();
     SendGlobalSysMessage("DB table `item_required_target` reloaded.");
     return true;
+}
+
+bool ChatHandler::HandleReloadLootScaleCommand(char* /*args*/)
+{
+	sLog.outString("Re-Loading Item Loot Scale ... ");
+	sObjectMgr.LoadLootScale();
+	SendSysMessage("DB table `item_loot_scale` reloaded.");
+	return true;
+}
+
+bool ChatHandler::HandleReloadCreatureFlexCommand(char* /*args*/)
+{
+	sLog.outString("Re-Loading Creature Flex Details ... ");
+	sObjectMgr.LoadFlexibleCreatures();
+	SendSysMessage("DB table `creature_flex` reloaded.");
+	return true;
+}
+
+bool ChatHandler::HandleReloadSpellFlexCommand(char* /*args*/)
+{
+	sLog.outString("Re-Loading Spell Flex Details ... ");
+	sObjectMgr.LoadFlexibleSpells();
+	SendSysMessage("DB table `spell_flex` reloaded.");
+	return true;
 }
 
 bool ChatHandler::HandleReloadBattleEventCommand(char* /*args*/)
@@ -5237,7 +5262,7 @@ bool ChatHandler::HandleQuestCompleteCommand(char* args)
     }
 
     // If the quest requires money
-    int32 ReqOrRewMoney = pQuest->GetRewOrReqMoney();
+    int32 ReqOrRewMoney = pQuest->GetRewOrReqMoney(player);
     if (ReqOrRewMoney < 0)
         player->ModifyMoney(-ReqOrRewMoney);
 

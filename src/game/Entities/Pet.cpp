@@ -785,7 +785,7 @@ void Pet::SetRequiredXpForNextLoyaltyLevel()
     if (owner)
     {
         uint32 ownerLevel = owner->getLevel();
-        m_xpRequiredForNextLoyaltyLevel = ownerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) ? sObjectMgr.GetXPForLevel(ownerLevel) * 5 / 100 : sObjectMgr.GetXPForLevel(ownerLevel - 1) * 5 / 100;
+        m_xpRequiredForNextLoyaltyLevel = ownerLevel < sWorld.GetCurrentMaxLevel() ? sObjectMgr.GetXPForLevel(ownerLevel) * 5 / 100 : sObjectMgr.GetXPForLevel(ownerLevel - 1) * 5 / 100;
     }
 }
 
@@ -1123,7 +1123,7 @@ void Pet::GivePetXP(uint32 xp)
         return;
 
     uint32 level = getLevel();
-    uint32 maxlevel = std::min(sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL), GetOwner()->getLevel());
+    uint32 maxlevel = std::min(sWorld.GetCurrentMaxLevel(), GetOwner()->getLevel());
 
     // pet not receive xp for level equal to owner level
     if (level >= maxlevel)
@@ -1283,7 +1283,7 @@ void Pet::InitStatsForLevel(uint32 petlevel)
             }
 
             // Max level
-            if (petlevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (petlevel < sWorld.GetCurrentMaxLevel())
                 SetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP, sObjectMgr.GetXPForPetLevel(petlevel));
             else
             {
@@ -2088,6 +2088,281 @@ void Pet::CleanupActionBar()
                     m_charmInfo->SetActionBar(i, 0, ACT_DISABLED);
 }
 
+uint32 Pet::ScalePetCreateSpells(uint32 spellid, uint32 plevel)
+{
+	switch (spellid)
+	{
+		// Bite : Updated to tbc
+	case 17254:
+	case 17262:
+	case 17263:
+	case 17264:
+	case 17265:
+	case 17266:
+	case 17267:
+	case 17268:
+	case 27348:
+		if (plevel < 8)
+			return 17254;
+		else if (plevel >= 8 && plevel < 16)
+			return 17262;
+		else if (plevel >= 16 && plevel < 24)
+			return 17263;
+		else if (plevel >= 24 && plevel < 32)
+			return 17264;
+		else if (plevel >= 32 && plevel < 40)
+			return 17265;
+		else if (plevel >= 40 && plevel < 48)
+			return 17266;
+		else if (plevel >= 48 && plevel < 56)
+			return 17267;
+		else if (plevel >= 56 && plevel < 64)
+			return 17268;
+		else if (plevel >= 64)
+			return 27348;
+		break;
+		// Charge : Updated to tbc
+	case 7370:
+	case 26184:
+	case 26185:
+	case 26186:
+	case 26202:
+	case 28343:
+		if (plevel < 12)
+			return 7370;
+		else if (plevel >= 12 && plevel < 24)
+			return 26184;
+		else if (plevel >= 24 && plevel < 36)
+			return 26185;
+		else if (plevel >= 36 && plevel < 48)
+			return 26186;
+		else if (plevel >= 48 && plevel < 60)
+			return 26202;
+		else if (plevel >= 60)
+			return 28343;
+		break;
+		// Claw : Updated to tbc
+	case 2980:
+	case 2981:
+	case 2982:
+	case 3667:
+	case 2975:
+	case 2976:
+	case 2977:
+	case 3666:
+	case 27347:
+		if (plevel < 8)
+			return 2980;
+		else if (plevel >= 8 && plevel < 16)
+			return 2981;
+		else if (plevel >= 16 && plevel < 24)
+			return 2982;
+		else if (plevel >= 24 && plevel < 32)
+			return 3667;
+		else if (plevel >= 32 && plevel < 40)
+			return 2975;
+		else if (plevel >= 40 && plevel < 48)
+			return 2976;
+		else if (plevel >= 48 && plevel < 56)
+			return 2977;
+		else if (plevel >= 56 && plevel < 64)
+			return 3666;
+		else if (plevel >= 64)
+			return 27347;
+		break;
+		// Cower : Updated to tbc
+	case 1747:
+	case 1748:
+	case 1749:
+	case 1750:
+	case 1751:
+	case 16698:
+	case 27346:
+		if (plevel >= 5 && plevel < 15)
+			return 1747;
+		else if (plevel >= 15 && plevel < 25)
+			return 1748;
+		else if (plevel >= 25 && plevel < 35)
+			return 1749;
+		else if (plevel >= 35 && plevel < 45)
+			return 1750;
+		else if (plevel >= 45 && plevel < 55)
+			return 1751;
+		else if (plevel >= 55 && plevel < 65)
+			return 16698;
+		else if (plevel >= 65)
+			return 27346;
+		break;
+		// Dash : Updated to tbc
+	case 23100:
+	case 23111:
+	case 23112:
+		if (plevel >= 30 && plevel < 40)
+			return 23100;
+		else if (plevel >= 40 && plevel < 50)
+			return 23111;
+		else if (plevel >= 50)
+			return 23112;
+		break;
+		// Dive : Updated to tbc
+	case 23146:
+	case 23149:
+	case 23150:
+		if (plevel >= 30 && plevel < 40)
+			return 23146;
+		else if (plevel >= 40 && plevel < 50)
+			return 23149;
+		else if (plevel >= 50)
+			return 23150;
+		break;
+		// Furious Howl : Updated to tbc
+	case 24609:
+	case 24608:
+	case 24607:
+	case 24599:
+		if (plevel >= 10 && plevel < 24)
+			return 24609;
+		else if (plevel >= 24 && plevel < 40)
+			return 24608;
+		else if (plevel >= 40 && plevel < 56)
+			return 24607;
+		else if (plevel >= 56)
+			return 24599;
+		break;
+		// Lightning Breath : Updated to tbc
+	case 24845:
+	case 25013:
+	case 25014:
+	case 25015:
+	case 25016:
+	case 25017:
+		if (plevel < 12)
+			return 24845;
+		if (plevel >= 12 && plevel < 24)
+			return 25013;
+		else if (plevel >= 24 && plevel < 36)
+			return 25014;
+		else if (plevel >= 36 && plevel < 48)
+			return 25015;
+		else if (plevel >= 48 && plevel < 60)
+			return 25016;
+		else if (plevel >= 60)
+			return 25017;
+		break;
+		// Prowl : Updated to tbc
+	case 24451:
+	case 24454:
+	case 24455:
+		if (plevel >= 30 && plevel < 40)
+			return 24451;
+		else if (plevel >= 40 && plevel < 50)
+			return 24454;
+		else if (plevel >= 50)
+			return 24455;
+		break;
+		// Scorpid Poison : Updated to tbc
+	case 24641:
+	case 24584:
+	case 24588:
+	case 24589:
+	case 27361:
+		if (plevel >= 8 && plevel < 24)
+			return 24641;
+		else if (plevel >= 24 && plevel < 40)
+			return 24584;
+		else if (plevel >= 40 && plevel < 56)
+			return 24588;
+		else if (plevel >= 56 && plevel < 64)
+			return 24589;
+		else if (plevel >= 64)
+			return 27361;
+		break;
+		// Screech : Updated to tbc
+	case 24424:
+	case 24580:
+	case 24581:
+	case 24582:
+	case 27349: // tbc
+		if (plevel >= 8 && plevel < 24)
+			return 24424;
+		else if (plevel >= 24 && plevel < 40)
+			return 24580;
+		else if (plevel >= 40 && plevel < 56)
+			return 24581;
+		else if (plevel >= 56 && plevel < 64)
+			return 24582;
+		else if (plevel >= 64)
+			return 27349;
+		break;
+		// Thunderstomp : Updated to tbc
+	case 26094:
+	case 26189:
+	case 26190:
+	case 27366:
+		if (plevel >= 30 && plevel < 40)
+			return 26094;
+		else if (plevel >= 40 && plevel < 50)
+			return 26189;
+		else if (plevel >= 50 && plevel < 60)
+			return 26190;
+		else if (plevel >= 60)
+			return 27366;
+		break;
+		// Fire Breath : Updated to tbc
+	case 34889:
+	case 35323:
+		if (plevel < 60)
+			return 34889;
+		else if (plevel >= 60)
+			return 35323;
+		break;
+		// Gore : Updated to tbc
+	case 35290:
+	case 35291:
+	case 35292:
+	case 35293:
+	case 35294:
+	case 35295:
+	case 35296:
+	case 35297:
+	case 35298:
+		if (plevel < 8)
+			return 35290;
+		else if (plevel >= 8 && plevel < 16)
+			return 35291;
+		else if (plevel >= 16 && plevel < 24)
+			return 35292;
+		else if (plevel >= 24 && plevel < 32)
+			return 35293;
+		else if (plevel >= 32 && plevel < 40)
+			return 35294;
+		else if (plevel >= 40 && plevel < 48)
+			return 35295;
+		else if (plevel >= 48 && plevel < 56)
+			return 35296;
+		else if (plevel >= 56 && plevel < 63)
+			return 35297;
+		else if (plevel >= 63)
+			return 35298;
+		break;
+		// Poison Spit : Updated to tbc
+	case 35387:
+	case 35389:
+	case 35392:
+		if (plevel >= 15 && plevel < 45)
+			return 35387;
+		else if (plevel >= 45 && plevel < 60)
+			return 35389;
+		else if (plevel >= 60)
+			return 35392;
+		break;
+	default:
+		return spellid;
+	}
+
+	return 0;
+}
+
 void Pet::InitPetCreateSpells()
 {
     m_charmInfo->InitPetActionBar();
@@ -2107,7 +2382,9 @@ void Pet::InitPetCreateSpells()
             if (!CreateSpells->spellid[i])
                 break;
 
-            SpellEntry const* learn_spellproto = sSpellTemplate.LookupEntry<SpellEntry>(CreateSpells->spellid[i]);
+			uint32 spellid = p_owner ? ScalePetCreateSpells(CreateSpells->spellid[i], p_owner->getLevel()) : CreateSpells->spellid[i];
+
+            SpellEntry const* learn_spellproto = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
             if (!learn_spellproto)
                 continue;
 

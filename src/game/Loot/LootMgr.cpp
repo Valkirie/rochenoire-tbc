@@ -28,6 +28,7 @@
 #include "BattleGround/BattleGroundAV.h"
 #include "Entities/ItemEnchantmentMgr.h"
 #include "Tools/Language.h"
+#include "Tools/Formulas.h"
 #include <sstream>
 #include <iomanip>
 
@@ -249,7 +250,7 @@ void LootStore::ReportNotExistedId(uint32 id) const
 
 // Checks if the entry (quest, non-quest, reference) takes it's chance (at loot generation)
 // RATE_DROP_ITEMS is no longer used for all types of entries
-bool LootStoreItem::Roll(bool rate) const
+bool LootStoreItem::Roll(bool rate, float count) const
 {
     if (chance >= 100.0f)
         return true;
@@ -262,7 +263,10 @@ bool LootStoreItem::Roll(bool rate) const
 
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid);
 
+	float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(count, false) : 1.0f;
+
     float qualityModifier = pProto && rate ? sWorld.getConfig(qualityToRate[pProto->Quality]) : 1.0f;
+	qualityModifier *= groupModifier;
 
     return roll_chance_f(chance * qualityModifier);
 }
@@ -364,6 +368,8 @@ LootItem::LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold)
     isBlocked         = false;
     currentLooterPass = false;
     isReleased        = false;
+
+	setRandomPropertyScaled();
 }
 
 LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot)
@@ -392,8 +398,38 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
     isUnderThreshold  = false;
     currentLooterPass = false;
     isReleased        = false;
+
+	setRandomPropertyScaled();
 }
 
+int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won)
+{
+	// TODO use ilevel instead of plevel
+	if (loot_level == 0 || won)
+		loot_level = ilevel;
+
+	if (randomPropertyId != 0)
+		if (randomPropertyIdArray[loot_level])
+			return randomPropertyIdArray[loot_level];
+
+	return 0;
+}
+
+void LootItem::setRandomPropertyScaled()
+{
+	if (randomPropertyId != 0)
+	{
+		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+			randomPropertyIdArray.push_back(0);
+
+		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+		{
+			uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+			if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid))
+				randomPropertyIdArray[plevel] = rproperty;
+		}
+	}
+}
 
 // Basic checks for player/item compatibility - if false no chance to see the item in the loot
 bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTarget) const
@@ -537,17 +573,6 @@ bool LootItem::IsAllowed(Player const* player, Loot const* loot) const
 // Send the roll for the whole group
 void GroupLootRoll::SendStartRoll()
 {
-    WorldPacket data(SMSG_LOOT_START_ROLL, (8 + 4 + 4 + 4 + 4 + 4 + 1));
-    data << m_loot->GetLootGuid();                          // creature guid what we're looting
-    data << uint32(m_itemSlot);                             // item slot in loot
-    data << uint32(m_lootItem->itemId);                     // the itemEntryId for the item that shall be rolled for
-    data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-    data << uint32(m_lootItem->randomPropertyId);           // item random property ID
-    data << uint32(LOOT_ROLL_TIMEOUT);                      // the countdown time to choose "need" or "greed"
-
-    size_t voteMaskPos = data.wpos();
-    data << uint8(0);
-
     for (RollVoteMap::const_iterator itr = m_rollVoteMap.begin(); itr != m_rollVoteMap.end(); ++itr)
     {
         if (itr->second.vote == ROLL_NOT_VALID)
@@ -556,10 +581,26 @@ void GroupLootRoll::SendStartRoll()
         Player* plr = sObjectMgr.GetPlayer(itr->first);
         if (!plr || !plr->GetSession())
             continue;
+
+		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+		uint32 plevel = plr->getLevel();
+
+		WorldPacket data(SMSG_LOOT_START_ROLL, (8 + 4 + 4 + 4 + 4 + 4 + 1));
+		data << m_loot->GetLootGuid();                          // creature guid what we're looting
+		data << uint32(m_itemSlot);                             // item slot in loot
+		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel));           // item random property ID
+		data << uint32(LOOT_ROLL_TIMEOUT);                      // the countdown time to choose "need" or "greed"
+
+		size_t voteMaskPos = data.wpos();
+		data << uint8(0);
+
         // dependent from player
         RollVoteMask mask = m_voteMask;
         // In NEED_BEFORE_GREED need disabled for non-usable item for player
-        if (m_loot->m_lootMethod == NEED_BEFORE_GREED && plr->CanUseItem(m_lootItem->itemProto) != EQUIP_ERR_OK)
+		ItemPrototype const* itemProto = ObjectMgr::GetItemPrototype(itemId);
+        if (m_loot->m_lootMethod == NEED_BEFORE_GREED && plr->CanUseItem(itemProto) != EQUIP_ERR_OK)
             mask = RollVoteMask(mask & ~ROLL_VOTE_MASK_NEED);
         data.put<uint8>(voteMaskPos, uint8(mask));
 
@@ -570,13 +611,6 @@ void GroupLootRoll::SendStartRoll()
 // Send all passed message
 void GroupLootRoll::SendAllPassed()
 {
-    WorldPacket data(SMSG_LOOT_ALL_PASSED, (8 + 4 + 4 + 4 + 4));
-    data << m_loot->GetLootGuid();                          // creature guid what we're looting
-    data << uint32(m_itemSlot);                             // item slot in loot
-    data << uint32(m_lootItem->itemId);                     // the itemEntryId for the item that shall be rolled for
-    data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-    data << uint32(m_lootItem->randomPropertyId);           // item random property ID
-
     for (RollVoteMap::const_iterator itr = m_rollVoteMap.begin(); itr != m_rollVoteMap.end(); ++itr)
     {
         if (itr->second.vote == ROLL_NOT_VALID)
@@ -586,6 +620,16 @@ void GroupLootRoll::SendAllPassed()
         if (!plr || !plr->GetSession())
             continue;
 
+		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+		uint32 plevel = plr->getLevel();
+
+		WorldPacket data(SMSG_LOOT_ALL_PASSED, (8 + 4 + 4 + 4 + 4));
+		data << m_loot->GetLootGuid();                          // creature guid what we're looting
+		data << uint32(m_itemSlot);                             // item slot in loot
+		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel));           // item random property ID
+
         plr->GetSession()->SendPacket(data);
     }
 }
@@ -593,16 +637,6 @@ void GroupLootRoll::SendAllPassed()
 // Send roll 'value' of the whole group and the winner to the whole group
 void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNumber, RollVote rollType)
 {
-    WorldPacket data(SMSG_LOOT_ROLL_WON, (8 + 4 + 4 + 4 + 4 + 8 + 1 + 1));
-    data << m_loot->GetLootGuid();                          // creature guid what we're looting
-    data << uint32(m_itemSlot);                             // item slot in loot
-    data << uint32(m_lootItem->itemId);                     // the itemEntryId for the item that shall be rolled for
-    data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-    data << uint32(m_lootItem->randomPropertyId);           // item random property ID
-    data << targetGuid;                                     // guid of the player who won.
-    data << uint8(rollNumber);                              // rollnumber related to SMSG_LOOT_ROLL
-    data << uint8(rollType);                                // Rolltype related to SMSG_LOOT_ROLL
-
     for (RollVoteMap::const_iterator itr = m_rollVoteMap.begin(); itr != m_rollVoteMap.end(); ++itr)
     {
         switch (itr->second.vote)
@@ -627,24 +661,27 @@ void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNum
         Player* plr = sObjectMgr.GetPlayer(itr->first);
         if (!plr || !plr->GetSession())
             continue;
-        plr->GetSession()->SendPacket(data);
+
+		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+		uint32 plevel = plr->getLevel();
+
+		WorldPacket data(SMSG_LOOT_ROLL_WON, (8 + 4 + 4 + 4 + 4 + 8 + 1 + 1));
+		data << m_loot->GetLootGuid();                          // creature guid what we're looting
+		data << uint32(m_itemSlot);                             // item slot in loot
+		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel));           // item random property ID
+		data << targetGuid;                                     // guid of the player who won.
+		data << uint8(rollNumber);                              // rollnumber related to SMSG_LOOT_ROLL
+		data << uint8(rollType);                                // Rolltype related to SMSG_LOOT_ROLL
+
+		plr->GetSession()->SendPacket(data);
     }
 }
 
 // Send roll of targetGuid to the whole group (included targuetGuid)
 void GroupLootRoll::SendRoll(ObjectGuid const& targetGuid, uint32 rollNumber, uint32 rollType)
 {
-    WorldPacket data(SMSG_LOOT_ROLL, (8 + 4 + 8 + 4 + 4 + 4 + 1 + 1 + 1));
-    data << m_loot->GetLootGuid();                          // creature guid what we're looting
-    data << uint32(m_itemSlot);                             // item slot in loot
-    data << targetGuid;
-    data << uint32(m_lootItem->itemId);                     // the itemEntryId for the item that shall be rolled for
-    data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-    data << uint32(m_lootItem->randomPropertyId);           // item random property ID
-    data << uint8(rollNumber);                              // 0: "Need for: [item name]" > 127: "you passed on: [item name]"      Roll number
-    data << uint8(rollType);                                // 0: "Need for: [item name]" 0: "You have selected need for [item name] 1: need roll 2: greed roll
-    data << uint8(0);                                       // auto pass on loot
-
     for (RollVoteMap::const_iterator itr = m_rollVoteMap.begin(); itr != m_rollVoteMap.end(); ++itr)
     {
         if (itr->second.vote == ROLL_NOT_VALID)
@@ -653,6 +690,21 @@ void GroupLootRoll::SendRoll(ObjectGuid const& targetGuid, uint32 rollNumber, ui
         Player* plr = sObjectMgr.GetPlayer(itr->first);
         if (!plr || !plr->GetSession())
             continue;
+
+		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+		uint32 plevel = plr->getLevel();
+
+		WorldPacket data(SMSG_LOOT_ROLL, (8 + 4 + 8 + 4 + 4 + 4 + 1 + 1 + 1));
+		data << m_loot->GetLootGuid();                          // creature guid what we're looting
+		data << uint32(m_itemSlot);                             // item slot in loot
+		data << targetGuid;
+		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel));           // item random property ID
+		data << uint8(rollNumber);                              // 0: "Need for: [item name]" > 127: "you passed on: [item name]"      Roll number
+		data << uint8(rollType);                                // 0: "Need for: [item name]" 0: "You have selected need for [item name] 1: need roll 2: greed roll
+		data << uint8(0);                                       // auto pass on loot
+
 
         plr->GetSession()->SendPacket(data);
     }
@@ -1618,7 +1670,45 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 
             if ((creatureInfo->LootId && FillLoot(creatureInfo->LootId, LootTemplates_Creature, player, false)) || creatureInfo->MaxLootGold > 0)
             {
-                GenerateMoneyLoot(creatureInfo->MinLootGold, creatureInfo->MaxLootGold);
+				uint32 mingold = creature->GetCreatureInfo()->MinLootGold;
+				uint32 maxgold = creature->GetCreatureInfo()->MaxLootGold;
+
+				if (player && sObjectMgr.IsScalable(creature, player))
+				{
+					uint32 mob_level = creature->getLevel();
+					uint32 player_level = player->getLevel();
+
+					uint32 expected_mingold = sObjectMgr.ScaleGold(mob_level, true);
+					uint32 expected_maxgold = sObjectMgr.ScaleGold(mob_level, false);
+
+					float difference_mingold = float((float)mingold / (float)expected_mingold);
+					float difference_maxgold = float((float)maxgold / (float)expected_maxgold);
+
+					uint32 scaled_mingold = uint32(difference_mingold* sObjectMgr.ScaleGold(player_level, true));
+					uint32 scaled_maxgold = uint32(difference_maxgold* sObjectMgr.ScaleGold(player_level, false));
+
+					float scaled_mingold_ratio = float((float)scaled_mingold / (float)mingold);
+					float scaled_maxgold_ratio = float((float)scaled_maxgold / (float)maxgold);
+
+					mingold *= scaled_mingold_ratio;
+					maxgold *= scaled_maxgold_ratio;
+				}
+
+                GenerateMoneyLoot(mingold, maxgold);
+
+				if (sObjectMgr.IsScalable(creature, player))
+				{
+					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
+					{
+						LootItem* lootItem = m_lootItems[itemSlot];
+						uint32 looItemId = lootItem->itemId;
+						looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+
+						lootItem->itemId = looItemId;
+						lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+					}
+				}
+
                 // loot may be anyway empty (loot may be empty or contain items that no one have right to loot)
                 bool isLootedForAll = IsLootedForAll();
                 if (isLootedForAll)
@@ -1772,6 +1862,16 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
                     FillLoot(lootid, LootTemplates_Gameobject, player, false);
                     GenerateMoneyLoot(gameObject->GetGOInfo()->MinMoneyLoot, gameObject->GetGOInfo()->MaxMoneyLoot);
 
+					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
+					{
+						LootItem* lootItem = m_lootItems[itemSlot];
+						uint32 looItemId = lootItem->itemId;
+						looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+
+						lootItem->itemId = looItemId;
+						lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+					}
+
                     if (m_lootType == LOOT_FISHINGHOLE)
                         m_clientLootType = CLIENT_LOOT_FISHING;
                     else
@@ -1870,6 +1970,17 @@ Loot::Loot(Player* player, Item* item, LootType type) :
         default:
             FillLoot(item->GetEntry(), LootTemplates_Item, player, true, item->GetProto()->MaxMoneyLoot == 0);
             GenerateMoneyLoot(item->GetProto()->MinMoneyLoot, item->GetProto()->MaxMoneyLoot);
+
+			for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
+			{
+				LootItem* lootItem = m_lootItems[itemSlot];
+				uint32 looItemId = lootItem->itemId;
+				looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+
+				lootItem->itemId = looItemId;
+				lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+			}
+
             item->SetLootState(ITEM_LOOT_CHANGED);
             break;
     }
@@ -1955,13 +2066,15 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem)
 
     bool playerGotItem = false;
     InventoryResult msg = EQUIP_ERR_CANT_DO_RIGHT_NOW;
+	uint32 itemId = lootItem->itemId;
     if (target->GetSession())
     {
         ItemPosCountVec dest;
-        msg = target->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, lootItem->itemId, lootItem->count);
+		itemId = Item::LoadScaledLoot(itemId, target);
+        msg = target->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, lootItem->count);
         if (msg == EQUIP_ERR_OK)
         {
-            Item* newItem = target->StoreNewItem(dest, lootItem->itemId, true, lootItem->randomPropertyId);
+            Item* newItem = target->StoreNewItem(dest, itemId, true, lootItem->getRandomPropertyScaled(target->getLevel(), true));
 
             if (lootItem->freeForAll)
             {
@@ -1991,7 +2104,7 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem)
             m_isChanged = true;
         }
         else
-            target->SendEquipError(msg, nullptr, nullptr, lootItem->itemId);
+            target->SendEquipError(msg, nullptr, nullptr, itemId);
     }
 
     if (!playerGotItem)
@@ -2039,11 +2152,13 @@ bool Loot::AutoStore(Player* player, bool broadcast /*= false*/, uint32 bag /*= 
             continue; // already looted or not allowed
 
         ItemPosCountVec dest;
-        InventoryResult msg = player->CanStoreNewItem(bag, slot, dest, lootItem->itemId, lootItem->count);
+		uint32 itemId = lootItem->itemId;
+
+        InventoryResult msg = player->CanStoreNewItem(bag, slot, dest, itemId, lootItem->count);
         if (msg != EQUIP_ERR_OK && slot != NULL_SLOT)
-            msg = player->CanStoreNewItem(bag, NULL_SLOT, dest, lootItem->itemId, lootItem->count);
+            msg = player->CanStoreNewItem(bag, NULL_SLOT, dest, itemId, lootItem->count);
         if (msg != EQUIP_ERR_OK && bag != NULL_BAG)
-            msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, lootItem->itemId, lootItem->count);
+            msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, lootItem->count);
         if (msg != EQUIP_ERR_OK)
         {
             player->SendEquipError(msg, nullptr, nullptr, lootItem->itemId);
@@ -2056,7 +2171,7 @@ bool Loot::AutoStore(Player* player, bool broadcast /*= false*/, uint32 bag /*= 
         else
             lootItem->allowedGuid.clear();
 
-        Item* pItem = player->StoreNewItem(dest, lootItem->itemId, true, lootItem->randomPropertyId);
+        Item* pItem = player->StoreNewItem(dest, itemId, true, lootItem->getRandomPropertyScaled(player->getLevel(), true));
         player->SendNewItem(pItem, lootItem->count, false, false, broadcast);
         m_isChanged = true;
     }
@@ -2489,7 +2604,11 @@ void LootTemplate::AddEntry(LootStoreItem& item)
 // Rolls for every item in the template and adds the rolled items the the loot
 void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const& store, bool rate, uint8 groupId) const
 {
-    if (groupId)                                            // Group reference uses own processing of the group
+	//Gestion du drop rate pour des groups
+	float f_GroupSize = 1;
+	f_GroupSize = lootOwner->GetGroup() ? lootOwner->GetGroup()->GetMembersCount() - 1 : 1.0f;
+
+	if (groupId)                                            // Group reference uses own processing of the group
     {
         if (groupId > Groups.size())
             return;                                         // Error message already printed at loading stage
@@ -2505,7 +2624,7 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
         if (Entrie.conditionId && lootOwner && !PlayerOrGroupFulfilsCondition(loot, lootOwner, Entrie.conditionId))
             continue;
 
-        if (!Entrie.Roll(rate))
+        if (!Entrie.Roll(rate, f_GroupSize))
             continue;                                       // Bad luck for the entry
 
         if (Entrie.mincountOrRef < 0)                           // References processing

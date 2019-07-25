@@ -3712,11 +3712,15 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(power, SpellDmgClass(m_spellInfo->DmgClass), false, powerType);
 
+	Unit *target = unitTarget->GetCharmerOrOwnerOrSelf();
+	Unit *caster = m_caster->GetCharmerOrOwnerOrSelf();
+	int32 scaled_power = sObjectMgr.ScaleDamage(caster, target, power, isScaled);
+
     int32 new_damage;
-    if (curPower < power)
+    if (curPower < scaled_power)
         new_damage = curPower;
     else
-        new_damage = power;
+        new_damage = scaled_power;
 
     unitTarget->ModifyPower(powerType, -new_damage);
 
@@ -3770,10 +3774,15 @@ void Spell::EffectPowerBurn(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(uint32(power), SpellDmgClass(m_spellInfo->DmgClass), false, powertype);
 
-    int32 new_damage = (curPower < power) ? curPower : power;
+	Unit *target = unitTarget->GetCharmerOrOwnerOrSelf();
+	Unit *caster = m_caster->GetCharmerOrOwnerOrSelf();
+	int32 scaled_power = sObjectMgr.ScaleDamage(caster, target, power, isScaled); // We scale the mana burn
+
+	int32 new_damage = (curPower < scaled_power) ? curPower : scaled_power;
 
     unitTarget->ModifyPower(powertype, -new_damage);
-    float multiplier = m_spellInfo->EffectMultipleValue[eff_idx];
+	new_damage = (curPower < scaled_power) ? curPower : damage; // But returns the original value for health damage
+	float multiplier = m_spellInfo->EffectMultipleValue[eff_idx];
 
     if (Player* modOwner = m_caster->GetSpellModOwner())
         modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_MULTIPLE_VALUE, multiplier);
@@ -3904,7 +3913,7 @@ void Spell::EffectHealPct(SpellEffectIndex /*eff_idx*/)
         addhealth = unitTarget->SpellHealingBonusTaken(caster, m_spellInfo, addhealth, HEAL);
 
         int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo);
-        unitTarget->getHostileRefManager().threatAssist(caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo);
+        unitTarget->getHostileRefManager().threatAssist(caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo, false, false, unitTarget);
     }
 }
 
@@ -4158,7 +4167,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     if (unitTarget->GetMaxPower(power) == 0)
         return;
 
-    m_caster->EnergizeBySpell(unitTarget, m_spellInfo->Id, damage, power);
+    m_caster->EnergizeBySpell(unitTarget, m_spellInfo->Id, damage, power, isScaled);
 
     // Mad Alchemist's Potion
     if (m_spellInfo->Id == 45051)

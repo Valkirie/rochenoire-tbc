@@ -729,6 +729,9 @@ bool GameObject::LoadFromDB(uint32 guid, Map* map)
         return false;
     }
 
+	if (data->spawnFlags & SPAWN_FLAG_DISABLED)
+		return false;
+
     uint32 entry = data->id;
     // uint32 map_id = data->mapid;                         // already used before call
     float x = data->posX;
@@ -1667,12 +1670,15 @@ void GameObject::Use(Unit* user)
 
             // required lvl checks!
             uint8 level = player->getLevel();
-            if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)
-                return;
+			if (level < info->meetingstone.minLevel && level < sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+				return;
+			/*
+			if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)
+				return;
 
-            level = targetPlayer->getLevel();
-            if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)
-                return;
+			level = targetPlayer->getLevel();
+			if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)
+				return;*/
 
             spellId = 23598;
 

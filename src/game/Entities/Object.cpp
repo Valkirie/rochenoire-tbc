@@ -427,6 +427,8 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
     // 2 specialized loops for speed optimization in non-unit case
     if (isType(TYPEMASK_UNIT))                              // unit (creature/player) case
     {
+		Unit* creature = ((Unit*)this);
+
         for (uint16 index = 0; index < m_valuesCount; ++index)
         {
             if (updateMask->GetBit(index))
@@ -504,6 +506,14 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                          (index >= UNIT_FIELD_POSSTAT0 && index <= UNIT_FIELD_POSSTAT4))
                 {
                     *data << uint32(m_floatValues[index]);
+                }
+
+				// Hide real level. Send player level instead.
+				else if (index == UNIT_FIELD_LEVEL && sObjectMgr.IsScalable(creature, target) && creature->isAlive())
+				{
+					//creature->PMonsterSay("Level %u instead of %u", target->getLevel(), creature->getLevel());
+					uint32 player_level = sObjectMgr.getLevelScaled(creature, target);
+					*data << uint32(player_level);
                 }
                 else if (index == UNIT_FIELD_HEALTH || index == UNIT_FIELD_MAXHEALTH)
                 {
@@ -652,6 +662,96 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                                 case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
                                 case HORDE:     value = 1495;   break;  // "Horde Generic"
                             }
+                        }
+                    }
+
+                    *data << value;
+                }
+                else if (index == UNIT_FIELD_FACTIONTEMPLATE)
+                {
+                    uint32 value = m_uint32Values[index];
+
+                    // [XFACTION]: Alter faction if detected crossfaction group interaction when updating faction field:
+                    if (this != target && GetTypeId() == TYPEID_PLAYER && sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                    {
+                        Player const* thisPlayer = static_cast<Player const*>(this);
+                        const uint32 targetTeam = target->GetTeam();
+
+                        if (thisPlayer->GetTeam() != targetTeam && !thisPlayer->HasCharmer() && target->IsInGroup(thisPlayer))
+                        {
+                            switch (targetTeam)
+                            {
+                                case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
+                                case HORDE:     value = 1495;   break;  // "Horde Generic"
+                            }
+                        }
+                    }
+
+                    *data << value;
+                }
+                // [XFACTION]: Alter faction if detected crossfaction group interaction when updating faction field:
+                else if (index == UNIT_FIELD_FACTIONTEMPLATE && target != this && sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                {
+                    uint32 value = m_uint32Values[index];
+                    Unit const* thisUnit = static_cast<Unit const*>(this);
+
+                    if (!thisUnit->HasCharmer() && target->IsInGroup(thisUnit) && !target->CanCooperate(thisUnit))
+                    {
+                        switch (uint32(target->GetTeam()))
+                        {
+                            case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
+                            case HORDE:     value = 1495;   break;  // "Horde Generic"
+                        }
+                    }
+
+                    *data << value;
+                }
+                // [XFACTION]: Alter faction if detected crossfaction group interaction when updating faction field:
+                else if (index == UNIT_FIELD_FACTIONTEMPLATE && target != this && sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                {
+                    uint32 value = m_uint32Values[index];
+                    Unit const* thisUnit = static_cast<Unit const*>(this);
+
+                    if (!thisUnit->HasCharmer() && target->IsInGroup(thisUnit) && !target->CanCooperate(thisUnit))
+                    {
+                        switch (uint32(target->GetTeam()))
+                        {
+                            case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
+                            case HORDE:     value = 1495;   break;  // "Horde Generic"
+                        }
+                    }
+
+                    *data << value;
+                }
+                // [XFACTION]: Alter faction if detected crossfaction group interaction when updating faction field:
+                else if (index == UNIT_FIELD_FACTIONTEMPLATE && target != this && sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                {
+                    uint32 value = m_uint32Values[index];
+                    Unit const* thisUnit = static_cast<Unit const*>(this);
+
+                    if (!thisUnit->HasCharmer() && target->IsInGroup(thisUnit) && !target->CanCooperate(thisUnit))
+                    {
+                        switch (uint32(target->GetTeam()))
+                        {
+                            case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
+                            case HORDE:     value = 1495;   break;  // "Horde Generic"
+                        }
+                    }
+
+                    *data << value;
+                }
+                // [XFACTION]: Alter faction if detected crossfaction group interaction when updating faction field:
+                else if (index == UNIT_FIELD_FACTIONTEMPLATE && target != this && sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                {
+                    uint32 value = m_uint32Values[index];
+                    Unit const* thisUnit = static_cast<Unit const*>(this);
+
+                    if (!thisUnit->HasCharmer() && target->IsInGroup(thisUnit) && !target->CanCooperate(thisUnit))
+                    {
+                        switch (uint32(target->GetTeam()))
+                        {
+                            case ALLIANCE:  value = 1054;   break;  // "Alliance Generic"
+                            case HORDE:     value = 1495;   break;  // "Horde Generic"
                         }
                     }
 
@@ -1058,7 +1158,7 @@ void Object::MarkForClientUpdate()
     }
 }
 
-void Object::ForceValuesUpdateAtIndex(uint16 index)
+void Object::ForceValuesUpdateAtIndex(uint32 index)
 {
     m_changedValues[index] = true;
     if (m_inWorld && !m_objectUpdated)

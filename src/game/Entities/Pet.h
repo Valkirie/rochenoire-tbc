@@ -269,6 +269,7 @@ class Pet : public Creature
         TeachSpellMap   m_teachspells;
         AutoSpellList   m_autospells;
 
+		uint32 ScalePetCreateSpells(uint32 spellid, uint32 plevel);
         void InitPetCreateSpells();
         void CheckLearning(uint32 spellid);
         uint32 resetTalentsCost() const;

@@ -743,7 +743,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, ObjectGuid casterGuid)
     }
 }
 
-void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageEffectType damagetype, SpellEntry const* spellProto)
+void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageEffectType damagetype, SpellEntry const* spellProto, bool isScaled)
 {
     if (!pVictim->isAlive() || pVictim->IsTaxiFlying() || pVictim->IsInEvadeMode())
     {
@@ -762,17 +762,92 @@ void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageE
         damage = 0;
     }
 
-    uint32 originalDamage = damage;
+	uint32 scaled_damage = sObjectMgr.ScaleDamage(this, pVictim, damage, isScaled);
+	uint32 originalDamage = damage;
 
     // Script Event damage Deal
     if (AI())
-        AI()->DamageDeal(pVictim, damage, damagetype, spellProto);
+        AI()->DamageDeal(pVictim, scaled_damage, damagetype, spellProto);
     // Script Event damage taken
     if (pVictim->AI())
-        pVictim->AI()->DamageTaken(this, damage, damagetype, spellProto);
+        pVictim->AI()->DamageTaken(this, scaled_damage, damagetype, spellProto);
 
     if (absorb && originalDamage > damage)
         *absorb += (originalDamage - damage);
+}
+
+bool Unit::IsInStartLocation()
+{
+	Map* map = GetMap();
+
+	if (!map)
+		return false;
+
+	uint32 zone = GetZoneId();
+	uint32 map_id = map->GetId();
+	uint32 area = GetAreaId();
+
+	if (!zone)
+		return false;
+	if (!area)
+		return false;
+
+	if (map_id == 0)
+	{
+		if (zone == 12)
+		{
+			if (area == 9 || area == 24 || area == 34 || area == 59) // Human
+				return true;
+		}
+		else if (zone == 1)
+		{
+			if (area == 800 || area == 132) // Dwarf, Gnome
+				return true;
+		}
+		else if (zone == 85)
+		{
+			if (area == 154 || area == 2117) // Undead
+				return true;
+		}
+	}
+	else if (map_id == 1)
+	{
+		if (zone == 141)
+		{
+			if (area == 257 || area == 188) // Elf
+				return true;
+		}
+		else if (zone == 14)
+		{
+			if (area == 363 || area == 365 || area == 638 || area == 639 || area == 640) // Orc, Troll
+				return true;
+		}
+		else if (zone == 215)
+		{
+			if (area == 220 || area == 221 || area == 358 || area == 637) // Tauren
+				return true;
+		}
+	}
+	else if (map_id == 530)
+	{
+		if (zone == 3524) //Azuremyst Isle
+		{
+			if (area == 3526 || area == 3527 || area == 3560 || area == 3528 || area == 3529 || area == 3559 || area == 3530) // Draenei
+				return true;
+		}
+		else if (zone == 3430)
+		{
+			if (area == 3431 || area == 3485 || area == 3532 || area == 3532 || area == 3665 || area == 3531) // BloodElf
+				return true;
+		}
+	}
+
+	return false;
+}
+
+void Unit::SetLevelVariation(int lvl)
+{
+	s_level_var = lvl;
 }
 
 void Unit::Suicide()
@@ -780,8 +855,24 @@ void Unit::Suicide()
     DealDamage(this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 }
 
-uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss)
+uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss, Spell* spell, bool isScaled)
 {
+	uint32 olddamage = damage;
+	CleanDamage const* oldcleanDamage = cleanDamage;
+
+	if (!spell || (spell && !spell->IsDeletable()))
+	{
+		if (!damage)
+		{
+			if (cleanDamage)
+			{
+				uint32 cdamage = sObjectMgr.ScaleDamage(this, pVictim, cleanDamage->damage, isScaled);
+				cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
+			}
+		}
+	}
+	damage = sObjectMgr.ScaleDamage(this, pVictim, olddamage, isScaled);
+
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT && damagetype != INSTAKILL)
     {
@@ -794,7 +885,7 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
     {
         // Rage from physical damage received .
         if (cleanDamage && cleanDamage->damage && (damageSchoolMask & SPELL_SCHOOL_MASK_NORMAL) && pVictim->GetTypeId() == TYPEID_PLAYER && (pVictim->GetPowerType() == POWER_RAGE))
-            ((Player*)pVictim)->RewardRage(cleanDamage->damage, 0, false);
+            ((Player*)pVictim)->RewardRage(oldcleanDamage->damage, 0, false);
 
         return 0;
     }
@@ -818,7 +909,7 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
                 else
                     weaponSpeedHitFactor = uint32(GetAttackTime(cleanDamage->attackType) / 1000.0f * 3.5f);
 
-                ((Player*)this)->RewardRage(damage, weaponSpeedHitFactor, true);
+                ((Player*)this)->RewardRage(olddamage, weaponSpeedHitFactor, true);
 
                 break;
             }
@@ -829,7 +920,7 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
                 else
                     weaponSpeedHitFactor = uint32(GetAttackTime(cleanDamage->attackType) / 1000.0f * 1.75f);
 
-                ((Player*)this)->RewardRage(damage, weaponSpeedHitFactor, true);
+                ((Player*)this)->RewardRage(olddamage, weaponSpeedHitFactor, true);
 
                 break;
             }
@@ -1308,6 +1399,27 @@ void Unit::JustKilledCreature(Creature* victim, Player* responsiblePlayer)
 
     // only lootable if it has loot or can drop gold
     victim->PrepareBodyLootState();
+
+	// prepare body for skinning
+	if(uint32 skill = victim->GetCreatureInfo()->GetRequiredLootSkill())
+		if (responsiblePlayer && responsiblePlayer->HasSkill(skill))
+		{
+			uint32 ReqLevel = 10;
+			if (uint16 skillValue = responsiblePlayer->GetSkillValue(skill))
+			{
+				if (skillValue > 100 && skillValue <= 200)
+					ReqLevel = ((skillValue + 100) / 10);
+				else if (skillValue > 200)
+					ReqLevel = skillValue / 5;
+
+				if (ReqLevel > responsiblePlayer->getLevel())
+					ReqLevel = responsiblePlayer->getLevel();
+			}
+
+			victim->SetVisibility(VISIBILITY_OFF);
+			victim->SetLevel(ReqLevel);
+			victim->SetVisibility(VISIBILITY_ON);
+		}
 }
 
 void Unit::PetOwnerKilledUnit(Unit* pVictim)
@@ -1537,7 +1649,7 @@ uint32 Unit::SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage
     return damageInfo.damage;
 }
 
-void Unit::CalculateSpellDamage(SpellNonMeleeDamage* spellDamageInfo, int32 damage, SpellEntry const* spellInfo, WeaponAttackType attackType)
+void Unit::CalculateSpellDamage(SpellNonMeleeDamage* spellDamageInfo, int32 damage, SpellEntry const* spellInfo, WeaponAttackType attackType, Spell* spell)
 {
     SpellSchoolMask damageSchoolMask = spellDamageInfo->schoolMask;
     Unit* pVictim = spellDamageInfo->target;
@@ -1636,8 +1748,10 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage* damageInfo, bool durabilityLoss)
     }
 
     // Call default DealDamage (send critical in hit info for threat calculation)
-    CleanDamage cleanDamage(damageInfo->damage, BASE_ATTACK, damageInfo->HitInfo & SPELL_HIT_TYPE_CRIT ? MELEE_HIT_CRIT : MELEE_HIT_NORMAL);
-    DealDamage(pVictim, damageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, damageInfo->schoolMask, spellProto, durabilityLoss);
+	CleanDamage cleanDamage(damageInfo->damage, BASE_ATTACK, damageInfo->HitInfo & SPELL_HIT_TYPE_CRIT ? MELEE_HIT_CRIT : MELEE_HIT_NORMAL);
+    
+	bool isScaled = damageInfo->spell ? damageInfo->spell->isScaled : false;
+	DealDamage(pVictim, damageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, damageInfo->schoolMask, spellProto, durabilityLoss, damageInfo->spell, isScaled);
 }
 
 uint32 Unit::GetResilienceRatingDamageReduction(uint32 damage, SpellDmgClass dmgClass, bool periodic/* = false*/, Powers pwrType/* = POWER_HEALtH*/) const
@@ -2125,7 +2239,8 @@ void Unit::HandleEmote(uint32 emote_id)
 
 uint32 Unit::CalcArmorReducedDamage(Unit* pVictim, const uint32 damage)
 {
-    float armor = (float)pVictim->GetArmor();
+	float armor = (float)pVictim->GetArmor();
+	armor = sObjectMgr.ScaleArmor(this, pVictim, armor);
 
     // Ignore enemy armor by armor penetration
     armor -= GetResistancePenetration(SPELL_SCHOOL_NORMAL);
@@ -2150,7 +2265,7 @@ uint32 Unit::CalcArmorReducedDamage(Unit* pVictim, const uint32 damage)
     return (newdamage > 1) ? newdamage : 1;
 }
 
-void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolMask, DamageEffectType damagetype, const uint32 damage, uint32* absorb, int32* resist, bool canReflect, bool canResist, bool binary)
+void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolMask, DamageEffectType damagetype, const uint32 damage, uint32* absorb, int32* resist, bool canReflect, bool canResist, bool binary, Spell* spell, bool isScaled)
 {
     if (!pCaster || !isAlive() || !damage)
         return;
@@ -2202,9 +2317,9 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolM
         SpellEntry const* spellProto = (*i)->GetSpellProto();
 
         // Max Amount can be absorbed by this aura
-        int32  currentAbsorb = mod->m_amount;
-
-        // Found empty aura (impossible but..)
+        int32 currentAbsorb = mod->m_amount;
+		
+		// Found empty aura (impossible but..)
         if (currentAbsorb <= 0)
         {
             existExpired = true;
@@ -2320,20 +2435,28 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolM
                 break;
         }
 
-        // currentAbsorb - damage can be absorbed by shield
-        // If need absorb less damage
-        if (RemainingDamage < currentAbsorb)
-            currentAbsorb = RemainingDamage;
+		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(pCaster, this, currentAbsorb);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(pCaster, this, RemainingDamage);
 
-        RemainingDamage -= currentAbsorb;
+		// currentAbsorb - damage can be absorbed by shield
+		// If need absorb less damage
+		if (s_RemainingDamage >= currentAbsorb)
+			s_currentAbsorb = currentAbsorb;
+		else
+		{
+			currentAbsorb = RemainingDamage;
+			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(pCaster, this, currentAbsorb);
+		}
 
-        // Reduce shield amount
-        mod->m_amount -= currentAbsorb;
-        if ((*i)->GetHolder()->DropAuraCharge())
-            mod->m_amount = 0;
-        // Need remove it later
-        if (mod->m_amount <= 0)
-            existExpired = true;
+		RemainingDamage -= currentAbsorb;
+
+		// Reduce shield amount
+		mod->m_amount -= s_currentAbsorb;
+		if ((*i)->GetHolder()->DropAuraCharge())
+			mod->m_amount = 0;
+		// Need remove it later
+		if (mod->m_amount <= 0)
+			existExpired = true;
     }
 
     // Remove all expired absorb auras
@@ -2357,44 +2480,53 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolM
         CastCustomSpell(pCaster, reflectSpell, &reflectDamage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, reflectTriggeredBy);
     }
 
-    // absorb by mana cost
-    AuraList const& vManaShield = GetAurasByType(SPELL_AURA_MANA_SHIELD);
-    for (AuraList::const_iterator i = vManaShield.begin(), next; i != vManaShield.end() && RemainingDamage > 0; i = next)
-    {
-        next = i; ++next;
+	// absorb by mana cost
+	AuraList const& vManaShield = GetAurasByType(SPELL_AURA_MANA_SHIELD);
+	for (AuraList::const_iterator i = vManaShield.begin(), next; i != vManaShield.end() && RemainingDamage > 0; i = next)
+	{
+		next = i;
+		++next;
 
-        // check damage school mask
-        if (((*i)->GetModifier()->m_miscvalue & schoolMask) == 0)
-            continue;
+		// check damage school mask
+		if (((*i)->GetModifier()->m_miscvalue & schoolMask) == 0)
+			continue;
 
-        int32 currentAbsorb;
-        if (RemainingDamage >= (*i)->GetModifier()->m_amount)
-            currentAbsorb = (*i)->GetModifier()->m_amount;
-        else
-            currentAbsorb = RemainingDamage;
+		int32 currentAbsorb;
+		int32 s_currentAbsorb;
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(pCaster, this, RemainingDamage);
+		if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
+		{
+			currentAbsorb = (*i)->GetModifier()->m_amount;
+			s_currentAbsorb = currentAbsorb;
+		}
+		else
+		{
+			currentAbsorb = RemainingDamage;
+			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(pCaster, this, currentAbsorb);
+		}
 
-        if (float manaMultiplier = (*i)->GetSpellProto()->EffectMultipleValue[(*i)->GetEffIndex()])
-        {
-            if (Player* modOwner = GetSpellModOwner())
-                modOwner->ApplySpellMod((*i)->GetId(), SPELLMOD_MULTIPLE_VALUE, manaMultiplier);
+		if (float manaMultiplier = (*i)->GetSpellProto()->EffectMultipleValue[(*i)->GetEffIndex()])
+		{
+			if (Player *modOwner = GetSpellModOwner())
+				modOwner->ApplySpellMod((*i)->GetId(), SPELLMOD_MULTIPLE_VALUE, manaMultiplier, spell);
 
-            int32 maxAbsorb = int32(GetPower(POWER_MANA) / manaMultiplier);
-            if (currentAbsorb > maxAbsorb)
-                currentAbsorb = maxAbsorb;
+			int32 maxAbsorb = int32(GetPower(POWER_MANA) / manaMultiplier);
+			if (s_currentAbsorb > maxAbsorb)
+				currentAbsorb = maxAbsorb;
 
-            int32 manaReduction = int32(currentAbsorb * manaMultiplier);
-            ApplyPowerMod(POWER_MANA, manaReduction, false);
-        }
+			int32 manaReduction = int32(s_currentAbsorb * manaMultiplier);
+			ApplyPowerMod(POWER_MANA, manaReduction, false);
+		}
 
-        (*i)->GetModifier()->m_amount -= currentAbsorb;
-        if ((*i)->GetModifier()->m_amount <= 0)
-        {
-            RemoveAurasDueToSpell((*i)->GetId());
-            next = vManaShield.begin();
-        }
+		(*i)->GetModifier()->m_amount -= s_currentAbsorb;
+		if ((*i)->GetModifier()->m_amount <= 0)
+		{
+			RemoveAurasDueToSpell((*i)->GetId());
+			next = vManaShield.begin();
+		}
 
-        RemainingDamage -= currentAbsorb;
-    }
+		RemainingDamage -= currentAbsorb;
+	}
 
     // only split damage if not damaging yourself
     if (pCaster != this)
@@ -2413,11 +2545,19 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolM
             if (!caster || caster == this || !caster->IsInWorld() || !caster->isAlive())
                 continue;
 
-            int32 currentAbsorb;
-            if (RemainingDamage >= (*i)->GetModifier()->m_amount)
-                currentAbsorb = (*i)->GetModifier()->m_amount;
-            else
-                currentAbsorb = RemainingDamage;
+			int32 currentAbsorb;
+			int32 s_currentAbsorb;
+			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(pCaster, this, RemainingDamage);
+			if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
+			{
+				currentAbsorb = (*i)->GetModifier()->m_amount;
+				s_currentAbsorb = currentAbsorb;
+			}
+			else
+			{
+				currentAbsorb = RemainingDamage;
+				s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(pCaster, this, currentAbsorb);
+			}
 
             RemainingDamage -= currentAbsorb;
 
@@ -2510,7 +2650,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* pCaster, SpellSchoolMask schoolM
     *absorb = damage - RemainingDamage - *resist;
 }
 
-void Unit::CalculateAbsorbResistBlock(Unit* pCaster, SpellNonMeleeDamage* damageInfo, SpellEntry const* spellProto, WeaponAttackType attType)
+void Unit::CalculateAbsorbResistBlock(Unit* pCaster, SpellNonMeleeDamage* damageInfo, SpellEntry const* spellProto, WeaponAttackType attType, Spell* spell)
 {
     if (RollAbilityPartialBlockOutcome(pCaster, attType, spellProto))
     {
@@ -2518,7 +2658,9 @@ void Unit::CalculateAbsorbResistBlock(Unit* pCaster, SpellNonMeleeDamage* damage
         damageInfo->damage -= damageInfo->blocked;
     }
 
-    CalculateDamageAbsorbAndResist(pCaster, GetSpellSchoolMask(spellProto), SPELL_DIRECT_DAMAGE, damageInfo->damage, &damageInfo->absorb, &damageInfo->resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), IsBinarySpell(*spellProto));
+	bool isScaled = spell ? spell->isScaled : false;
+
+    CalculateDamageAbsorbAndResist(pCaster, GetSpellSchoolMask(spellProto), SPELL_DIRECT_DAMAGE, damageInfo->damage, &damageInfo->absorb, &damageInfo->resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), IsBinarySpell(*spellProto), spell, isScaled);
 
     const uint32 bonus = (damageInfo->resist < 0 ? uint32(std::abs(damageInfo->resist)) : 0);
     damageInfo->damage += bonus;
@@ -3878,6 +4020,8 @@ float Unit::CalculateSpellMissChance(const Unit* victim, SpellSchoolMask schoolM
     // Level difference: positive adds to miss chance, negative substracts
     const bool vsPlayerOrPet = (victim->GetTypeId() == TYPEID_PLAYER || victim->GetOwnerGuid().IsPlayer());
     int32 difference = int32(victim->GetLevelForTarget(this) - GetLevelForTarget(victim));
+	difference = sObjectMgr.getLevelDiff((Unit*)this, (Unit*)victim);
+
     // Level difference factor: 1% per level
     uint8 factor = 1;
     // NPCs and players gain additional bonus to incoming spell hit chance reduction based on positive level difference
@@ -5769,11 +5913,17 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
+	uint32 damage = log->damage;
+	Unit *target = log->target->GetCharmerOrOwnerOrSelf();
+	Unit *caster = log->attacker->GetCharmerOrOwnerOrSelf();
+	if (target->IsPlayer() && !log->target->isCharmed())
+		damage = sObjectMgr.ScaleDamage(caster, target, log->damage, log->isScaled);
+
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
     data << log->attacker->GetPackGUID();
     data << uint32(log->SpellID);
-    data << uint32(log->damage);                            // damage amount
+    data << uint32(damage);                            // damage amount
     data << uint8(log->schoolMask);                         // damage school
     data << uint32(log->absorb);                            // AbsorbedDamage
     data << int32(log->resist);                             // resist
@@ -5838,6 +5988,13 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Aura* aura = pInfo->aura;
     Modifier* mod = aura->GetModifier();
 
+	uint32 damage = pInfo->damage;
+
+	Unit *target = aura->GetTarget()->GetCharmerOrOwnerOrSelf();
+	Unit *caster = aura->GetCaster()->GetCharmerOrOwnerOrSelf();
+	if (target->IsPlayer() && !aura->GetTarget()->isCharmed())
+		damage = sObjectMgr.ScaleDamage(caster, target, damage, pInfo->scaled);
+
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
     data << aura->GetCasterGuid().WriteAsPacked();
@@ -5848,23 +6005,23 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     {
         case SPELL_AURA_PERIODIC_DAMAGE:
         case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
-            data << uint32(pInfo->damage);                  // damage
+            data << uint32(damage);                  // damage
             data << uint32(GetSpellSchoolMask(aura->GetSpellProto()));
             data << uint32(pInfo->absorb);                  // absorb
             data << int32(pInfo->resist);                   // resist
             break;
         case SPELL_AURA_PERIODIC_HEAL:
         case SPELL_AURA_OBS_MOD_HEALTH:
-            data << uint32(pInfo->damage);                  // damage
+            data << uint32(damage);                  // damage
             break;
         case SPELL_AURA_OBS_MOD_MANA:
         case SPELL_AURA_PERIODIC_ENERGIZE:
             data << uint32(mod->m_miscvalue);               // power type
-            data << uint32(pInfo->damage);                  // damage
+            data << uint32(damage);                  // damage
             break;
         case SPELL_AURA_PERIODIC_MANA_LEECH:
             data << uint32(mod->m_miscvalue);               // power type
-            data << uint32(pInfo->damage);                  // amount
+            data << uint32(damage);                  // amount
             data << float(pInfo->multiplier);               // gain multiplier
             break;
         default:
@@ -5972,7 +6129,7 @@ void Unit::CasterHitTargetWithSpell(Unit* realCaster, Unit* target, SpellEntry c
         if (!spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !spellInfo->HasAttribute(SPELL_ATTR_EX_NO_THREAT) && CanEnterCombat() && target->CanEnterCombat())
         {
             realCaster->SetInCombatWithAssisted(target);
-            target->getHostileRefManager().threatAssist(realCaster, 0.0f, spellInfo, false);
+            target->getHostileRefManager().threatAssist(realCaster, 0.0f, spellInfo, false, false, target);
         }
 
         if (spellInfo->HasAttribute(SPELL_ATTR_EX3_OUT_OF_COMBAT_ATTACK))
@@ -6007,9 +6164,15 @@ bool Unit::CanInitiateAttack() const
     return true;
 }
 
-void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
+void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) const
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
+
+	uint32 totalDamage = calcDamageInfo->totalDamage;
+	Unit *target = calcDamageInfo->target->GetCharmerOrOwnerOrSelf();
+	Unit *caster = calcDamageInfo->attacker->GetCharmerOrOwnerOrSelf();
+	if (target->IsPlayer() && !calcDamageInfo->target->isCharmed())
+		totalDamage = sObjectMgr.ScaleDamage(caster, target, calcDamageInfo->totalDamage, isScaled);
 
     // Subdamage count:
     uint32 lines = m_weaponDamageInfo.weapon[calcDamageInfo->attackType].lines;
@@ -6019,7 +6182,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
     data << uint32(calcDamageInfo->HitInfo);
     data << calcDamageInfo->attacker->GetPackGUID();
     data << calcDamageInfo->target->GetPackGUID();
-    data << uint32(calcDamageInfo->totalDamage);                // Total damage
+    data << uint32(totalDamage);                // Total damage
 
     data << uint8(lines);
 
@@ -6028,9 +6191,15 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
     {
         auto &line = calcDamageInfo->subDamage[i];
 
+		uint32 subDamaged = line.damage;
+		Unit *target = calcDamageInfo->target->GetCharmerOrOwnerOrSelf();
+		Unit *caster = calcDamageInfo->attacker->GetCharmerOrOwnerOrSelf();
+		if (target->IsPlayer() && !calcDamageInfo->target->isCharmed())
+			subDamaged = sObjectMgr.ScaleDamage(caster, target, line.damage, isScaled);
+
         data << uint32(line.damageSchoolMask);
-        data << float(line.damage) / float(calcDamageInfo->totalDamage);   // Float coefficient of subdamage
-        data << uint32(line.damage);
+        data << float(subDamaged) / float(totalDamage);   // Float coefficient of subdamage
+        data << uint32(subDamaged);
         data << uint32(line.absorb);
         data << int32(line.resist);
     }
@@ -6651,6 +6820,23 @@ Unit* Unit::GetOwner(WorldObject const* pov /*= nullptr*/, bool recursive /*= fa
     return owner;
 }
 
+bool Unit::IsCharmerOrOwnerPlayerOrPlayerItself() const
+{
+	if (GetTypeId() == TYPEID_PLAYER)
+		return true;
+
+	return GetCharmerOrOwnerGuid().IsPlayer();
+}
+
+Player* Unit::GetCharmerOrOwnerPlayerOrPlayerItself() const
+{
+	ObjectGuid guid = GetCharmerOrOwnerGuid();
+	if (guid.IsPlayer())
+		return ObjectAccessor::FindPlayer(guid);
+
+	return GetTypeId() == TYPEID_PLAYER ? (Player*)this : NULL;
+}
+
 Unit* Unit::GetMaster(WorldObject const* pov /*= nullptr*/) const
 {
     Unit* charmer = GetCharmer(pov);
@@ -6818,7 +7004,7 @@ void Unit::UnsummonAllTotems() const
             totem->UnSummon();
 }
 
-int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical)
+int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical, bool isScaled)
 {
     int32 gain = pVictim->ModifyHealth(int32(addhealth));
 
@@ -6827,7 +7013,7 @@ int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellPro
     if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsTotem() && ((Totem*)this)->GetTotemType() != TOTEM_STATUE)
         unit = GetOwner();
 
-    unit->SendHealSpellLog(pVictim, spellProto->Id, addhealth, critical);
+    unit->SendHealSpellLog(pVictim, spellProto->Id, addhealth, critical, isScaled);
 
     if (unit->GetTypeId() == TYPEID_PLAYER)
     {
@@ -6895,8 +7081,13 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
     return nullptr;
 }
 
-void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical)
+void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical, bool isScaled)
 {
+	Unit *target = pVictim->GetCharmerOrOwnerOrSelf();
+	Unit *caster = this->GetCharmerOrOwnerOrSelf();
+	if (target->IsPlayer() && !pVictim->isCharmed())
+		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
+
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
     data << pVictim->GetPackGUID();
     data << GetPackGUID();
@@ -6907,8 +7098,13 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
     SendMessageToSet(data, true);
 }
 
-void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype) const
+void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
+	Unit *target = pVictim->GetCharmerOrOwnerOrSelf();
+	Unit *caster = ((Unit*)this)->GetCharmerOrOwnerOrSelf();
+	if (target->IsPlayer() && !target->isCharmed())
+		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
+
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();
     data << GetPackGUID();
@@ -6929,9 +7125,9 @@ void Unit::SendEnvironmentalDamageLog(uint8 type, uint32 damage, uint32 absorb, 
     SendMessageToSet(data, true);
 }
 
-void Unit::EnergizeBySpell(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype)
+void Unit::EnergizeBySpell(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled)
 {
-    SendEnergizeSpellLog(pVictim, SpellID, Damage, powertype);
+    SendEnergizeSpellLog(pVictim, SpellID, Damage, powertype, isScaled);
     // needs to be called after sending spell log
     pVictim->ModifyPower(powertype, Damage);
 }
@@ -8394,7 +8590,8 @@ float Unit::GetVisibleDistance(Unit const* target, bool alert) const
 
     // Visible distance is modified by
     //-Level Diff (every level diff = 1.0f in visible distance)
-    visibleDistance += int32(target->GetLevelForTarget(this)) - int32(GetLevelForTarget(target));
+    // visibleDistance += int32(target->GetLevelForTarget(this)) - int32(GetLevelForTarget(target));
+	visibleDistance += sObjectMgr.getLevelDiff((Unit*)this, (Unit*)target);
 
     // This allows to check talent tree and will add addition stealth dependent on used points)
     int32 stealthMod = GetTotalAuraModifier(SPELL_AURA_MOD_STEALTH_LEVEL);
@@ -8851,11 +9048,11 @@ float Unit::ApplyTotalThreatModifier(float threat, SpellSchoolMask schoolMask)
 
 //======================================================================
 
-void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false*/, SpellSchoolMask schoolMask /*= SPELL_SCHOOL_MASK_NONE*/, SpellEntry const* threatSpell /*= nullptr*/)
+void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false*/, SpellSchoolMask schoolMask /*= SPELL_SCHOOL_MASK_NONE*/, SpellEntry const* threatSpell /*= nullptr*/, bool isScaled /*= false*/)
 {
     // Only mobs can manage threat lists
     if (CanHaveThreatList())
-        getThreatManager().addThreat(pVictim, threat, crit, schoolMask, threatSpell);
+        getThreatManager().addThreat(pVictim, threat, crit, schoolMask, threatSpell, false, isScaled);
 }
 
 //======================================================================
@@ -8989,7 +9186,7 @@ bool Unit::SelectHostileTarget()
 //======================================================================
 //======================================================================
 
-int32 Unit::CalculateSpellDamage(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints)
+int32 Unit::CalculateSpellDamage(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints, Spell* spell)
 {
     Player* unitPlayer = (GetTypeId() == TYPEID_PLAYER) ? (Player*)this : nullptr;
 
@@ -9100,7 +9297,78 @@ int32 Unit::CalculateSpellDamage(Unit const* target, SpellEntry const* spellProt
         }
     }
 
-    return value;
+	Unit* caster = this;
+	bool value_neg = (value < 0) ? true : false;
+
+	if (caster && target && target->GetObjectGuid() != caster->GetObjectGuid())
+	{
+		if (value == 0)
+			return value;
+
+		Unit* p1 = ((Unit*)target)->GetCharmerOrOwnerOrSelf();
+		Unit* p2 = caster->GetCharmerOrOwnerOrSelf();
+
+		if (!p1 || !p2)
+			return value;
+
+		bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+		bool IsBattleGround = p1->GetMap() ? p1->GetMap()->IsBattleGround() : false;
+
+		if (!p1->IsPlayer() && !p2->IsPlayer())
+			return value;
+
+		if (!spellProto)
+			return value;
+
+		bool canScale = false;
+		bool canKeep = false;
+
+		if ((p1->IsFriend(p2)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
+		{
+			// if caster level is superior to min. scaling level
+			if (p2->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+				canKeep = true;
+		}
+		else if (p1->IsPlayer() && !p2->IsPlayer()) // Creature spells
+			canKeep = true;
+		else if (p2->IsPlayer() && !p1->IsPlayer()) // Player spells
+			canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
+
+		if (canKeep)
+		{
+			if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+				canScale = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
+			else
+				canScale = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
+		}
+
+		if (!canScale)
+			return value;
+
+		if (spell && canScale)
+			spell->isScaled = true;
+
+		// Fix the below calculation
+		if (value_neg)
+			value *= -1;
+
+		uint32 target_level = target->getLevel();
+		uint32 caster_level = caster->getLevel();
+
+		float caster_value = value;
+		float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
+		float caster_ratio = caster_value / caster_funct;
+
+		float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
+		float target_scale = target_value * caster_ratio;
+		value = target_scale;
+
+		// Restore value sign
+		if (value_neg)
+			value *= -1;
+	}
+
+	return (int)ceil(value);
 }
 
 int32 Unit::CalculateAuraDuration(SpellEntry const* spellProto, uint32 effectMask, int32 duration, Unit const* /*caster*/)
@@ -9544,6 +9812,23 @@ void Unit::SetAttackDamageSchool(WeaponAttackType attType, SpellSchools school)
 {
     for (uint8 i = 0; i < m_weaponDamageInfo.weapon[attType].lines; i++)
         m_weaponDamageInfo.weapon[attType].damage[i].school = school;
+}
+
+uint32 Unit::GetLevelForTarget(Unit const* target) const
+{
+	bool IsWorldBoss = false;
+	if (target->IsCreature())
+		IsWorldBoss = ((Creature*)target)->IsWorldBoss();
+
+	if (!IsWorldBoss)
+		return sObjectMgr.getLevelScaled(((Unit*)this), ((Unit*)target));
+
+	uint32 level = target->getLevel() + sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+	if (level < 1)
+		return 1;
+	if (level > 255)
+		return 255;
+	return level;
 }
 
 void Unit::SetLevel(uint32 lvl)
@@ -11832,6 +12117,7 @@ float Unit::GetAttackDistance(Unit const* pl) const
     uint32 creaturelevel = GetLevelForTarget(pl);
 
     int32 leveldif = int32(playerlevel) - int32(creaturelevel);
+	leveldif = sObjectMgr.getLevelDiff((Unit*)this, (Unit*)pl);
 
     // "The maximum Aggro Radius has a cap of 25 levels under. Example: A level 30 char has the same Aggro Radius of a level 5 char on a level 60 mob."
     if (leveldif < -25)
@@ -11846,7 +12132,7 @@ float Unit::GetAttackDistance(Unit const* pl) const
     // radius grow if playlevel < creaturelevel
     RetDistance -= (float)leveldif;
 
-    if (creaturelevel + 5 <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (creaturelevel + 5 <= sWorld.GetCurrentMaxLevel())
     {
         // detect range auras
         RetDistance += GetTotalAuraModifier(SPELL_AURA_MOD_DETECT_RANGE);

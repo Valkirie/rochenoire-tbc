@@ -151,7 +151,7 @@ bool PlayerMenu::GossipOptionCoded(unsigned int Selection)
     return mGossipMenu.MenuItemCoded(Selection);
 }
 
-void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid)
+void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Player* pPlayer)
 {
     WorldPacket data(SMSG_GOSSIP_MESSAGE, (100));           // guess size
     data << ObjectGuid(objectGuid);
@@ -177,10 +177,14 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid)
         QuestMenuItem const& qItem = mQuestMenu.GetItem(iI);
         uint32 questID = qItem.m_qId;
         Quest const* pQuest = sObjectMgr.GetQuestTemplate(questID);
+		uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
 
         data << uint32(questID);
         data << uint32(qItem.m_qIcon);
-        data << int32(pQuest->GetQuestLevel());
+		if (!pQuest->IsSpecificQuest())
+			data << uint32(pQuest_slevel);
+		else
+			data << uint32(pQuest->GetQuestLevel());
 
         int loc_idx = GetMenuSession()->GetSessionDbLocaleIndex();
         std::string title = pQuest->GetTitle();
@@ -375,7 +379,7 @@ void QuestMenu::ClearMenu()
     m_qItems.clear();
 }
 
-void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title, ObjectGuid npcGUID)
+void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title, ObjectGuid npcGUID, const Player *pPlayer)
 {
     WorldPacket data(SMSG_QUESTGIVER_QUEST_LIST, 100);      // guess size
     data << ObjectGuid(npcGUID);
@@ -398,9 +402,14 @@ void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title
             std::string title = pQuest->GetTitle();
             sObjectMgr.GetQuestLocaleStrings(questID, loc_idx, &title);
 
+			uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+
             data << uint32(questID);
             data << uint32(qmi.m_qIcon);
-            data << int32(pQuest->GetQuestLevel());
+			if (!pQuest->IsSpecificQuest())
+				data << uint32(pQuest_slevel);
+			else
+				data << uint32(pQuest->GetQuestLevel());
             data << title;
         }
     }
@@ -419,7 +428,7 @@ void PlayerMenu::SendQuestGiverStatus(uint8 questStatus, ObjectGuid npcGUID) con
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_STATUS for %s", npcGUID.GetString().c_str());
 }
 
-void PlayerMenu::SendQuestGiverQuestDetails(Quest const* pQuest, ObjectGuid guid, bool ActivateAccept) const
+void PlayerMenu::SendQuestGiverQuestDetails(Player const* pPlayer, Quest const* pQuest, ObjectGuid guid, bool ActivateAccept) const
 {
     std::string Title      = pQuest->GetTitle();
     std::string Details    = pQuest->GetDetails();
@@ -466,10 +475,13 @@ void PlayerMenu::SendQuestGiverQuestDetails(Quest const* pQuest, ObjectGuid guid
             if (!pQuest->RewChoiceItemId[i])
                 continue;
 
-            data << uint32(pQuest->RewChoiceItemId[i]);
+			uint32 pQuestItem = pQuest->RewChoiceItemId[i];
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[i], ((Player*)pPlayer));
+
+            data << uint32(pQuestItem);
             data << uint32(pQuest->RewChoiceItemCount[i]);
 
-            IProto = ObjectMgr::GetItemPrototype(pQuest->RewChoiceItemId[i]);
+            IProto = ObjectMgr::GetItemPrototype(pQuestItem);
 
             if (IProto)
                 data << uint32(IProto->DisplayInfoID);
@@ -485,10 +497,13 @@ void PlayerMenu::SendQuestGiverQuestDetails(Quest const* pQuest, ObjectGuid guid
             if (!pQuest->RewItemId[i])
                 continue;
 
-            data << uint32(pQuest->RewItemId[i]);
+			uint32 pQuestItem = pQuest->RewItemId[i];
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], ((Player*)pPlayer));
+
+            data << uint32(pQuestItem);
             data << uint32(pQuest->RewItemCount[i]);
 
-            IProto = ObjectMgr::GetItemPrototype(pQuest->RewItemId[i]);
+            IProto = ObjectMgr::GetItemPrototype(pQuestItem);
 
             if (IProto)
                 data << uint32(IProto->DisplayInfoID);
@@ -496,7 +511,7 @@ void PlayerMenu::SendQuestGiverQuestDetails(Quest const* pQuest, ObjectGuid guid
                 data << uint32(0);
         }
 
-        data << uint32(pQuest->GetRewOrReqMoney());
+        data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer));
     }
 
     // rewarded honor points. Multiply with 10 to satisfy client
@@ -520,7 +535,7 @@ void PlayerMenu::SendQuestGiverQuestDetails(Quest const* pQuest, ObjectGuid guid
 }
 
 // send only static data in this packet!
-void PlayerMenu::SendQuestQueryResponse(Quest const* pQuest) const
+void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQuest) const
 {
     std::string ObjectiveText[QUEST_OBJECTIVES_COUNT];
     std::string Title = pQuest->GetTitle();
@@ -552,10 +567,14 @@ void PlayerMenu::SendQuestQueryResponse(Quest const* pQuest) const
     }
 
     WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size
+	uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
 
     data << uint32(pQuest->GetQuestId());                   // quest id
     data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
-    data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
+	if (!pQuest->IsSpecificQuest())
+		data << uint32(pQuest_slevel);
+	else
+		data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
     data << uint32(pQuest->GetZoneOrSort());                // zone or sort to display in quest log
 
     data << uint32(pQuest->GetType());                      // quest type
@@ -572,9 +591,9 @@ void PlayerMenu::SendQuestQueryResponse(Quest const* pQuest) const
     if (pQuest->HasQuestFlag(QUEST_FLAGS_HIDDEN_REWARDS))
         data << uint32(0);                                  // Hide money rewarded
     else
-        data << uint32(pQuest->GetRewOrReqMoney());         // reward money (below max lvl)
+        data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer));         // reward money (below max lvl)
 
-    data << uint32(pQuest->GetRewMoneyMaxLevel());          // used in XP calculation at client
+    data << uint32(pQuest->GetRewMoneyMaxLevel((Player*)pPlayer));          // used in XP calculation at client
     data << uint32(pQuest->GetRewSpell());                  // reward spell, this spell will display (icon) (casted if RewSpellCast==0)
     data << uint32(pQuest->GetRewSpellCast());              // casted spell
 
@@ -597,12 +616,18 @@ void PlayerMenu::SendQuestQueryResponse(Quest const* pQuest) const
     {
         for (iI = 0; iI < QUEST_REWARDS_COUNT; ++iI)
         {
-            data << uint32(pQuest->RewItemId[iI]);
+			uint32 pQuestItem = pQuest->RewItemId[iI];
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[iI], ((Player*)pPlayer));
+
+            data << uint32(pQuestItem);
             data << uint32(pQuest->RewItemCount[iI]);
         }
         for (iI = 0; iI < QUEST_REWARD_CHOICES_COUNT; ++iI)
         {
-            data << uint32(pQuest->RewChoiceItemId[iI]);
+			uint32 pQuestItem = pQuest->RewChoiceItemId[iI];
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[iI], ((Player*)pPlayer));
+
+            data << uint32(pQuestItem);
             data << uint32(pQuest->RewChoiceItemCount[iI]);
         }
     }
@@ -641,7 +666,7 @@ void PlayerMenu::SendQuestQueryResponse(Quest const* pQuest) const
     DEBUG_LOG("WORLD: Sent SMSG_QUEST_QUERY_RESPONSE questid=%u", pQuest->GetQuestId());
 }
 
-void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGUID, bool EnableNext) const
+void PlayerMenu::SendQuestGiverOfferReward(Player const* pPlayer, Quest const* pQuest, ObjectGuid npcGUID, bool EnableNext) const
 {
     std::string Title = pQuest->GetTitle();
     std::string OfferRewardText = pQuest->GetOfferRewardText();
@@ -688,9 +713,12 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGU
     data << uint32(pQuest->GetRewChoiceItemsCount());
     for (uint32 i = 0; i < pQuest->GetRewChoiceItemsCount(); ++i)
     {
-        pItem = ObjectMgr::GetItemPrototype(pQuest->RewChoiceItemId[i]);
+		uint32 pQuestItem = pQuest->RewChoiceItemId[i];
+		pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[i], ((Player*)pPlayer));
 
-        data << uint32(pQuest->RewChoiceItemId[i]);
+        pItem = ObjectMgr::GetItemPrototype(pQuestItem);
+
+        data << uint32(pQuestItem);
         data << uint32(pQuest->RewChoiceItemCount[i]);
 
         if (pItem)
@@ -702,8 +730,11 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGU
     data << uint32(pQuest->GetRewItemsCount());
     for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
     {
-        pItem = ObjectMgr::GetItemPrototype(pQuest->RewItemId[i]);
-        data << uint32(pQuest->RewItemId[i]);
+		uint32 pQuestItem = pQuest->RewItemId[i];
+		pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], ((Player*)pPlayer));
+
+        pItem = ObjectMgr::GetItemPrototype(pQuestItem);
+        data << uint32(pQuestItem);
         data << uint32(pQuest->RewItemCount[i]);
 
         if (pItem)
@@ -712,7 +743,7 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGU
             data << uint32(0);
     }
 
-    data << uint32(pQuest->GetRewOrReqMoney());
+    data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer));
 
     // rewarded honor points. Multiply with 10 to satisfy client
     data << uint32(10 * MaNGOS::Honor::hk_honor_at_level(GetMenuSession()->GetPlayer()->getLevel(), pQuest->GetRewHonorableKills()));
@@ -724,7 +755,7 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGU
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_OFFER_REWARD NPCGuid = %s, questid = %u", npcGUID.GetString().c_str(), pQuest->GetQuestId());
 }
 
-void PlayerMenu::SendQuestGiverRequestItems(Quest const* pQuest, ObjectGuid npcGUID, bool Completable, bool CloseOnCancel) const
+void PlayerMenu::SendQuestGiverRequestItems(Player const* pPlayer, Quest const* pQuest, ObjectGuid npcGUID, bool Completable, bool CloseOnCancel) const
 {
     // We can always call to RequestItems, but this packet only goes out if there are actually
     // items.  Otherwise, we'll skip straight to the OfferReward
@@ -747,7 +778,7 @@ void PlayerMenu::SendQuestGiverRequestItems(Quest const* pQuest, ObjectGuid npcG
     // Only shown for incomplete quests, or ones that require items.
     if (RequestItemsText.empty() || ((pQuest->GetReqItemsCount() == 0) && Completable))
     {
-        SendQuestGiverOfferReward(pQuest, npcGUID, true);
+        SendQuestGiverOfferReward(pPlayer, pQuest, npcGUID, true);
         return;
     }
 
@@ -774,7 +805,7 @@ void PlayerMenu::SendQuestGiverRequestItems(Quest const* pQuest, ObjectGuid npcG
     data << uint32(pQuest->GetSuggestedPlayers());          // SuggestedGroupNum
 
     // Required Money
-    data << uint32(pQuest->GetRewOrReqMoney() < 0 ? -pQuest->GetRewOrReqMoney() : 0);
+    data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer) < 0 ? -pQuest->GetRewOrReqMoney((Player*)pPlayer) : 0);
 
     data << uint32(pQuest->GetReqItemsCount());
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)

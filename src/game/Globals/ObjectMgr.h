@@ -58,6 +58,7 @@ typedef std::unordered_map<uint32, GameTele > GameTeleMap;
 struct AreaTrigger
 {
     uint32 entry;
+	uint8  patch;
     uint8  requiredLevel;
     uint32 requiredItem;
     uint32 requiredItem2;
@@ -170,6 +171,10 @@ typedef std::unordered_map<uint32, CreatureLocale> CreatureLocaleMap;
 typedef std::unordered_map<uint32, GameObjectLocale> GameObjectLocaleMap;
 typedef std::unordered_map<uint32, ItemLocale> ItemLocaleMap;
 typedef std::unordered_map<uint32, QuestLocale> QuestLocaleMap;
+typedef std::unordered_map<std::string, CreatureFlex> CreatureFlexMap;
+typedef std::unordered_map<std::string, SpellFlex> SpellFlexMap;
+typedef std::unordered_map<std::string, ItemLootScale> LootScaleMap;
+typedef std::unordered_map<uint32, ItemLootScale> LootScaleParenting;
 typedef std::unordered_map<uint32, NpcTextLocale> NpcTextLocaleMap;
 typedef std::unordered_map<uint32, PageTextLocale> PageTextLocaleMap;
 typedef std::unordered_map<int32, MangosStringLocale> MangosStringLocaleMap;
@@ -528,6 +533,8 @@ class ObjectMgr
 
         typedef std::unordered_map<uint32, PetCreateSpellEntry> PetCreateSpellMap;
 
+		static char* const GetPatchName();
+
         std::unordered_map<uint32, std::vector<uint32>> const& GetCreatureSpawnEntry() const { return mCreatureSpawnEntryMap; }
 
         void LoadGameobjectInfo();
@@ -719,6 +726,9 @@ class ObjectMgr
         void LoadItemPrototypes();
         void LoadItemRequiredTarget();
         void LoadItemLocales();
+		void LoadLootScale();
+		void LoadFlexibleCreatures();
+		void LoadFlexibleSpells();
         void LoadQuestLocales();
         void LoadGossipTextLocales();
         void LoadQuestgiverGreeting();
@@ -896,6 +906,20 @@ class ObjectMgr
             if (itr == mItemLocaleMap.end()) return nullptr;
             return &itr->second;
         }
+
+		ItemLootScale const* GetItemLootScale(std::string entry) const
+		{
+			auto itr = mLootScaleMap.find(entry);
+			if (itr == mLootScaleMap.end()) return nullptr;
+			return &itr->second;
+		}
+
+		ItemLootScale const* GetItemLootParentingScale(uint32 entry) const
+		{
+			auto itr = mLootScaleParentingMap.find(entry);
+			if (itr == mLootScaleParentingMap.end()) return nullptr;
+			return &itr->second;
+		}
 
         void GetItemLocaleStrings(uint32 entry, int32 loc_idx, std::string* namePtr, std::string* descriptionPtr = nullptr) const;
 
@@ -1181,6 +1205,25 @@ class ObjectMgr
         * Qualifier: const
         **/
         CreatureClassLvlStats const* GetCreatureClassLvlStats(uint32 level, uint32 unitClass, int32 expansion) const;
+
+		/**
+			Scaling functions
+		**/
+		float ScaleDamage(Unit *owner, Unit *target, float damage, bool isScaled = false) const;
+		uint32 ScaleArmor(Unit *owner, Unit *target, uint32 armor) const;
+		uint32 getLevelScaled(Unit *owner, Unit *target) const;
+		int32 getLevelDiff(Unit *owner, Unit *target) const;
+		float ScaleGold(uint32 level, bool min = true) const;
+		bool IsScalable(Unit *owner, Unit *target) const;
+
+		bool isAuraRestricted(uint32 EffectApplyAuraName) const;
+		bool isAuraSafe(uint32 EffectApplyAuraName) const;
+		bool isEffectRestricted(uint32 Effect) const;
+		bool isEffectSafe(uint32 Effect) const;
+
+		bool isSafeExpansionZone(uint32 mapId, uint32 zoneId) const;
+
+		int sign(int x) const { return (x > 0) - (x < 0); };
     protected:
 
         // first free id for selected id type
@@ -1311,6 +1354,12 @@ class ObjectMgr
         GameObjectDataMap mGameObjectDataMap;
         GameObjectLocaleMap mGameObjectLocaleMap;
         ItemLocaleMap mItemLocaleMap;
+
+		LootScaleMap mLootScaleMap;
+	   	CreatureFlexMap mCreatureFlexMap;
+		SpellFlexMap mSpellFlexMap;
+
+		LootScaleParenting mLootScaleParentingMap;
         QuestLocaleMap mQuestLocaleMap;
         NpcTextLocaleMap mNpcTextLocaleMap;
         PageTextLocaleMap mPageTextLocaleMap;

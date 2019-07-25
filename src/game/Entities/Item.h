@@ -321,6 +321,12 @@ class Item : public Object
         void SetItemRandomProperties(int32 randomPropId);
         bool UpdateItemSuffixFactor();
         static int32 GenerateItemRandomPropertyId(uint32 item_id);
+
+		static uint32 LoadScaledLoot(uint32 itemid, Player *p);
+		static uint32 LoadScaledLoot(uint32 itemid, uint32 plevel);
+		static uint32 LoadScaledParent(uint32 itemid);
+		static uint32 ComputeRequiredLevel(uint32 quality, uint32 ilevel);
+
         void SetEnchantment(EnchantmentSlot slot, uint32 id, uint32 duration, uint32 charges, ObjectGuid caster = ObjectGuid());
         void SetEnchantmentDuration(EnchantmentSlot slot, uint32 duration);
         void SetEnchantmentCharges(EnchantmentSlot slot, uint32 charges);

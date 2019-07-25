@@ -2529,7 +2529,7 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     uint32 level = getLevel();
 
     // XP to money conversion processed in Player::RewardQuest
-    if (level >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (level >= sWorld.GetCurrentMaxLevel())
         return;
 
     // handle SPELL_AURA_MOD_XP_PCT auras
@@ -2546,11 +2546,11 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
     uint32 newXP = curXP + xp + rested_bonus_xp;
 
-    while (newXP >= nextLvlXP && level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    while (newXP >= nextLvlXP && level < sWorld.GetCurrentMaxLevel())
     {
         newXP -= nextLvlXP;
 
-        if (level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        if (level < sWorld.GetCurrentMaxLevel())
             GiveLevel(level + 1);
 
         level = getLevel();
@@ -2681,7 +2681,7 @@ void Player::InitStatsForLevel(bool reapplyMods)
     PlayerLevelInfo info;
     sObjectMgr.GetPlayerLevelInfo(getRace(), plClass, level, &info);
 
-    SetUInt32Value(PLAYER_FIELD_MAX_LEVEL, sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
+    SetUInt32Value(PLAYER_FIELD_MAX_LEVEL, sWorld.GetCurrentMaxLevel());
     SetUInt32Value(PLAYER_NEXT_LEVEL_XP, sObjectMgr.GetXPForLevel(level));
 
     // reset before any aura state sources (health set/aura apply)
@@ -4022,6 +4022,27 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
         return TRAINER_SPELL_RED;
 
     bool prof = SpellMgr::IsProfessionSpell(trainer_spell->learnedSpell);
+
+	// override mount level requirements with the settings from the configuration file
+	switch (trainer_spell->spell)
+	{
+	case 33388: // Riding
+	case 33389: // Apprentice Riding
+		reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL));
+		break;
+	case 33391: // Riding
+	case 33392: // Journeyman Riding
+		reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL));
+		break;
+	case 34090: // Riding
+	case 34092: // Expert Riding
+		reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL));
+		break;
+	case 34091: // Riding
+	case 34093: // Artisan Riding
+		reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL));
+		break;
+	}
 
     // check level requirement
     if (!prof || GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_LEVEL)))
@@ -5481,6 +5502,9 @@ void Player::UpdateCombatSkills(Unit* pVictim, WeaponAttackType attType, bool de
     uint32 greylevel = MaNGOS::XP::GetGrayLevel(plevel);
     uint32 moblevel = pVictim->GetLevelForTarget(this);
 
+	if (sObjectMgr.IsScalable(((Unit*)this), pVictim))
+		moblevel = sObjectMgr.getLevelScaled(((Unit*)this), pVictim);
+
     if (moblevel < greylevel)
         moblevel = greylevel;
 
@@ -6359,13 +6383,13 @@ void Player::CheckAreaExploreAndOutdoor()
         else if (p->area_level > 0)
         {
             uint32 area = p->ID;
-            if (getLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (getLevel() >= sWorld.GetCurrentMaxLevel())
             {
                 SendExplorationExperience(area, 0);
             }
             else
             {
-                int32 diff = int32(getLevel()) - p->area_level;
+				int32 diff = 0; // int32(getLevel()) - p->area_level;
                 uint32 XP;
                 if (diff < -5)
                 {
@@ -6538,9 +6562,12 @@ void Player::RewardReputation(Creature* victim, float rate)
     if (!Rep)
         return;
 
+	/* If Creature is scalable, we use it's level */
+	uint32 victim_level = sObjectMgr.getLevelScaled(this, victim);
+
     if (Rep->repfaction1 && (!Rep->team_dependent || GetTeam() == ALLIANCE))
     {
-        int32 donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue1, 0, Rep->repfaction1, victim->getLevel());
+        int32 donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue1, 0, Rep->repfaction1, victim_level);
         donerep1 = int32(donerep1 * rate);
         FactionEntry const* factionEntry1 = sFactionStore.LookupEntry<FactionEntry>(Rep->repfaction1);
         uint32 current_reputation_rank1 = GetReputationMgr().GetRank(factionEntry1);
@@ -8406,7 +8433,8 @@ bool Player::ViableEquipSlots(ItemPrototype const* proto, uint8* viable_slots) c
 
 InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
 {
-    Item* pItem;
+	item = Item::LoadScaledParent(item);
+	Item* pItem;
     uint32 tempcount = 0;
 
     InventoryResult res = EQUIP_ERR_OK;
@@ -8414,7 +8442,7 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_BAG_END; ++i)
     {
         pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item)
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
         {
             InventoryResult ires = CanUnequipItem(INVENTORY_SLOT_BAG_0 << 8 | i, false);
             if (ires == EQUIP_ERR_OK)
@@ -8430,7 +8458,7 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
     for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
     {
         pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item)
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
         {
             tempcount += pItem->GetCount();
             if (tempcount >= count)
@@ -8440,7 +8468,7 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
     for (int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
     {
         pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item)
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
         {
             tempcount += pItem->GetCount();
             if (tempcount >= count)
@@ -8456,7 +8484,7 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
             for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
             {
                 pItem = GetItemByPos(i, j);
-                if (pItem && pItem->GetEntry() == item)
+                if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
                 {
                     tempcount += pItem->GetCount();
                     if (tempcount >= count)
@@ -8472,17 +8500,18 @@ InventoryResult Player::CanUnequipItems(uint32 item, uint32 count) const
 
 uint32 Player::GetItemCount(uint32 item, bool inBankAlso, Item* skipItem) const
 {
-    uint32 count = 0;
+	item = Item::LoadScaledParent(item);
+	uint32 count = 0;
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
     {
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem != skipItem &&  pItem->GetEntry() == item)
+        if (pItem && pItem != skipItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
             count += pItem->GetCount();
     }
     for (int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
     {
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem != skipItem && pItem->GetEntry() == item)
+        if (pItem && pItem != skipItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
             count += pItem->GetCount();
     }
     for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -8507,7 +8536,7 @@ uint32 Player::GetItemCount(uint32 item, bool inBankAlso, Item* skipItem) const
         for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; ++i)
         {
             Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-            if (pItem && pItem != skipItem && pItem->GetEntry() == item)
+            if (pItem && pItem != skipItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
                 count += pItem->GetCount();
         }
         for (int i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
@@ -8764,11 +8793,12 @@ bool Player::IsValidPos(uint8 bag, uint8 slot, bool explicit_pos) const
 
 bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
 {
-    uint32 tempcount = 0;
+	item = Item::LoadScaledParent(item);
+	uint32 tempcount = 0;
     for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
     {
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
         {
             tempcount += pItem->GetCount();
             if (tempcount >= count)
@@ -8778,7 +8808,7 @@ bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
     for (int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
     {
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
         {
             tempcount += pItem->GetCount();
             if (tempcount >= count)
@@ -8792,7 +8822,7 @@ bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
             for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
             {
                 Item* pItem = GetItemByPos(i, j);
-                if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+                if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
                 {
                     tempcount += pItem->GetCount();
                     if (tempcount >= count)
@@ -8807,7 +8837,7 @@ bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
         for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; ++i)
         {
             Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-            if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+            if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
             {
                 tempcount += pItem->GetCount();
                 if (tempcount >= count)
@@ -8821,7 +8851,7 @@ bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
                 for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
                 {
                     Item* pItem = GetItemByPos(i, j);
-                    if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+                    if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
                     {
                         tempcount += pItem->GetCount();
                         if (tempcount >= count)
@@ -8835,16 +8865,90 @@ bool Player::HasItemCount(uint32 item, uint32 count, bool inBankAlso) const
     return false;
 }
 
+uint32 Player::HasScaledItemCount(uint32 item, uint32 count, bool inBankAlso) const
+{
+	item = Item::LoadScaledParent(item);
+	uint32 tempcount = 0;
+	for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+	{
+		Item *pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+		if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
+		{
+			tempcount += pItem->GetCount();
+			if (tempcount >= count)
+				return pItem->GetEntry();
+		}
+	}
+	for (int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
+	{
+		Item *pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+		if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
+		{
+			tempcount += pItem->GetCount();
+			if (tempcount >= count)
+				return pItem->GetEntry();
+		}
+	}
+	for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+	{
+		if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+		{
+			for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+			{
+				Item* pItem = GetItemByPos(i, j);
+				if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
+				{
+					tempcount += pItem->GetCount();
+					if (tempcount >= count)
+						return pItem->GetEntry();
+				}
+			}
+		}
+	}
+
+	if (inBankAlso)
+	{
+		for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_BAG_END; ++i)
+		{
+			Item *pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+			if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
+			{
+				tempcount += pItem->GetCount();
+				if (tempcount >= count)
+					return pItem->GetEntry();
+			}
+		}
+		for (int i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
+		{
+			if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+			{
+				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+				{
+					Item* pItem = GetItemByPos(i, j);
+					if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
+					{
+						tempcount += pItem->GetCount();
+						if (tempcount >= count)
+							return pItem->GetEntry();
+					}
+				}
+			}
+		}
+	}
+	return item;
+}
+
 bool Player::HasItemOrGemWithIdEquipped(uint32 item, uint32 count, uint8 except_slot) const
 {
-    uint32 tempcount = 0;
+	item = Item::LoadScaledParent(item);
+	uint32 tempcount = 0;
     for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
     {
         if (i == int(except_slot))
             continue;
 
         Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-        if (pItem && pItem->GetEntry() == item)
+        if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item)
         {
             tempcount += pItem->GetCount();
             if (tempcount >= count)
@@ -10139,7 +10243,26 @@ InventoryResult Player::CanUseItem(ItemPrototype const* pProto) const
         if (pProto->RequiredSpell != 0 && !HasSpell(pProto->RequiredSpell))
             return EQUIP_ERR_NO_REQUIRED_PROFICIENCY;
 
-        if (getLevel() < pProto->RequiredLevel)
+		uint32 RequiredLevel = pProto->RequiredLevel;
+		if (pProto->RequiredSkill == 762)
+		{
+			switch (pProto->RequiredSkillRank) {
+			case 75: // apprentice mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL));
+				break;
+			case 150: // journeyman mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL));
+				break;
+			case 225: // expert mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL));
+				break;
+			case 300: // artisan mounts
+				RequiredLevel = AccountTypes(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL));
+				break;
+			}
+		}
+
+        if (getLevel() < RequiredLevel)
             return EQUIP_ERR_CANT_EQUIP_LEVEL_I;
 
         return EQUIP_ERR_OK;
@@ -10410,6 +10533,19 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
                     AddGCD(*spellProto, 0, true);
                 }
             }
+
+			// Calculate average ilevel
+			uint32 avgItemLevel = 0;
+			int32 nbItem = 0;
+			for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+				if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+					if (ItemPrototype const* ditemProto = pItem->GetProto())
+					{
+						nbItem++;
+						avgItemLevel += ditemProto->ItemLevel;
+					}
+			if (nbItem != 0)
+				avgItemLevel /= nbItem;
         }
 
         if (IsInWorld() && update)
@@ -10730,7 +10866,8 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
 
 void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequip_check, bool inBankAlso)
 {
-    DEBUG_LOG("STORAGE: DestroyItemCount item = %u, count = %u", item, count);
+	item = Item::LoadScaledParent(item);
+	DEBUG_LOG("STORAGE: DestroyItemCount item = %u, count = %u", item, count);
     uint32 remcount = 0;
 
     // in inventory
@@ -10738,7 +10875,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
     {
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
-            if (pItem->GetEntry() == item && !pItem->IsInTrade())
+            if (Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
             {
                 if (pItem->GetCount() + remcount <= count)
                 {
@@ -10766,7 +10903,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
     {
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
-            if (pItem->GetEntry() == item && !pItem->IsInTrade())
+            if (Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
             {
                 if (pItem->GetCount() + remcount <= count)
                 {
@@ -10799,7 +10936,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
             {
                 if (Item* pItem = pBag->GetItemByPos(j))
                 {
-                    if (pItem->GetEntry() == item && !pItem->IsInTrade())
+                    if (Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
                     {
                         // all items in bags can be unequipped
                         if (pItem->GetCount() + remcount <= count)
@@ -10830,7 +10967,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
     {
         if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
-            if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+            if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
             {
                 if (pItem->GetCount() + remcount <= count)
                 {
@@ -10861,7 +10998,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
         for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; ++i)
         {
             Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-            if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+            if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
             {
                 if (pItem->GetCount() + remcount <= count)
                 {
@@ -10890,7 +11027,7 @@ void Player::DestroyItemCount(uint32 item, uint32 count, bool update, bool unequ
                 for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
                 {
                     Item* pItem = pBag->GetItemByPos(j);
-                    if (pItem && pItem->GetEntry() == item && !pItem->IsInTrade())
+                    if (pItem && Item::LoadScaledParent(pItem->GetEntry()) == item && !pItem->IsInTrade())
                     {
                         if (pItem->GetCount() + remcount <= count)
                         {
@@ -12304,7 +12441,7 @@ void Player::SendPreparedGossip(WorldObject* pSource)
     if (uint32 menuId = gossipMenu.GetMenuId())
         textId = GetGossipTextId(menuId, pSource);
 
-    PlayerTalkClass->SendGossipMenu(textId, pSource->GetObjectGuid());
+    PlayerTalkClass->SendGossipMenu(textId, pSource->GetObjectGuid(), this);
 }
 
 void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 menuId)
@@ -12653,7 +12790,7 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
         std::string title = data->text;
         int loc_idx = GetSession()->GetSessionDbLocaleIndex();
         sObjectMgr.GetQuestgiverGreetingLocales(guid.GetEntry(), type, loc_idx, &title);
-        PlayerTalkClass->SendQuestGiverQuestList(qe, title, guid);
+        PlayerTalkClass->SendQuestGiverQuestList(qe, title, guid, this);
     }
     else
     {
@@ -12667,15 +12804,15 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
             if (pQuest)
             {
                 if (status == DIALOG_STATUS_REWARD_REP && !GetQuestRewardStatus(quest_id))
-                    PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, CanRewardQuest(pQuest, false), true);
+                    PlayerTalkClass->SendQuestGiverRequestItems(this, pQuest, guid, CanRewardQuest(pQuest, false), true);
                 else if (status == DIALOG_STATUS_INCOMPLETE)
-                    PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, false, true);
+                    PlayerTalkClass->SendQuestGiverRequestItems(this, pQuest, guid, false, true);
                 // Send completable on repeatable and autoCompletable quest if player don't have quest
                 // TODO: verify if check for !pQuest->IsDailyOrWeekly() is really correct (possibly not)
                 else if (pQuest->IsAutoComplete() && pQuest->IsRepeatable() && !pQuest->IsDailyOrWeekly())
-                    PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, CanCompleteRepeatableQuest(pQuest), true);
+                    PlayerTalkClass->SendQuestGiverRequestItems(this, pQuest, guid, CanCompleteRepeatableQuest(pQuest), true);
                 else
-                    PlayerTalkClass->SendQuestGiverQuestDetails(pQuest, guid, true);
+                    PlayerTalkClass->SendQuestGiverQuestDetails(this, pQuest, guid, true);
             }
         }
         // multiply entries
@@ -12711,7 +12848,7 @@ void Player::SendPreparedQuest(ObjectGuid guid) const
                     title = !title0.empty() ? title0 : title1;
                 }
             }
-            PlayerTalkClass->SendQuestGiverQuestList(qe, title, guid);
+            PlayerTalkClass->SendQuestGiverQuestList(qe, title, guid, this);
         }
     }
 }
@@ -12782,18 +12919,28 @@ Quest const* Player::GetNextQuest(ObjectGuid guid, Quest const* pQuest) const
  */
 bool Player::CanSeeStartQuest(Quest const* pQuest) const
 {
-    if (SatisfyQuestClass(pQuest, false) && SatisfyQuestRace(pQuest, false) && SatisfyQuestSkill(pQuest, false) && SatisfyQuestCondition(pQuest, false) &&
+	uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
+	Unit* pUnit = ((Unit*)this);
+
+	if (SatisfyQuestClass(pQuest, false) && SatisfyQuestRace(pQuest, false) && SatisfyQuestSkill(pQuest, false) && SatisfyQuestCondition(pQuest, false) &&
             SatisfyQuestExclusiveGroup(pQuest, false) && SatisfyQuestReputation(pQuest, false) &&
             SatisfyQuestPreviousQuest(pQuest, false) && SatisfyQuestNextChain(pQuest, false) &&
             SatisfyQuestPrevChain(pQuest, false) && SatisfyQuestDay(pQuest, false) && SatisfyQuestWeek(pQuest) &&
             SatisfyQuestMonth(pQuest) &&
             pQuest->IsActive())
-    {
+		return
+		(
+			(pQuest->IsSpecificQuest() && getLevel() + highLevelDiff >= pQuest->GetMinLevel()) ||
+			(!pQuest->IsSpecificQuest() && !pUnit->IsInStartLocation() && getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL)) ||
+			(!pQuest->IsSpecificQuest() && !pUnit->IsInStartLocation() && getLevel() - pQuest->GetMinLevel() <= highLevelDiff) ||
+			(!pQuest->IsSpecificQuest() && pUnit->IsInStartLocation() && getLevel() - pQuest->GetMinLevel() <= highLevelDiff)
+		);
+    /*{
         int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
         if (highLevelDiff < 0)
             return true;
         return getLevel() + uint32(highLevelDiff) >= pQuest->GetMinLevel();
-    }
+    }*/
 
     return false;
 }
@@ -12882,9 +13029,9 @@ bool Player::CanCompleteQuest(uint32 quest_id) const
     if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAG_TIMED) && q_status.m_timer == 0)
         return false;
 
-    if (qInfo->GetRewOrReqMoney() < 0)
+    if (qInfo->GetRewOrReqMoney((Player*)this) < 0)
     {
-        if (GetMoney() < uint32(-qInfo->GetRewOrReqMoney()))
+        if (GetMoney() < uint32(-qInfo->GetRewOrReqMoney((Player*)this)))
             return false;
     }
 
@@ -12942,7 +13089,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, bool msg) const
     }
 
     // prevent receive reward with low money and GetRewOrReqMoney() < 0
-    if (pQuest->GetRewOrReqMoney() < 0 && GetMoney() < uint32(-pQuest->GetRewOrReqMoney()))
+    if (pQuest->GetRewOrReqMoney((Player*)this) < 0 && GetMoney() < uint32(-pQuest->GetRewOrReqMoney((Player*)this)))
         return false;
 
     return true;
@@ -12959,10 +13106,13 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
     {
         if (pQuest->RewChoiceItemId[reward])
         {
-            InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewChoiceItemId[reward], pQuest->RewChoiceItemCount[reward]);
+			uint32 pQuestItem = pQuest->RewChoiceItemId[reward];
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+
+            InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewChoiceItemCount[reward]);
             if (res != EQUIP_ERR_OK)
             {
-                SendEquipError(res, nullptr, nullptr, pQuest->RewChoiceItemId[reward]);
+                SendEquipError(res, nullptr, nullptr, pQuestItem);
                 return false;
             }
         }
@@ -12974,7 +13124,10 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
         {
             if (pQuest->RewItemId[i])
             {
-                InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewItemId[i], pQuest->RewItemCount[i]);
+				uint32 pQuestItem = pQuest->RewItemId[i];
+				pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], ((Player*)this));
+
+                InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewItemCount[i]);
                 if (res != EQUIP_ERR_OK)
                 {
                     SendEquipError(res, nullptr, nullptr);
@@ -13161,6 +13314,20 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         }
     }
 
+	if (pQuest->HasSpecialFlag(QUEST_SPECIAL_FLAG_TIMED))
+	{
+		QuestStatusData& q_status = mQuestStatus[quest_id];
+
+		if (q_status.m_timer != 0)
+		{
+			// store quest_id, elapsed time for analytics
+			uint32 l_timer = pQuest->GetLimitTime();
+			uint32 m_timer = q_status.m_timer / 1000;
+			uint32 e_timer = l_timer - m_timer;
+			LogsDatabase.PExecute("REPLACE INTO `logs_quests` VALUES (%u,%u,%u,%u,%u);", GetSession()->GetAccountId(), GetGUIDLow(), getLevel(), pQuest->GetQuestId(), e_timer);
+		}
+	}
+
     RemoveTimedQuest(quest_id);
 
     if (BattleGround* bg = GetBattleGround())
@@ -13207,13 +13374,13 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     // Used for client inform but rewarded only in case not max level
     uint32 xp = uint32(pQuest->XPValue(this) * sWorld.getConfig(CONFIG_FLOAT_RATE_XP_QUEST));
 
-    if (getLevel() < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (getLevel() < sWorld.GetCurrentMaxLevel())
         GiveXP(xp, nullptr);
     else
-        ModifyMoney(int32(pQuest->GetRewMoneyMaxLevel() * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
+        ModifyMoney(int32(pQuest->GetRewMoneyMaxLevel((Player*)this) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
 
     // Give player extra money if GetRewOrReqMoney > 0 and get ReqMoney if negative
-    ModifyMoney(pQuest->GetRewOrReqMoney());
+    ModifyMoney(pQuest->GetRewOrReqMoney((Player*)this));
 
     // honor reward
     uint32 honor = 0;
@@ -13423,7 +13590,7 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
-    if (getLevel() < qInfo->GetMinLevel())
+	if (qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel())
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
@@ -13984,7 +14151,8 @@ void Player::RewardPlayerAndGroupAtEventExplored(uint32 questId, WorldObject con
 
 void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
 {
-    for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
+	entry = Item::LoadScaledParent(entry);
+	for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
         if (questid == 0)
@@ -14030,7 +14198,8 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
 
 void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
 {
-    for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
+	entry = Item::LoadScaledParent(entry);
+	for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
         if (!questid)
@@ -14263,13 +14432,13 @@ void Player::MoneyChanged(uint32 count)
             continue;
 
         Quest const* qInfo = sObjectMgr.GetQuestTemplate(questid);
-        if (qInfo && qInfo->GetRewOrReqMoney() < 0)
+        if (qInfo && qInfo->GetRewOrReqMoney((Player*)this) < 0)
         {
             QuestStatusData& q_status = mQuestStatus[questid];
 
             if (q_status.m_status == QUEST_STATUS_INCOMPLETE)
             {
-                if (int32(count) >= -qInfo->GetRewOrReqMoney())
+                if (int32(count) >= -qInfo->GetRewOrReqMoney((Player*)this))
                 {
                     if (CanCompleteQuest(questid))
                         CompleteQuest(questid);
@@ -14277,7 +14446,7 @@ void Player::MoneyChanged(uint32 count)
             }
             else if (q_status.m_status == QUEST_STATUS_COMPLETE)
             {
-                if (int32(count) < -qInfo->GetRewOrReqMoney())
+                if (int32(count) < -qInfo->GetRewOrReqMoney((Player*)this))
                     IncompleteQuest(questid);
             }
         }
@@ -14359,6 +14528,7 @@ void Player::ReputationChanged(FactionEntry const* factionEntry)
 
 bool Player::HasQuestForItem(uint32 itemid) const
 {
+	itemid = Item::LoadScaledParent(itemid);
     for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
@@ -14435,23 +14605,26 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
     data << uint32(questid);
     data << uint32(0x03);
 
-    if (getLevel() < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (getLevel() < sWorld.GetCurrentMaxLevel())
     {
         data << uint32(XP);
-        data << uint32(pQuest->GetRewOrReqMoney());
+        data << uint32(pQuest->GetRewOrReqMoney((Player*)this));
     }
     else
     {
         data << uint32(0);
-        data << uint32(pQuest->GetRewOrReqMoney() + int32(pQuest->GetRewMoneyMaxLevel() * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
+        data << uint32(pQuest->GetRewOrReqMoney((Player*)this) + int32(pQuest->GetRewMoneyMaxLevel((Player*)this) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY)));
     }
     data << uint32(honor);                                  // new 2.3.0, HonorPoints
     data << uint32(pQuest->GetRewItemsCount());             // max is 5
 
     for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
     {
-        if (pQuest->RewItemId[i] > 0)
-            data << pQuest->RewItemId[i] << pQuest->RewItemCount[i];
+		uint32 itemId = pQuest->RewItemId[i];
+		itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*) this);
+
+        if (itemId > 0)
+            data << itemId << pQuest->RewItemCount[i];
         else
             data << uint32(0) << uint32(0);
     }
@@ -17832,7 +18005,7 @@ void Player::LeaveAllArenaTeams(ObjectGuid guid)
 void Player::SetRestBonus(float rest_bonus_new)
 {
     // Prevent resting on max level
-    if (getLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+    if (getLevel() >= sWorld.GetCurrentMaxLevel())
         rest_bonus_new = 0;
 
     if (rest_bonus_new < 0)
@@ -18494,10 +18667,29 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
         return false;
     }
 
-    uint32 price = pProto->BuyPrice * count;
+	uint32 price = pProto->BuyPrice;
+	// check mounts
+	if (pProto->RequiredSkill == 762)
+	{
+		switch (pProto->RequiredSkillRank) {
+		case 75: // apprentice mounts
+			price = uint32(AccountTypes(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_MOUNT_COST)));
+			break;
+		case 150: // journeyman mounts
+			price = uint32(AccountTypes(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_MOUNT_COST)));
+			break;
+		case 225: // expert mounts
+			price = uint32(AccountTypes(sWorld.getConfig(CONFIG_UINT32_EXPERT_MOUNT_COST)));
+			break;
+		case 300: // artisan mounts
+			price = uint32(AccountTypes(sWorld.getConfig(CONFIG_UINT32_ARTISAN_MOUNT_COST)));
+			break;
+		}
+	}
 
-    // reputation discount
-    price = uint32(floor(price * GetReputationPriceDiscount(pCreature)));
+	// reputation discount
+	price *= count;
+	price = uint32(floor(price * GetReputationPriceDiscount(pCreature)));
 
     if (GetMoney() < price)
     {
@@ -19732,8 +19924,43 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
                 }
                 else                                        // check availble case at train
                 {
-                    if (skillRCEntry->reqLevel && getLevel() < skillRCEntry->reqLevel)
-                        return false;
+					// for riding spells, override the required level with the level from the configuration file
+					switch (spell_id) {
+					case 33388: // Riding
+					case 33389: // Apprentice Riding
+						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL)))
+						{
+							return false;
+						}
+						break;
+					case 33391: // Riding
+					case 33392: // Journeyman Riding
+						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL)))
+						{
+							return false;
+						}
+						break;
+					case 34090: // Riding
+					case 34092: // Expert Riding
+						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL)))
+						{
+							return false;
+						}
+						break;
+					case 34091: // Riding
+					case 34093: // Artisan Riding
+						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL)))
+						{
+							return false;
+						}
+						break;
+					default: // any other spell
+						if (skillRCEntry->reqLevel && getLevel() < skillRCEntry->reqLevel)
+						{
+							return false;
+						}
+						break;
+					}
                 }
             }
         }
@@ -20030,6 +20257,9 @@ bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
     uint32 v_level = pVictim->getLevel();
     uint32 k_grey  = MaNGOS::XP::GetGrayLevel(getLevel());
+
+	/* If Creature is scalable, we use it's level */
+	v_level = sObjectMgr.getLevelScaled(((Unit*)this), pVictim);
 
     // Victim level less gray level
     if (v_level <= k_grey)

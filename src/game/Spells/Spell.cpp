@@ -1039,10 +1039,10 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         else
             procEx |= PROC_EX_NORMAL_HIT;
 
-        int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo, crit);
+        int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo, crit, isScaled);
 
         if (real_caster)
-            unitTarget->getHostileRefManager().threatAssist(real_caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo);
+            unitTarget->getHostileRefManager().threatAssist(real_caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo, false, isScaled, unitTarget);
 
         // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
@@ -1052,7 +1052,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     else if (m_damage)
     {
         // Fill base damage struct (unitTarget - is real spell target)
-        SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+        SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask, this);
 
         if (speed > 0.0f)
         {
@@ -1061,11 +1061,12 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         }
         // Add bonuses and fill damageInfo struct
         else
-            caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType);
+            caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType, this);
 
         unitTarget->CalculateAbsorbResistBlock(caster, &damageInfo, m_spellInfo);
 
-        caster->DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb, SPELL_DIRECT_DAMAGE, m_spellInfo);
+        caster->DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb, SPELL_DIRECT_DAMAGE, m_spellInfo, isScaled);
+		damageInfo.isScaled = isScaled;
 
         // Send log damage message to client
         caster->SendSpellNonMeleeDamageLog(&damageInfo);
@@ -1266,6 +1267,7 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, bool isReflected)
         // normally shouldn't happen
         if (!m_spellAuraHolder->IsEmptyHolder())
         {
+			m_spellAuraHolder->isScaled = isScaled;
             int32 duration = m_spellAuraHolder->GetAuraMaxDuration();
             int32 originalDuration = duration;
 
@@ -1426,7 +1428,7 @@ void Spell::HandleDelayedSpellLaunch(TargetInfo* target)
         }
 
         if (m_damage > 0)
-            caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType);
+            caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType, this);
     }
 
     target->damage = damageInfo.damage;
@@ -4627,6 +4629,8 @@ SpellCastResult Spell::CheckCast(bool strict)
 
     if (Unit* target = m_targets.getUnitTarget())
     {
+		uint32 target_level = sObjectMgr.getLevelScaled(m_caster, target);
+
         // TARGET_UNIT_SCRIPT_NEAR_CASTER fills unit target per client requirement but should not be checked against common things
         // TODO: Find a nicer and more efficient way to check for this
         if (!IsSpellWithScriptUnitTarget(m_spellInfo))
@@ -4678,7 +4682,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     // this case can be triggered if rank not found (too low-level target for first rank)
                     if (!m_CastItem && !m_IsTriggeredSpell)
                         // spell expected to be auto-downranking in cast handle, so must be same
-                        if (m_spellInfo != sSpellMgr.SelectAuraRankForLevel(m_spellInfo, target->getLevel()))
+                        if (m_spellInfo != sSpellMgr.SelectAuraRankForLevel(m_spellInfo, target_level))
                             return SPELL_FAILED_LOWLEVEL;
 
                     // Do not allow these spells to target creatures not tapped by us (Banish, Polymorph, many quest spells)
@@ -4806,7 +4810,7 @@ SpellCastResult Spell::CheckCast(bool strict)
             if (m_spellInfo->Id == 34477 && target->HasAura(35079))
                 return SPELL_FAILED_AURA_BOUNCED;
 
-            if (m_spellInfo->MaxTargetLevel && target->getLevel() > m_spellInfo->MaxTargetLevel)
+            if (m_spellInfo->MaxTargetLevel && target_level > m_spellInfo->MaxTargetLevel)
                 return SPELL_FAILED_HIGHLEVEL;
         }
     }
@@ -4884,6 +4888,7 @@ SpellCastResult Spell::CheckCast(bool strict)
             return castResult;
     }
 
+	uint32 target_level = sObjectMgr.getLevelScaled(m_caster, m_targets.getUnitTarget());
     for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
         // for effects of spells that have only one target
@@ -5019,7 +5024,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     return SPELL_FAILED_DONT_REPORT;
                 }
 
-                if (target->getLevel() > plrCaster->getLevel() && !gmmode)
+				if ((!sObjectMgr.IsScalable(target, plrCaster) && (target->getLevel() > plrCaster->getLevel()) && !gmmode))
                 {
                     plrCaster->SendPetTameFailure(PETTAME_TOOHIGHLEVEL);
                     return SPELL_FAILED_DONT_REPORT;
@@ -5351,7 +5356,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
                     if (instance->levelMin > target->getLevel())
                         return SPELL_FAILED_LOWLEVEL;
-                    if (instance->levelMax && instance->levelMax < target->getLevel())
+                    if (instance->levelMax && instance->levelMax < target_level)
                         return SPELL_FAILED_HIGHLEVEL;
 
                     Difficulty difficulty = m_caster->GetMap()->GetDifficulty();
@@ -5415,6 +5420,8 @@ SpellCastResult Spell::CheckCast(bool strict)
         // Possible Unit-target for the spell
         Unit* expectedTarget = GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex(i));
 
+		uint32 target_level = sObjectMgr.getLevelScaled(m_caster, expectedTarget);
+
         switch (m_spellInfo->EffectApplyAuraName[i])
         {
             case SPELL_AURA_MOD_POSSESS:
@@ -5428,17 +5435,17 @@ SpellCastResult Spell::CheckCast(bool strict)
                 if (m_caster->HasCharmer())
                     return SPELL_FAILED_CHARMED;
 
-                if (expectedTarget) // target may not be known at CheckCast time - TODO: add support for these checks on CheckTarget
-                {
-                    if (expectedTarget == m_caster)
-                        return SPELL_FAILED_BAD_TARGETS;
+				if (expectedTarget) // target may not be known at CheckCast time - TODO: add support for these checks on CheckTarget
+				{
+					if (expectedTarget == m_caster)
+						return SPELL_FAILED_BAD_TARGETS;
 
-                    if (expectedTarget->HasCharmer())
-                        return SPELL_FAILED_CHARMED;
+					if (expectedTarget->HasCharmer())
+						return SPELL_FAILED_CHARMED;
 
-                    if (int32(expectedTarget->getLevel()) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
-                        return SPELL_FAILED_HIGHLEVEL;
-                }
+					if (int32(target_level) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
+						return SPELL_FAILED_HIGHLEVEL;
+				}
                 break;
             }
             case SPELL_AURA_MOD_CHARM:
@@ -5452,17 +5459,17 @@ SpellCastResult Spell::CheckCast(bool strict)
                 if (m_caster->HasCharmer())
                     return SPELL_FAILED_CHARMED;
 
-                if (expectedTarget) // target may not be known at CheckCast time - TODO: add support for these checks on CheckTarget
-                {
-                    if (expectedTarget == m_caster)
-                        return SPELL_FAILED_BAD_TARGETS;
+				if (expectedTarget) // target may not be known at CheckCast time - TODO: add support for these checks on CheckTarget
+				{
+					if (expectedTarget == m_caster)
+						return SPELL_FAILED_BAD_TARGETS;
 
-                    if (expectedTarget->HasCharmer())
-                        return SPELL_FAILED_CHARMED;
+					if (expectedTarget->HasCharmer())
+						return SPELL_FAILED_CHARMED;
 
-                    if (int32(expectedTarget->getLevel()) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
-                        return SPELL_FAILED_HIGHLEVEL;
-                }
+					if (int32(target_level) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
+						return SPELL_FAILED_HIGHLEVEL;
+				}
                 break;
             }
             case SPELL_AURA_MOD_POSSESS_PET:
@@ -7315,7 +7322,7 @@ void Spell::ProcSpellAuraTriggers()
                         continue;
                     // Calculate chance at that moment (can be depend for example from combo points)
                     int32 auraBasePoints = targetTrigger->GetBasePoints();
-                    int32 chance = m_caster->CalculateSpellDamage(unit, auraSpellInfo, auraSpellIdx, &auraBasePoints);
+                    int32 chance = m_caster->CalculateSpellDamage(unit, auraSpellInfo, auraSpellIdx, &auraBasePoints, this);
                     if (roll_chance_i(chance))
                         m_caster->CastSpell(unit, procid, TRIGGERED_OLD_TRIGGERED, nullptr, targetTrigger);
                 }
@@ -7558,7 +7565,7 @@ void Spell::OnSuccessfulSpellStart()
         case 25234:
         case 25236:
         {
-            int32 basePoints0 = m_caster->CalculateSpellDamage(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0)) + int32(m_caster->GetPower(POWER_RAGE) * m_spellInfo->DmgMultiplier[0]);
+            int32 basePoints0 = m_caster->CalculateSpellDamage(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0), nullptr, this) + int32(m_caster->GetPower(POWER_RAGE) * m_spellInfo->DmgMultiplier[0]);
             SpellCastResult result = m_caster->CastCustomSpell(m_targets.getUnitTarget(), 20647, &basePoints0, nullptr, nullptr, TRIGGERED_NONE, nullptr);
             m_powerCost = 0;
             break;

@@ -168,6 +168,11 @@ char const* WorldSession::GetPlayerName() const
     return GetPlayer() ? GetPlayer()->GetName() : "<none>";
 }
 
+uint8 WorldSession::Expansion() const
+{
+	return sWorld.GetWowPatch() >= WOW_PATCH_203 ? m_expansion : 0;
+}
+
 /// Send a packet to the client
 void WorldSession::SendPacket(WorldPacket const& packet, bool forcedSend /*= false*/) const
 {
@@ -690,6 +695,28 @@ void WorldSession::SendMotd()
     SendPacket(data);
 
     DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
+}
+
+void WorldSession::SendPatch()
+{
+	std::vector<std::string> lines;
+	std::string token;
+
+	std::string patch = ObjectMgr::GetPatchName();
+	std::istringstream ss(patch);
+
+	while (std::getline(ss, token, '@'))
+		lines.push_back(token);
+
+	WorldPacket data(SMSG_MOTD, 4);
+	data << (uint32)lines.size();
+
+	for (const std::string& line : lines)
+		data << line;
+
+	SendPacket(data);
+
+	DEBUG_LOG("WORLD: Sent patch (SMSG_MOTD)");
 }
 
 void WorldSession::SendAreaTriggerMessage(const char* Text, ...) const

@@ -22,7 +22,9 @@
 // Client expected level limitation, like as used in DBC item max levels for "until max player level"
 // use as default max player level, must be fit max level for used client
 // also see MAX_LEVEL and STRONG_MAX_LEVEL define
-#define DEFAULT_MAX_LEVEL 70
+#define DEFAULT_TBC_MAX_LEVEL 70
+#define DEFAULT_VAN_MAX_LEVEL 60
+#define DEFAULT_TBC_MIN_LEVEL 40
 
 // client supported max level for player/pets/etc. Avoid overflow or client stability affected.
 // also see GT_MAX_LEVEL define
@@ -97,6 +99,12 @@ enum SpawnMask
     SPAWNMASK_DUNGEON_NORMAL    = (1 << DUNGEON_DIFFICULTY_NORMAL),
     SPAWNMASK_DUNGEON_HEROIC    = (1 << DUNGEON_DIFFICULTY_HEROIC),
     SPAWNMASK_DUNGEON_ALL       = (SPAWNMASK_DUNGEON_NORMAL | SPAWNMASK_DUNGEON_HEROIC)
+};
+
+enum ObjectSpawnFlags
+{
+	SPAWN_FLAG_ACTIVE = 0x01,
+	SPAWN_FLAG_DISABLED = 0x02
 };
 
 enum FactionTemplateFlags

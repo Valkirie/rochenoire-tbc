@@ -33,6 +33,7 @@
 #include "Guilds/Guild.h"
 #include "Guilds/GuildMgr.h"
 #include "Chat/Chat.h"
+#include "World/World.h"
 
 enum StableResultCode
 {
@@ -102,9 +103,38 @@ static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell
 
     SpellChainNode const* chain_node = sSpellMgr.GetSpellChainNode(tSpell->learnedSpell);
 
+	uint32 spellLevel = 0;
+
+	// mount spells
+
+	uint32 spellCost = 0;
+	switch (tSpell->spell)
+	{
+		case 33388: // Riding
+		case 33389: // Apprentice Riding
+			reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL));
+			spellCost = sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_COST);
+			break;
+		case 33391: // Riding
+		case 33392: // Journeyman Riding
+			reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL));
+			spellCost = sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_COST);
+			break;
+		case 34090: // Riding
+		case 34092: // Expert Riding
+			reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL));
+			spellCost = sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_COST);
+			break;
+		case 34091: // Riding
+		case 34093: // Artisan Riding
+			reqLevel = uint32(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL));
+			spellCost = sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_COST);
+			break;
+	}
+
     data << uint32(tSpell->spell);                      // learned spell (or cast-spell in profession case)
     data << uint8(state == TRAINER_SPELL_GREEN_DISABLED ? TRAINER_SPELL_GREEN : state);
-    data << uint32(floor(tSpell->spellCost * fDiscountMod));
+    data << uint32(floor(spellCost * fDiscountMod));
 
     data << uint32(0); // spells don't cost talent points
     data << uint32(primary_prof_first_rank ? 1 : 0);    // must be equal prev. field to have learn button in enabled state
@@ -269,6 +299,26 @@ void WorldSession::HandleTrainerBuySpellOpcode(WorldPacket& recv_data)
 
     // apply reputation discount
     uint32 nSpellCost = uint32(floor(trainer_spell->spellCost * _player->GetReputationPriceDiscount(unit)));
+
+	switch (trainer_spell->spell)
+	{
+	case 33388: // Riding
+	case 33389: // Apprentice Riding
+		nSpellCost = sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_COST);
+		break;
+	case 33391: // Riding
+	case 33392: // Journeyman Riding
+		nSpellCost = sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_COST);
+		break;
+	case 34090: // Riding
+	case 34092: // Expert Riding
+		nSpellCost = sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_COST);
+		break;
+	case 34091: // Riding
+	case 34093: // Artisan Riding
+		nSpellCost = sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_COST);
+		break;
+	}
 
     // check money requirement
     if (_player->GetMoney() < nSpellCost)
