@@ -1,4 +1,4 @@
-ALTER TABLE character_db_version CHANGE COLUMN required_s2389_00_characters_cooldown required_s2395_01_characters_WorldState bit;
+ALTER TABLE character_db_version CHANGE COLUMN s2394_00_characters_ilevel required_s2395_01_characters_WorldState bit;
 
 DROP TABLE IF EXISTS world_state;
 CREATE TABLE world_state(

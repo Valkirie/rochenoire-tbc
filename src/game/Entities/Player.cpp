@@ -10490,10 +10490,35 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return nullptr;
 }
 
+uint32 Player::UpdateItemLevel(Item* pItem)
+{
+	// Calculate average ilevel
+	uint8 avgItemLevel = 0;
+	uint8 nbItem = 0;
+	for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+			if (ItemPrototype const* ditemProto = pItem->GetProto())
+			{
+				nbItem++;
+				avgItemLevel += ditemProto->ItemLevel;
+			}
+
+	if (nbItem != 0)
+	{
+		avgItemLevel /= nbItem;
+
+		if (getItemLevel() < avgItemLevel)
+			SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
+	}
+
+	return avgItemLevel;
+}
+
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
     AddItemDurations(pItem);
+	UpdateItemLevel(pItem);
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
@@ -10533,19 +10558,6 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
                     AddGCD(*spellProto, 0, true);
                 }
             }
-
-			// Calculate average ilevel
-			uint32 avgItemLevel = 0;
-			int32 nbItem = 0;
-			for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
-				if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
-					if (ItemPrototype const* ditemProto = pItem->GetProto())
-					{
-						nbItem++;
-						avgItemLevel += ditemProto->ItemLevel;
-					}
-			if (nbItem != 0)
-				avgItemLevel /= nbItem;
         }
 
         if (IsInWorld() && update)
@@ -14908,8 +14920,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     //"resettalents_time, trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, online, death_expire_time, taxi_path, dungeon_difficulty,"
     // 39           40                41                42                    43          44          45              46           47              48
     //"arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk,"
-    // 49      50      51      52      53      54      55             56              57      58           59
-    //"health, power1, power2, power3, power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars  FROM characters WHERE guid = '%u'", GUID_LOPART(m_guid));
+    // 49      50      51      52      53      54      55             56              57      58           59          60
+    //"health, power1, power2, power3, power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, ilevel  FROM characters WHERE guid = '%u'", GUID_LOPART(m_guid));
     QueryResult* result = holder->GetResult(PLAYER_LOGIN_QUERY_LOADFROM);
 
     if (!result)
@@ -14961,6 +14973,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     SetByteValue(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_PLAYER_CONTROLLED_DEBUFF_LIMIT);
 
     SetUInt32Value(UNIT_FIELD_LEVEL, fields[6].GetUInt8());
+	SetUInt32Value(UNIT_FIELD_ILEVEL, fields[60].GetUInt8());
     SetUInt32Value(PLAYER_XP, fields[7].GetUInt32());
 
     _LoadIntoDataField(fields[55].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE);
@@ -16575,7 +16588,7 @@ void Player::SaveToDB()
                               "trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, "
                               "death_expire_time, taxi_path, arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, "
                               "todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk, health, power1, power2, power3, "
-                              "power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars) "
+                              "power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, ilevel) "
                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, "
@@ -16583,7 +16596,7 @@ void Player::SaveToDB()
                               "?, ?, ?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                              "?, ?, ?, ?, ?, ?, ?) ");
+                              "?, ?, ?, ?, ?, ?, ?, ?) ");
 
     uberInsert.addUInt32(GetGUIDLow());
     uberInsert.addUInt32(GetSession()->GetAccountId());
@@ -16711,6 +16724,7 @@ void Player::SaveToDB()
     uberInsert.addString(ss);
 
     uberInsert.addUInt32(uint32(GetByteValue(PLAYER_FIELD_BYTES, 2)));
+	uberInsert.addUInt32(getItemLevel());
 
     uberInsert.Execute();
 
