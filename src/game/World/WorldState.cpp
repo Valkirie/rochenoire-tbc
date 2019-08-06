@@ -41,7 +41,7 @@ enum
     GROMGOLOG_EVENT_4   = 15325,
 };
 
-WorldState::WorldState() : m_isMagtheridonHeadSpawnedHorde(false), m_isMagtheridonHeadSpawnedAlliance(false), m_adalSongOfBattleTimer(0), m_emeraldDragonsState(0xF), m_emeraldDragonsTimer(0), m_emeraldDragonsChosenPositions(4, 0)
+WorldState::WorldState() : m_emeraldDragonsState(0xF), m_emeraldDragonsTimer(0), m_emeraldDragonsChosenPositions(4, 0), m_isMagtheridonHeadSpawnedHorde(false), m_isMagtheridonHeadSpawnedAlliance(false), m_adalSongOfBattleTimer(0)
 {
     m_transportStates[GROMGOL_UNDERCITY]    = GROMGOLUC_EVENT_1;
     m_transportStates[GROMGOL_ORGRIMMAR]    = OGUC_EVENT_1;
@@ -119,7 +119,7 @@ void WorldState::Save(SaveIds saveId)
             std::string dragonsData = std::to_string(m_emeraldDragonsState) + " " + std::to_string(time);
             for (uint32 i = 0; i < 4; ++i)
                 dragonsData += " " + std::to_string(m_emeraldDragonsChosenPositions[i]);
-            CharacterDatabase.PExecute("DELETE FROM world_state WHERE Id=`%u`", SAVE_ID_EMERALD_DRAGONS);
+            CharacterDatabase.PExecute("DELETE FROM world_state WHERE Id='%u'", SAVE_ID_EMERALD_DRAGONS);
             CharacterDatabase.PExecute("INSERT INTO world_state(Id,Data) VALUES('%u','%s')", SAVE_ID_EMERALD_DRAGONS, dragonsData.data());
             break;
         }

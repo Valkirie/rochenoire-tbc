@@ -1170,9 +1170,8 @@ void Object::ForceValuesUpdateAtIndex(uint32 index)
 
 WorldObject::WorldObject() :
     m_transportInfo(nullptr), m_isOnEventNotified(false),
-    m_currMap(nullptr), m_mapId(0),
-    m_InstanceId(0), m_isActiveObject(false),
-    m_visibilityDistanceOverride(0.f)
+    m_visibilityDistanceOverride(0.f), m_currMap(nullptr), m_mapId(0),
+    m_InstanceId(0), m_isActiveObject(false)
 {
 }
 
