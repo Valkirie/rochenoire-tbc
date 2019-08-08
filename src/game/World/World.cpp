@@ -382,6 +382,13 @@ void World::LoadConfigSettings(bool reload)
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_EPIC,                       "Rate.Drop.Item.Epic",                       1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_LEGENDARY,                  "Rate.Drop.Item.Legendary",                  1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_ARTIFACT,                   "Rate.Drop.Item.Artifact",                   1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_POOR,                      "Coeff.Drop.Item.Poor",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_NORMAL,                    "Coeff.Drop.Item.Normal",                    1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_UNCOMMON,                  "Coeff.Drop.Item.Uncommon",                  1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_RARE,                      "Coeff.Drop.Item.Rare",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_EPIC,                      "Coeff.Drop.Item.Epic",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_LEGENDARY,                 "Coeff.Drop.Item.Legendary",                 1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_ARTIFACT,                  "Coeff.Drop.Item.Artifact",                  1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED,                 "Rate.Drop.Item.Referenced",                 1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_QUEST,                      "Rate.Drop.Item.Quest",                      1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_MONEY,                           "Rate.Drop.Money",                           1.0f);

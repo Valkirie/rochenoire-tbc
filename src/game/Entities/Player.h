@@ -1248,6 +1248,8 @@ class Player : public Unit
 
 		uint32 UpdateItemLevel(Item* pItem);
 		uint32 getItemLevel() const { return GetUInt32Value(UNIT_FIELD_ILEVEL); }
+		uint32 getExpectedItemLevel() const;
+		float  getItemLevelCoeff() const;
 
         uint32 m_stableSlots;
 

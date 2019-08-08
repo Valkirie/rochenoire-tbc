@@ -10514,6 +10514,16 @@ uint32 Player::UpdateItemLevel(Item* pItem)
 	return avgItemLevel;
 }
 
+uint32 Player::getExpectedItemLevel() const
+{
+	return getLevel() + 5; // MUST BE CHANGED, TRUE IN VANILLA, WRONG IN TBC
+}
+
+float Player::getItemLevelCoeff() const
+{
+	return std::max((float)getExpectedItemLevel() / (float)getLevel(), 1.0f);
+}
+
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
