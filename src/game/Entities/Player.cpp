@@ -134,6 +134,17 @@ enum CharacterFlags
 
 static const uint32 corpseReclaimDelay[MAX_DEATH_COUNT] = {30, 60, 120};
 
+static eConfigFloatValues const qualityToCoeff[MAX_ITEM_QUALITY] =
+{
+	CONFIG_FLOAT_COEFF_DROP_ITEM_POOR,                       // ITEM_QUALITY_POOR
+	CONFIG_FLOAT_COEFF_DROP_ITEM_NORMAL,                     // ITEM_QUALITY_NORMAL
+	CONFIG_FLOAT_COEFF_DROP_ITEM_UNCOMMON,                   // ITEM_QUALITY_UNCOMMON
+	CONFIG_FLOAT_COEFF_DROP_ITEM_RARE,                       // ITEM_QUALITY_RARE
+	CONFIG_FLOAT_COEFF_DROP_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
+	CONFIG_FLOAT_COEFF_DROP_ITEM_LEGENDARY,                  // ITEM_QUALITY_LEGENDARY
+	CONFIG_FLOAT_COEFF_DROP_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
+};
+
 MirrorTimer::Status MirrorTimer::FetchStatus()
 {
     Status status = m_status;
@@ -10383,6 +10394,8 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
     if (!pItem)
         return nullptr;
 
+	setItemLevel();
+
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
 
@@ -10490,18 +10503,18 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return nullptr;
 }
 
-uint32 Player::UpdateItemLevel(Item* pItem)
+void Player::setItemLevel()
 {
-	// Calculate average ilevel
 	uint8 avgItemLevel = 0;
 	uint8 nbItem = 0;
-	for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+	for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
-			if (ItemPrototype const* ditemProto = pItem->GetProto())
-			{
-				nbItem++;
-				avgItemLevel += ditemProto->ItemLevel;
-			}
+			if (ItemPrototype const* pProto = pItem->GetProto())
+				if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+				{
+					nbItem++;
+					avgItemLevel += pProto->ItemLevel;
+				}
 
 	if (nbItem != 0)
 	{
@@ -10510,8 +10523,12 @@ uint32 Player::UpdateItemLevel(Item* pItem)
 		if (getItemLevel() < avgItemLevel)
 			SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
 	}
+}
 
-	return avgItemLevel;
+
+uint32 Player::countRelevant(uint32 Quality) const
+{
+	return 1;
 }
 
 uint32 Player::getExpectedItemLevel() const
@@ -10519,16 +10536,37 @@ uint32 Player::getExpectedItemLevel() const
 	return getLevel() + 5; // MUST BE CHANGED, TRUE IN VANILLA, WRONG IN TBC
 }
 
-float Player::getItemLevelCoeff() const
+float Player::getItemLevelCoeff(uint32 Quality) const
 {
-	return std::max((float)getExpectedItemLevel() / (float)getLevel(), 1.0f);
+	float ilevel_ratio = std::max((float)getExpectedItemLevel() / (float)getItemLevel(), 1.0f);
+	ilevel_ratio *= sWorld.getConfig(qualityToCoeff[Quality]);
+
+	switch (Quality) // Could be used to alter drop rate based on the number of equipped gear with the same quality
+	{
+		case ITEM_QUALITY_POOR:                 // GREY
+			break;
+		case ITEM_QUALITY_NORMAL:               // WHITE
+			break;
+		case ITEM_QUALITY_UNCOMMON:             // GREEN
+			break;
+		case ITEM_QUALITY_RARE:                 // BLUE
+			break;
+		case ITEM_QUALITY_EPIC:                 // PURPLE
+			break;
+		case ITEM_QUALITY_LEGENDARY:            // ORANGE
+			break;
+		case ITEM_QUALITY_ARTIFACT:             // LIGHT YELLOW
+			break;
+	}
+
+	return ilevel_ratio;
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
     AddItemDurations(pItem);
-	UpdateItemLevel(pItem);
+	setItemLevel();
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;

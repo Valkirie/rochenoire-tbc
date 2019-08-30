@@ -45,17 +45,6 @@ static eConfigFloatValues const qualityToRate[MAX_ITEM_QUALITY] =
     CONFIG_FLOAT_RATE_DROP_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
 };
 
-static eConfigFloatValues const qualityToCoeff[MAX_ITEM_QUALITY] =
-{
-	CONFIG_FLOAT_COEFF_DROP_ITEM_POOR,                       // ITEM_QUALITY_POOR
-	CONFIG_FLOAT_COEFF_DROP_ITEM_NORMAL,                     // ITEM_QUALITY_NORMAL
-	CONFIG_FLOAT_COEFF_DROP_ITEM_UNCOMMON,                   // ITEM_QUALITY_UNCOMMON
-	CONFIG_FLOAT_COEFF_DROP_ITEM_RARE,                       // ITEM_QUALITY_RARE
-	CONFIG_FLOAT_COEFF_DROP_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
-	CONFIG_FLOAT_COEFF_DROP_ITEM_LEGENDARY,                  // ITEM_QUALITY_LEGENDARY
-	CONFIG_FLOAT_COEFF_DROP_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
-};
-
 LootStore LootTemplates_Creature("creature_loot_template",     "creature entry",                 true);
 LootStore LootTemplates_Disenchant("disenchant_loot_template",   "item disenchant id",             true);
 LootStore LootTemplates_Fishing("fishing_loot_template",      "area id",                        true);
@@ -268,17 +257,18 @@ bool LootStoreItem::Roll(bool rate, float f_GroupSize, Player const* lootOwner) 
 
 	float n_chance = chance;
 
-	float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff() : 1.0f;
 	float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(f_GroupSize, false) : 1.0f;
 	float qualityModifier = 1.0f;
 
 	if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid))
 	{
-		qualityModifier = pProto && rate ? sWorld.getConfig(qualityToRate[pProto->Quality]) : 1.0f;
-		ilevelModifier *= pProto && rate ? sWorld.getConfig(qualityToCoeff[pProto->Quality]) : 1.0f;
+		qualityModifier = rate ? sWorld.getConfig(qualityToRate[pProto->Quality]) : 1.0f;
 
 		if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+		{
+			float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(pProto->Quality) : 1.0f;
 			n_chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
+		}
 	}
 
 	qualityModifier *= groupModifier;
@@ -2465,7 +2455,6 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
             }
 
 			float lsi_chance = lsi->chance;
-			float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff() : 1.0f;
 			
             if (lsi_chance >= 100.0f)
                 return lsi;
@@ -2473,7 +2462,7 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
 			if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(lsi->itemid))
 				if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
 				{
-					ilevelModifier *= sWorld.getConfig(qualityToCoeff[pProto->Quality]);
+					float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(pProto->Quality) : 1.0f;
 					lsi_chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
 				}
 

@@ -1246,10 +1246,11 @@ class Player : public Unit
         void LoadCorpse();
         void LoadPet();
 
-		uint32 UpdateItemLevel(Item* pItem);
+		void setItemLevel();
 		uint32 getItemLevel() const { return GetUInt32Value(UNIT_FIELD_ILEVEL); }
 		uint32 getExpectedItemLevel() const;
-		float  getItemLevelCoeff() const;
+		uint32 countRelevant(uint32 Quality) const;
+		float  getItemLevelCoeff(uint32 Quality) const;
 
         uint32 m_stableSlots;
 
