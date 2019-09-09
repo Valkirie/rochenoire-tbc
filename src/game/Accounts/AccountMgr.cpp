@@ -24,7 +24,6 @@
 #include "Policies/Singleton.h"
 #include "Util.h"
 #include "Auth/Sha1.h"
-#include "SRP6/SRP6.h"
 
 extern DatabaseType LoginDatabase;
 
@@ -38,291 +37,228 @@ AccountMgr::~AccountMgr()
 
 AccountOpResult AccountMgr::CreateAccount(std::string username, std::string password) const
 {
-    if (utf8length(username) > MAX_ACCOUNT_STR)
-        return AOR_NAME_TOO_LONG;                           // username's too long
+	if (utf8length(username) > MAX_ACCOUNT_STR)
+		return AOR_NAME_TOO_LONG;                           // username's too long
 
-    normalizeString(username);
-    normalizeString(password);
+	normalizeString(username);
+	normalizeString(password);
 
-    if (GetId(username))
-    {
-        return AOR_NAME_ALREADY_EXIST;                       // username does already exist
-    }
+	if (GetId(username))
+	{
+		return AOR_NAME_ALREADY_EXIST;                       // username does already exist
+	}
 
-    SRP6 srp;
+	if (!LoginDatabase.PExecute("INSERT INTO account(username,sha_pass_hash,joindate) VALUES('%s','%s',NOW())", username.c_str(), CalculateShaPassHash(username, password).c_str()))
+		return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+	LoginDatabase.Execute("INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
 
-    srp.CalculateVerifier(CalculateShaPassHash(username, password));
-    const char* s_hex = srp.GetSalt().AsHexStr();
-    const char* v_hex = srp.GetVerifier().AsHexStr();
-
-    bool update_sv = LoginDatabase.PExecute(
-        "INSERT INTO account(username,v,s,joindate) VALUES('%s','%s','%s',NOW())",
-            username.c_str(), v_hex, s_hex);
-
-    OPENSSL_free((void*)s_hex);
-    OPENSSL_free((void*)v_hex);
-
-    if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
-    LoginDatabase.Execute(
-        "INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
-
-    return AOR_OK;                                          // everything's fine
+	return AOR_OK;                                          // everything's fine
 }
 
 AccountOpResult AccountMgr::CreateAccount(std::string username, std::string password, uint32 expansion) const
 {
-    if (utf8length(username) > MAX_ACCOUNT_STR)
-        return AOR_NAME_TOO_LONG;                           // username's too long
+	if (utf8length(username) > MAX_ACCOUNT_STR)
+		return AOR_NAME_TOO_LONG;                           // username's too long
 
-    normalizeString(username);
-    normalizeString(password);
+	normalizeString(username);
+	normalizeString(password);
 
-    if (GetId(username))
-    {
-        return AOR_NAME_ALREADY_EXIST;                       // username does already exist
-    }
+	if (GetId(username))
+	{
+		return AOR_NAME_ALREADY_EXIST;                       // username does already exist
+	}
 
-    SRP6 srp;
+	if (!LoginDatabase.PExecute("INSERT INTO account(username,sha_pass_hash,joindate,expansion) VALUES('%s','%s',NOW(),'%u')", username.c_str(), CalculateShaPassHash(username, password).c_str(), expansion))
+		return AOR_DB_INTERNAL_ERROR;                       // unexpected error
+	LoginDatabase.Execute("INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
 
-    srp.CalculateVerifier(CalculateShaPassHash(username, password));
-    const char* s_hex = srp.GetSalt().AsHexStr();
-    const char* v_hex = srp.GetVerifier().AsHexStr();
-
-    bool update_sv = LoginDatabase.PExecute(
-        "INSERT INTO account(username,v,s,joindate,expansion) VALUES('%s','%s','%s',NOW(), %u)",
-            username.c_str(), v_hex, s_hex, expansion);
-
-    OPENSSL_free((void*)s_hex);
-    OPENSSL_free((void*)v_hex);
-
-    if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
-    LoginDatabase.Execute("INSERT INTO realmcharacters (realmid, acctid, numchars) SELECT realmlist.id, account.id, 0 FROM realmlist,account LEFT JOIN realmcharacters ON acctid=account.id WHERE acctid IS NULL");
-
-    return AOR_OK;                                          // everything's fine
+	return AOR_OK;                                          // everything's fine
 }
 
 AccountOpResult AccountMgr::DeleteAccount(uint32 accid) const
 {
-    QueryResult* result = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
-    if (!result)
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
-    delete result;
+	QueryResult* result = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
+	if (!result)
+		return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+	delete result;
 
-    // existing characters list
-    result = CharacterDatabase.PQuery("SELECT guid FROM characters WHERE account='%u'", accid);
-    if (result)
-    {
-        do
-        {
-            Field* fields = result->Fetch();
-            uint32 guidlo = fields[0].GetUInt32();
-            ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, guidlo);
+	// existing characters list
+	result = CharacterDatabase.PQuery("SELECT guid FROM characters WHERE account='%u'", accid);
+	if (result)
+	{
+		do
+		{
+			Field* fields = result->Fetch();
+			uint32 guidlo = fields[0].GetUInt32();
+			ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, guidlo);
 
-            // kick if player currently
-            ObjectAccessor::KickPlayer(guid);
-            Player::DeleteFromDB(guid, accid, false);       // no need to update realm characters
-        }
-        while (result->NextRow());
+			// kick if player currently
+			ObjectAccessor::KickPlayer(guid);
+			Player::DeleteFromDB(guid, accid, false);       // no need to update realm characters
+		} while (result->NextRow());
 
-        delete result;
-    }
+		delete result;
+	}
 
-    // table realm specific but common for all characters of account for realm
-    CharacterDatabase.PExecute("DELETE FROM character_tutorial WHERE account = '%u'", accid);
+	// table realm specific but common for all characters of account for realm
+	CharacterDatabase.PExecute("DELETE FROM character_tutorial WHERE account = '%u'", accid);
 
-    LoginDatabase.BeginTransaction();
+	LoginDatabase.BeginTransaction();
 
-    bool res =
-        LoginDatabase.PExecute("DELETE FROM account WHERE id='%u'", accid) &&
-        LoginDatabase.PExecute("DELETE FROM realmcharacters WHERE acctid='%u'", accid);
+	bool res =
+		LoginDatabase.PExecute("DELETE FROM account WHERE id='%u'", accid) &&
+		LoginDatabase.PExecute("DELETE FROM realmcharacters WHERE acctid='%u'", accid);
 
-    LoginDatabase.CommitTransaction();
+	LoginDatabase.CommitTransaction();
 
-    if (!res)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error;
+	if (!res)
+		return AOR_DB_INTERNAL_ERROR;                       // unexpected error;
 
-    return AOR_OK;
+	return AOR_OK;
 }
 
 AccountOpResult AccountMgr::ChangeUsername(uint32 accid, std::string new_uname, std::string new_passwd) const
 {
-    QueryResult* result = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
-    if (!result)
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
-    delete result;
+	QueryResult* result = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u'", accid);
+	if (!result)
+		return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+	delete result;
 
-    if (utf8length(new_uname) > MAX_ACCOUNT_STR)
-        return AOR_NAME_TOO_LONG;
+	if (utf8length(new_uname) > MAX_ACCOUNT_STR)
+		return AOR_NAME_TOO_LONG;
 
-    if (utf8length(new_passwd) > MAX_ACCOUNT_STR)
-        return AOR_PASS_TOO_LONG;
+	if (utf8length(new_passwd) > MAX_ACCOUNT_STR)
+		return AOR_PASS_TOO_LONG;
 
-    normalizeString(new_uname);
-    normalizeString(new_passwd);
+	normalizeString(new_uname);
+	normalizeString(new_passwd);
 
-    SRP6 srp;
+	std::string safe_new_uname = new_uname;
+	LoginDatabase.escape_string(safe_new_uname);
 
-    srp.CalculateVerifier(CalculateShaPassHash(new_uname, new_passwd));
+	if (!LoginDatabase.PExecute("UPDATE account SET v='0',s='0',username='%s',sha_pass_hash='%s' WHERE id='%u'", safe_new_uname.c_str(),
+		CalculateShaPassHash(new_uname, new_passwd).c_str(), accid))
+		return AOR_DB_INTERNAL_ERROR;                       // unexpected error
 
-    std::string safe_new_uname = new_uname;
-    LoginDatabase.escape_string(safe_new_uname);
-
-    const char* s_hex = srp.GetSalt().AsHexStr();
-    const char* v_hex = srp.GetVerifier().AsHexStr();
-
-    bool update_sv = LoginDatabase.PExecute(
-        "UPDATE account SET v='%s',s='%s',username='%s' WHERE id='%u'",
-            v_hex, s_hex, safe_new_uname.c_str(), accid);
-
-    OPENSSL_free((void*)s_hex);
-    OPENSSL_free((void*)v_hex);
-
-    if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
-
-    return AOR_OK;
+	return AOR_OK;
 }
 
 AccountOpResult AccountMgr::ChangePassword(uint32 accid, std::string new_passwd) const
 {
-    std::string username;
+	std::string username;
 
-    if (!GetName(accid, username))
-        return AOR_NAME_NOT_EXIST;                          // account doesn't exist
+	if (!GetName(accid, username))
+		return AOR_NAME_NOT_EXIST;                          // account doesn't exist
 
-    if (utf8length(new_passwd) > MAX_ACCOUNT_STR)
-        return AOR_PASS_TOO_LONG;
+	if (utf8length(new_passwd) > MAX_ACCOUNT_STR)
+		return AOR_PASS_TOO_LONG;
 
-    normalizeString(username);
-    normalizeString(new_passwd);
+	normalizeString(username);
+	normalizeString(new_passwd);
 
-    SRP6 srp;
+	// also reset s and v to force update at next realmd login
+	if (!LoginDatabase.PExecute("UPDATE account SET v='0', s='0', sha_pass_hash='%s' WHERE id='%u'",
+		CalculateShaPassHash(username, new_passwd).c_str(), accid))
+		return AOR_DB_INTERNAL_ERROR;                       // unexpected error
 
-    srp.CalculateVerifier(CalculateShaPassHash(username, new_passwd));
-
-    const char* s_hex = srp.GetSalt().AsHexStr();
-    const char* v_hex = srp.GetVerifier().AsHexStr();
-
-    bool update_sv = LoginDatabase.PExecute(
-        "UPDATE account SET v='%s', s='%s' WHERE id='%u'",
-            v_hex, s_hex, accid);
-
-    OPENSSL_free((void*)s_hex);
-    OPENSSL_free((void*)v_hex);
-
-    // also reset s and v to force update at next realmd login
-    if (!update_sv)
-        return AOR_DB_INTERNAL_ERROR;                       // unexpected error
-
-    return AOR_OK;
+	return AOR_OK;
 }
 
 uint32 AccountMgr::GetId(std::string username) const
 {
-    LoginDatabase.escape_string(username);
-    QueryResult* result = LoginDatabase.PQuery("SELECT id FROM account WHERE username = '%s'", username.c_str());
-    if (!result)
-        return 0;
-    uint32 id = (*result)[0].GetUInt32();
-    delete result;
-    return id;
+	LoginDatabase.escape_string(username);
+	QueryResult* result = LoginDatabase.PQuery("SELECT id FROM account WHERE username = '%s'", username.c_str());
+	if (!result)
+		return 0;
+	uint32 id = (*result)[0].GetUInt32();
+	delete result;
+	return id;
 }
 
 AccountTypes AccountMgr::GetSecurity(uint32 acc_id)
 {
-    QueryResult* result = LoginDatabase.PQuery("SELECT gmlevel FROM account WHERE id = '%u'", acc_id);
-    if (result)
-    {
-        AccountTypes sec = AccountTypes((*result)[0].GetInt32());
-        delete result;
-        return sec;
-    }
+	QueryResult* result = LoginDatabase.PQuery("SELECT gmlevel FROM account WHERE id = '%u'", acc_id);
+	if (result)
+	{
+		AccountTypes sec = AccountTypes((*result)[0].GetInt32());
+		delete result;
+		return sec;
+	}
 
-    return SEC_PLAYER;
+	return SEC_PLAYER;
 }
 
 bool AccountMgr::GetName(uint32 acc_id, std::string& name) const
 {
-    QueryResult* result = LoginDatabase.PQuery("SELECT username FROM account WHERE id = '%u'", acc_id);
-    if (result)
-    {
-        name = (*result)[0].GetCppString();
-        delete result;
-        return true;
-    }
+	QueryResult* result = LoginDatabase.PQuery("SELECT username FROM account WHERE id = '%u'", acc_id);
+	if (result)
+	{
+		name = (*result)[0].GetCppString();
+		delete result;
+		return true;
+	}
 
-    return false;
+	return false;
 }
 
 uint32 AccountMgr::GetCharactersCount(uint32 acc_id) const
 {
-    // check character count
-    QueryResult* result = CharacterDatabase.PQuery("SELECT COUNT(guid) FROM characters WHERE account = '%u'", acc_id);
-    if (result)
-    {
-        Field* fields = result->Fetch();
-        uint32 charcount = fields[0].GetUInt32();
-        delete result;
-        return charcount;
-    }
-    return 0;
+	// check character count
+	QueryResult* result = CharacterDatabase.PQuery("SELECT COUNT(guid) FROM characters WHERE account = '%u'", acc_id);
+	if (result)
+	{
+		Field* fields = result->Fetch();
+		uint32 charcount = fields[0].GetUInt32();
+		delete result;
+		return charcount;
+	}
+	return 0;
 }
 
 bool AccountMgr::CheckPassword(uint32 accid, std::string passwd) const
 {
-    std::string username;
-    if (!GetName(accid, username))
-        return false;
+	std::string username;
+	if (!GetName(accid, username))
+		return false;
 
-    normalizeString(passwd);
-    normalizeString(username);
+	normalizeString(passwd);
+	normalizeString(username);
 
-    QueryResult* result = LoginDatabase.PQuery("SELECT s, v FROM account WHERE id='%u'", accid);
-    if (result)
-    {
-        Field* fields = result->Fetch();
-        SRP6 srp;
+	QueryResult* result = LoginDatabase.PQuery("SELECT 1 FROM account WHERE id='%u' AND sha_pass_hash='%s'", accid, CalculateShaPassHash(username, passwd).c_str());
+	if (result)
+	{
+		delete result;
+		return true;
+	}
 
-        srp.CalculateVerifier(CalculateShaPassHash(username, passwd), fields[0].GetCppString().c_str());
-        if (srp.ProofVerifier(fields[1].GetCppString()))
-        {
-            delete result;
-            return true;
-        }
-
-        delete result;
-    }
-
-    return false;
+	return false;
 }
 
 bool AccountMgr::normalizeString(std::string& utf8str)
 {
-    std::wstring wstr_buf;
-    if (!Utf8toWStr(utf8str, wstr_buf))
-        return false;
+	std::wstring wstr_buf;
+	if (!Utf8toWStr(utf8str, wstr_buf))
+		return false;
 
-    if (wstr_buf.size() > MAX_ACCOUNT_STR)
-        return false;
+	if (wstr_buf.size() > MAX_ACCOUNT_STR)
+		return false;
 
-    std::transform(wstr_buf.begin(), wstr_buf.end(), wstr_buf.begin(), wcharToUpperOnlyLatin);
+	std::transform(wstr_buf.begin(), wstr_buf.end(), wstr_buf.begin(), wcharToUpperOnlyLatin);
 
-    return WStrToUtf8(wstr_buf, utf8str);
+	return WStrToUtf8(wstr_buf, utf8str);
 }
 
 std::string AccountMgr::CalculateShaPassHash(std::string& name, std::string& password) const
 {
-    Sha1Hash sha;
-    sha.Initialize();
-    sha.UpdateData(name);
-    sha.UpdateData(":");
-    sha.UpdateData(password);
-    sha.Finalize();
+	Sha1Hash sha;
+	sha.Initialize();
+	sha.UpdateData(name);
+	sha.UpdateData(":");
+	sha.UpdateData(password);
+	sha.Finalize();
 
-    std::string encoded;
-    hexEncodeByteArray(sha.GetDigest(), Sha1Hash::GetLength(), encoded);
+	std::string encoded;
+	hexEncodeByteArray(sha.GetDigest(), Sha1Hash::GetLength(), encoded);
 
-    return encoded;
+	return encoded;
 }
