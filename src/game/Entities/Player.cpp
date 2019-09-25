@@ -10394,7 +10394,7 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
     if (!pItem)
         return nullptr;
 
-	setItemLevel();
+	setItemLevel(true);
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
@@ -10503,18 +10503,42 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return nullptr;
 }
 
-void Player::setItemLevel()
+void Player::setItemLevel(bool inventory)
 {
 	uint8 avgItemLevel = 0;
 	uint8 nbItem = 0;
-	for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+
+	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
-				if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
 				{
 					nbItem++;
 					avgItemLevel += pProto->ItemLevel;
 				}
+
+	if (inventory)
+	{
+		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				if (ItemPrototype const* pProto = pItem->GetProto())
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
+					{
+						nbItem++;
+						avgItemLevel += pProto->ItemLevel;
+					}
+
+		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+			if (Bag * pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+					if (Item const* pItem = GetItemByPos(i, j))
+						if (ItemPrototype const* pProto = pItem->GetProto())
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
+							{
+								nbItem++;
+								avgItemLevel += pProto->ItemLevel;
+							}
+	}
 
 	if (nbItem != 0)
 	{
@@ -10566,7 +10590,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
     AddItemDurations(pItem);
-	setItemLevel();
+	setItemLevel(true);
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
