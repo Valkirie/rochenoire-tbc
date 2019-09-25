@@ -1380,6 +1380,39 @@ bool ChatHandler::HandleUnLearnCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleRescaleCommand(char* args)
+{
+	Unit* target = getSelectedUnit();
+	Map* target_map = target->GetMap();
+	uint32 value = 0;
+
+	if (!target)
+	{
+		SendSysMessage(LANG_PLAYER_NOT_FOUND);
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	if (!target_map->IsRaid())
+	{
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	if (!*args)
+	{
+		SetSentErrorMessage(true);
+		return false;
+	}
+	else
+	{
+		ExtractUInt32(&args, value);
+		target_map->UpdateFlexibleRaid(true, value);
+		PSendSysMessage(LANG_FLEXIBLE_RAID_FORCED, target_map->GetMapName(), value);
+		return true;
+	}
+}
+
 bool ChatHandler::HandleCooldownListCommand(char* /*args*/)
 {
     Unit* target = getSelectedUnit();

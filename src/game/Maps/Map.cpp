@@ -38,6 +38,7 @@
 #include "Weather/Weather.h"
 #include "Grids/ObjectGridLoader.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
+#include "Tools/Language.h"
 
 Map::~Map()
 {
@@ -721,6 +722,316 @@ void Map::Update(const uint32& t_diff)
     m_weatherSystem->UpdateWeathers(t_diff);
 }
 
+// VARS
+float f_ratio_heal_dps = 0.2f;  // store the ratio heal vs dps (between 0.2 and 0.3)
+uint32 lastKnownGroupSize = 0;	// store the last known group size
+uint32 lastKnownPoolSize = 0;	// store the number of creatures in the raid
+uint32 lastKnownForceSize = 0;	// store the forced raid size
+uint32 u_MaxPlayer = 40;		// store the maximum number of players
+uint32 u_MinPlayer = 20;		// store the minimum number of players
+uint32 u_TmpPlayer = 40;		// store the temporary number of players
+uint32 u_nbr_players = 40;		// store the current group size
+uint32 u_GroupSize = 0;			// store the last known group size
+
+float f_max_red_boss = 0.8f;	// store the maximum percentage of damage reduction (boss / trash)
+float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction (adds)
+float f_min_red_health = 0.7f;	// store the maximum percentage of damage reduction before reducing adds number
+float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
+
+float Map::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness)
+{
+	return 2 + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
+}
+
+float Map::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+{
+	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
+	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+	return u_nbr_players - NHT - NT - NDPS;
+}
+
+float Map::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+{
+	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+	return (u_nbr_players - NHT - NT) / (1 + f_ratio_heal_dps);
+}
+
+float Map::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+{
+	return GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness) / GetFactorNDPS(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness);
+}
+
+float Map::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT)
+{
+	return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
+}
+
+float Map::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health)
+{
+	float FinalNAdds = Nadds;
+
+	while (((GetFactorHP(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) * Nadds / FinalNAdds < f_min_red_health) && FinalNAdds > 1)
+		FinalNAdds = FinalNAdds - 1;
+
+	return FinalNAdds;
+}
+
+uint32 Map::GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT)
+{
+	return GetFactorAdds(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
+}
+
+void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer)
+{
+	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
+	float NHR = GetFactorNHR(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
+
+	Ratio_DPS *= GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT);
+	RatioHp *= GetFactorHP(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
+	FinalNAdds *= GetFactorAdds(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, NbrAdds, f_min_red_health);
+	Ratio_Damage *= 1 - (1 - f_max_red_boss) * (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) / (1 - GetFactorDPS(u_MaxPlayer, u_MinPlayer, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT));
+	Ratio_AttSpeed *= Ratio_DPS / Ratio_Damage;
+	Ratio_SpellTimer *= 1 - (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) * CoeffSpellRatio;
+	Ratio_AddsHp *= GetFactorHP(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness) * NbrAdds / FinalNAdds;
+	Ratio_Adds_DPS *= GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT) * NbrAdds / FinalNAdds;
+	Ratio_Adds_Damage *= (1 - (1 - f_max_red_adds) * (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) / (1 - GetFactorDPS(u_MaxPlayer, u_MinPlayer, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT))) * NbrAdds / FinalNAdds;
+	Ratio_Adds_AttSpeed *= Ratio_Adds_DPS / Ratio_Adds_Damage;
+	Ratio_Add_SpellTimer *= GetScaleSpellTimer(Ratio_DPS, NbrAdds, FinalNAdds, CoeffSpellRatio);
+}
+
+float Map::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio)
+{
+	return 1 - (1 - Ratio_DPS * Nadds / FinalNAdds) * CoeffSpellRatio;
+}
+
+uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive)
+{
+	uint32 output = 0;
+	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+	{
+		Creature* creature = ((Creature*)* it);
+
+		if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
+			if (cinfo->Entry == entry && (!IsAlive || (IsAlive && creature->isAlive())))
+			{
+				//if (IsInCombat || (!IsInCombat && !creature->isInCombat()))
+				output++;
+			}
+	}
+	return output;
+}
+
+void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
+{
+	if (ForcedSize != 0)
+		lastKnownForceSize = ForcedSize;
+	else
+		lastKnownForceSize = 0;
+
+	u_GroupSize = GetPlayersCount();
+
+	if (u_GroupSize > 0)
+	{
+		u_TmpPlayer = lastKnownForceSize > u_GroupSize ? lastKnownForceSize : u_GroupSize;
+
+		if (lastKnownGroupSize != u_GroupSize || lastKnownPoolSize != m_creaturesStore.size() || ForceRefresh)
+		{
+			for (int i = 0; i < 40000; i++) // has to be improved ! supposed to be the biggest known creature entry in the db
+				COMPTEUR[i] = 0;
+
+			if (lastKnownGroupSize != 0)
+			{
+				for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+				{
+					Player* plr = m_mapRefIter->getSource();
+					if (u_GroupSize > lastKnownGroupSize)
+						plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_INC, GetMapName());
+					else if (u_GroupSize < lastKnownGroupSize)
+						plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_DEC, GetMapName());
+				}
+			}
+
+			lastKnownGroupSize = u_GroupSize;
+			lastKnownPoolSize = m_creaturesStore.size();
+
+			u_MaxPlayer = GetMaxPlayers();
+			u_MinPlayer = GetMinPlayers();
+
+			u_nbr_players = u_TmpPlayer < u_MinPlayer ? u_MinPlayer : u_TmpPlayer;
+
+			for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+			{
+				Creature* creature = ((Creature*)* it);
+
+				if (!creature)									// skip if no creature found
+					continue;
+
+				if (creature->u_nbr_players == u_nbr_players)	// skip if creature is already scaled for current raid size
+					continue;
+
+				CreatureInfo const* cinfo = creature->GetCreatureInfo();
+
+				if (!cinfo)										// skip if we can't read creature's info
+					continue;
+
+				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
+				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
+				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
+				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
+				float MaxHealth				= (float)creature->GetMaxHealth();
+
+				// Flexible Raid Values
+				float f_nbr_fadds = 1.0f;					// store the number of adds (to keep)
+				float f_ratio_health = 1.0f;				// store the HP ratio
+				float f_ratio_health_adds = 1.0f;
+				float f_ratio_dps = 1.0f;					// store the dps ratio
+				float f_ratio_dps_adds = 1.0f;
+				float f_ratio_damage = 1.0f;				// store the damage ratio
+				float f_ratio_damage_adds = 1.0f;
+				float f_ratio_attacktime = 1.0f;			// store the attack speed ratio
+				float f_ratio_attacktime_adds = 1.0f;
+				float f_ratio_spelltimer = 1.0f;			// store the spell speed ratio
+				float f_ratio_spelltimer_adds = 1.0f;
+
+				// Creature based values
+				bool	f_is_flex = false;		// determine if the number of creature has to be alterated
+				uint32	u_nbr_tank = 2;			// number of tanks needed for that encounter
+				uint32	u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
+				float	f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+				float	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
+				float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
+				float	f_ratio_c0 = 1.0f;		// used to compute c1 and c2
+
+				std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
+				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+				{
+					u_nbr_tank = f_values->nb_tank;
+					u_nbr_pack = f_values->nb_pack;
+					f_ratio_hrht = f_values->ratio_hrht;
+					f_ratio_c1 = f_values->ratio_c1;
+					f_ratio_c2 = f_values->ratio_c2;
+					f_is_flex = f_values->is_flex;
+					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
+				}
+
+				uint32 packEntry = cinfo->Entry;	// store the creature entry
+				uint32 u_nbr_adds = 0;				// store the number of creatures (all)
+
+				float factorProbaSpwan;
+				float factorTimeSpawn;
+
+				uint32 u_nbr_adds_alive = 0;		// store the number of creatures (alive)
+				uint16 u_adds_compteur = 0;			// used to split creatures pack
+				uint16 u_adds_multiplicity = 1;		// used to split creatures pack
+
+				switch (cinfo->Entry)
+				{
+				case 12416: // Razorgore adds
+				case 12420:
+				case 12422:
+					factorProbaSpwan = 2.3 + 0.6 / (std::exp((0.825 * u_MaxPlayer - u_nbr_players) / 2) + 1) + 1.1 / (std::exp((0.65 * u_MaxPlayer - u_nbr_players) / 2) + 1);
+					factorTimeSpawn = -0.015 * u_nbr_players + 1.6;
+					f_ratio_health = 4 * factorTimeSpawn / factorProbaSpwan;
+					f_ratio_attacktime = 4 * factorTimeSpawn / factorProbaSpwan;
+					f_ratio_damage = 4 * f_ratio_health / factorProbaSpwan;
+					break;
+				case 12463:
+				case 12464:
+				case 12465:
+					packEntry = 12463;
+					u_adds_multiplicity = 2;
+					u_nbr_adds += GetCreaturesCount(12463);
+					u_nbr_adds += GetCreaturesCount(12464);
+					u_nbr_adds += GetCreaturesCount(12465);
+					u_nbr_adds_alive += GetCreaturesCount(12463, false, true);
+					u_nbr_adds_alive += GetCreaturesCount(12464, false, true);
+					u_nbr_adds_alive += GetCreaturesCount(12465, false, true);
+					f_min_red_health = 1.0f;
+					break;
+				case 14022:
+				case 14023:
+				case 14024:
+				case 14025:
+					packEntry = 14022;
+					u_adds_multiplicity = 3;
+					u_nbr_adds += GetCreaturesCount(14022);
+					u_nbr_adds += GetCreaturesCount(14023);
+					u_nbr_adds += GetCreaturesCount(14024);
+					u_nbr_adds += GetCreaturesCount(14025);
+					u_nbr_adds_alive += GetCreaturesCount(14022, false, true);
+					u_nbr_adds_alive += GetCreaturesCount(14023, false, true);
+					u_nbr_adds_alive += GetCreaturesCount(14024, false, true);
+					u_nbr_adds_alive += GetCreaturesCount(14025, false, true);
+					f_min_red_health = 1.0f;
+					break;
+				default:
+					u_nbr_adds = GetCreaturesCount(cinfo->Entry);
+					u_nbr_adds_alive = GetCreaturesCount(cinfo->Entry, false, true);
+					f_min_red_health = 0.7f;
+					break;
+				}
+
+				// Argument 4: CoefSpellRatio
+				GetScaleRatio(u_nbr_tank, u_nbr_adds, f_ratio_hrht, 1, f_ratio_health, f_nbr_fadds, f_ratio_dps, f_ratio_damage, f_ratio_attacktime, f_ratio_spelltimer, f_ratio_health_adds, f_ratio_dps_adds, f_ratio_attacktime_adds, f_ratio_attacktime_adds, f_ratio_spelltimer_adds);
+
+				// Default treatment
+				creature->f_ratio_dps = f_ratio_dps;
+				creature->f_nbr_adds = u_nbr_adds;
+				creature->f_nbr_fadds = f_nbr_fadds;
+				creature->f_ratio_damage = f_ratio_damage;
+				creature->f_ratio_health = f_ratio_health;
+				creature->f_ratio_attacktime = f_ratio_attacktime;
+				creature->u_nbr_players = u_nbr_players;
+
+				if (f_is_flex)
+				{
+					creature->f_ratio_dps = f_ratio_dps_adds;
+
+					int l_alive = floor(f_nbr_fadds / u_nbr_adds * u_nbr_pack);
+
+					if (COMPTEUR[packEntry] >= u_nbr_pack)
+					{
+						COMPTEUR[packEntry] = 0;
+						u_adds_compteur = 0;
+					}
+
+					if (u_nbr_adds_alive > f_nbr_fadds)
+					{
+						if (COMPTEUR[packEntry] >= l_alive && u_adds_compteur % u_adds_multiplicity == 0)
+							if (!creature->isInCombat() || ForceRefresh)
+								creature->ForcedDespawn(0, false, true);
+					}
+
+					if (u_nbr_adds_alive < f_nbr_fadds)
+					{
+						if (COMPTEUR[packEntry] < l_alive)
+							if ((creature->isDead() && creature->isScaled()) || ForceRefresh)
+								creature->Respawn();
+					}
+
+					COMPTEUR[packEntry]++;
+				}
+
+				// Temporary calculations
+				MaxHealth = f_ratio_health * MaxHealth / f_ratio_c0;
+				MinMeleeDmg = f_ratio_damage * MinMeleeDmg / f_ratio_c0;
+				MaxMeleeDmg = f_ratio_damage * MaxMeleeDmg / f_ratio_c0;
+				MeleeBaseAttackTime = MeleeBaseAttackTime / f_ratio_attacktime;
+				RangedBaseAttackTime = RangedBaseAttackTime / f_ratio_attacktime;
+
+				// Set values
+				creature->SetMaxHealth((uint32)MaxHealth);
+				creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, MinMeleeDmg);
+				creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, MaxMeleeDmg);
+				creature->SetAttackTime(BASE_ATTACK, (uint32)MeleeBaseAttackTime);
+				creature->SetAttackTime(OFF_ATTACK, (uint32)MeleeBaseAttackTime);
+				creature->SetAttackTime(RANGED_ATTACK, (uint32)RangedBaseAttackTime);
+			}
+		}
+	}
+}
+
 void Map::Remove(Player* player, bool remove)
 {
     if (i_data)
@@ -983,6 +1294,11 @@ uint32 Map::GetMaxPlayers() const
     return iTemplate->maxPlayers;
 }
 
+uint32 Map::GetMinPlayers() const
+{
+	return GetMaxPlayers() / sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO);
+}
+
 uint32 Map::GetMaxResetDelay() const
 {
     return DungeonResetScheduler::GetMaxResetTimeFor(ObjectMgr::GetInstanceTemplate(GetId()));
@@ -1154,6 +1470,14 @@ void Map::RemoveAllObjectsInRemoveList()
         }
     }
     // DEBUG_LOG("Object remover 2 check.");
+}
+
+uint32 Map::GetPlayersCount() const
+{
+	uint32 count = 0;
+	for (const auto& itr : m_mapRefManager)
+		++count;
+	return count;
 }
 
 uint32 Map::GetPlayersCountExceptGMs() const
@@ -1563,6 +1887,10 @@ bool DungeonMap::Add(Player* player)
 void DungeonMap::Update(const uint32& t_diff)
 {
     Map::Update(t_diff);
+
+	// Refresh and update Raid datas for Flexible implementation
+	if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
+		UpdateFlexibleRaid();
 }
 
 void DungeonMap::Remove(Player* player, bool remove)
@@ -1678,6 +2006,16 @@ void DungeonMap::SetResetSchedule(bool on)
 
         sMapPersistentStateMgr.GetScheduler().ScheduleReset(on, resetTime, DungeonResetEvent(RESET_EVENT_NORMAL_DUNGEON, GetId(), GetInstanceId()));
     }
+}
+
+uint32 DungeonMap::GetSetPlayers() const
+{
+	return u_nbr_players > GetMinPlayers() ? u_nbr_players : GetMinPlayers();
+}
+
+uint32 DungeonMap::GetPoolSize() const
+{
+	return m_creaturesStore.size();
 }
 
 DungeonPersistentState* DungeonMap::GetPersistanceState() const

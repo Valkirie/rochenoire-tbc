@@ -44,6 +44,29 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
         enabled = false;
         return false;
     }
+	   
+	//Flexible Raid
+	for (uint32 j = 0; j < MAX_ACTIONS; ++j)
+	{
+		if (event.action[j].type == ACTION_T_CAST)
+		{
+			if (SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(event.action[j].cast.spellId))
+			{
+				float Ratio_Add_SpellTimer	= 1.0f;
+				float CoeffSpellRatio		= 1.0f;
+				uint32 mapId				= creature->GetMap()->GetId();
+
+				std::string s = std::to_string(spellInfo->Id) + ":" + std::to_string(mapId);
+				if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
+					CoeffSpellRatio = s_values->ratio_spell;
+
+				Ratio_Add_SpellTimer = creature->GetMap()->GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+
+				repeatMin = event.timer.repeatMin / Ratio_Add_SpellTimer;
+				repeatMax = event.timer.repeatMax / Ratio_Add_SpellTimer;
+			}
+		}
+	}
 
     return true;
 }

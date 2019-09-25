@@ -167,8 +167,13 @@ void Creature::CleanupsBeforeDelete()
 void Creature::AddToWorld()
 {
     ///- Register the creature for guid lookup
-    if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
-        GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
+	if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
+	{
+		if (GetMap() && GetMap()->IsRaid())
+			GetMap()->InsertCreature(this);
+
+		GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
+	}
 
     switch (GetSubtype())
     {
@@ -207,8 +212,13 @@ void Creature::RemoveFromWorld()
     ///- Remove the creature from the accessor
     if (IsInWorld())
     {
-        if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
-            GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);
+		if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
+		{
+			if (GetMap() && GetMap()->IsRaid() && IsInWorld())
+				GetMap()->EraseCreature(this);
+
+			GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);
+		}
 
         switch (GetSubtype())
         {
@@ -1802,9 +1812,11 @@ void Creature::Respawn()
             GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), 0);
         m_respawnTime = time(nullptr);                         // respawn at next tick
     }
+
+	RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
 }
 
-void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
+void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale)
 {
     if (timeMSToDespawn)
     {
@@ -1819,6 +1831,9 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
 
     if (isAlive())
         SetDeathState(JUST_DIED);
+
+	if (ForcedScale)
+		SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
 
     RemoveCorpse(true);                                     // force corpse removal in the same grid
 

@@ -617,6 +617,7 @@ enum NPCFlags
     UNIT_NPC_FLAG_STABLEMASTER          = 0x00400000,       // 100%
     UNIT_NPC_FLAG_GUILD_BANKER          = 0x00800000,       // cause client to send 997 opcode
     UNIT_NPC_FLAG_SPELLCLICK            = 0x01000000,       // cause client to send 1015 opcode (spell click), dynamic, set at loading and don't must be set in DB
+	UNIT_NPC_FLAG_SCALED                = 0x02000000,       // custom flag for scaled killed creaturs
 };
 
 // used in most movement packets (send and received)
@@ -1592,6 +1593,15 @@ class Unit : public WorldObject
 		int getLevelVariation() const { return s_level_var; };
 		void SetLevelVariation(int lvl);
 
+		// Flexible Raid
+		uint32 u_nbr_players = 0;			// store the last known group size
+		float f_ratio_dps = 1;				// store the dps ratio
+		float f_nbr_adds = 1;				// store the number of adds
+		float f_nbr_fadds = 1;				// store the number of adds to keep
+		float f_ratio_damage = 1;			// store the damage ratio
+		float f_ratio_health = 1;			// store the HP ratio
+		float f_ratio_attacktime = 1;		// store the attack speed ratio
+
         uint16 GetSkillMaxForLevel(Unit const* target = nullptr) const { return (target ? GetLevelForTarget(target) : getLevel()) * 5; }
 
         void Suicide();
@@ -1748,6 +1758,7 @@ class Unit : public WorldObject
         bool isTabardDesigner()const { return HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_TABARDDESIGNER); }
         bool isAuctioner()    const { return HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_AUCTIONEER); }
         bool isArmorer()      const { return HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_REPAIR); }
+		bool isScaled()       const { return HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED); }
         bool isServiceProvider() const
         {
             return HasFlag(UNIT_NPC_FLAGS,

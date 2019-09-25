@@ -589,12 +589,16 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL, "Rochenoire.Scaling.MinLevel.Player", 10);
 	setConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL, "Rochenoire.Scaling.MinLevel.Creature", 1);
 	setConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL, "Rochenoire.Scaling.MinLevel.Expansion", 40);
-	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", 1);
-	setConfig(CONFIG_BOOL_SCALE_RAIDS, "Rochenoire.Scaling.Raids.Enabled", 1);
-	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", 1);
+	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", true);
+	setConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE, "Rochenoire.Scaling.Raids.Upscale", true);
+	setConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE, "Rochenoire.Scaling.Raids.Downscale", false);
+	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", false);
 
 	setConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP, "Rochenoire.Rate.Drop.Item.Group", 1.0f);
 	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);
+
+	setConfig(CONFIG_BOOL_FLEXIBLE_RAID, "Rochenoire.Flexible.Raids", true);
+	setConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 4);
 
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 

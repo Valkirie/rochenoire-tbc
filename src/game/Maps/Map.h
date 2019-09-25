@@ -126,7 +126,24 @@ class Map : public GridRefManager<NGridType>
         static void DeleteFromWorld(Player* pl);        // player object will deleted at call
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
-        virtual void Update(const uint32&);
+        
+		// Flexible Raid
+		uint16 COMPTEUR[40000];
+
+		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
+		void GetScaleRatio(float NT, float Nadds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer);
+		float GetFactorNHT(float Nmax, float Np, float f_softness);
+		float GetFactorNHR(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
+		float GetFactorHP(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
+		float GetFactorNDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
+		float GetFactorDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT);
+		float GetFactorAdds(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float MinAddShrinkDPS);
+		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio);
+		uint32 GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT);
+		uint32 GetCreaturesCount(uint32 entry, bool IsInCombat = false, bool IsAlive = false);
+		uint32 GetPlayersCount() const;
+		
+		virtual void Update(const uint32&);
 
         void MessageBroadcast(Player const*, WorldPacket const&, bool to_self);
         void MessageBroadcast(WorldObject const*, WorldPacket const&);
@@ -194,6 +211,7 @@ class Map : public GridRefManager<NGridType>
         Difficulty GetDifficulty() const { return Difficulty(GetSpawnMode()); }
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
         uint32 GetMaxPlayers() const;
+		uint32 GetMinPlayers() const;
         uint32 GetMaxResetDelay() const;
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
@@ -276,6 +294,14 @@ class Map : public GridRefManager<NGridType>
         {
             i_objectsToClientUpdate.erase(obj);
         }
+
+		void InsertCreature(Creature* cr) {
+			if (cr) m_creaturesStore.insert(cr);
+		}
+
+		void EraseCreature(Creature* cr) {
+			if (cr) m_creaturesStore.erase(cr);
+		}
 
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
@@ -393,6 +419,7 @@ class Map : public GridRefManager<NGridType>
         ActiveNonPlayers m_activeNonPlayers;
         ActiveNonPlayers::iterator m_activeNonPlayersIter;
         MapStoredObjectTypesContainer m_objectsStore;
+		std::set<Creature*> m_creaturesStore;
         std::map<uint32, uint32> m_tempCreatures;
         std::map<uint32, uint32> m_tempPets;
 
@@ -480,6 +507,10 @@ class DungeonMap : public Map
         void SetResetSchedule(bool on);
 
         Team GetInstanceTeam() { return m_team; };
+
+		// flexible map
+		uint32 GetSetPlayers() const;
+		uint32 GetPoolSize() const;
 
         // can't be nullptr for loaded map
         DungeonPersistentState* GetPersistanceState() const;
