@@ -1590,7 +1590,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             float dest_x, dest_y, dest_z;
             target->GetNearPoint(nullptr, dest_x, dest_y, dest_z, target->GetObjectBoundingRadius(), radius, angle, target->IsInWater());
             if (m_spellInfo->Id == 41289)
-                dest_z = 342.9485; // confirmed with sniffs
+                dest_z = 342.9485f; // confirmed with sniffs
             m_targets.setDestination(dest_x, dest_y, dest_z);
             break;
         }
@@ -5252,6 +5252,18 @@ SpellCastResult Spell::CheckCast(bool strict)
                 }
                 break;
             }
+            case SPELL_EFFECT_PICKPOCKET:
+            {
+                // should always fail above if not exists
+                Unit* target = m_targets.getUnitTarget();
+                if (!target->IsCreature())
+                    return SPELL_FAILED_BAD_TARGETS;
+
+                Creature* creatureTarget = static_cast<Creature*>(target);
+                if (!creatureTarget->GetCreatureInfo()->PickpocketLootId)
+                    return SPELL_FAILED_TARGET_NO_POCKETS;
+                break;
+            }
             case SPELL_EFFECT_SUMMON_DEAD_PET:
             {
                 Creature* pet = m_caster->GetPet();
@@ -7636,6 +7648,14 @@ SpellCastResult Spell::OnCheckCast(bool /*strict*/)
             Unit* target = m_targets.getUnitTarget();
             if (!target || target->GetTypeId() == TYPEID_PLAYER)
                 return SPELL_FAILED_BAD_TARGETS;
+            break;
+        }
+        case 7914: // Capture Spirit
+        {
+            if (ObjectGuid target = m_targets.getUnitTargetGuid()) // can be cast only on these targets
+                if (target.GetEntry() != 4663 && target.GetEntry() != 4664 && target.GetEntry() != 4665 && target.GetEntry() != 4666 && target.GetEntry() != 4667
+                    && target.GetEntry() != 4668 && target.GetEntry() != 4705 && target.GetEntry() != 13019)
+                    return SPELL_FAILED_BAD_TARGETS;
             break;
         }
         case 30077: // Carinda's Retribution
