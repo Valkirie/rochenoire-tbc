@@ -907,6 +907,20 @@ class ObjectMgr
             return &itr->second;
         }
 
+		CreatureFlex const* GetCreatureFlex(std::string entry) const
+		{
+			auto itr = mCreatureFlexMap.find(entry);
+			if (itr == mCreatureFlexMap.end()) return nullptr;
+			return &itr->second;
+		}
+
+		SpellFlex const* GetSpellFlex(std::string entry) const
+		{
+			auto itr = mSpellFlexMap.find(entry);
+			if (itr == mSpellFlexMap.end()) return nullptr;
+			return &itr->second;
+		}
+
 		ItemLootScale const* GetItemLootScale(std::string entry) const
 		{
 			auto itr = mLootScaleMap.find(entry);

@@ -64,6 +64,7 @@ enum CreatureExtraFlags
     CREATURE_EXTRA_FLAG_COUNT_SPAWNS           = 0x00200000,       // 2097152 count creature spawns in Map*
     CREATURE_EXTRA_FLAG_HASTE_SPELL_IMMUNITY   = 0x00400000,       // 4194304 immunity to COT or Mind Numbing Poison - very common in instances
     CREATURE_EXTRA_FLAG_DUAL_WIELD_FORCED      = 0x00800000,       // 8388606 creature is alwyas dual wielding (even if unarmed)
+    CREATURE_EXTRA_FLAG_POISON_IMMUNITY        = 0x01000000,       // 16777216 creature is immune to poisons
 };
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
@@ -264,6 +265,7 @@ struct CreatureDataAddon
     uint32 emote;
     uint32 move_flags;
     uint32 const* auras;                                    // loaded as char* "spell1 spell2 ... "
+	uint32 packId;
 };
 
 // Bases values for given Level and UnitClass
@@ -321,7 +323,6 @@ struct CreatureFlex
 	float ratio_hrht;
 	float ratio_c1;
 	float ratio_c2;
-	bool is_flex;
 };
 
 struct SpellFlex
@@ -466,24 +467,6 @@ typedef std::list<VendorItemCount> VendorItemCounts;
 
 struct TrainerSpell
 {
-#ifdef BUILD_PLAYERBOT
-    TrainerSpell() : spell(0), spellCost(0), reqSkill(0), reqSkillValue(0), reqLevel(0), learnedSpell(0), isProvidedReqLevel(false), conditionId(0) {}
-
-    TrainerSpell(uint32 _spell, uint32 _spellCost, uint32 _reqSkill, uint32 _reqSkillValue, uint32 _reqLevel, uint32 _learnedspell, bool _isProvidedReqLevel, uint32 _conditionId)
-        : spell(_spell), spellCost(_spellCost), reqSkill(_reqSkill), reqSkillValue(_reqSkillValue), reqLevel(_reqLevel), learnedSpell(_learnedspell), isProvidedReqLevel(_isProvidedReqLevel), conditionId(_conditionId) {}
-
-    uint32 spell;
-    uint32 spellCost;
-    uint32 reqSkill;
-    uint32 reqSkillValue;
-    uint32 reqLevel;
-    uint32 learnedSpell;
-    uint32 conditionId;
-    bool isProvidedReqLevel;
-
-    // helpers
-    bool IsCastable() const { return learnedSpell != spell; }
-#else
     TrainerSpell() : spell(0), spellCost(0), reqSkill(0), reqSkillValue(0), reqLevel(0), learnedSpell(0), conditionId(0), isProvidedReqLevel(false) {}
 
     TrainerSpell(uint32 _spell, uint32 _spellCost, uint32 _reqSkill, uint32 _reqSkillValue, uint32 _reqLevel, uint32 _learnedspell, bool _isProvidedReqLevel, uint32 _conditionId)
@@ -500,7 +483,6 @@ struct TrainerSpell
 
     // helpers
     bool IsCastable() const { return learnedSpell != spell; }
-#endif
 };
 
 typedef std::unordered_map < uint32 /*spellid*/, TrainerSpell > TrainerSpellMap;
@@ -646,6 +628,8 @@ class Creature : public Unit
         void SetCorpseDelay(uint32 delay) { m_corpseDelay = delay; }
         void ReduceCorpseDecayTimer();
         TimePoint GetCorpseDecayTimer() const { return m_corpseExpirationTime; }
+        bool CanRestockPickpocketLoot() const;
+        void StartPickpocketRestockTimer();
         bool IsRacialLeader() const { return GetCreatureInfo()->RacialLeader; }
         bool IsCivilian() const { return (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_CIVILIAN) != 0; }
         bool IsNoAggroOnSight() const { return (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NO_AGGRO_ON_SIGHT) != 0; }
@@ -780,7 +764,7 @@ class Creature : public Unit
         uint32 m_spells[CREATURE_MAX_SPELLS];
 
         void DoFleeToGetAssistance();
-        void CallForHelp(float fRadius);
+        void CallForHelp(float radius);
         void CallAssistance();
         void SetNoCallAssistance(bool val) { m_AlreadyCallAssistance = val; }
         void SetNoSearchAssistance(bool val) { m_AlreadySearchedAssistance = val; }
@@ -801,7 +785,7 @@ class Creature : public Unit
         void RemoveCorpse(bool inPlace = false);
         bool IsDeadByDefault() const { return m_isDeadByDefault; };
 
-        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false);
+        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false, bool ForcedScale = false);
 
         time_t const& GetRespawnTime() const { return m_respawnTime; }
         time_t GetRespawnTimeEx() const;
@@ -863,6 +847,7 @@ class Creature : public Unit
 
         bool hasWeapon(WeaponAttackType type) const override;
         bool hasWeaponForAttack(WeaponAttackType type) const override { return (Unit::hasWeaponForAttack(type) && hasWeapon(type)); }
+        virtual void SetCanDualWield(bool value);
 
         void SetInvisible(bool invisible) { m_isInvisible = invisible; }
         bool IsInvisible() const { return m_isInvisible; }
@@ -923,6 +908,7 @@ class Creature : public Unit
         time_t m_respawnTime;                               // (secs) time of next respawn
         uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning
         uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance
+        TimePoint m_pickpocketRestockTime;                  // (msecs) time point of pickpocket restock
         bool m_canAggro;                                    // controls response of creature to attacks
         float m_respawnradius;
 

@@ -1037,12 +1037,22 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 
 	Map* map = creature->GetMap();
 
-	if (map)
+	if (map && map->IsDungeon())
 	{
-		if (map->IsRaid() && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS))
-			return false;
+		if (map->IsRaid())
+		{
+			InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(map->GetId());
+			if (!instance)
+				return false;
 
-		if (map->IsNoRaid() && !sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS))
+			if (player->getLevel() > instance->levelMax && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE))
+				return false;
+
+			if (player->getLevel() < instance->levelMin && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE))
+				return false;
+		}
+
+		if (!sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS))
 			return false;
 	}
 
@@ -1167,10 +1177,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	int v_level = creature->getLevelVariation();
 
 	if (!isSafeExpansionZone(mapId, zoneId))
-	{
-		if(p_level < DEFAULT_TBC_MIN_LEVEL)
-			p_level = DEFAULT_TBC_MIN_LEVEL;
-	}
+		p_level < DEFAULT_TBC_MIN_LEVEL ? DEFAULT_TBC_MIN_LEVEL : p_level;
 
 	uint32 level = p_level + v_level;
 
@@ -2495,7 +2502,6 @@ void ObjectMgr::LoadFlexibleCreatures()
 		data.ratio_hrht = ratio_hrht;
 		data.ratio_c1 = ratio_c1;
 		data.ratio_c2 = ratio_c2;
-		data.is_flex = is_flex;
 
 	} while (result->NextRow());
 

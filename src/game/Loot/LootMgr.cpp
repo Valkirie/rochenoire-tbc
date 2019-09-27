@@ -250,25 +250,36 @@ void LootStore::ReportNotExistedId(uint32 id) const
 
 // Checks if the entry (quest, non-quest, reference) takes it's chance (at loot generation)
 // RATE_DROP_ITEMS is no longer used for all types of entries
-bool LootStoreItem::Roll(bool rate, float count) const
+bool LootStoreItem::Roll(bool rate, float f_GroupSize, Player const* lootOwner) const
 {
     if (chance >= 100.0f)
         return true;
 
-    if (mincountOrRef < 0)                                  // reference case
-        return roll_chance_f(chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED) : 1.0f));
+	float n_chance = chance;
 
-    if (needs_quest)
-        return roll_chance_f(chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_QUEST) : 1.0f));
+	float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(f_GroupSize, false) : 1.0f;
+	float qualityModifier = 1.0f;
 
-    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid);
+	if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid))
+	{
+		qualityModifier = rate ? sWorld.getConfig(qualityToRate[pProto->Quality]) : 1.0f;
 
-	float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(count, false) : 1.0f;
+		if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+		{
+			float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(pProto->Quality) : 1.0f;
+			n_chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
+		}
+	}
 
-    float qualityModifier = pProto && rate ? sWorld.getConfig(qualityToRate[pProto->Quality]) : 1.0f;
 	qualityModifier *= groupModifier;
 
-    return roll_chance_f(chance * qualityModifier);
+    if (mincountOrRef < 0)                                  // reference case
+        return roll_chance_f(n_chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED) : 1.0f));
+
+    if (needs_quest)
+        return roll_chance_f(n_chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_QUEST) : 1.0f));
+
+    return roll_chance_f(n_chance * qualityModifier);
 }
 
 // Checks correctness of values
@@ -1452,7 +1463,7 @@ void Loot::ShowContentTo(Player* plr)
     {
         if (static_cast<GameObject*>(m_lootTarget)->IsInUse())
         {
-            SendReleaseFor(plr);
+            plr->SendLootError(m_guidTarget, LOOT_ERROR_LOCKED);
             return;
         }
 
@@ -1736,9 +1747,6 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
         case LOOT_PICKPOCKETING:
         {
             m_clientLootType = CLIENT_LOOT_PICKPOCKETING;
-
-            if (!creature->isAlive() || player->getClass() != CLASS_ROGUE)
-                return;
 
             // setting loot right
             m_ownerSet.insert(player->GetObjectGuid());
@@ -2443,10 +2451,19 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
                 continue;
             }
 
-            if (lsi->chance >= 100.0f)
+			float lsi_chance = lsi->chance;
+			
+            if (lsi_chance >= 100.0f)
                 return lsi;
 
-            chance -= lsi->chance;
+			if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(lsi->itemid))
+				if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+				{
+					float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(pProto->Quality) : 1.0f;
+					lsi_chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
+				}
+
+			chance -= lsi_chance;
             if (chance < 0)
                 return lsi;
         }
@@ -2605,7 +2622,7 @@ void LootTemplate::AddEntry(LootStoreItem& item)
 void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const& store, bool rate, uint8 groupId) const
 {
 	//Gestion du drop rate pour des groups
-	float f_GroupSize = 1;
+	float f_GroupSize = 1.0f;
 	f_GroupSize = lootOwner->GetGroup() ? lootOwner->GetGroup()->GetMembersCount() - 1 : 1.0f;
 
 	if (groupId)                                            // Group reference uses own processing of the group
@@ -2624,7 +2641,7 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
         if (Entrie.conditionId && lootOwner && !PlayerOrGroupFulfilsCondition(loot, lootOwner, Entrie.conditionId))
             continue;
 
-        if (!Entrie.Roll(rate, f_GroupSize))
+        if (!Entrie.Roll(rate, f_GroupSize, lootOwner))
             continue;                                       // Bad luck for the entry
 
         if (Entrie.mincountOrRef < 0)                           // References processing

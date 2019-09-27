@@ -382,6 +382,13 @@ void World::LoadConfigSettings(bool reload)
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_EPIC,                       "Rate.Drop.Item.Epic",                       1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_LEGENDARY,                  "Rate.Drop.Item.Legendary",                  1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_ARTIFACT,                   "Rate.Drop.Item.Artifact",                   1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_POOR,                      "Coeff.Drop.Item.Poor",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_NORMAL,                    "Coeff.Drop.Item.Normal",                    1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_UNCOMMON,                  "Coeff.Drop.Item.Uncommon",                  1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_RARE,                      "Coeff.Drop.Item.Rare",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_EPIC,                      "Coeff.Drop.Item.Epic",                      1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_LEGENDARY,                 "Coeff.Drop.Item.Legendary",                 1.0f);
+	setConfigPos(CONFIG_FLOAT_COEFF_DROP_ITEM_ARTIFACT,                  "Coeff.Drop.Item.Artifact",                  1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED,                 "Rate.Drop.Item.Referenced",                 1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_ITEM_QUEST,                      "Rate.Drop.Item.Quest",                      1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_DROP_MONEY,                           "Rate.Drop.Money",                           1.0f);
@@ -582,12 +589,16 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL, "Rochenoire.Scaling.MinLevel.Player", 10);
 	setConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL, "Rochenoire.Scaling.MinLevel.Creature", 1);
 	setConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL, "Rochenoire.Scaling.MinLevel.Expansion", 40);
-	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", 1);
-	setConfig(CONFIG_BOOL_SCALE_RAIDS, "Rochenoire.Scaling.Raids.Enabled", 1);
-	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", 1);
+	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", true);
+	setConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE, "Rochenoire.Scaling.Raids.Upscale", true);
+	setConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE, "Rochenoire.Scaling.Raids.Downscale", false);
+	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", false);
 
 	setConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP, "Rochenoire.Rate.Drop.Item.Group", 1.0f);
 	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);
+
+	setConfig(CONFIG_BOOL_FLEXIBLE_RAID, "Rochenoire.Flexible.Raids", true);
+	setConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 4);
 
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 
@@ -684,6 +695,7 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_FLOAT_THREAT_RADIUS, "ThreatRadius", 100.0f);
     setConfigMin(CONFIG_UINT32_CREATURE_RESPAWN_AGGRO_DELAY, "CreatureRespawnAggroDelay", 5000, 0);
+    setConfig(CONFIG_UINT32_CREATURE_PICKPOCKET_RESTOCK_DELAY, "CreaturePickpocketRestockDelay", 600);
 
     // always use declined names in the russian client
     if (getConfig(CONFIG_UINT32_REALM_ZONE) == REALM_ZONE_RUSSIAN)
@@ -2231,6 +2243,7 @@ void World::ResetWeeklyQuests()
     CharacterDatabase.PExecute("UPDATE saved_variables SET NextWeeklyQuestResetTime = '" UI64FMTD "'", uint64(m_NextWeeklyQuestReset));
 
     GenerateEventGroupEvents(false, true, true); // generate weeklies and save to DB
+    sGameEventMgr.WeeklyEventTimerRecalculation();
 }
 
 void World::ResetMonthlyQuests()

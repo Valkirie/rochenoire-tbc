@@ -433,6 +433,8 @@ class ChatHandler
         bool HandleNpcAddWeaponCommand(char* args);
         bool HandleNpcNameCommand(char* args);
         bool HandleNpcSubNameCommand(char* args);
+
+		bool HandleNpcChangePackCommand(char* args);
         //----------------------------------------------------------
 
         bool HandlePDumpLoadCommand(char* args);
@@ -637,6 +639,7 @@ class ChatHandler
         bool HandleCooldownClearCommand(char* args);
         bool HandleCooldownClearClientSideCommand(char* args);
         bool HandleCooldownClearArenaCommand(char* args);
+		bool HandleRescaleCommand(char* args);
         bool HandleUnLearnCommand(char* args);
         bool HandleGetDistanceCommand(char* args);
         bool HandleGetLosCommand(char* args);

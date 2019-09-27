@@ -810,7 +810,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 	if (!pProto)
 		return itemid;
 
-	if (pProto->Class == 0 || pProto->Class == 15)
+	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
 		// Junk | Consumables
 		for (uint32 j = 0; j < plevel; j++)
@@ -828,7 +828,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 
 		if (plevel < 60)
 			ItemLevel = plevel + 5;
-		else if (plevel = 60)
+		else if (plevel == 60)
 			ItemLevel = plevel + 5 + std::max(0, int32(pProto->ItemLevel - 65));
 		else if (plevel > 60 && plevel < 70)
 		{
@@ -847,7 +847,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 				ItemLevel = 120;
 		}
 
-		uint32 scaleid = (41000 + itemid * 2 * 180 + 0 /* Bonus Quality */ * 180 + ItemLevel);
+		uint32 scaleid = (41000 + itemid * 2 * 180 /* + 0 Bonus Quality  * 180 */ + ItemLevel);
 
 		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
 		if (pProtoScale)

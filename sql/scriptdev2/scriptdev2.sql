@@ -90,6 +90,8 @@ UPDATE gameobject_template SET ScriptName='go_pirate_day_music' WHERE entry=1903
 UPDATE gameobject_template SET ScriptName='go_midsummer_music' WHERE entry=188174;
 UPDATE gameobject_template SET ScriptName='go_brewfest_music' WHERE entry=186221;
 UPDATE gameobject_template SET ScriptName='go_elemental_rift' WHERE entry IN (179664, 179665, 179666, 179667);
+UPDATE gameobject_template SET ScriptName='go_dragon_head' WHERE entry IN(179556,179558,179881,179882);
+UPDATE gameobject_template SET ScriptName='go_unadorned_spike' WHERE entry IN(175787);
 
 /* GUARD */
 UPDATE creature_template SET ScriptName='guard_azuremyst' WHERE entry=18038;
@@ -263,6 +265,7 @@ INSERT INTO scripted_areatrigger VALUES
 (522,'at_twiggy_flathead');
 UPDATE creature_template SET ScriptName='npc_wizzlecranks_shredder' WHERE entry=3439;
 UPDATE creature_template SET ScriptName='npc_gallywix' WHERE entry=7288;
+UPDATE creature_template SET ScriptName = 'npc_regthar_deathgate' WHERE entry = 3389;
 
 /* BLACK TEMPLE */
 UPDATE instance_template SET ScriptName='instance_black_temple' WHERE map=564;
@@ -763,8 +766,7 @@ UPDATE creature_template SET ScriptName='npc_apoko' WHERE entry=24553;
 UPDATE creature_template SET ScriptName='npc_zelfan' WHERE entry=24556;
 UPDATE creature_template SET ScriptName='boss_felblood_kaelthas' WHERE entry=24664;
 UPDATE creature_template SET ScriptName='mob_arcane_sphere' WHERE entry=24708;
-UPDATE creature_template SET ScriptName='mob_felkael_phoenix' WHERE entry=24674;
-UPDATE creature_template SET ScriptName='mob_felkael_phoenix_egg' WHERE entry=24675;
+UPDATE creature_template SET ScriptName='mob_phoenix' WHERE entry=24674;
 UPDATE creature_template SET ScriptName='npc_kalecgos' WHERE entry=24844;
 INSERT INTO scripted_event_id VALUES
 (16547,'event_go_scrying_orb');
@@ -1108,8 +1110,7 @@ UPDATE creature_template SET ScriptName='boss_thaladred_the_darkener' WHERE entr
 UPDATE creature_template SET ScriptName='boss_lord_sanguinar' WHERE entry=20060;
 UPDATE creature_template SET ScriptName='boss_grand_astromancer_capernian' WHERE entry=20062;
 UPDATE creature_template SET ScriptName='boss_master_engineer_telonicus' WHERE entry=20063;
-UPDATE creature_template SET ScriptName='mob_phoenix_tk' WHERE entry=21362;
-UPDATE creature_template SET ScriptName='mob_phoenix_egg_tk' WHERE entry=21364;
+UPDATE creature_template SET ScriptName='mob_phoenix' WHERE entry=21362;
 
 /* TEMPLE OF AHN'QIRAJ */
 UPDATE instance_template SET ScriptName='instance_temple_of_ahnqiraj' WHERE map=531;
@@ -1128,7 +1129,6 @@ UPDATE creature_template SET ScriptName='boss_veknilash' WHERE entry=15275;
 UPDATE creature_template SET ScriptName='boss_ouro' WHERE entry=15517;
 UPDATE creature_template SET ScriptName='npc_ouro_spawner' WHERE entry=15957;
 UPDATE creature_template SET ScriptName='boss_eye_of_cthun' WHERE entry=15589;
-UPDATE creature_template SET ScriptName='mob_sartura_royal_guard' WHERE entry=15984;
 UPDATE creature_template SET ScriptName='mob_giant_claw_tentacle' WHERE entry=15728;
 UPDATE creature_template SET ScriptName='mob_anubisath_sentinel' WHERE entry=15264;
 INSERT INTO scripted_areatrigger VALUES
@@ -1684,7 +1684,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 
 (-1000410,'Here they come! Defend yourself!',0,0,1,5,'kanati SAY_KAN_START'),
 
-(-1000411,'Come, $N. See what the Nightmare brings...',15625,4,0,0,'Twilight Corrupter SAY_TWILIGHT_CORRUPTER_SPAWN'),
+(-1000411,'Come, $N. See what the Nightmare brings...',0,4,0,0,'Twilight Corrupter SAY_TWILIGHT_CORRUPTER_SPAWN'),
 
 -- REUSE -1000412 TO -1000414
 (-1000415,'%s, too injured, gives up the chase.',0,2,0,0,'hendel EMOTE_SURRENDER'),
@@ -2467,7 +2467,11 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1001311,'I... I am undone... The new top orc is $n!',0,1,0,1,'Captain Skyshatter - SAY_END_SKYSHATTER'),
 
 -- -1 010 000 Classic texts
-(-1010000,'The beast returns from whence it came. The wrath of Neptulon has subsided.',0,3,0,0,'Maws EMOTE_MAWS_KILL');
+(-1010000,'The beast returns from whence it came. The wrath of Neptulon has subsided.',0,3,0,0,'Maws EMOTE_MAWS_KILL'),
+
+(-1010001,'Beware, $N! Look to the west!',0,0,0,0,'regthar SAY_START_REGTHAR'),
+(-1010002,'A defender has fallen!',0,0,0,0,'regthar SAY_DEFENDER'),
+(-1010003,'The Kolkar invaders are retreating!',0,1,0,0,'regthar YELL_RETREAT');
 
 -- -1 015 000 TBC texts
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
@@ -3147,14 +3151,15 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 
 -- -1 531 000 TEMPLE OF AHN'QIRAJ
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
-(-1531000,'Are you so eager to die? I would be happy to accomodate you.',8615,1,0,0,'skeram SAY_AGGRO1'),
-(-1531001,'Cower mortals! The age of darkness is at hand.',8616,1,0,0,'skeram SAY_AGGRO2'),
-(-1531002,'Tremble! The end is upon you.',8621,1,0,0,'skeram SAY_AGGRO3'),
-(-1531003,'Let your death serve as an example!',8617,1,0,0,'skeram SAY_SLAY1'),
-(-1531004,'Spineless wretches! You will drown in rivers of blood!',8619,1,0,0,'skeram SAY_SLAY2'),
-(-1531005,'The screams of the dying will fill the air. A symphony of terror is about to begin!',8620,1,0,0,'skeram SAY_SLAY3'),
-(-1531006,'Prepare for the return of the ancient ones!',8618,1,0,0,'skeram SAY_SPLIT'),
-(-1531007,'You only delay... the inevitable.',8622,1,0,0,'skeram SAY_DEATH'),
+(-1531000,'Are you so eager to die? I would be happy to accomodate you.',8615,1,0,0,'skeram SAY_AGGRO'),
+(-1531001,'Let your death serve as an example!',8617,1,0,0,'skeram SAY_SLAY'),
+(-1531002,'You only delay... the inevitable.',8622,1,0,0,'skeram SAY_DEATH'),
+
+(-1531003,'REUSE_ME',0,0,0,0,'REUSE'),
+(-1531004,'REUSE_ME',0,0,0,0,'REUSE'),
+(-1531005,'REUSE_ME',0,0,0,0,'REUSE'),
+(-1531006,'REUSE_ME',0,0,0,0,'REUSE'),
+(-1531007,'REUSE_ME',0,0,0,0,'REUSE'),
 
 (-1531008,'You will be judged for defiling these sacred grounds! The laws of the Ancients will not be challenged! Trespassers will be annihilated!',8646,1,0,0,'sartura SAY_AGGRO'),
 (-1531009,'I sentence you to death!',8647,1,0,0,'sartura SAY_SLAY'),
@@ -3200,7 +3205,11 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1531043,'%s is frozen solid!',0,2,0,0,'viscidus EMOTE_FROZEN'),
 (-1531044,'%s begins to crack!',0,2,0,0,'viscidus EMOTE_CRACK'),
 (-1531045,'%s looks ready to shatter!',0,2,0,0,'viscidus EMOTE_SHATTER'),
-(-1531046,'%s explodes!',0,2,0,0,'viscidus EMOTE_EXPLODE');
+(-1531046,'%s explodes!',0,2,0,0,'viscidus EMOTE_EXPLODE'),
+
+(-1531047,'%s shares his powers with his brethren.',0,2,0,0,'anubisath sentinelle EMOTE_SHARE'),
+
+(-1531048,'%s is devoured!',0,2,0,0,'silithid royalty EMOTE_CONSUMED');
 
 -- -1 532 000 KARAZHAN
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
@@ -4769,40 +4778,41 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
 (-1585000,'You only waste my time!',12378,1,0,0,'selin SAY_AGGRO'),
 (-1585001,'My hunger knows no bounds!',12381,1,0,0,'selin SAY_ENERGY'),
-(-1585002,'Yes! I am a god!',12382,1,0,0,'selin SAY_EMPOWERED'),
+(-1585002,'Yes!! I am a god!',12382,1,0,0,'selin SAY_EMPOWERED'),
 (-1585003,'Enough distractions!',12388,1,0,0,'selin SAY_KILL_1'),
 (-1585004,'I am invincible!',12385,1,0,0,'selin SAY_KILL_2'),
-(-1585005,'No! More... I must have more!',12383,1,0,0,'selin SAY_DEATH'),
-(-1585006,'%s begins to channel from the nearby Fel Crystal...',0,3,0,0,'selin EMOTE_CRYSTAL'),
+(-1585005,'No... more, I must have more!!',12383,1,0,0,'selin SAY_DEATH'),
+(-1585006,'%s begins to channel from the nearby Fel Crystal. Destroy it!',0,3,0,0,'selin EMOTE_CRYSTAL'),
 
-(-1585007,'Drain...life!',12389,1,0,0,'vexallus SAY_AGGRO'),
+(-1585007,'Drain... life!',12389,1,0,0,'vexallus SAY_AGGRO'),
 (-1585008,'Un...con...tainable.',12392,1,0,0,'vexallus SAY_ENERGY'),
 (-1585009,'Un...leash...',12390,1,0,0,'vexallus SAY_OVERLOAD'),
 (-1585010,'Con...sume.',12393,1,0,0,'vexallus SAY_KILL'),
-(-1585011,'%s discharges pure energy!',0,3,0,0,'vexallus EMOTE_DISCHARGE_ENERGY'),
+(-1585011,'Vexallus discharges pure energy!',0,3,0,0,'vexallus EMOTE_DISCHARGE_ENERGY'),
 
-(-1585012,'Annihilate them!',12395,1,0,0,'delrissa SAY_AGGRO'),
-(-1585013,'Oh, the horror.',12398,1,0,0,'delrissa LackeyDeath1'),
-(-1585014,'Well, aren\'t you lucky?',12400,1,0,0,'delrissa LackeyDeath2'),
-(-1585015,'Now I\'m getting annoyed.',12401,1,0,0,'delrissa LackeyDeath3'),
-(-1585016,'Lackies be damned! I\'ll finish you myself!',12403,1,0,0,'delrissa LackeyDeath4'),
+(-1585012,'Annihilate them.',12395,1,0,0,'delrissa SAY_AGGRO'),
+(-1585013,'Oh, the horror!',12398,1,0,0,'delrissa LackeyDeath1'),
+(-1585014,'Well aren''t you lucky?',12400,1,0,0,'delrissa LackeyDeath2'),
+(-1585015,'Now I''m getting annoyed.',12401,1,0,0,'delrissa LackeyDeath3'),
+(-1585016,'Lackeys be damned! I''ll finish you myself!',12403,1,0,0,'delrissa LackeyDeath4'),
 (-1585017,'I call that a good start.',12405,1,0,0,'delrissa PlayerDeath1'),
 (-1585018,'I could have sworn there were more of you.',12407,1,0,0,'delrissa PlayerDeath2'),
 (-1585019,'Not really much of a group, anymore, is it?',12409,1,0,0,'delrissa PlayerDeath3'),
 (-1585020,'One is such a lonely number.',12410,1,0,0,'delrissa PlayerDeath4'),
 (-1585021,'It\'s been a kick, really.',12411,1,0,0,'delrissa PlayerDeath5'),
-(-1585022,'Not what I had... planned...',12397,1,0,0,'delrissa SAY_DEATH'),
+(-1585022,'Not what I had... planned.',12397,1,0,0,'delrissa SAY_DEATH'),
 
-(-1585023,'Don\'t look so smug! I know what you\'re thinking, but Tempest Keep was merely a set back. Did you honestly believe I would trust the future to some blind, half-night elf mongrel?',12413,1,0,0,'kaelthas MT SAY_INTRO_1'),
+(-1585023,'Don''t look so smug! I know what you''re thinking, but Tempest Keep was merely a setback. Did you honestly believe I would trust the future to some blind, half-night elf mongrel?',12413,1,0,0,'kaelthas MT SAY_INTRO_1'),
 (-1585024,'Vengeance burns!',12415,1,0,0,'kaelthas MT SAY_PHOENIX'),
 (-1585025,'Felomin ashal!',12417,1,0,0,'kaelthas MT SAY_FLAMESTRIKE'),
-(-1585026,'I\'ll turn your world... upside... down...',12418,1,0,0,'kaelthas MT SAY_GRAVITY_LAPSE'),
-(-1585027,'Master... grant me strength.',12419,1,0,0,'kaelthas MT SAY_TIRED'),
-(-1585028,'Do not... get too comfortable.',12420,1,0,0,'kaelthas MT SAY_RECAST_GRAVITY'),
-(-1585029,'My demise accomplishes nothing! The Master will have you! You will drown in your own blood! This world shall burn! Aaaghh!',12421,1,0,0,'kaelthas MT SAY_DEATH'),
-(-1585030,'Oh no, he was merely an instrument, a stepping stone to a much larger plan! It has all led to this, and this time, you will not interfere!',0,1,0,0,'kaelthas MT SAY_INTRO_2'),
+(-1585026,'I''ll turn your world... upside... down.',12418,1,0,0,'kaelthas MT SAY_GRAVITY_LAPSE'),
+(-1585027,'Master, grant me strength.',12419,1,0,0,'kaelthas MT SAY_TIRED'),
+(-1585028,'Do not get... too comfortable.',12420,1,0,0,'kaelthas MT SAY_RECAST_GRAVITY'),
+(-1585029,'My demise accomplishes nothing! The master will have you! You will drown in your own blood! The world shall burn! Aaaghh!',12421,1,0,0,'kaelthas MT SAY_DEATH'),
+(-1585030,'Oh no, he was merely an instrument, a stepping stone to a much larger plan! It has all led to this... and this time you will not interfere!',0,1,0,0,'kaelthas MT SAY_INTRO_2'),
 
-(-1585031,'%s overloads!',0,3,0,0,'vexallus EMOTE_OVERLOAD');
+(-1585031,'%s overloads!',0,3,0,0,'vexallus EMOTE_OVERLOAD'),
+(-1585032,'Be still, mortals, and hearken to my words.',0,1,0,0,'Kalecgos on spawn');
 
 -- -1 999 900 EXAMPLE TEXT
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES

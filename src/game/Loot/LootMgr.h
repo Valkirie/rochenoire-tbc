@@ -178,7 +178,7 @@ struct LootStoreItem
           group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId)
     {}
 
-    bool Roll(bool rate, float count) const;                             // Checks if the entry takes it's chance (at loot generation)
+    bool Roll(bool rate, float f_GroupSize, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)
     bool IsValid(LootStore const& store, uint32 entry) const;
     // Checks correctness of values
 };
@@ -321,6 +321,7 @@ class Loot
         void SendReleaseFor(Player* plr);
         bool IsItemAlreadyIn(uint32 itemId) const;
         void PrintLootList(ChatHandler& chat, WorldSession* session) const;
+        bool HasLoot() const;
         uint32 GetGoldAmount() const { return m_gold; }
         LootType GetLootType() const { return m_lootType; }
         LootItem* GetLootItemInSlot(uint32 itemSlot);

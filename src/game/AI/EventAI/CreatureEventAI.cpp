@@ -44,6 +44,29 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
         enabled = false;
         return false;
     }
+	   
+	//Flexible Raid
+	for (uint32 j = 0; j < MAX_ACTIONS; ++j)
+	{
+		if (event.action[j].type == ACTION_T_CAST)
+		{
+			if (SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(event.action[j].cast.spellId))
+			{
+				float Ratio_Add_SpellTimer	= 1.0f;
+				float CoeffSpellRatio		= 1.0f;
+				uint32 mapId				= creature->GetMap()->GetId();
+
+				std::string s = std::to_string(spellInfo->Id) + ":" + std::to_string(mapId);
+				if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
+					CoeffSpellRatio = s_values->ratio_spell;
+
+				Ratio_Add_SpellTimer = creature->GetMap()->GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+
+				repeatMin = event.timer.repeatMin / Ratio_Add_SpellTimer;
+				repeatMax = event.timer.repeatMax / Ratio_Add_SpellTimer;
+			}
+		}
+	}
 
     return true;
 }
@@ -94,6 +117,7 @@ inline bool IsEventFlagsFitForNormalMap(uint8 eFlags)
 CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
     m_EventUpdateTime(0),
     m_EventDiff(0),
+    m_depth(0),
     m_Phase(0),
     m_HasOOCLoSEvent(false),
     m_InvinceabilityHpLevel(0),
@@ -102,9 +126,8 @@ CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
     m_LastSpellMaxRange(0),
     m_rangedMode(false),
     m_rangedModeSetting(TYPE_NONE),
-    m_currentRangedMode(false),
     m_chaseDistance(0.f),
-    m_depth(0),
+    m_currentRangedMode(false),
     m_defaultMovement(IDLE_MOTION_TYPE)
 {
     InitAI();
@@ -1170,7 +1193,7 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
         }
         case ACTION_T_CALL_FOR_HELP:
         {
-            m_creature->CallForHelp((float)action.call_for_help.radius);
+            DoCallForHelp((float)action.call_for_help.radius);
             break;
         }
         case ACTION_T_SET_SHEATH:
