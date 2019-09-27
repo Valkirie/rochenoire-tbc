@@ -504,6 +504,8 @@ ChatCommand* ChatHandler::getCommandTable()
         { "subname",        SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcSubNameCommand,          "", nullptr },
         //}
 
+		{ "setpack",        SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcChangePackCommand,       "", nullptr },
+
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
@@ -632,8 +634,12 @@ ChatCommand* ChatHandler::getCommandTable()
         { "spell_script_target",         SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellScriptTargetCommand,       "", nullptr },
         { "spell_target_position",       SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellTargetPositionCommand,     "", nullptr },
         { "spell_threats",               SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellThreatsCommand,            "", nullptr },
-        { "taxi_shortcuts",              SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadTaxiShortcuts,              "", nullptr },
+        { "taxi_shortcuts",              SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadTaxiShortcuts,                  "", nullptr },
         { "trainer_greeting",            SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadTrainerGreetingCommand,         "", nullptr },
+		
+		{ "loot_scale",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootScaleCommand,               "", nullptr },
+		{ "creature_flex",			     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureFlexCommand,            "", nullptr },
+		{ "spell_flex",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellFlexCommand,               "", nullptr },
 
         { nullptr,                       0,                 false, nullptr,                                                  "", nullptr }
     };

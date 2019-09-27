@@ -4036,6 +4036,46 @@ bool ChatHandler::HandleNpcChangeEntryCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleNpcChangePackCommand(char* args)
+{
+	if (!*args)
+		return false;
+
+	uint32 newEntryNum = atoi(args);
+	if (!newEntryNum)
+		return false;
+
+	Unit* unit = getSelectedUnit();
+	if (!unit || unit->GetTypeId() != TYPEID_UNIT)
+	{
+		SendSysMessage(LANG_SELECT_CREATURE);
+		SetSentErrorMessage(true);
+		return false;
+	}
+	if (Creature * creature = (Creature*)unit)
+	{
+		creature->setPackId(newEntryNum);
+		Player* player = m_session->GetPlayer();
+
+		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM creature_addon WHERE guid = '%u'", player->GetSelectionGuid().GetCounter()))
+		{
+			delete result;
+
+			WorldDatabase.PExecute("UPDATE creature_addon SET pack = %u WHERE guid = '%u'", newEntryNum, player->GetSelectionGuid().GetCounter());
+		}
+		else
+		{
+			WorldDatabase.PExecute("INSERT IGNORE INTO creature_addon(guid,pack) VALUES('%u','%u')", player->GetSelectionGuid().GetCounter(), newEntryNum);
+		}
+
+		PSendSysMessage("Guid %u has pack %u", player->GetSelectionGuid().GetCounter(), newEntryNum);
+	}
+	else
+		SendSysMessage(LANG_ERROR);
+
+	return true;
+}
+
 bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
 {
     Creature* target = getSelectedCreature();
@@ -4089,6 +4129,9 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     }
 
     ShowNpcOrGoSpawnInformation<Creature>(target->GetGUIDLow());
+
+	uint32 packId = target->getPackId();
+	PSendSysMessage("NPC pack id: %u", packId);
     return true;
 }
 

@@ -265,6 +265,7 @@ struct CreatureDataAddon
     uint32 emote;
     uint32 move_flags;
     uint32 const* auras;                                    // loaded as char* "spell1 spell2 ... "
+	uint32 packId;
 };
 
 // Bases values for given Level and UnitClass

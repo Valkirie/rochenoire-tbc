@@ -822,6 +822,24 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive)
 	return output;
 }
 
+uint32 Map::GetCreaturesPackSize(uint32 pack)
+{
+	if (pack == 0)
+		return 1;
+
+	uint32 output = 0;
+	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+	{
+		if(Creature* creature = ((Creature*)* it))
+		{
+			uint32 packid = creature->getPackId();
+			if(packid == pack)
+				output++;
+		}
+	}
+	return output;
+}
+
 void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 {
 	if (ForcedSize != 0)
@@ -903,20 +921,8 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
 				float	f_ratio_c0 = 1.0f;		// used to compute c1 and c2
 
-				std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
-				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
-				{
-					u_nbr_tank = f_values->nb_tank;
-					u_nbr_pack = f_values->nb_pack;
-					f_ratio_hrht = f_values->ratio_hrht;
-					f_ratio_c1 = f_values->ratio_c1;
-					f_ratio_c2 = f_values->ratio_c2;
-					f_is_flex = f_values->is_flex;
-					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
-				}
-
-				uint32 packEntry = cinfo->Entry;	// store the creature entry
-				uint32 u_nbr_adds = 0;				// store the number of creatures (all)
+				uint32 packEntry = creature->getPackId();	// store the creature pack entry
+				uint32 u_nbr_adds = 0;											// store the number of creatures (all)
 
 				float factorProbaSpwan;
 				float factorTimeSpawn;
@@ -924,6 +930,18 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				uint32 u_nbr_adds_alive = 0;		// store the number of creatures (alive)
 				uint16 u_adds_compteur = 0;			// used to split creatures pack
 				uint16 u_adds_multiplicity = 1;		// used to split creatures pack
+
+				std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
+				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+				{
+					u_nbr_tank = f_values->nb_tank;
+					u_nbr_pack = GetCreaturesPackSize(packEntry); // f_values->nb_pack;
+					f_ratio_hrht = f_values->ratio_hrht;
+					f_ratio_c1 = f_values->ratio_c1;
+					f_ratio_c2 = f_values->ratio_c2;
+					f_is_flex = u_nbr_pack > 1; // f_values->is_flex;
+					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
+				}
 
 				switch (cinfo->Entry)
 				{

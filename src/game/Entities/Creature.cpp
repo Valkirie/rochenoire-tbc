@@ -2172,6 +2172,9 @@ bool Creature::LoadCreatureAddon(bool reload)
             CastSpell(this, *cAura, TRIGGERED_OLD_TRIGGERED);
         }
     }
+
+	SetUInt32Value(UNIT_FIELD_PACK, cainfo->packId);
+
     return true;
 }
 

@@ -2270,6 +2270,9 @@ class Unit : public WorldObject
         void SetNativeDisplayId(uint32 modelId) { SetUInt32Value(UNIT_FIELD_NATIVEDISPLAYID, modelId); }
         void RestoreDisplayId();
 
+		uint32 getPackId() const { return GetUInt32Value(UNIT_FIELD_PACK); }
+		void setPackId(uint32 packId) { SetUInt32Value(UNIT_FIELD_PACK, packId); }
+
         // at any changes to scale and/or displayId
         void UpdateModelData();
 

@@ -141,6 +141,7 @@ class Map : public GridRefManager<NGridType>
 		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio);
 		uint32 GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT);
 		uint32 GetCreaturesCount(uint32 entry, bool IsInCombat = false, bool IsAlive = false);
+		uint32 GetCreaturesPackSize(uint32 pack);
 		uint32 GetPlayersCount() const;
 		
 		virtual void Update(const uint32&);
