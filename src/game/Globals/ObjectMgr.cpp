@@ -2502,7 +2502,6 @@ void ObjectMgr::LoadFlexibleCreatures()
 		data.ratio_hrht = ratio_hrht;
 		data.ratio_c1 = ratio_c1;
 		data.ratio_c2 = ratio_c2;
-		data.is_flex = is_flex;
 
 	} while (result->NextRow());
 

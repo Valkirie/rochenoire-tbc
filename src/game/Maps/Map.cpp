@@ -935,11 +935,13 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
 				{
 					u_nbr_tank = f_values->nb_tank;
-					u_nbr_pack = GetCreaturesPackSize(packEntry); // f_values->nb_pack;
+
+					u_nbr_pack = GetCreaturesPackSize(packEntry) != 1 ? GetCreaturesPackSize(packEntry) : f_values->nb_pack;
+
 					f_ratio_hrht = f_values->ratio_hrht;
 					f_ratio_c1 = f_values->ratio_c1;
 					f_ratio_c2 = f_values->ratio_c2;
-					f_is_flex = u_nbr_pack > 1; // f_values->is_flex;
+					f_is_flex = u_nbr_pack > 1;
 					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
 				}
 

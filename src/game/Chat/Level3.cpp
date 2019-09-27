@@ -4042,7 +4042,7 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 		return false;
 
 	uint32 newEntryNum = atoi(args);
-	if (!newEntryNum)
+	if (newEntryNum < 0)
 		return false;
 
 	Unit* unit = getSelectedUnit();

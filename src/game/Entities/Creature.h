@@ -323,7 +323,6 @@ struct CreatureFlex
 	float ratio_hrht;
 	float ratio_c1;
 	float ratio_c2;
-	bool is_flex;
 };
 
 struct SpellFlex
