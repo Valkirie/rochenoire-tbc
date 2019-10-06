@@ -8027,6 +8027,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* pCaster, uint32 pdamage, WeaponAttackTy
     if (!flat)
         TakenFlat = 0.0f;
 
+	TakenFlat = sObjectMgr.ScaleDamage(this, pCaster, TakenFlat, false); // inverted owner and target
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenPercent;
 
     // bonus result can be negative
