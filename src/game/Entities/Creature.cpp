@@ -1258,8 +1258,9 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask)
        << data.curhealth << ","                            // curhealth
        << data.curmana << ","                              // curmana
        << (data.is_dead  ? 1 : 0) << ","                   // is_dead
-       << uint32(data.movementType) << ")";                // default movement generator type, cast to prevent save as symbol
-
+       << uint32(data.movementType) << ","                 // default movement generator type, cast to prevent save as symbol
+	   << uint32(sWorld.GetWowPatch()) << ","              // current patch value
+	   << uint32(WOW_PATCH_240) << ")";                    // max patch value : WOW_PATCH_240
     WorldDatabase.PExecuteLog("%s", ss.str().c_str());
 
     WorldDatabase.CommitTransaction();

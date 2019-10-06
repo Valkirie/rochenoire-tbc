@@ -709,9 +709,11 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask) const
        << GetFloatValue(GAMEOBJECT_ROTATION + 2) << ", "
        << GetFloatValue(GAMEOBJECT_ROTATION + 3) << ", "
        << m_respawnDelayTime << ", "
-       << m_respawnDelayTime << ", " // TODO: Add variance
+       << m_respawnDelayTime << ", "                       // TODO: Add variance
        << uint32(GetGoAnimProgress()) << ", "
-       << uint32(GetGoState()) << ")";
+       << uint32(GetGoState()) << ","
+	   << uint32(sWorld.GetWowPatch()) << ","              // current patch value
+	   << uint32(WOW_PATCH_240) << ")";                    // max patch value : WOW_PATCH_240
 
     WorldDatabase.BeginTransaction();
     WorldDatabase.PExecuteLog("DELETE FROM gameobject WHERE guid = '%u'", GetGUIDLow());
