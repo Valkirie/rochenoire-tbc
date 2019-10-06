@@ -211,7 +211,7 @@ struct LootItem
 
     LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot);
 
-	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false);
+	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomPropertyScaled();
 	uint32 loot_level = 0;
 
