@@ -105,9 +105,10 @@ static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell
 
 	uint32 spellLevel = 0;
 
-	// mount spells
+	// default value
+	uint32 spellCost = tSpell->spellCost;
 
-	uint32 spellCost = 0;
+	// mount spells
 	switch (tSpell->spell)
 	{
 		case 33388: // Riding
