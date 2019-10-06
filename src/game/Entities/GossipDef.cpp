@@ -153,6 +153,9 @@ bool PlayerMenu::GossipOptionCoded(unsigned int Selection)
 
 void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Player* pPlayer)
 {
+	if (!pPlayer)
+		return;
+
     WorldPacket data(SMSG_GOSSIP_MESSAGE, (100));           // guess size
     data << ObjectGuid(objectGuid);
     data << uint32(mGossipMenu.GetMenuId());                // new 2.4.0
