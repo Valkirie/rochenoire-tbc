@@ -10511,7 +10511,7 @@ void Player::setItemLevel(bool inventory)
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
-				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 				{
 					nbItem++;
 					avgItemLevel += pProto->ItemLevel;
@@ -10522,7 +10522,7 @@ void Player::setItemLevel(bool inventory)
 		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				if (ItemPrototype const* pProto = pItem->GetProto())
-					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 					{
 						nbItem++;
 						avgItemLevel += pProto->ItemLevel;
@@ -10533,7 +10533,7 @@ void Player::setItemLevel(bool inventory)
 				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
 					if (Item const* pItem = GetItemByPos(i, j))
 						if (ItemPrototype const* pProto = pItem->GetProto())
-							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel())
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 							{
 								nbItem++;
 								avgItemLevel += pProto->ItemLevel;
@@ -13422,6 +13422,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     {
         if (uint32 itemId = pQuest->RewChoiceItemId[reward])
         {
+			itemId = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
             ItemPosCountVec dest;
             if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewChoiceItemCount[reward]) == EQUIP_ERR_OK)
             {
@@ -13437,6 +13438,8 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         {
             if (uint32 itemId = pQuest->RewItemId[i])
             {
+				itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
+
                 ItemPosCountVec dest;
                 if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewItemCount[i]) == EQUIP_ERR_OK)
                 {
