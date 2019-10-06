@@ -1004,6 +1004,11 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (creature->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL))
 		return false;
 
+	uint32 mapId = player->GetMap() ? player->GetMap()->GetId() : 0;
+	uint32 zoneId = player->GetTerrain() ? player->GetZoneId() : 0;
+	if (!isSafeExpansionZone(mapId, zoneId) && player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL))
+		return false;
+
 	if (((Unit*)creature)->IsInStartLocation())
 		return false;
 
@@ -1126,6 +1131,16 @@ bool ObjectMgr::isSafeExpansionZone(uint32 mapId, uint32 zoneId) const
 	return true;
 }
 
+float ObjectMgr::GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const
+{
+	return GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+}
+
+float ObjectMgr::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const
+{
+	return 1 - (1 - Ratio_DPS * Nadds / FinalNAdds) * CoeffSpellRatio;
+}
+
 uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 {
 	if (!owner)
@@ -1169,15 +1184,15 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	if (!IsScalable(target1, target2))
 		return creature->getLevel();
 
-	uint32 mapId = target1->GetMap() ? target1->GetMap()->GetId() : 0;
-	uint32 zoneId = target1->GetTerrain() ? target1->GetZoneId() : 0;
+	uint32 mapId = player->GetMap() ? player->GetMap()->GetId() : 0;
+	uint32 zoneId = player->GetTerrain() ? player->GetZoneId() : 0;
 
 	float p_level = player->getLevel();
 	float c_level = creature->getLevel();
 	int v_level = creature->getLevelVariation();
 
 	if (!isSafeExpansionZone(mapId, zoneId))
-		p_level < DEFAULT_TBC_MIN_LEVEL ? DEFAULT_TBC_MIN_LEVEL : p_level;
+		p_level = p_level < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) ? sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) : p_level;
 
 	uint32 level = p_level + v_level;
 
@@ -1254,6 +1269,13 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 		return oldarmor;
 	if (target1->IsPlayer() && target2->IsPlayer())
 		return oldarmor;
+
+
+	// Mind Controlled creatures should not have scaled armor
+	if (owner->IsCreature() && target->IsCreature())
+		if (owner->isCharmed() || target->isCharmed())
+			return oldarmor;
+
 	if (target1->IsCreature() && target2->IsCreature())
 		return oldarmor;
 
@@ -1335,6 +1357,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 		if (owner->isCharmed() || target->isCharmed())
 			return damage;
 
+	// Do not scale creature's pet damage <-> creature's pet damage
 	if (target1->IsCreature() && target2->IsCreature())
 		return damage;
 
@@ -1900,7 +1923,7 @@ void ObjectMgr::LoadCreatures()
         if (entry == 0)
         {
             CreatureConditionalSpawn const* cSpawn = GetCreatureConditionalSpawn(guid);
-            if (!cSpawn && existsInPatch)
+            if (!cSpawn)
             {
                 auto spawnEntriesMap = sObjectMgr.GetCreatureSpawnEntry();
                 auto itr = spawnEntriesMap.find(guid);
@@ -1924,7 +1947,7 @@ void ObjectMgr::LoadCreatures()
         }
 
         CreatureInfo const* cInfo = GetCreatureTemplate(entry);
-        if (!cInfo && existsInPatch)
+        if (!cInfo)
         {
             sLog.outErrorDb("Table `creature` has creature (GUID: %u) with non existing creature entry %u, skipped.", guid, entry);
             continue;

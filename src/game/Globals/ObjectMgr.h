@@ -1238,6 +1238,9 @@ class ObjectMgr
 		bool isSafeExpansionZone(uint32 mapId, uint32 zoneId) const;
 
 		int sign(int x) const { return (x > 0) - (x < 0); };
+
+		float GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const;
+		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const;
     protected:
 
         // first free id for selected id type

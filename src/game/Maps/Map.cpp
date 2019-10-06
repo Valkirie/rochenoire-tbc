@@ -589,25 +589,27 @@ void Map::Update(const uint32& t_diff)
     m_dyn_tree.update(t_diff);
 
     /// update worldsessions for existing players
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* plr = m_mapRefIter->getSource();
-        if (plr && plr->IsInWorld())
-        {
-            WorldSession* pSession = plr->GetSession();
-            MapSessionFilter updater(pSession);
+	if(HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* plr = m_mapRefIter->getSource();
+			if (plr && plr->IsInWorld())
+			{
+				WorldSession* pSession = plr->GetSession();
+				MapSessionFilter updater(pSession);
 
-            pSession->Update(t_diff, updater);
-        }
-    }
+				pSession->Update(t_diff, updater);
+			}
+		}
 
     /// update players at tick
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* plr = m_mapRefIter->getSource();
-        if (plr && plr->IsInWorld())
-            plr->Update(t_diff);
-    }
+	if (HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* plr = m_mapRefIter->getSource();
+			if (plr && plr->IsInWorld())
+				plr->Update(t_diff);
+		}
 
     /// update active cells around players and active objects
     resetMarkedCells();
@@ -627,18 +629,19 @@ void Map::Update(const uint32& t_diff)
 
     // the player iterator is stored in the map object
     // to make sure calls to Map::Remove don't invalidate it
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* player = m_mapRefIter->getSource();
-        if (!player->IsInWorld() || !player->IsPositionValid())
-            continue;
+	if (HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* player = m_mapRefIter->getSource();
+			if (!player->IsInWorld() || !player->IsPositionValid())
+				continue;
 
-        VisitNearbyCellsOf(player, grid_object_update, world_object_update);
+			VisitNearbyCellsOf(player, grid_object_update, world_object_update);
 
-        // If player is using far sight, visit that object too
-        if (WorldObject* viewPoint = GetWorldObject(player->GetFarSightGuid()))
-            VisitNearbyCellsOf(viewPoint, grid_object_update, world_object_update);
-    }
+			// If player is using far sight, visit that object too
+			if (WorldObject* viewPoint = GetWorldObject(player->GetFarSightGuid()))
+				VisitNearbyCellsOf(viewPoint, grid_object_update, world_object_update);
+		}
 
     // non-player active objects
     if (!m_activeNonPlayers.empty())
@@ -738,35 +741,35 @@ float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction
 float f_min_red_health = 0.7f;	// store the maximum percentage of damage reduction before reducing adds number
 float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
 
-float Map::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness)
+float Map::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness) const
 {
 	return 2 + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
 }
 
-float Map::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+float Map::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
 	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
 	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
 	return u_nbr_players - NHT - NT - NDPS;
 }
 
-float Map::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+float Map::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
 	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
 	return (u_nbr_players - NHT - NT) / (1 + f_ratio_heal_dps);
 }
 
-float Map::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
+float Map::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
 	return GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness) / GetFactorNDPS(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness);
 }
 
-float Map::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT)
+float Map::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const
 {
 	return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
 }
 
-float Map::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health)
+float Map::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health) const
 {
 	float FinalNAdds = Nadds;
 
@@ -776,12 +779,12 @@ float Map::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float
 	return FinalNAdds;
 }
 
-uint32 Map::GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT)
+uint32 Map::GetFinalNAdds(float NT, float Nadds) const
 {
 	return GetFactorAdds(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
 }
 
-void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer)
+void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer) const
 {
 	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
 	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
@@ -797,15 +800,10 @@ void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT,
 	Ratio_Adds_DPS *= GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT) * NbrAdds / FinalNAdds;
 	Ratio_Adds_Damage *= (1 - (1 - f_max_red_adds) * (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) / (1 - GetFactorDPS(u_MaxPlayer, u_MinPlayer, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT))) * NbrAdds / FinalNAdds;
 	Ratio_Adds_AttSpeed *= Ratio_Adds_DPS / Ratio_Adds_Damage;
-	Ratio_Add_SpellTimer *= GetScaleSpellTimer(Ratio_DPS, NbrAdds, FinalNAdds, CoeffSpellRatio);
+	Ratio_Add_SpellTimer *= sObjectMgr.GetScaleSpellTimer(Ratio_DPS, NbrAdds, FinalNAdds, CoeffSpellRatio);
 }
 
-float Map::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio)
-{
-	return 1 - (1 - Ratio_DPS * Nadds / FinalNAdds) * CoeffSpellRatio;
-}
-
-uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive)
+uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive) const
 {
 	uint32 output = 0;
 	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
@@ -822,7 +820,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive)
 	return output;
 }
 
-uint32 Map::GetCreaturesPackSize(uint32 pack)
+uint32 Map::GetCreaturesPackSize(uint32 pack) const
 {
 	if (pack == 0)
 		return 1;
