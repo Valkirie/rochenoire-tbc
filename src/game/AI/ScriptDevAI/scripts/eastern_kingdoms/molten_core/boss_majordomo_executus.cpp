@@ -87,6 +87,8 @@ struct boss_majordomoAI : public ScriptedAI
     uint32 m_uiAegisTimer;
     uint32 m_uiSpeechTimer;
 
+	uint32 m_aBosspawnLocs_nbr;
+
     ObjectGuid m_ragnarosGuid;
     bool m_bHasEncounterFinished;
     uint8 m_uiAddsKilled;
@@ -103,6 +105,8 @@ struct boss_majordomoAI : public ScriptedAI
 
         m_uiAddsKilled = 0;
         m_uiSpeech = 0;
+
+		m_aBosspawnLocs_nbr = m_creature->GetMap()->GetFinalNAdds(1, MAX_MAJORDOMO_ADDS);
     }
 
     void KilledUnit(Unit* /*pVictim*/) override
@@ -232,8 +236,8 @@ struct boss_majordomoAI : public ScriptedAI
                 return;
             }
 
-            // If 4 adds (half of them) are dead, make all remaining healers immune to polymorph via aura
-            if (m_uiAddsKilled >= MAX_MAJORDOMO_ADDS / 2)
+			// If 4 adds (half of them) are dead, make all remaining healers immune to polymorph via aura
+            if (m_uiAddsKilled >= m_aBosspawnLocs_nbr / 2)
                 DoCastSpellIfCan(m_creature, SPELL_IMMUNE_POLY);
 
             // Buff the remaining adds

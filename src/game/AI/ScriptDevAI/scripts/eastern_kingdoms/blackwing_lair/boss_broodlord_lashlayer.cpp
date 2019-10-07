@@ -52,9 +52,9 @@ struct boss_broodlordAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiCleaveTimer         = 8000;                     // These times are probably wrong
-        m_uiBlastWaveTimer      = 12000;
-        m_uiMortalStrikeTimer   = 20000;
+        m_uiCleaveTimer         = 8000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.4f);                     // These times are probably wrong
+        m_uiBlastWaveTimer      = 12000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
+        m_uiMortalStrikeTimer   = 20000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
         m_uiKnockAwayTimer      = 30000;
     }
 
@@ -86,8 +86,9 @@ struct boss_broodlordAI : public ScriptedAI
         // Cleave Timer
         if (m_uiCleaveTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = 7000;
+			float m_uiCleaveTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.4f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+                m_uiCleaveTimer = 7000 / m_uiCleaveTimer_ratio;
         }
         else
             m_uiCleaveTimer -= uiDiff;
@@ -95,8 +96,9 @@ struct boss_broodlordAI : public ScriptedAI
         // Blast Wave
         if (m_uiBlastWaveTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE) == CAST_OK)
-                m_uiBlastWaveTimer = urand(8000, 16000);
+			float m_uiBlastWaveTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
+			if (DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE) == CAST_OK)
+				m_uiBlastWaveTimer = urand(8000, 16000) / m_uiBlastWaveTimer_ratio;
         }
         else
             m_uiBlastWaveTimer -= uiDiff;
@@ -104,8 +106,9 @@ struct boss_broodlordAI : public ScriptedAI
         // Mortal Strike Timer
         if (m_uiMortalStrikeTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
-                m_uiMortalStrikeTimer = urand(25000, 35000);
+			float m_uiMortalStrikeTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
+                m_uiMortalStrikeTimer = urand(25000, 35000) / m_uiMortalStrikeTimer_ratio;
         }
         else
             m_uiMortalStrikeTimer -= uiDiff;

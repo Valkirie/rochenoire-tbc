@@ -24,17 +24,24 @@ EndScriptData */
 #include "AI/ScriptDevAI/include/precompiled.h"
 #include "molten_core.h"
 
-static sSpawnLocation m_aBosspawnLocs[MAX_MAJORDOMO_ADDS] =
+static sSpawnLocation m_aBosspawnLocsElite[MAX_MAJORDOMO_ADDS/2] =
 {
     {NPC_FLAMEWAKER_ELITE,  737.945f, -1156.48f, -118.945f, 4.46804f},
     {NPC_FLAMEWAKER_ELITE,  752.520f, -1191.02f, -118.218f, 2.49582f},
     {NPC_FLAMEWAKER_ELITE,  752.953f, -1163.94f, -118.869f, 3.70010f},
-    {NPC_FLAMEWAKER_ELITE,  738.814f, -1197.40f, -118.018f, 1.83260f},
-    {NPC_FLAMEWAKER_HEALER, 746.939f, -1194.87f, -118.016f, 2.21657f},
-    {NPC_FLAMEWAKER_HEALER, 747.132f, -1158.87f, -118.897f, 4.03171f},
-    {NPC_FLAMEWAKER_HEALER, 757.116f, -1170.12f, -118.793f, 3.40339f},
-    {NPC_FLAMEWAKER_HEALER, 755.910f, -1184.46f, -118.449f, 2.80998f}
+    {NPC_FLAMEWAKER_ELITE,  738.814f, -1197.40f, -118.018f, 1.83260f}
 };
+
+static sSpawnLocation m_aBosspawnLocsHealer[MAX_MAJORDOMO_ADDS/2] =
+{
+	{NPC_FLAMEWAKER_HEALER, 746.939f, -1194.87f, -118.016f, 2.21657f},
+	{NPC_FLAMEWAKER_HEALER, 747.132f, -1158.87f, -118.897f, 4.03171f},
+	{NPC_FLAMEWAKER_HEALER, 757.116f, -1170.12f, -118.793f, 3.40339f},
+	{NPC_FLAMEWAKER_HEALER, 755.910f, -1184.46f, -118.449f, 2.80998f}
+};
+
+uint32 m_aBosspawnLocsElite_nbr;
+uint32 m_aBosspawnLocsHealer_nbr;
 
 instance_molten_core::instance_molten_core(Map* pMap) : ScriptedInstance(pMap)
 {
@@ -223,6 +230,9 @@ void instance_molten_core::DoSpawnMajordomoIfCan(bool bByPlayerEnter)
     uint8 uiSummonPos = m_auiEncounter[TYPE_MAJORDOMO] == DONE ? 1 : 0;
     if (Creature* pMajordomo = pPlayer->SummonCreature(m_aMajordomoLocations[uiSummonPos].m_uiEntry, m_aMajordomoLocations[uiSummonPos].m_fX, m_aMajordomoLocations[uiSummonPos].m_fY, m_aMajordomoLocations[uiSummonPos].m_fZ, m_aMajordomoLocations[uiSummonPos].m_fO, TEMPSPAWN_MANUAL_DESPAWN, 2 * HOUR * IN_MILLISECONDS))
     {
+		m_aBosspawnLocsElite_nbr = pMajordomo->GetMap()->GetFinalNAdds(1, MAX_MAJORDOMO_ADDS / 2);
+		m_aBosspawnLocsHealer_nbr = m_aBosspawnLocsElite_nbr;
+
         if (uiSummonPos)                                    // Majordomo encounter already done, set faction
         {
             pMajordomo->SetFactionTemporary(FACTION_MAJORDOMO_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN);
@@ -234,9 +244,14 @@ void instance_molten_core::DoSpawnMajordomoIfCan(bool bByPlayerEnter)
             if (!bByPlayerEnter)
                 DoScriptText(SAY_MAJORDOMO_SPAWN, pMajordomo);
 
-            for (auto& m_aBosspawnLoc : m_aBosspawnLocs)
-                pMajordomo->SummonCreature(m_aBosspawnLoc.m_uiEntry, m_aBosspawnLoc.m_fX, m_aBosspawnLoc.m_fY, m_aBosspawnLoc.m_fZ, m_aBosspawnLoc.m_fO, TEMPSPAWN_MANUAL_DESPAWN, DAY * IN_MILLISECONDS);
-        }
+            /* for (auto& m_aBosspawnLoc : m_aBosspawnLocs)
+                pMajordomo->SummonCreature(m_aBosspawnLoc.m_uiEntry, m_aBosspawnLoc.m_fX, m_aBosspawnLoc.m_fY, m_aBosspawnLoc.m_fZ, m_aBosspawnLoc.m_fO, TEMPSPAWN_MANUAL_DESPAWN, DAY * IN_MILLISECONDS); */
+        
+			for (int i = 0; i < m_aBosspawnLocsElite_nbr; i++)
+				pMajordomo->SummonCreature(m_aBosspawnLocsElite[i].m_uiEntry, m_aBosspawnLocsElite[i].m_fX, m_aBosspawnLocsElite[i].m_fY, m_aBosspawnLocsElite[i].m_fZ, m_aBosspawnLocsElite[i].m_fO, TEMPSPAWN_MANUAL_DESPAWN, DAY * IN_MILLISECONDS);
+			for (int i = 0; i < m_aBosspawnLocsHealer_nbr; i++)
+				pMajordomo->SummonCreature(m_aBosspawnLocsHealer[i].m_uiEntry, m_aBosspawnLocsHealer[i].m_fX, m_aBosspawnLocsHealer[i].m_fY, m_aBosspawnLocsHealer[i].m_fZ, m_aBosspawnLocsHealer[i].m_fO, TEMPSPAWN_MANUAL_DESPAWN, DAY * IN_MILLISECONDS);
+		}
     }
 }
 

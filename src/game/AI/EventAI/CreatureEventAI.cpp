@@ -60,7 +60,7 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
 				if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
 					CoeffSpellRatio = s_values->ratio_spell;
 
-				Ratio_Add_SpellTimer = creature->GetMap()->GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+				Ratio_Add_SpellTimer = sObjectMgr.GetScaleSpellTimer(creature, CoeffSpellRatio);
 
 				repeatMin = event.timer.repeatMin / Ratio_Add_SpellTimer;
 				repeatMax = event.timer.repeatMax / Ratio_Add_SpellTimer;

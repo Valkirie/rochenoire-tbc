@@ -47,9 +47,9 @@ struct boss_lucifronAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiShadowShockTimer   = urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS);
-        m_uiImpendingDoomTimer = urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS);
-        m_uiLucifronCurseTimer = urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS);
+        m_uiShadowShockTimer   = urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS) / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+        m_uiImpendingDoomTimer = urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS) / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+        m_uiLucifronCurseTimer = urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS) / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
     }
 
     void Aggro(Unit* /*pWho*/) override
@@ -78,8 +78,9 @@ struct boss_lucifronAI : public ScriptedAI
         // Shadowshock
         if (m_uiShadowShockTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWSHOCK) == CAST_OK)
-                m_uiShadowShockTimer = urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS);
+			float m_uiShadowShockTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWSHOCK) == CAST_OK)
+				m_uiShadowShockTimer = urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS) / m_uiShadowShockTimer_ratio;
         }
         else
             m_uiShadowShockTimer -= uiDiff;
@@ -87,8 +88,9 @@ struct boss_lucifronAI : public ScriptedAI
         // Impending doom timer
         if (m_uiImpendingDoomTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_IMPENDINGDOOM) == CAST_OK)
-                m_uiImpendingDoomTimer = urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS);
+			float m_uiImpendingDoomTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+			if (DoCastSpellIfCan(m_creature, SPELL_IMPENDINGDOOM) == CAST_OK)
+				m_uiImpendingDoomTimer = urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS) / m_uiImpendingDoomTimer_ratio;
         }
         else
             m_uiImpendingDoomTimer -= uiDiff;
@@ -96,8 +98,9 @@ struct boss_lucifronAI : public ScriptedAI
         // Lucifron's curse timer
         if (m_uiLucifronCurseTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_LUCIFRONCURSE) == CAST_OK)
-                m_uiLucifronCurseTimer = urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS);
+			float m_uiLucifronCurseTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+			if (DoCastSpellIfCan(m_creature, SPELL_LUCIFRONCURSE) == CAST_OK)
+				m_uiLucifronCurseTimer = urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS) / m_uiLucifronCurseTimer_ratio;
         }
         else
             m_uiLucifronCurseTimer -= uiDiff;

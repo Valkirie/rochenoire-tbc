@@ -49,10 +49,10 @@ struct boss_ebonrocAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiShadowFlameTimer        = 18 * IN_MILLISECONDS;
-        m_uiWingBuffetTimer         = 30 * IN_MILLISECONDS;
-        m_uiThrashTimer             = 6 * IN_MILLISECONDS;
-        m_uiShadowOfEbonrocTimer    = 45000;
+        m_uiShadowFlameTimer        = 18 * IN_MILLISECONDS / sObjectMgr.GetScaleSpellTimer(m_creature, 0.8f);
+        m_uiWingBuffetTimer         = 30 * IN_MILLISECONDS / sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+        m_uiThrashTimer             = 6 * IN_MILLISECONDS / sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+        m_uiShadowOfEbonrocTimer    = 45000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
     }
 
     void Aggro(Unit* /*pWho*/) override
@@ -81,8 +81,9 @@ struct boss_ebonrocAI : public ScriptedAI
         // Shadow Flame Timer
         if (m_uiShadowFlameTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_FLAME) == CAST_OK)
-                m_uiShadowFlameTimer = urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS);
+			float m_uiShadowFlameTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.8f);
+			if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_FLAME) == CAST_OK)
+				m_uiShadowFlameTimer = urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS) / m_uiShadowFlameTimer_ratio;
         }
         else
             m_uiShadowFlameTimer -= uiDiff;
@@ -92,10 +93,11 @@ struct boss_ebonrocAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature, SPELL_WING_BUFFET) == CAST_OK)
             {
-                if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
+				float m_uiWingBuffetTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+				if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
                     m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -50);
 
-                m_uiWingBuffetTimer = urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS);
+				m_uiWingBuffetTimer = urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS) / m_uiWingBuffetTimer_ratio;
             }
         }
         else
@@ -106,7 +108,8 @@ struct boss_ebonrocAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature, SPELL_THRASH) == CAST_OK)
             {
-                m_uiThrashTimer = urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS);
+				float m_uiThrashTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+				m_uiThrashTimer = urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS) / m_uiThrashTimer_ratio;
             }
         }
         else
@@ -115,8 +118,9 @@ struct boss_ebonrocAI : public ScriptedAI
         // Shadow of Ebonroc Timer
         if (m_uiShadowOfEbonrocTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_OF_EBONROC) == CAST_OK)
-                m_uiShadowOfEbonrocTimer = urand(25 * IN_MILLISECONDS, 35 * IN_MILLISECONDS);
+			float m_uiShadowOfEbonrocTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_OF_EBONROC) == CAST_OK)
+				m_uiShadowOfEbonrocTimer = urand(25 * IN_MILLISECONDS, 35 * IN_MILLISECONDS) / m_uiShadowOfEbonrocTimer_ratio;
         }
         else
             m_uiShadowOfEbonrocTimer -= uiDiff;

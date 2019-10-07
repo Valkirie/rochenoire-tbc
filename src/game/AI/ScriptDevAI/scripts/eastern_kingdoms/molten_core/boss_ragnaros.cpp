@@ -85,7 +85,7 @@ struct boss_ragnarosAI : public Scripted_NoMovementAI
 
     void Reset() override
     {
-        m_uiWrathOfRagnarosTimer = 30000;
+		m_uiWrathOfRagnarosTimer = 30000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
         m_uiHammerTimer = 11000;
         m_uiMagmaBlastTimer = 2000;
         m_uiLavaBurstTimer = 20 * IN_MILLISECONDS;
@@ -244,8 +244,9 @@ struct boss_ragnarosAI : public Scripted_NoMovementAI
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_WRATH_OF_RAGNAROS) == CAST_OK)
                     {
-                        DoScriptText(SAY_WRATH, m_creature);
-                        m_uiWrathOfRagnarosTimer = 25000;
+						float m_uiWrathOfRagnarosTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
+						DoScriptText(SAY_WRATH, m_creature);
+						m_uiWrathOfRagnarosTimer = 25000 / m_uiWrathOfRagnarosTimer_ratio;
                     }
                 }
                 else
@@ -290,7 +291,7 @@ struct boss_ragnarosAI : public Scripted_NoMovementAI
 
                     // Summon 8 elementals around the boss
                     if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_SONS_FLAME) == CAST_OK)
-                        m_uiAddCount = NB_ADDS_IN_SUBMERGE;
+                        m_uiAddCount = m_creature->GetMap()->GetFinalNAdds(1, NB_ADDS_IN_SUBMERGE); //NB_ADDS_IN_SUBMERGE;
 
                     m_uiNextPhaseTimer = 1000;
                     m_uiPhase = PHASE_SUBMERGING;

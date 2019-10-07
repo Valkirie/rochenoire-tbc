@@ -54,10 +54,10 @@ struct boss_magmadarAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiFrenzyTimer = 30000;
-        m_uiPanicTimer = 7000;
-        m_uiLavabombTimer = 12000;
-        m_uiLavabombManaTimer = 18000;
+        m_uiFrenzyTimer = 30000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+        m_uiPanicTimer = 7000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+        m_uiLavabombTimer = 12000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+        m_uiLavabombManaTimer = 18000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
     }
 
     void Aggro(Unit* /*pWho*/) override
@@ -90,8 +90,9 @@ struct boss_magmadarAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature, SPELL_FRENZY) == CAST_OK)
             {
-                DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-                m_uiFrenzyTimer = urand(15000, 20000);
+				float m_uiFrenzyTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+				DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
+				m_uiFrenzyTimer = urand(15000, 20000) / m_uiFrenzyTimer_ratio;
             }
         }
         else
@@ -100,8 +101,9 @@ struct boss_magmadarAI : public ScriptedAI
         // Panic_Timer
         if (m_uiPanicTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_PANIC) == CAST_OK)
-                m_uiPanicTimer = urand(30000, 40000);
+			float m_uiPanicTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+			if (DoCastSpellIfCan(m_creature, SPELL_PANIC) == CAST_OK)
+				m_uiPanicTimer = urand(30000, 40000) / m_uiPanicTimer_ratio;
         }
         else
             m_uiPanicTimer -= uiDiff;
@@ -112,8 +114,9 @@ struct boss_magmadarAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB, SELECT_FLAG_POWER_NOT_MANA))
             {
                 debug_log("SD2 casting NO MANA user lava bombe onto %s", pTarget->GetName());
-                if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB) == CAST_OK)
-                    m_uiLavabombTimer = urand(12000, 15000);
+				float m_uiLavabombTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+				if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB) == CAST_OK)
+					m_uiLavabombTimer = urand(12000, 15000) / m_uiLavabombTimer_ratio;
             }
         }
         else
@@ -124,9 +127,10 @@ struct boss_magmadarAI : public ScriptedAI
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB_MANA, SELECT_FLAG_POWER_MANA))
             {
-                                debug_log("SD2 casting MANA user lava bombe onto %s", pTarget->GetName());
-                if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB_MANA) == CAST_OK)
-                    m_uiLavabombManaTimer = urand(12000, 15000);
+                debug_log("SD2 casting MANA user lava bombe onto %s", pTarget->GetName());
+				float m_uiLavabombManaTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+				if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB_MANA) == CAST_OK)
+					m_uiLavabombManaTimer = urand(12000, 15000) / m_uiLavabombManaTimer_ratio;
             }
         }
         else

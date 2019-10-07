@@ -51,8 +51,8 @@ struct boss_shazzrahAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiArcaneExplosionTimer = 6000;
-        m_uiShazzrahCurseTimer = 10000;
+		m_uiArcaneExplosionTimer = 6000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
+        m_uiShazzrahCurseTimer = 10000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
         m_uiMagicGroundingTimer = 24000;
         m_uiCounterspellTimer = 15000;
         m_uiBlinkTimer = 30000;
@@ -84,8 +84,9 @@ struct boss_shazzrahAI : public ScriptedAI
         // Arcane Explosion Timer
         if (m_uiArcaneExplosionTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION) == CAST_OK)
-                m_uiArcaneExplosionTimer = urand(5000, 9000);
+			float m_uiArcaneExplosionTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
+			if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION) == CAST_OK)
+				m_uiArcaneExplosionTimer = urand(5000, 9000) / m_uiArcaneExplosionTimer_ratio;
         }
         else
             m_uiArcaneExplosionTimer -= uiDiff;
@@ -93,8 +94,9 @@ struct boss_shazzrahAI : public ScriptedAI
         // Shazzrah Curse Timer
         if (m_uiShazzrahCurseTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_SHAZZRAH_CURSE) == CAST_OK)
-                m_uiShazzrahCurseTimer = 20000;
+			float m_uiShazzrahCurseTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.3f);
+			if (DoCastSpellIfCan(m_creature, SPELL_SHAZZRAH_CURSE) == CAST_OK)
+				m_uiShazzrahCurseTimer = 20000 / m_uiShazzrahCurseTimer_ratio;
         }
         else
             m_uiShazzrahCurseTimer -= uiDiff;

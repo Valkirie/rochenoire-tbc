@@ -60,10 +60,10 @@ struct boss_razorgoreAI : public ScriptedAI
     {
         m_bEggsExploded         = false;
 
-        m_uiCleaveTimer         = urand(4000, 8000);
+		m_uiCleaveTimer         = urand(4000, 8000) / sObjectMgr.GetScaleSpellTimer(m_creature, 0.8f);
         m_uiWarStompTimer       = 30000;
-        m_uiConflagrationTimer  = urand(10000, 15000);
-        m_uiFireballVolleyTimer = urand(15000, 20000);
+		m_uiConflagrationTimer  = urand(10000, 15000) / sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
+		m_uiFireballVolleyTimer = urand(15000, 20000) / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
     }
 
     void DamageTaken(Unit* /*doneBy*/, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
@@ -107,8 +107,9 @@ struct boss_razorgoreAI : public ScriptedAI
         // Cleave
         if (m_uiCleaveTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = urand(4000, 8000);
+			float m_uiCleaveTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.8f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+				m_uiCleaveTimer = urand(4000, 8000) / m_uiCleaveTimer_ratio;
         }
         else
             m_uiCleaveTimer -= uiDiff;
@@ -125,8 +126,9 @@ struct boss_razorgoreAI : public ScriptedAI
         // Fireball Volley
         if (m_uiFireballVolleyTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_FIREBALL_VOLLEY) == CAST_OK)
-                m_uiFireballVolleyTimer = urand(15000, 20000);
+			float m_uiFireballVolleyTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+			if (DoCastSpellIfCan(m_creature, SPELL_FIREBALL_VOLLEY) == CAST_OK)
+				m_uiFireballVolleyTimer = urand(15000, 20000) / m_uiFireballVolleyTimer_ratio;
         }
         else
             m_uiFireballVolleyTimer -= uiDiff;
@@ -134,8 +136,9 @@ struct boss_razorgoreAI : public ScriptedAI
         // Conflagration
         if (m_uiConflagrationTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_CONFLAGRATION) == CAST_OK)
-                m_uiConflagrationTimer = urand(15000, 25000);
+			float m_uiConflagrationTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.2f);
+			if (DoCastSpellIfCan(m_creature, SPELL_CONFLAGRATION) == CAST_OK)
+				m_uiConflagrationTimer = urand(15000, 25000) / m_uiConflagrationTimer_ratio;
         }
         else
             m_uiConflagrationTimer -= uiDiff;

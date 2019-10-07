@@ -98,11 +98,11 @@ struct boss_vaelastraszAI : public ScriptedAI
         m_uiIntroPhase                   = 0;
         m_uiSpeechTimer                  = 0;
         m_uiSpeechNum                    = 0;
-        m_uiCleaveTimer                  = 8000;            // These times are probably wrong
-        m_uiFlameBreathTimer             = 11000;
-        m_uiBurningAdrenalineCasterTimer = 15000;
-        m_uiBurningAdrenalineTankTimer   = 45000;
-        m_uiFireNovaTimer                = 5000;
+		m_uiCleaveTimer                  = 8000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);            // These times are probably wrong
+		m_uiFlameBreathTimer             = 11000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+		m_uiBurningAdrenalineCasterTimer = 15000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+		m_uiBurningAdrenalineTankTimer   = 45000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+		m_uiFireNovaTimer                = 5000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
         m_uiTailSweepTimer               = 20000;
         m_bHasYelled = false;
 
@@ -295,8 +295,9 @@ struct boss_vaelastraszAI : public ScriptedAI
         // Cleave Timer
         if (m_uiCleaveTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = 15000;
+			float m_uiCleaveTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+				m_uiCleaveTimer = 15000 / m_uiCleaveTimer_ratio;
         }
         else
             m_uiCleaveTimer -= uiDiff;
@@ -304,8 +305,9 @@ struct boss_vaelastraszAI : public ScriptedAI
         // Flame Breath Timer
         if (m_uiFlameBreathTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
-                m_uiFlameBreathTimer = urand(4000, 8000);
+			float m_uiFlameBreathTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
+				m_uiFlameBreathTimer = urand(4000, 8000) / m_uiFlameBreathTimer_ratio;
         }
         else
             m_uiFlameBreathTimer -= uiDiff;
@@ -316,7 +318,9 @@ struct boss_vaelastraszAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_BURNING_ADRENALINE, SELECT_FLAG_PLAYER | SELECT_FLAG_POWER_MANA))
             {
                 pTarget->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
-                m_uiBurningAdrenalineCasterTimer = 15000;
+                
+				float m_uiBurningAdrenalineCasterTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+				m_uiBurningAdrenalineCasterTimer = 15000 / m_uiBurningAdrenalineCasterTimer_ratio;
             }
         }
         else
@@ -329,7 +333,8 @@ struct boss_vaelastraszAI : public ScriptedAI
             // to Vael instead of the player
             m_creature->getVictim()->CastSpell(m_creature->getVictim(), SPELL_BURNING_ADRENALINE_TANK, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
 
-            m_uiBurningAdrenalineTankTimer = 45000;
+			float m_uiBurningAdrenalineTankTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+			m_uiBurningAdrenalineTankTimer = 45000 / m_uiBurningAdrenalineTankTimer_ratio;
         }
         else
             m_uiBurningAdrenalineTankTimer -= uiDiff;
@@ -337,8 +342,9 @@ struct boss_vaelastraszAI : public ScriptedAI
         // Fire Nova Timer
         if (m_uiFireNovaTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_FIRE_NOVA) == CAST_OK)
-                m_uiFireNovaTimer = 5000;
+			float m_uiFireNovaTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
+			if (DoCastSpellIfCan(m_creature, SPELL_FIRE_NOVA) == CAST_OK)
+				m_uiFireNovaTimer = 5000 / m_uiFireNovaTimer_ratio;
         }
         else
             m_uiFireNovaTimer -= uiDiff;

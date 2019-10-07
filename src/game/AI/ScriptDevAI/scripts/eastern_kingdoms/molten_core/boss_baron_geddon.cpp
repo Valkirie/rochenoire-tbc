@@ -53,8 +53,8 @@ struct boss_baron_geddonAI : public ScriptedAI
     {
         m_bIsArmageddon = false;
         m_uiInfernoTimer = 45000;
-        m_uiIgniteManaTimer = 30000;
-        m_uiLivingBombTimer = 35000;
+        m_uiIgniteManaTimer = 30000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
+        m_uiLivingBombTimer = 35000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.25f);
     }
 
     void Aggro(Unit* /*pWho*/) override
@@ -106,8 +106,9 @@ struct boss_baron_geddonAI : public ScriptedAI
         // Ignite Mana Timer
         if (m_uiIgniteManaTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_IGNITE_MANA) == CAST_OK)
-                m_uiIgniteManaTimer = 30000;
+			float m_uiIgniteManaTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
+			if (DoCastSpellIfCan(m_creature, SPELL_IGNITE_MANA) == CAST_OK)
+				m_uiIgniteManaTimer = 30000 / m_uiIgniteManaTimer_ratio;
         }
         else
             m_uiIgniteManaTimer -= uiDiff;
@@ -117,8 +118,9 @@ struct boss_baron_geddonAI : public ScriptedAI
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
-                if (DoCastSpellIfCan(pTarget, SPELL_LIVING_BOMB) == CAST_OK)
-                    m_uiLivingBombTimer = 35000;
+				float m_uiLivingBombTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.25f);
+				if (DoCastSpellIfCan(pTarget, SPELL_LIVING_BOMB) == CAST_OK)
+					m_uiLivingBombTimer = 35000 / m_uiLivingBombTimer_ratio;
             }
         }
         else

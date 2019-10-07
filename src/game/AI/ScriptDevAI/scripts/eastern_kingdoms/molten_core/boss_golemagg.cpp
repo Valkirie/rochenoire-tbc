@@ -61,7 +61,7 @@ struct boss_golemaggAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiPyroblastTimer  = 7 * IN_MILLISECONDS;
+        m_uiPyroblastTimer  = 7 * IN_MILLISECONDS / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
         m_uiEarthquakeTimer = 3 * IN_MILLISECONDS;
         m_uiBuffTimer       = 1.5 * IN_MILLISECONDS;
         m_bEnraged = false;
@@ -106,8 +106,9 @@ struct boss_golemaggAI : public ScriptedAI
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
-                if (DoCastSpellIfCan(pTarget, SPELL_PYROBLAST) == CAST_OK)
-                    m_uiPyroblastTimer = 7 * IN_MILLISECONDS;
+				float m_uiPyroblastTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
+				if (DoCastSpellIfCan(pTarget, SPELL_PYROBLAST) == CAST_OK)
+					m_uiPyroblastTimer = 7 * IN_MILLISECONDS / m_uiPyroblastTimer_ratio;
             }
         }
         else
