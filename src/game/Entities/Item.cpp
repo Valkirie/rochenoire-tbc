@@ -727,7 +727,7 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 	if (!pProto)
 		return itemid;
 
-	if (pProto->Class == 0 || pProto->Class == 15)
+	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
 		ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid);
 		if (sItem)
@@ -735,6 +735,7 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 	}
 	else
 	{
+		// outdated !
 		uint32 scaleid = std::floor((itemid - 41000 - 1)/(2 * 180));
 
 		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
@@ -812,7 +813,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
-		// Junk | Consumables
+		// look for an item below player level
 		for (uint32 j = 0; j < plevel; j++)
 		{
 			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel - j);
@@ -820,10 +821,18 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
 		}
+
+		// look for the closest item above player level
+		for (uint32 j = plevel; j < sWorld.GetCurrentMaxLevel(); j++)
+		{
+			std::string s = std::to_string(itemid) + ":" + std::to_string(j);
+
+			if (ItemLootScale const* sItem = sObjectMgr.GetItemLootScale(s))
+				return sItem->ReplacementId;
+		}
 	}
 	else
 	{
-		// Weapons | Armors
 		uint32 ItemLevel = pProto->ItemLevel;
 
 		if (plevel < 60)
