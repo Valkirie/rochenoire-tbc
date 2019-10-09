@@ -1731,46 +1731,46 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 				uint32 mingold = creature->GetCreatureInfo()->MinLootGold;
 				uint32 maxgold = creature->GetCreatureInfo()->MaxLootGold;
 
-				if (player && sObjectMgr.IsScalable(creature, player))
+				if (sObjectMgr.IsScalable(creature, player))
 				{
 					uint32 mob_level = creature->getLevel();
 					uint32 player_level = player->getLevel();
 
-					uint32 expected_mingold = sObjectMgr.ScaleGold(mob_level, true);
-					uint32 expected_maxgold = sObjectMgr.ScaleGold(mob_level, false);
+					if (Group const* grp = player->GetGroup())
+					{
+						for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+						{
+							if (Player const* pl = itr->getSource())
+								if (pl != player && pl->IsAtGroupRewardDistance(creature))
+									player_level += pl->getLevel();
+						}
+						player_level /= grp->GetMembersCount();
+					}
 
-					float difference_mingold = float((float)mingold / (float)expected_mingold);
-					float difference_maxgold = float((float)maxgold / (float)expected_maxgold);
+					mingold = sObjectMgr.ScaleGold(mob_level, player_level, mingold, true);
+					maxgold = sObjectMgr.ScaleGold(mob_level, player_level, maxgold, false);
 
-					uint32 scaled_mingold = uint32(difference_mingold* sObjectMgr.ScaleGold(player_level, true));
-					uint32 scaled_maxgold = uint32(difference_maxgold* sObjectMgr.ScaleGold(player_level, false));
-
-					float scaled_mingold_ratio = float((float)scaled_mingold / (float)mingold);
-					float scaled_maxgold_ratio = float((float)scaled_maxgold / (float)maxgold);
-
-					mingold *= scaled_mingold_ratio;
-					maxgold *= scaled_maxgold_ratio;
-				}
-
-                GenerateMoneyLoot(mingold, maxgold);
-
-				if (sObjectMgr.IsScalable(creature, player))
-				{
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 					{
 						LootItem* lootItem = m_lootItems[itemSlot];
-						uint32 looItemId = lootItem->itemId;
+						uint32 lootItemId = lootItem->itemId;
 
 						if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
 						{
-							looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+							lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
 
-							lootItem->itemId = looItemId;
+							if (lootItem->itemId != lootItemId)
+							{
+								lootItem->itemId = lootItemId;
+								lootItem->isScaled = true;
+							}
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 						}
 					}
 				}
+
+				GenerateMoneyLoot(mingold, maxgold);
 
                 // loot may be anyway empty (loot may be empty or contain items that no one have right to loot)
                 bool isLootedForAll = IsLootedForAll();
@@ -1920,18 +1920,57 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 
                     SetGroupLootRight(player);
                     FillLoot(lootid, LootTemplates_Gameobject, player, false);
-                    GenerateMoneyLoot(gameObject->GetGOInfo()->MinMoneyLoot, gameObject->GetGOInfo()->MaxMoneyLoot);
+
+					uint32 mingold = gameObject->GetGOInfo()->MinMoneyLoot;
+					uint32 maxgold = gameObject->GetGOInfo()->MaxMoneyLoot;
+
+					uint32 loot_level = 1;
+					uint32 loot_count = 1;
+					uint32 player_level = player->getLevel();
+
+					if (Group const* grp = player->GetGroup())
+					{
+						for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+						{
+							if (Player const* pl = itr->getSource())
+								if (pl != player && pl->IsAtGroupRewardDistance(gameObject))
+									player_level += pl->getLevel();
+						}
+						player_level /= grp->GetMembersCount();
+					}
 
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 					{
 						LootItem* lootItem = m_lootItems[itemSlot];
-						uint32 looItemId = lootItem->itemId;
+						uint32 reqLevel = lootItem->itemProto->RequiredLevel;
+						if (reqLevel > 0)
+						{
+							loot_level += reqLevel;
+							loot_count++;
+						}
+					}
+
+					loot_level /= loot_count;
+
+					mingold = sObjectMgr.ScaleGold(loot_level, player_level, mingold, true);
+					maxgold = sObjectMgr.ScaleGold(loot_level, player_level, maxgold, false);
+
+					GenerateMoneyLoot(mingold, maxgold);
+
+					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
+					{
+						LootItem* lootItem = m_lootItems[itemSlot];
+						uint32 lootItemId = lootItem->itemId;
 
 						if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
 						{
-							looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+							lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
 
-							lootItem->itemId = looItemId;
+							if (lootItem->itemId != lootItemId)
+							{
+								lootItem->itemId = lootItemId;
+								lootItem->isScaled = true;
+							}
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 						}
@@ -2034,18 +2073,43 @@ Loot::Loot(Player* player, Item* item, LootType type) :
             break;
         default:
             FillLoot(item->GetEntry(), LootTemplates_Item, player, true, item->GetProto()->MaxMoneyLoot == 0);
-            GenerateMoneyLoot(item->GetProto()->MinMoneyLoot, item->GetProto()->MaxMoneyLoot);
+
+			uint32 item_level = item->GetProto()->RequiredLevel;
+			uint32 player_level = player->getLevel();
+
+			if (Group const* grp = player->GetGroup())
+			{
+				for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+				{
+					if (Player const* pl = itr->getSource())
+						if (pl != player && pl->IsAtGroupRewardDistance(player))
+							player_level += pl->getLevel();
+				}
+				player_level /= grp->GetMembersCount();
+			}
+
+			uint32 mingold = item->GetProto()->MinMoneyLoot;
+			uint32 maxgold = item->GetProto()->MaxMoneyLoot;
+
+			mingold = sObjectMgr.ScaleGold(item_level, player_level, mingold, true);
+			maxgold = sObjectMgr.ScaleGold(item_level, player_level, maxgold, false);
+
+            GenerateMoneyLoot(mingold, maxgold);
 
 			for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 			{
 				LootItem* lootItem = m_lootItems[itemSlot];
-				uint32 looItemId = lootItem->itemId;
+				uint32 lootItemId = lootItem->itemId;
 
 				if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
 				{
-					looItemId = Item::LoadScaledLoot(lootItem->itemId, player);
+					lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
 
-					lootItem->itemId = looItemId;
+					if (lootItem->itemId != lootItemId)
+					{
+						lootItem->itemId = lootItemId;
+						lootItem->isScaled = true;
+					}
 					lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 					lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 				}
@@ -2140,7 +2204,7 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem)
     if (target->GetSession())
     {
         ItemPosCountVec dest;
-		if(lootItem->IsAllowed(target, this))
+		if(lootItem->IsAllowed(target, this) && !lootItem->isScaled)
 			itemId = Item::LoadScaledLoot(itemId, target);
         msg = target->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, lootItem->count);
         if (msg == EQUIP_ERR_OK)
@@ -2447,7 +2511,7 @@ void Loot::GetLootContentFor(Player* player, ByteBuffer& buffer)
         LootItem* lootItem = *lootItemItr;
 		LootItem* lootItem_tmp = new LootItem(lootItem->itemId, lootItem->count, lootItem->randomSuffix, lootItem->randomPropertyId, lootItem->lootSlot);
 
-		if (lootItem->IsAllowed(player, this))
+		if (lootItem->IsAllowed(player, this) && !lootItem->isScaled)
 			lootItem_tmp->itemId = Item::LoadScaledLoot(lootItem_tmp->itemId, player);
 
         LootSlotType slot_type = lootItem->GetSlotTypeForSharedLoot(player, this);

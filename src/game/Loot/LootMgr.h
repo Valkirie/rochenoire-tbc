@@ -199,7 +199,7 @@ struct LootItem
     bool         isUnderThreshold  : 1;
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
-	
+	bool         isScaled          = false;                         // true if item is scaled
 	std::vector<uint32> randomPropertyIdArray;
 	std::vector<uint32> randomSuffixIdArray;
 

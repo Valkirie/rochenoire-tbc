@@ -1227,7 +1227,7 @@ class ObjectMgr
 		uint32 ScaleArmor(Unit *owner, Unit *target, uint32 armor) const;
 		uint32 getLevelScaled(Unit *owner, Unit *target) const;
 		int32 getLevelDiff(Unit *owner, Unit *target) const;
-		float ScaleGold(uint32 level, bool min = true) const;
+		float ScaleGold(uint32 in_level, uint32 out_level, uint32 gold, bool min = true) const;
 		bool IsScalable(Unit *owner, Unit *target) const;
 
 		bool isAuraRestricted(uint32 EffectApplyAuraName) const;
