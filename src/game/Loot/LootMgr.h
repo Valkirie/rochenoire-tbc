@@ -201,6 +201,7 @@ struct LootItem
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
 	
 	std::vector<uint32> randomPropertyIdArray;
+	std::vector<uint32> randomSuffixIdArray;
 
     // storing item prototype for fast access
     ItemPrototype const* itemProto;
@@ -213,6 +214,8 @@ struct LootItem
 
 	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomPropertyScaled();
+	int32 getRandomSuffixScaled(uint32 ilevel, bool won = false, bool display = true);
+	void setRandomSuffixScaled();
 	uint32 loot_level = 0;
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot

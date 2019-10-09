@@ -381,6 +381,7 @@ LootItem::LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold)
     isReleased        = false;
 
 	setRandomPropertyScaled();
+	setRandomSuffixScaled();
 }
 
 LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot)
@@ -411,6 +412,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
     isReleased        = false;
 
 	setRandomPropertyScaled();
+	setRandomSuffixScaled();
 }
 
 int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
@@ -446,6 +448,43 @@ void LootItem::setRandomPropertyScaled()
 			uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
 			if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid))
 				randomPropertyIdArray[plevel] = rproperty;
+		}
+	}
+}
+
+int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
+{
+	// TODO use ilevel instead of plevel
+	uint32 displayid = loot_level;
+
+	if (loot_level == 0 || won)
+	{
+		loot_level = ilevel;
+		displayid = ilevel;
+	}
+
+	if (display)
+		displayid = ilevel;
+
+	if (randomSuffix != 0)
+		if (randomSuffixIdArray[displayid])
+			return randomSuffixIdArray[displayid];
+
+	return 0;
+}
+
+void LootItem::setRandomSuffixScaled()
+{
+	if (randomSuffix != 0)
+	{
+		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+			randomSuffixIdArray.push_back(0);
+
+		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+		{
+			uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+			if (uint32 rproperty = GenerateEnchSuffixFactor(itemid))
+				randomSuffixIdArray[plevel] = rproperty;
 		}
 	}
 }
@@ -605,12 +644,12 @@ void GroupLootRoll::SendStartRoll()
 		uint32 plevel = plr->getLevel();
 
 		WorldPacket data(SMSG_LOOT_START_ROLL, (8 + 4 + 4 + 4 + 4 + 4 + 1));
-		data << m_loot->GetLootGuid();                          // creature guid what we're looting
-		data << uint32(m_itemSlot);                             // item slot in loot
-		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));           // item random property ID
-		data << uint32(LOOT_ROLL_TIMEOUT);                      // the countdown time to choose "need" or "greed"
+		data << m_loot->GetLootGuid();												// creature guid what we're looting
+		data << uint32(m_itemSlot);													// item slot in loot
+		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
+		data << uint32(LOOT_ROLL_TIMEOUT);											// the countdown time to choose "need" or "greed"
 
 		size_t voteMaskPos = data.wpos();
 		data << uint8(0);
@@ -643,11 +682,11 @@ void GroupLootRoll::SendAllPassed()
 		uint32 plevel = plr->getLevel();
 
 		WorldPacket data(SMSG_LOOT_ALL_PASSED, (8 + 4 + 4 + 4 + 4));
-		data << m_loot->GetLootGuid();                          // creature guid what we're looting
-		data << uint32(m_itemSlot);                             // item slot in loot
-		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));           // item random property ID
+		data << m_loot->GetLootGuid();												// creature guid what we're looting
+		data << uint32(m_itemSlot);													// item slot in loot
+		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
 
         plr->GetSession()->SendPacket(data);
     }
@@ -685,14 +724,14 @@ void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNum
 		uint32 plevel = plr->getLevel();
 
 		WorldPacket data(SMSG_LOOT_ROLL_WON, (8 + 4 + 4 + 4 + 4 + 8 + 1 + 1));
-		data << m_loot->GetLootGuid();                          // creature guid what we're looting
-		data << uint32(m_itemSlot);                             // item slot in loot
-		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));           // item random property ID
-		data << targetGuid;                                     // guid of the player who won.
-		data << uint8(rollNumber);                              // rollnumber related to SMSG_LOOT_ROLL
-		data << uint8(rollType);                                // Rolltype related to SMSG_LOOT_ROLL
+		data << m_loot->GetLootGuid();												// creature guid what we're looting
+		data << uint32(m_itemSlot);													// item slot in loot
+		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
+		data << targetGuid;															// guid of the player who won.
+		data << uint8(rollNumber);													// rollnumber related to SMSG_LOOT_ROLL
+		data << uint8(rollType);													// Rolltype related to SMSG_LOOT_ROLL
 
 		plr->GetSession()->SendPacket(data);
     }
@@ -714,15 +753,15 @@ void GroupLootRoll::SendRoll(ObjectGuid const& targetGuid, uint32 rollNumber, ui
 		uint32 plevel = plr->getLevel();
 
 		WorldPacket data(SMSG_LOOT_ROLL, (8 + 4 + 8 + 4 + 4 + 4 + 1 + 1 + 1));
-		data << m_loot->GetLootGuid();                          // creature guid what we're looting
-		data << uint32(m_itemSlot);                             // item slot in loot
+		data << m_loot->GetLootGuid();												// creature guid what we're looting
+		data << uint32(m_itemSlot);													// item slot in loot
 		data << targetGuid;
-		data << uint32(itemId);                     // the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->randomSuffix);               // randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));           // item random property ID
-		data << uint8(rollNumber);                              // 0: "Need for: [item name]" > 127: "you passed on: [item name]"      Roll number
-		data << uint8(rollType);                                // 0: "Need for: [item name]" 0: "You have selected need for [item name] 1: need roll 2: greed roll
-		data << uint8(0);                                       // auto pass on loot
+		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
+		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
+		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
+		data << uint8(rollNumber);													// 0: "Need for: [item name]" > 127: "you passed on: [item name]"      Roll number
+		data << uint8(rollType);													// 0: "Need for: [item name]" 0: "You have selected need for [item name] 1: need roll 2: greed roll
+		data << uint8(0);															// auto pass on loot
 
 
         plr->GetSession()->SendPacket(data);
@@ -1728,6 +1767,7 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 
 							lootItem->itemId = looItemId;
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 						}
 					}
 				}
@@ -1893,6 +1933,7 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 
 							lootItem->itemId = looItemId;
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 						}
 					}
 
@@ -2006,6 +2047,7 @@ Loot::Loot(Player* player, Item* item, LootType type) :
 
 					lootItem->itemId = looItemId;
 					lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
+					lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
 				}
 			}
 
