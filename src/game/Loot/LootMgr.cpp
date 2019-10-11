@@ -63,7 +63,7 @@ class LootTemplate::LootGroup                               // A set of loot def
         bool HasQuestDrop() const;                          // True if group includes at least 1 quest drop entry
         bool HasQuestDropForPlayer(Player const* player) const;
         // The same for active quests of the player
-        void Process(Loot& loot, Player const* lootOwner) const; // Rolls an item from the group (if any) and adds the item to the loot
+        void Process(Loot& loot, Player const* lootOwner, uint32 quality_id) const; // Rolls an item from the group (if any) and adds the item to the loot
         float RawTotalChance() const;                       // Overall chance for the group (without equal chanced items)
         float TotalChance() const;                          // Overall chance for the group
 
@@ -73,7 +73,7 @@ class LootTemplate::LootGroup                               // A set of loot def
         LootStoreItemList ExplicitlyChanced;                // Entries with chances defined in DB
         LootStoreItemList EqualChanced;                     // Zero chances - every entry takes the same chance
 
-        LootStoreItem const* Roll(Loot const& loot, Player const* lootOwner) const; // Rolls an item from the group, returns nullptr if all miss their chances
+        LootStoreItem const* Roll(Loot const& loot, Player const* lootOwner, uint32 quality_id) const; // Rolls an item from the group, returns nullptr if all miss their chances
 };
 
 // Remove all data and free all memory
@@ -2557,7 +2557,7 @@ void LootTemplate::LootGroup::AddEntry(LootStoreItem& item)
 }
 
 // Rolls an item from the group, returns nullptr if all miss their chances
-LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player const* lootOwner) const
+LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player const* lootOwner, uint32 quality_id) const
 {
     if (!ExplicitlyChanced.empty())                         // First explicitly chanced entries are checked
     {
@@ -2606,8 +2606,12 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
         std::vector <LootStoreItem const*> lootStoreItemVector; // we'll use new vector to make easy the randomization
 
         // fill the new vector with correct pointer to our item list
-        for (auto& itr : EqualChanced)
-            lootStoreItemVector.push_back(&itr);
+		for (auto& itr : EqualChanced)
+		{
+			if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itr.itemid))
+				if(pProto->Quality == quality_id)
+					lootStoreItemVector.push_back(&itr);
+		}
 
         // randomize the new vector
         random_shuffle(lootStoreItemVector.begin(), lootStoreItemVector.end());
@@ -2671,9 +2675,9 @@ bool LootTemplate::LootGroup::HasQuestDropForPlayer(Player const* player) const
 }
 
 // Rolls an item from the group (if any takes its chance) and adds the item to the loot
-void LootTemplate::LootGroup::Process(Loot& loot, Player const* lootOwner) const
+void LootTemplate::LootGroup::Process(Loot& loot, Player const* lootOwner, uint32 quality_id) const
 {
-    LootStoreItem const* item = Roll(loot, lootOwner);
+    LootStoreItem const* item = Roll(loot, lootOwner, quality_id);
     if (item != nullptr)
         loot.AddItem(*item);
 }
@@ -2768,8 +2772,9 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
     {
         if (groupId > Groups.size())
             return;                                         // Error message already printed at loading stage
-
-        Groups[groupId - 1].Process(loot, lootOwner);
+		
+		for (uint32 ITEM_QUALITY = 0; ITEM_QUALITY < MAX_ITEM_QUALITY; ++ITEM_QUALITY) // Ref multiplicator
+			Groups[groupId - 1].Process(loot, lootOwner, ITEM_QUALITY);
         return;
     }
 
@@ -2790,7 +2795,8 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
             if (!Referenced)
                 continue;                                   // Error message already printed at loading stage
 
-            for (uint32 loop = 0; loop < Entrie.maxcount; ++loop) // Ref multiplicator
+			uint32 maxcount = uint32(float(Entrie.maxcount) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED_AMOUNT));
+            for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
                 Referenced->Process(loot, lootOwner, store, rate, Entrie.group);
         }
         else                                                // Plain entries (not a reference, not grouped)
@@ -2798,8 +2804,13 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
     }
 
     // Now processing groups
-    for (const auto& Group : Groups)
-        Group.Process(loot, lootOwner);
+	for (uint32 ITEM_QUALITY = 0; ITEM_QUALITY < MAX_ITEM_QUALITY; ++ITEM_QUALITY) // Ref multiplicator
+	{
+		uint32 maxcount = std::round(lootOwner ? lootOwner->getItemLevelCoeff(ITEM_QUALITY) : 1.0f);
+		for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
+			for (const auto& Group : Groups)
+				Group.Process(loot, lootOwner, ITEM_QUALITY);
+	}
 }
 
 // True if template includes at least 1 quest drop entry
