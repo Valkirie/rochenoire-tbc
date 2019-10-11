@@ -10514,7 +10514,7 @@ void Player::setItemLevel(bool inventory)
 				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 				{
 					nbItem++;
-					avgItemLevel += pProto->ItemLevel;
+					avgItemLevel += std::max((float)pProto->ItemLevel, 5.0f);
 				}
 
 	if (inventory)
@@ -10525,7 +10525,7 @@ void Player::setItemLevel(bool inventory)
 					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 					{
 						nbItem++;
-						avgItemLevel += pProto->ItemLevel;
+						avgItemLevel += std::max((float)pProto->ItemLevel, 5.0f);
 					}
 
 		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10536,7 +10536,7 @@ void Player::setItemLevel(bool inventory)
 							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
 							{
 								nbItem++;
-								avgItemLevel += pProto->ItemLevel;
+								avgItemLevel += std::max((float)pProto->ItemLevel, 5.0f);
 							}
 	}
 
@@ -10550,9 +10550,37 @@ void Player::setItemLevel(bool inventory)
 }
 
 
-uint32 Player::countRelevant(uint32 Quality) const
+uint32 Player::countRelevant(uint32 Quality, bool inventory) const
 {
-	return 1;
+	uint8 nbItem = 0;
+
+	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+			if (ItemPrototype const* pProto = pItem->GetProto())
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+					if (pProto->Quality == Quality)
+						nbItem++;
+
+	if (inventory)
+	{
+		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				if (ItemPrototype const* pProto = pItem->GetProto())
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+						if (pProto->Quality == Quality)
+							nbItem++;
+
+		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+			if (Bag * pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+					if (Item const* pItem = GetItemByPos(i, j))
+						if (ItemPrototype const* pProto = pItem->GetProto())
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+								if(pProto->Quality == Quality)
+									nbItem++;
+	}
+
+	return std::max((float)nbItem, 1.0f);
 }
 
 uint32 Player::getExpectedItemLevel() const
@@ -10565,6 +10593,8 @@ float Player::getItemLevelCoeff(uint32 Quality) const
 	float ilevel_ratio = std::max((float)getExpectedItemLevel() / (float)getItemLevel(), 1.0f);
 	ilevel_ratio *= sWorld.getConfig(qualityToCoeff[Quality]);
 
+	uint32 nb_quality = countRelevant(Quality, true);
+	uint32 ep_quality = 0;
 	switch (Quality) // Could be used to alter drop rate based on the number of equipped gear with the same quality
 	{
 		case ITEM_QUALITY_POOR:                 // GREY
@@ -10572,18 +10602,211 @@ float Player::getItemLevelCoeff(uint32 Quality) const
 		case ITEM_QUALITY_NORMAL:               // WHITE
 			break;
 		case ITEM_QUALITY_UNCOMMON:             // GREEN
+			switch (getLevel())
+			{
+			case 10: ep_quality = 1; break;
+			case 11: ep_quality = 1; break;
+			case 12: ep_quality = 1; break;
+			case 13: ep_quality = 2; break;
+			case 14: ep_quality = 2; break;
+			case 15: ep_quality = 2; break;
+			case 16: ep_quality = 3; break;
+			case 17: ep_quality = 3; break;
+			case 18: ep_quality = 3; break;
+			case 19: ep_quality = 4; break;
+			case 20: ep_quality = 4; break;
+			case 21: ep_quality = 4; break;
+			case 22: ep_quality = 5; break;
+			case 23: ep_quality = 5; break;
+			case 24: ep_quality = 5; break;
+			case 25: ep_quality = 6; break;
+			case 26: ep_quality = 6; break;
+			case 27: ep_quality = 6; break;
+			case 28: ep_quality = 7; break;
+			case 29: ep_quality = 7; break;
+			case 30: ep_quality = 7; break;
+			case 31: ep_quality = 8; break;
+			case 32: ep_quality = 8; break;
+			case 33: ep_quality = 8; break;
+			case 34: ep_quality = 9; break;
+			case 35: ep_quality = 9; break;
+			case 36: ep_quality = 9; break;
+			case 37: ep_quality = 10; break;
+			case 38: ep_quality = 10; break;
+			case 39: ep_quality = 10; break;
+			case 40: ep_quality = 11; break;
+			case 41: ep_quality = 11; break;
+			case 42: ep_quality = 11; break;
+			case 43: ep_quality = 12; break;
+			case 44: ep_quality = 12; break;
+			case 45: ep_quality = 12; break;
+			case 46: ep_quality = 12; break;
+			case 47: ep_quality = 12; break;
+			case 48: ep_quality = 12; break;
+			case 49: ep_quality = 11; break;
+			case 50: ep_quality = 11; break;
+			case 51: ep_quality = 11; break;
+			case 52: ep_quality = 11; break;
+			case 53: ep_quality = 11; break;
+			case 54: ep_quality = 11; break;
+			case 55: ep_quality = 9; break;
+			case 56: ep_quality = 9; break;
+			case 57: ep_quality = 9; break;
+			case 58: ep_quality = 9; break;
+			case 59: ep_quality = 9; break;
+			case 60: ep_quality = 9; break;
+			case 61: ep_quality = 8; break;
+			case 62: ep_quality = 8; break;
+			case 63: ep_quality = 8; break;
+			case 64: ep_quality = 8; break;
+			case 65: ep_quality = 7; break;
+			case 66: ep_quality = 7; break;
+			case 67: ep_quality = 6; break;
+			case 68: ep_quality = 6; break;
+			case 69: ep_quality = 6; break;
+			case 70: ep_quality = 6; break;
+			}
 			break;
 		case ITEM_QUALITY_RARE:                 // BLUE
+			switch (getLevel())
+			{
+			case 10: ep_quality = 0; break;
+			case 11: ep_quality = 0; break;
+			case 12: ep_quality = 0; break;
+			case 13: ep_quality = 0; break;
+			case 14: ep_quality = 0; break;
+			case 15: ep_quality = 0; break;
+			case 16: ep_quality = 0; break;
+			case 17: ep_quality = 0; break;
+			case 18: ep_quality = 0; break;
+			case 19: ep_quality = 1; break;
+			case 20: ep_quality = 1; break;
+			case 21: ep_quality = 1; break;
+			case 22: ep_quality = 1; break;
+			case 23: ep_quality = 1; break;
+			case 24: ep_quality = 1; break;
+			case 25: ep_quality = 2; break;
+			case 26: ep_quality = 2; break;
+			case 27: ep_quality = 2; break;
+			case 28: ep_quality = 2; break;
+			case 29: ep_quality = 2; break;
+			case 30: ep_quality = 2; break;
+			case 31: ep_quality = 3; break;
+			case 32: ep_quality = 3; break;
+			case 33: ep_quality = 3; break;
+			case 34: ep_quality = 3; break;
+			case 35: ep_quality = 3; break;
+			case 36: ep_quality = 3; break;
+			case 37: ep_quality = 4; break;
+			case 38: ep_quality = 4; break;
+			case 39: ep_quality = 4; break;
+			case 40: ep_quality = 4; break;
+			case 41: ep_quality = 4; break;
+			case 42: ep_quality = 4; break;
+			case 43: ep_quality = 5; break;
+			case 44: ep_quality = 5; break;
+			case 45: ep_quality = 5; break;
+			case 46: ep_quality = 5; break;
+			case 47: ep_quality = 5; break;
+			case 48: ep_quality = 5; break;
+			case 49: ep_quality = 6; break;
+			case 50: ep_quality = 6; break;
+			case 51: ep_quality = 6; break;
+			case 52: ep_quality = 6; break;
+			case 53: ep_quality = 6; break;
+			case 54: ep_quality = 6; break;
+			case 55: ep_quality = 7; break;
+			case 56: ep_quality = 7; break;
+			case 57: ep_quality = 7; break;
+			case 58: ep_quality = 7; break;
+			case 59: ep_quality = 7; break;
+			case 60: ep_quality = 7; break;
+			case 61: ep_quality = 8; break;
+			case 62: ep_quality = 8; break;
+			case 63: ep_quality = 8; break;
+			case 64: ep_quality = 8; break;
+			case 65: ep_quality = 8; break;
+			case 66: ep_quality = 8; break;
+			case 67: ep_quality = 9; break;
+			case 68: ep_quality = 9; break;
+			case 69: ep_quality = 9; break;
+			case 70: ep_quality = 9; break;
+			}
 			break;
 		case ITEM_QUALITY_EPIC:                 // PURPLE
+			switch (getLevel())
+			{
+			case 10: ep_quality = 0; break;
+			case 11: ep_quality = 0; break;
+			case 12: ep_quality = 0; break;
+			case 13: ep_quality = 0; break;
+			case 14: ep_quality = 0; break;
+			case 15: ep_quality = 0; break;
+			case 16: ep_quality = 0; break;
+			case 17: ep_quality = 0; break;
+			case 18: ep_quality = 0; break;
+			case 19: ep_quality = 0; break;
+			case 20: ep_quality = 0; break;
+			case 21: ep_quality = 0; break;
+			case 22: ep_quality = 0; break;
+			case 23: ep_quality = 0; break;
+			case 24: ep_quality = 0; break;
+			case 25: ep_quality = 0; break;
+			case 26: ep_quality = 0; break;
+			case 27: ep_quality = 0; break;
+			case 28: ep_quality = 0; break;
+			case 29: ep_quality = 0; break;
+			case 30: ep_quality = 0; break;
+			case 31: ep_quality = 0; break;
+			case 32: ep_quality = 0; break;
+			case 33: ep_quality = 0; break;
+			case 34: ep_quality = 0; break;
+			case 35: ep_quality = 0; break;
+			case 36: ep_quality = 0; break;
+			case 37: ep_quality = 0; break;
+			case 38: ep_quality = 0; break;
+			case 39: ep_quality = 0; break;
+			case 40: ep_quality = 0; break;
+			case 41: ep_quality = 0; break;
+			case 42: ep_quality = 0; break;
+			case 43: ep_quality = 0; break;
+			case 44: ep_quality = 0; break;
+			case 45: ep_quality = 1; break;
+			case 46: ep_quality = 1; break;
+			case 47: ep_quality = 1; break;
+			case 48: ep_quality = 1; break;
+			case 49: ep_quality = 1; break;
+			case 50: ep_quality = 1; break;
+			case 51: ep_quality = 1; break;
+			case 52: ep_quality = 1; break;
+			case 53: ep_quality = 1; break;
+			case 54: ep_quality = 1; break;
+			case 55: ep_quality = 2; break;
+			case 56: ep_quality = 2; break;
+			case 57: ep_quality = 2; break;
+			case 58: ep_quality = 2; break;
+			case 59: ep_quality = 2; break;
+			case 60: ep_quality = 2; break;
+			case 61: ep_quality = 2; break;
+			case 62: ep_quality = 2; break;
+			case 63: ep_quality = 2; break;
+			case 64: ep_quality = 2; break;
+			case 65: ep_quality = 3; break;
+			case 66: ep_quality = 3; break;
+			case 67: ep_quality = 3; break;
+			case 68: ep_quality = 3; break;
+			case 69: ep_quality = 3; break;
+			case 70: ep_quality = 3; break;
+			}
 			break;
 		case ITEM_QUALITY_LEGENDARY:            // ORANGE
 			break;
 		case ITEM_QUALITY_ARTIFACT:             // LIGHT YELLOW
 			break;
 	}
+	float qualityModifier = std::max((float)ep_quality / (float)nb_quality, 1.0f);
 
-	return ilevel_ratio;
+	return ilevel_ratio * qualityModifier;
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)

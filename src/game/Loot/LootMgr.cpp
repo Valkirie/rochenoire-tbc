@@ -2621,9 +2621,16 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
             if (loot.IsItemAlreadyIn(lsi->itemid))
             {
                 // the item is already looted, let's give a 50%  chance to pick another one
-                uint32 chance = urand(0, 1);
+                uint32 chance = urand(0, 100);
 
-                if (chance)
+				if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(lsi->itemid))
+					if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
+					{
+						float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(pProto->Quality) : 1.0f;
+						chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
+					}
+
+                if (chance <= 50)
                     continue;                               // pass this item
             }
 
