@@ -170,12 +170,13 @@ struct LootStoreItem
     bool    needs_quest : 1;                                // quest drop (negative ChanceOrQuestChance in DB)
     uint8   maxcount    : 8;                                // max drop count for the item (mincountOrRef positive) or Ref multiplicator (mincountOrRef negative)
     uint16  conditionId : 16;                               // additional loot condition Id
+	uint32  qualityId = 0;                                  // used by smart loot
 
     // Constructor, converting ChanceOrQuestChance -> (chance, needs_quest)
     // displayid is filled in IsValid() which must be called after
-    LootStoreItem(uint32 _itemid, float _chanceOrQuestChance, int8 _group, uint16 _conditionId, int32 _mincountOrRef, uint8 _maxcount)
+    LootStoreItem(uint32 _itemid, float _chanceOrQuestChance, int8 _group, uint16 _conditionId, int32 _mincountOrRef, uint8 _maxcount, uint32 _qualityId)
         : itemid(_itemid), chance(fabs(_chanceOrQuestChance)), mincountOrRef(_mincountOrRef),
-          group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId)
+          group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId), qualityId(_qualityId)
     {}
 
     bool Roll(bool rate, float f_GroupSize, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)

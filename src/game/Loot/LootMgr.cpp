@@ -102,8 +102,8 @@ void LootStore::LoadLootTable()
     // Clearing store (for reloading case)
     Clear();
 
-    //                                                 0      1     2                    3        4              5         6
-    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id FROM %s", GetName());
+    //                                                 0      1     2                    3        4              5         6             7
+    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id, comments FROM %s", GetName());
 
     if (result)
     {
@@ -121,6 +121,8 @@ void LootStore::LoadLootTable()
             int32  mincountOrRef       = fields[4].GetInt32();
             uint32 maxcount            = fields[5].GetUInt32();
             uint16 conditionId         = fields[6].GetUInt16();
+			std::string comments       = fields[7].GetString();
+			uint32 qualityId = 0;
 
             if (maxcount > std::numeric_limits<uint8>::max())
             {
@@ -144,7 +146,30 @@ void LootStore::LoadLootTable()
                 }
             }
 
-            LootStoreItem storeitem = LootStoreItem(item, chanceOrQuestChance, group, conditionId, mincountOrRef, maxcount);
+			std::size_t found_grey   = comments.find("Grey World Drop");
+			std::size_t found_white  = comments.find("White World Drop");
+			std::size_t found_green  = comments.find("Green World Drop");
+			std::size_t found_blue   = comments.find("Blue World Drop");
+			std::size_t found_purple = comments.find("Purple World Drop");
+			std::size_t found_orange = comments.find("Orange World Drop");
+			std::size_t found_gold = comments.find("Gold World Drop");
+
+			if (found_grey != std::string::npos)
+				qualityId = 0;
+			else if (found_white != std::string::npos)
+				qualityId = 1;
+			else if (found_green != std::string::npos)
+				qualityId = 2;
+			else if (found_blue != std::string::npos)
+				qualityId = 3;
+			else if (found_purple != std::string::npos)
+				qualityId = 4;
+			else if (found_orange != std::string::npos)
+				qualityId = 5;
+			else if (found_gold != std::string::npos)
+				qualityId = 6;
+			
+			LootStoreItem storeitem = LootStoreItem(item, chanceOrQuestChance, group, conditionId, mincountOrRef, maxcount, qualityId);
 
             if (!storeitem.IsValid(*this, entry))           // Validity checks
                 continue;
@@ -273,8 +298,11 @@ bool LootStoreItem::Roll(bool rate, float f_GroupSize, Player const* lootOwner) 
 
 	qualityModifier *= groupModifier;
 
-    if (mincountOrRef < 0)                                  // reference case
-        return roll_chance_f(n_chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED) : 1.0f));
+	if (mincountOrRef < 0)                                  // reference case
+	{
+		float ilevelModifier = lootOwner ? lootOwner->getItemLevelCoeff(qualityId) : 1.0f;
+		return roll_chance_f(n_chance * ilevelModifier * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED) : 1.0f));
+	}
 
     if (needs_quest)
         return roll_chance_f(n_chance * (rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_QUEST) : 1.0f));
@@ -2804,7 +2832,7 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
     }
 
     // Now processing groups
-	for (uint32 ITEM_QUALITY = 0; ITEM_QUALITY < MAX_ITEM_QUALITY; ++ITEM_QUALITY) // Ref multiplicator
+	for (int ITEM_QUALITY = MAX_ITEM_QUALITY; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
 	{
 		uint32 maxcount = std::round(lootOwner ? lootOwner->getItemLevelCoeff(ITEM_QUALITY) : 1.0f);
 		for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
