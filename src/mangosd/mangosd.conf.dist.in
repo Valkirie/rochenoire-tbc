@@ -65,6 +65,7 @@ LogsDir = ""
 LoginDatabaseInfo     = "127.0.0.1;3306;mangos;mangos;tbcrealmd"
 WorldDatabaseInfo     = "127.0.0.1;3306;mangos;mangos;tbcmangos"
 CharacterDatabaseInfo = "127.0.0.1;3306;mangos;mangos;tbccharacters"
+LogsDatabaseInfo      = "127.0.0.1;3306;mangos;mangos;tbclogs"
 LoginDatabaseConnections = 1
 WorldDatabaseConnections = 1
 CharacterDatabaseConnections = 1
@@ -252,6 +253,95 @@ MaxCoreStuckTime = 0
 AddonChannel = 1
 CleanCharacterDB = 1
 MaxWhoListReturns = 49
+
+###################################################################################################################
+# PERFORMANCE SETINGS
+#
+#    WowPatch
+#        Set the server progressive patch
+#        Default: 0  (1.2)
+#                 15 (2.4)
+#
+#    Rochenoire.Scaling.MinLevel.Player
+#        Minimum player level for the content scaling to enable
+#        Default: 10
+#
+#    Rochenoire.Scaling.MinLevel.Creature
+#        Minimum creature level for the scaling to enable
+#        Default: 1
+#
+#    Rochenoire.Scaling.MinLevel.Expansion
+#        Minimum player level for the expansion content scaling to enable
+#        Default: 1
+#
+#    Rochenoire.Scaling.Dungeons.Enabled
+#        Enable/Disable dungeons level scaling
+#        Default: 1 (enable)
+#                 0 (disable)
+#
+#    Rochenoire.Scaling.Raids.Upscale
+#        Enable/Disable raids level upscaling
+#        Default: 1 (enable)
+#                 0 (disable)
+#
+#    Rochenoire.Scaling.Raids.Downscaled
+#        Enable/Disable raids level downscaling
+#        Default: 0 (disable)
+#                 1 (enable)
+#
+#    Rochenoire.Scaling.PvP.Enabled
+#        Enable/Disable PvP level downscaling
+#        Default: 0 (disable)
+#                 1 (enable)
+#
+#    Rochenoire.Rate.Drop.Item.Group
+#         Group drop rates bonus
+#         Default: 1.0
+#
+#    Rochenoire.Rate.XP.Group
+#         Group XP rates bonus
+#         Default: 1.0
+#
+#    Rochenoire.Flexible.Raids
+#        Enable/Disable raids size scaling
+#        Default: 1 (enable)
+#                 0 (disable)
+#
+#    Rochenoire.Flexible.Raids.Ratio
+#        Set the flexible raids players ratio
+#        Default:     2 - (raid 40 become raid 20, raid 20 become raid 10)
+#
+#    Coeff.Drop.Item.Poor
+#    Coeff.Drop.Item.Normal
+#    Coeff.Drop.Item.Uncommon
+#    Coeff.Drop.Item.Rare
+#    Coeff.Drop.Item.Epic
+#    Coeff.Drop.Item.Legendary
+#    Coeff.Drop.Item.Artifact
+#         Drop rates coeff (used by smart loot)
+#         Default: 1
+#
+###################################################################################################################
+
+WowPatch = 0
+Rochenoire.Scaling.MinLevel.Player = 10
+Rochenoire.Scaling.MinLevel.Creature = 1
+Rochenoire.Scaling.MinLevel.Expansion = 10
+Rochenoire.Scaling.Dungeons.Enabled = 1
+Rochenoire.Scaling.Raids.Upscale = 1
+Rochenoire.Scaling.Raids.Downscale = 0
+Rochenoire.Scaling.PvP.Enabled = 0
+Rochenoire.Rate.Drop.Item.Group = 1.0
+Rochenoire.Rate.XP.Group = 1.0
+Rochenoire.Flexible.Raids = 1
+Rochenoire.Flexible.Raids.Ratio = 2
+Coeff.Drop.Item.Poor = 1.0
+Coeff.Drop.Item.Normal = 1.0
+Coeff.Drop.Item.Uncommon = 1.0
+Coeff.Drop.Item.Rare = 1.0
+Coeff.Drop.Item.Epic = 1.0
+Coeff.Drop.Item.Legendary = 1.0
+Coeff.Drop.Item.Artifact = 1.0
 
 ###################################################################################################################
 # SERVER LOGGING

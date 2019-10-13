@@ -152,7 +152,7 @@ void LootStore::LoadLootTable()
 			std::size_t found_blue   = comments.find("Blue World Drop");
 			std::size_t found_purple = comments.find("Purple World Drop");
 			std::size_t found_orange = comments.find("Orange World Drop");
-			std::size_t found_gold = comments.find("Gold World Drop");
+			std::size_t found_gold   = comments.find("Gold World Drop");
 
 			if (found_grey != std::string::npos)
 				qualityId = 0;
