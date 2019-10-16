@@ -255,7 +255,7 @@ CleanCharacterDB = 1
 MaxWhoListReturns = 49
 
 ###################################################################################################################
-# PERFORMANCE SETINGS
+# ROCHENOIRE SETINGS
 #
 #    WowPatch
 #        Set the server progressive patch
@@ -311,14 +311,14 @@ MaxWhoListReturns = 49
 #        Set the flexible raids players ratio
 #        Default:     2 - (raid 40 become raid 20, raid 20 become raid 10)
 #
-#    Coeff.Drop.Item.Poor
-#    Coeff.Drop.Item.Normal
-#    Coeff.Drop.Item.Uncommon
-#    Coeff.Drop.Item.Rare
-#    Coeff.Drop.Item.Epic
-#    Coeff.Drop.Item.Legendary
-#    Coeff.Drop.Item.Artifact
-#         Drop rates coeff (used by smart loot)
+#    Rate.Weight.Item.Poor
+#    Rate.Weight.Item.Normal
+#    Rate.Weight.Item.Uncommon
+#    Rate.Weight.Item.Rare
+#    Rate.Weight.Item.Epic
+#    Rate.Weight.Item.Legendary
+#    Rate.Weight.Item.Artifact
+#         Equipment level rates coeff (used by smart loot)
 #         Default: 1
 #
 ###################################################################################################################
@@ -335,13 +335,13 @@ Rochenoire.Rate.Drop.Item.Group = 1.0
 Rochenoire.Rate.XP.Group = 1.0
 Rochenoire.Flexible.Raids = 1
 Rochenoire.Flexible.Raids.Ratio = 2
-Coeff.Drop.Item.Poor = 1.0
-Coeff.Drop.Item.Normal = 1.0
-Coeff.Drop.Item.Uncommon = 1.0
-Coeff.Drop.Item.Rare = 1.0
-Coeff.Drop.Item.Epic = 1.0
-Coeff.Drop.Item.Legendary = 1.0
-Coeff.Drop.Item.Artifact = 1.0
+Rate.Weight.Item.Poor = 0.5
+Rate.Weight.Item.Normal = 1.0
+Rate.Weight.Item.Uncommon = 5.0
+Rate.Weight.Item.Rare = 10.0
+Rate.Weight.Item.Epic = 15.0
+Rate.Weight.Item.Legendary = 20.0
+Rate.Weight.Item.Artifact = 25.0
 
 ###################################################################################################################
 # SERVER LOGGING

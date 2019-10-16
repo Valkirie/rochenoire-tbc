@@ -134,26 +134,26 @@ enum CharacterFlags
 
 static const uint32 corpseReclaimDelay[MAX_DEATH_COUNT] = {30, 60, 120};
 
-static eConfigFloatValues const qualityToCoeff[MAX_ITEM_QUALITY] =
+static eConfigFloatValues const qualityToRate[MAX_ITEM_QUALITY] =
 {
-	CONFIG_FLOAT_COEFF_DROP_ITEM_POOR,                       // ITEM_QUALITY_POOR
-	CONFIG_FLOAT_COEFF_DROP_ITEM_NORMAL,                     // ITEM_QUALITY_NORMAL
-	CONFIG_FLOAT_COEFF_DROP_ITEM_UNCOMMON,                   // ITEM_QUALITY_UNCOMMON
-	CONFIG_FLOAT_COEFF_DROP_ITEM_RARE,                       // ITEM_QUALITY_RARE
-	CONFIG_FLOAT_COEFF_DROP_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
-	CONFIG_FLOAT_COEFF_DROP_ITEM_LEGENDARY,                  // ITEM_QUALITY_LEGENDARY
-	CONFIG_FLOAT_COEFF_DROP_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
+	CONFIG_FLOAT_RATE_DROP_ITEM_POOR,                       // ITEM_QUALITY_POOR
+	CONFIG_FLOAT_RATE_DROP_ITEM_NORMAL,                     // ITEM_QUALITY_NORMAL
+	CONFIG_FLOAT_RATE_DROP_ITEM_UNCOMMON,                   // ITEM_QUALITY_UNCOMMON
+	CONFIG_FLOAT_RATE_DROP_ITEM_RARE,                       // ITEM_QUALITY_RARE
+	CONFIG_FLOAT_RATE_DROP_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
+	CONFIG_FLOAT_RATE_DROP_ITEM_LEGENDARY,                  // ITEM_QUALITY_LEGENDARY
+	CONFIG_FLOAT_RATE_DROP_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
 };
 
-static eConfigFloatValues const qualityToIlevel[MAX_ITEM_QUALITY] =
+static eConfigFloatValues const qualityToCoeff[MAX_ITEM_QUALITY] =
 {
-	0.5f,                   // ITEM_QUALITY_POOR
-	1.0f,                   // ITEM_QUALITY_NORMAL
-	5.0f,                   // ITEM_QUALITY_UNCOMMON
-	10.0f,                  // ITEM_QUALITY_RARE
-	15.0f,                  // ITEM_QUALITY_EPIC
-	20.0f,                  // ITEM_QUALITY_LEGENDARY
-	25.0f,                  // ITEM_QUALITY_ARTIFACT
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_POOR,                       // ITEM_QUALITY_POOR
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_NORMAL,                     // ITEM_QUALITY_NORMAL
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_UNCOMMON,                   // ITEM_QUALITY_UNCOMMON
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_RARE,                       // ITEM_QUALITY_RARE
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_LEGENDARY,                  // ITEM_QUALITY_LEGENDARY
+	CONFIG_FLOAT_RATE_WEIGHT_ITEM_ARTIFACT,                   // ITEM_QUALITY_ARTIFACT
 };
 
 MirrorTimer::Status MirrorTimer::FetchStatus()
@@ -10516,16 +10516,16 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
 
 void Player::setItemLevel(bool inventory)
 {
-	uint8 avgItemLevel = 0;
-	uint8 nbItem = 0;
+	float avgItemLevel = 5.0f;
+	uint8 nbItem = 1;
 
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
-				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 				{
 					nbItem++;
-					avgItemLevel += std::max((float)pProto->ItemLevel * qualityToIlevel[pProto->Quality], 5.0f);
+					avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
 				}
 
 	if (inventory)
@@ -10533,10 +10533,10 @@ void Player::setItemLevel(bool inventory)
 		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				if (ItemPrototype const* pProto = pItem->GetProto())
-					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 					{
 						nbItem++;
-						avgItemLevel += std::max((float)pProto->ItemLevel * qualityToIlevel[pProto->Quality], 5.0f);
+						avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
 					}
 
 		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10544,31 +10544,27 @@ void Player::setItemLevel(bool inventory)
 				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
 					if (Item const* pItem = GetItemByPos(i, j))
 						if (ItemPrototype const* pProto = pItem->GetProto())
-							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 							{
 								nbItem++;
-								avgItemLevel += std::max((float)pProto->ItemLevel * qualityToIlevel[pProto->Quality], 5.0f);
+								avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
 							}
 	}
 
-	if (nbItem != 0)
-	{
-		avgItemLevel /= nbItem;
-
-		if (getItemLevel() < avgItemLevel)
-			SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
-	}
+	avgItemLevel /= nbItem;
+	if (getItemLevel() < avgItemLevel)
+		SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
 }
 
 
-uint32 Player::countRelevant(uint32 Quality, bool inventory) const
+float Player::countRelevant(uint32 Quality, bool inventory) const
 {
 	uint8 nbItem = 0;
 
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
-				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 					if (pProto->Quality == Quality)
 						nbItem++;
 
@@ -10577,7 +10573,7 @@ uint32 Player::countRelevant(uint32 Quality, bool inventory) const
 		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				if (ItemPrototype const* pProto = pItem->GetProto())
-					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 						if (pProto->Quality == Quality)
 							nbItem++;
 
@@ -10586,12 +10582,12 @@ uint32 Player::countRelevant(uint32 Quality, bool inventory) const
 				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
 					if (Item const* pItem = GetItemByPos(i, j))
 						if (ItemPrototype const* pProto = pItem->GetProto())
-							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && pProto->RequiredLevel <= getLevel() && CanUseItem(pProto) == EQUIP_ERR_OK)
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 								if(pProto->Quality == Quality)
 									nbItem++;
 	}
 
-	return std::max((float)nbItem, 0.0f);
+	return std::max((float)nbItem, 0.5f);
 }
 
 uint32 Player::getExpectedItemLevel() const
@@ -10600,91 +10596,95 @@ uint32 Player::getExpectedItemLevel() const
 	{
 		case 10: return 20;
 		case 11: return 22;
-		case 12: return 24;
+		case 12: return 29;
 		case 13: return 32;
-		case 14: return 35;
-		case 15: return 38;
-		case 16: return 46;
-		case 17: return 49;
-		case 18: return 52;
-		case 19: return 71;
-		case 20: return 75;
-		case 21: return 79;
-		case 22: return 88;
-		case 23: return 93;
-		case 24: return 98;
-		case 25: return 118;
-		case 26: return 123;
-		case 27: return 128;
-		case 28: return 138;
-		case 29: return 144;
-		case 30: return 150;
-		case 31: return 171;
-		case 32: return 177;
-		case 33: return 184;
-		case 34: return 196;
-		case 35: return 203;
-		case 36: return 210;
-		case 37: return 232;
+		case 14: return 40;
+		case 15: return 48;
+		case 16: return 51;
+		case 17: return 59;
+		case 18: return 77;
+		case 19: return 81;
+		case 20: return 85;
+		case 21: return 99;
+		case 22: return 108;
+		case 23: return 113;
+		case 24: return 128;
+		case 25: return 133;
+		case 26: return 148;
+		case 27: return 153;
+		case 28: return 158;
+		case 29: return 174;
+		case 30: return 180;
+		case 31: return 186;
+		case 32: return 192;
+		case 33: return 199;
+		case 34: return 206;
+		case 35: return 213;
+		case 36: return 230;
+		case 37: return 237;
 		case 38: return 239;
 		case 39: return 247;
-		case 40: return 260;
-		case 41: return 268;
-		case 42: return 276;
-		case 43: return 300;
-		case 44: return 309;
-		case 45: return 333;
-		case 46: return 342;
-		case 47: return 351;
-		case 48: return 360;
-		case 49: return 375;
-		case 50: return 385;
-		case 51: return 395;
-		case 52: return 405;
-		case 53: return 416;
-		case 54: return 427;
-		case 55: return 453;
+		case 40: return 255;
+		case 41: return 263;
+		case 42: return 271;
+		case 43: return 280;
+		case 44: return 299;
+		case 45: return 323;
+		case 46: return 332;
+		case 47: return 341;
+		case 48: return 350;
+		case 49: return 360;
+		case 50: return 380;
+		case 51: return 390;
+		case 52: return 415;
+		case 53: return 436;
+		case 54: return 447;
+		case 55: return 458;
 		case 56: return 464;
 		case 57: return 475;
-		case 58: return 486;
-		case 59: return 498;
-		case 60: return 510;
-		case 61: return 527;
-		case 62: return 539;
-		case 63: return 552;
-		case 64: return 565;
-		case 65: return 588;
-		case 66: return 601;
-		case 67: return 619;
-		case 68: return 632;
-		case 69: return 646;
-		case 70: return 660;
+		case 58: return 501;
+		case 59: return 523;
+		case 60: return 530;
+		case 61: return 542;
+		case 62: return 554;
+		case 63: return 582;
+		case 64: return 600;
+		case 65: return 613;
+		case 66: return 626;
+		case 67: return 654;
+		case 68: return 662;
+		case 69: return 676;
+		case 70: return 690;
 		default: return getLevel() + 5;
 	}
 }
 
+const std::array<float, 70> drop_green  { { 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1 } };
+const std::array<float, 70> drop_blue   { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9 } };
+const std::array<float, 70> drop_purple { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 } };
+
 float Player::getItemLevelCoeff(uint32 Quality) const
 {
 	float qualityModifier = std::max((float)getExpectedItemLevel() / (float)getItemLevel(), 1.0f);
-	qualityModifier *= sWorld.getConfig(qualityToCoeff[Quality]);
+	qualityModifier *= sWorld.getConfig(qualityToRate[Quality]);
 
-	switch (Quality) // Could be used to alter drop rate based on the number of equipped gear with the same quality
+	float quantityModifier = 1.0f;
+	
+	switch (Quality)
 	{
-		case ITEM_QUALITY_POOR:                 // GREY
+		case ITEM_QUALITY_UNCOMMON: // GREEN
+			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
 			break;
-		case ITEM_QUALITY_NORMAL:               // WHITE
+		case ITEM_QUALITY_RARE:     // BLUE
+			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
 			break;
-		case ITEM_QUALITY_UNCOMMON:             // GREEN
+		case ITEM_QUALITY_EPIC:     // PURPLE
+			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
 			break;
-		case ITEM_QUALITY_RARE:                 // BLUE
-			break;
-		case ITEM_QUALITY_EPIC:                 // PURPLE
-			break;
-		case ITEM_QUALITY_LEGENDARY:            // ORANGE
-			break;
-		case ITEM_QUALITY_ARTIFACT:             // LIGHT YELLOW
-			break;
+		break;
 	}
+
+	qualityModifier *= std::max(quantityModifier, 1.0f);
 	
 	return qualityModifier;
 }

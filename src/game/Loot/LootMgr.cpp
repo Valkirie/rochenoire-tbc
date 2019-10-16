@@ -2832,7 +2832,7 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
     }
 
     // Now processing groups
-	for (int ITEM_QUALITY = MAX_ITEM_QUALITY; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
+	for (int ITEM_QUALITY = MAX_ITEM_QUALITY - 1; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
 	{
 		uint32 maxcount = std::round(lootOwner ? lootOwner->getItemLevelCoeff(ITEM_QUALITY) : 1.0f);
 		for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
