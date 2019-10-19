@@ -99,6 +99,10 @@ void PetAI::AttackStart(Unit* who)
     if (!who || (pet && pet->GetModeFlags() & PET_MODE_DISABLE_ACTIONS))
         return;
 
+    // Do not start attack if target is moving home
+    if (who->IsEvadingHome())
+        return;
+
     if (m_unit->Attack(who, m_meleeEnabled))
     {
         // TMGs call CreatureRelocation which via MoveInLineOfSight can call this function
@@ -127,6 +131,10 @@ void PetAI::UpdateAI(const uint32 diff)
         return;
 
     Unit* victim = (pet && pet->GetModeFlags() & PET_MODE_DISABLE_ACTIONS) ? nullptr : m_unit->getVictim();
+
+    // Do not continue attacking if victim is moving home
+    if (victim && victim->IsEvadingHome())
+        victim = nullptr;
 
     if (m_updateAlliesTimer <= diff)
         // UpdateAllies self set update timer
@@ -327,7 +335,7 @@ void PetAI::UpdateAI(const uint32 diff)
         else if (!m_unit->hasUnitState(UNIT_STAT_MOVING))
             AttackStart(victim);
     }
-    else if (!owner->IsIncapacitated())
+    else if (!owner->IsCrowdControlled())
     {
         CharmInfo* charmInfo = m_unit->GetCharmInfo();
 
@@ -365,16 +373,8 @@ void PetAI::UpdateAI(const uint32 diff)
                 else
                     m_unit->GetMotionMaster()->MovePoint(0, stayPosX, stayPosY, stayPosZ, false);
             }
-            else if (m_unit->hasUnitState(UNIT_STAT_FOLLOW) && !m_unit->hasUnitState(UNIT_STAT_FOLLOW_MOVE) && owner->IsWithinDistInMap(m_unit, PET_FOLLOW_DIST))
-            {
-                m_unit->GetMotionMaster()->Clear(false);
-                m_unit->GetMotionMaster()->MoveIdle();
-            }
-            else if (!m_unit->hasUnitState(UNIT_STAT_FOLLOW_MOVE) && !owner->IsWithinDistInMap(m_unit, (PET_FOLLOW_DIST * 2)))
-            {
-                if (following)
-                    m_unit->GetMotionMaster()->MoveFollow(owner, m_followDist, m_followAngle);
-            }
+            else if (following && m_unit->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                m_unit->GetMotionMaster()->MoveFollow(owner, m_followDist, m_followAngle);
         }
     }
 }

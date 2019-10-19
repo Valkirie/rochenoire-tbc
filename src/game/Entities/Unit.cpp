@@ -665,6 +665,40 @@ void Unit::SendHeartBeat()
     SendMessageToSet(data, true);
 }
 
+void Unit::SendMoveRoot(bool state, bool broadcastOnly)
+{
+    const Player* player = GetClientControlling();
+
+    // Apply flags in-place when unit currently is not controlled by a player
+    if (!player && !broadcastOnly)
+    {
+        if (state)
+        {
+            m_movementInfo.RemoveMovementFlag(movementFlagsMask);
+            m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
+        }
+        else
+            m_movementInfo.RemoveMovementFlag(MOVEFLAG_ROOT);
+    }
+
+    const PackedGuid &guid = GetPackGUID();
+    // Pre-Wrath spline root: when unit is currently not controlled by a player, or broadcasting to others
+    if (!player || broadcastOnly)
+    {
+        WorldPacket data(state ? SMSG_SPLINE_MOVE_ROOT : SMSG_SPLINE_MOVE_UNROOT, guid.size());
+        data << guid;
+        SendMessageToSet(data, (!broadcastOnly));
+    }
+    // Pre-Wrath force root: send only to the controlling player
+    else
+    {
+        WorldPacket data(state ? SMSG_FORCE_MOVE_ROOT : SMSG_FORCE_MOVE_UNROOT, guid.size() + 4);
+        data << guid;
+        data << uint32(0);
+        player->GetSession()->SendPacket(data);
+    }
+}
+
 void Unit::resetAttackTimer(WeaponAttackType type)
 {
     m_attackTimer[type] = uint32(GetAttackTime(type) * m_modAttackSpeedPct[type]);
@@ -6378,6 +6412,9 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     {
         if (m_attacking == victim)
         {
+            // need to regenerate target guid after certain scenarios
+            if (AI() && AI()->CanExecuteCombatAction())
+                SetTargetGuid(victim->GetObjectGuid());
             // switch to melee attack from ranged/magic
             if (meleeAttack)
             {
@@ -8731,25 +8768,6 @@ int32 Unit::GetInvisibilityDetectValue(uint32 index) const
 
 void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
 {
-    // not in combat pet have same speed as owner
-    switch (mtype)
-    {
-        case MOVE_RUN:
-        case MOVE_WALK:
-        case MOVE_SWIM:
-            if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsPet() && hasUnitState(UNIT_STAT_FOLLOW))
-            {
-                if (Unit* owner = GetOwner())
-                {
-                    SetSpeedRate(mtype, owner->GetSpeedRate(mtype), forced);
-                    return;
-                }
-            }
-            break;
-        default:
-            break;
-    }
-
     int32 main_speed_mod  = 0;
     float stack_bonus     = 1.0f;
     float non_stack_bonus = 1.0f;
@@ -9141,7 +9159,7 @@ bool Unit::SelectHostileTarget()
         // needs a much better check, seems to cause quite a bit of trouble
         SetInFront(target);
 
-        if (oldTarget != target)
+        if (oldTarget != target || GetTarget() != target)
             AI()->AttackStart(target);
 
         // check if currently selected target is reachable
@@ -10459,141 +10477,121 @@ void Unit::InterruptMoving(bool forceSendStop /*=false*/)
     StopMoving(forceSendStop || isMoving);
 }
 
-void Unit::SetImmobilizedState(bool apply, bool stun)
+void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
-    const uint32 immobilized = (UNIT_STAT_ROOT | UNIT_STAT_STUNNED);
-    const uint32 state = stun ? UNIT_STAT_STUNNED : UNIT_STAT_ROOT;
-    const Unit* charmer = GetCharmer();
-    const bool player = ((charmer ? charmer : this)->GetTypeId() == TYPEID_PLAYER);
-    if (apply)
+    if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED))
     {
-        addUnitState(state);
-        if (!player)
-            StopMoving();
+        if (apply)
+            CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
         else
+            RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
+
+        // Update crowd controlled movement if required:
+        // TODO: requires motionmster upgrade for proper handling past this line
+        // We are effectively rebuilding motion master contents: confused > fleeing > panic
         {
-            // Clear unit movement flags
-            m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
-            SetRoot(true);
+            const bool panic = IsInPanic();
+
+            GetMotionMaster()->MovementExpired();
+
+            if (apply)
+                GetMotionMaster()->MoveConfused();
+            else if (IsFleeing() && !panic)
+                GetMotionMaster()->MoveFleeing((IsInWorld() ? GetMap()->GetUnit(casterGuid) : nullptr));
         }
+
+        if (apply)
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
     }
-    else
+}
+
+void Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint32 spellID/* = 0*/, uint32 duration/* = 0*/)
+{
+    // Normal flee always takes prio over timed flee (panic)
+    if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING) || (apply && IsInPanic()))
     {
-        clearUnitState(state);
-        // Prevent giving ability to move if more immobilizers are active
-        if (!hasUnitState(immobilized) && (player || m_movementInfo.HasMovementFlag(MOVEFLAG_ROOT)))
-            SetRoot(false);
+        if (apply)
+        {
+            // Fleeing prevention aura taken into account first
+            if (HasAuraType(SPELL_AURA_PREVENTS_FLEEING))
+                return;
+
+            // Do not panic if already confused
+            if (duration && IsConfused())
+                return;
+
+            CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
+        }
+        else
+            RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
+
+        // Update crowd controlled movement if required:
+        // TODO: requires motionmster upgrade for proper handling past this line
+        // We are effectively rebuilding motion master contents: confused > fleeing > panic
+        {
+            GetMotionMaster()->MovementExpired();
+
+            if (IsConfused())
+                GetMotionMaster()->MoveConfused();
+            else if (apply)
+                GetMotionMaster()->MoveFleeing((IsInWorld() ? GetMap()->GetUnit(casterGuid) : nullptr), duration);
+        }
+
+        if (apply)
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
     }
-}
-
-void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 time)
-{
-    SetIncapacitatedState(apply, UNIT_FLAG_FLEEING, casterGuid, spellID, AURA_REMOVE_BY_DEFAULT, time);
-}
-
-void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID, AuraRemoveMode removeMode)
-{
-    SetIncapacitatedState(apply, UNIT_FLAG_CONFUSED, casterGuid, spellID, removeMode);
 }
 
 void Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
-    SetIncapacitatedState(apply, UNIT_FLAG_STUNNED, casterGuid, spellID);
+    if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED))
+    {
+        if (apply)
+        {
+            CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
+        }
+        else
+            RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
+
+        SetImmobilizedState(apply, true);
+
+        if (const bool requireTargetChange = (!IsControlledByPlayer() && AI()))
+        {
+            // Non-client controlled unit with an AI should drop target
+            if (apply)
+            {
+                if (!GetTargetGuid().IsEmpty())
+                    SetTargetGuid(ObjectGuid());
+
+                // Broadcast orientation change on stun start for creatures
+                // FIXME: TODO
+                SetFacingTo(GetOrientation());
+            }
+        }
+    }
+
+    ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
 }
 
-void Unit::SetIncapacitatedState(bool apply, uint32 state, ObjectGuid casterGuid, uint32 spellID, AuraRemoveMode removeMode, uint32 time)
+void Unit::SetImmobilizedState(bool apply, bool stun)
 {
-    // We are interested only in a particular subset of flags:
-    const uint32 filter = (UNIT_FLAG_STUNNED | UNIT_FLAG_CONFUSED | UNIT_FLAG_FLEEING);
-    if (!state || !(state & filter) || (state & ~filter))
-        return;
-
-    const bool movement = (state != UNIT_FLAG_STUNNED);
-    const bool stun = (state & UNIT_FLAG_STUNNED) != 0;
-    const bool fleeing = (state & UNIT_FLAG_FLEEING) != 0;
-
+    const uint32 state = (stun ? UNIT_STAT_STUNNED : UNIT_STAT_ROOT);
     if (apply)
     {
-        if (fleeing && HasAuraType(SPELL_AURA_PREVENTS_FLEEING))
-        {
-            if (state == UNIT_FLAG_FLEEING)
-                return;
-            state &= ~UNIT_FLAG_FLEEING;
-        }
+        addUnitState(state);
 
-        // Apply confusion or fleeing: update client control state before altering flags
-        if (state & (UNIT_FLAG_CONFUSED | UNIT_FLAG_FLEEING))
-        {
-            if (const Player* controllingClientPlayer = GetClientControlling())
-                controllingClientPlayer->UpdateClientControl(this, false);
-        }
-
-        SetFlag(UNIT_FIELD_FLAGS, state);
+        if (!IsClientControlled())
+            StopMoving();
+        SendMoveRoot(true);
     }
     else
     {
-        RemoveFlag(UNIT_FIELD_FLAGS, state);
+        clearUnitState(state);
 
-        // Remove confusion or fleeing: update client control state after altering flags
-        if (state & (UNIT_FLAG_CONFUSED | UNIT_FLAG_FLEEING))
-        {
-            if (const Player* controllingClientPlayer = GetClientControlling())
-                controllingClientPlayer->UpdateClientControl(this, true);
-        }
-    }
-
-    if (movement)
-        GetMotionMaster()->MovementExpired();
-    if (apply)
-        CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
-
-    bool requireTargetChange = GetTypeId() != TYPEID_PLAYER || !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
-    if (requireTargetChange)
-    {
-        if (HasFlag(UNIT_FIELD_FLAGS, filter))
-        {
-            if (!GetTargetGuid().IsEmpty()) // Incapacitated creature loses its target
-                SetTargetGuid(ObjectGuid());
-        }
-        else if (isAlive() && removeMode != AURA_REMOVE_BY_STACK)
-        {
-            if (Unit* victim = getVictim())
-            {
-                SetTargetGuid(victim->GetObjectGuid());  // Restore target
-                if (movement)
-                    AI()->HandleMovementOnAttackStart(victim);
-            }
-
-            if (!apply && fleeing)
-            {
-                // Attack the caster if can on fear expiration
-                if (Unit* caster = IsInWorld() ? GetMap()->GetUnit(casterGuid) : nullptr)
-                    AttackedBy(caster);
-            }
-        }
-    }
-
-    // Update stun if required:
-    if (stun)
-    {
-        SetImmobilizedState(apply, true);
-        if (apply && requireTargetChange)
-            SetFacingTo(GetOrientation()); // broadcast orientation change on stun start for creatures
-    }
-
-    if (!movement)
-        return;
-
-    // Update incapacitated movement if required:
-    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED))
-    {
-        StopMoving(true);
-        GetMotionMaster()->MoveConfused();
-    }
-    else if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING))
-    {
-        StopMoving(true);
-        GetMotionMaster()->MoveFleeing(IsInWorld() ? GetMap()->GetUnit(casterGuid) : nullptr, time);
+        // Prevent giving ability to move if more immobilizers are active
+        if (!IsImmobilizedState())
+            SendMoveRoot(false);
     }
 }
 
@@ -10646,8 +10644,6 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid /*= ObjectGuid()*/, u
         }
 
         // blizz like 2.0.x
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
-        // blizz like 2.0.x
         SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
         // blizz like 2.0.x
         if (dynamic)
@@ -10666,14 +10662,15 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid /*= ObjectGuid()*/, u
         clearUnitState(UNIT_STAT_FEIGN_DEATH);
 
         // blizz like 2.0.x
-        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
-        // blizz like 2.0.x
         RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
         // blizz like 2.0.x
         RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
 
         getHostileRefManager().updateOnlineOfflineState(true);
     }
+
+    // blizz like 2.0.x
+    ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
 }
 
 bool Unit::IsSitState() const
