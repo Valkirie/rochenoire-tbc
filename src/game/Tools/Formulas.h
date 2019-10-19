@@ -162,20 +162,18 @@ namespace MaNGOS
 			default:
 			case 0:
 			case 1:
+				return 1;
 			case 2:
-				return 2 * xp_group;
 			case 3:
-				return 3 * xp_group;
 			case 4:
-				return 4 * xp_group;
 			case 5:
-				return 5 * xp_group;
+				return (float)count * xp_group;
 			}
 		}
     }
 	namespace DROP
 	{
-		inline float drop_in_group_rate(uint32 count, bool isRaid)
+		inline float drop_in_group_rate(uint32 count, bool /*isRaid*/)
 		{
 			float drop_group = sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP);
 
@@ -186,13 +184,10 @@ namespace MaNGOS
 			case 1:
 				return 1;
 			case 2:
-				return 1 + (2 * drop_group);
 			case 3:
-				return 1 + (3 * drop_group);
 			case 4:
-				return 1 + (4 * drop_group);
 			case 5:
-				return 1 + (5 * drop_group);
+				return 1 + ((float)count * drop_group);
 			}
 		}
 	}

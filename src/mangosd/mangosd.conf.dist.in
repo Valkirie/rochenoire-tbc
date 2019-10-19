@@ -296,11 +296,11 @@ MaxWhoListReturns = 49
 #
 #    Rochenoire.Rate.Drop.Item.Group
 #         Group drop rates bonus
-#         Default: 1.0
+#         Default: 0.5
 #
 #    Rochenoire.Rate.XP.Group
 #         Group XP rates bonus
-#         Default: 1.0
+#         Default: 0.5
 #
 #    Rochenoire.Flexible.Raids
 #        Enable/Disable raids size scaling
@@ -331,17 +331,17 @@ Rochenoire.Scaling.Dungeons.Enabled = 1
 Rochenoire.Scaling.Raids.Upscale = 1
 Rochenoire.Scaling.Raids.Downscale = 0
 Rochenoire.Scaling.PvP.Enabled = 0
-Rochenoire.Rate.Drop.Item.Group = 1.0
-Rochenoire.Rate.XP.Group = 1.0
+Rochenoire.Rate.Drop.Item.Group = 0.5
+Rochenoire.Rate.XP.Group = 0.5
 Rochenoire.Flexible.Raids = 1
 Rochenoire.Flexible.Raids.Ratio = 2
-Rate.Weight.Item.Poor = 0.5
+Rate.Weight.Item.Poor = 1.0
 Rate.Weight.Item.Normal = 1.0
-Rate.Weight.Item.Uncommon = 5.0
-Rate.Weight.Item.Rare = 10.0
-Rate.Weight.Item.Epic = 15.0
-Rate.Weight.Item.Legendary = 20.0
-Rate.Weight.Item.Artifact = 25.0
+Rate.Weight.Item.Uncommon = 1.0
+Rate.Weight.Item.Rare = 1.0
+Rate.Weight.Item.Epic = 1.0
+Rate.Weight.Item.Legendary = 1.0
+Rate.Weight.Item.Artifact = 1.0
 
 ###################################################################################################################
 # SERVER LOGGING

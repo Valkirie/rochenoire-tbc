@@ -10516,8 +10516,8 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
 
 void Player::setItemLevel(bool inventory)
 {
-	float avgItemLevel = 5.0f;
-	uint8 nbItem = 1;
+	float avgItemLevel = 0.0f;
+	uint8 nbItem = 0;
 
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
@@ -10525,7 +10525,7 @@ void Player::setItemLevel(bool inventory)
 				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 				{
 					nbItem++;
-					avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
+					avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 				}
 
 	if (inventory)
@@ -10536,7 +10536,7 @@ void Player::setItemLevel(bool inventory)
 					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 					{
 						nbItem++;
-						avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
+						avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 					}
 
 		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10547,11 +10547,15 @@ void Player::setItemLevel(bool inventory)
 							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
 							{
 								nbItem++;
-								avgItemLevel += std::max((float)pProto->ItemLevel * qualityToCoeff[pProto->Quality], 5.0f);
+								avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 							}
 	}
 
-	avgItemLevel /= nbItem;
+	if(nbItem != 0)
+		avgItemLevel /= nbItem;
+
+	avgItemLevel = std::max(avgItemLevel, 5.0f);
+
 	if (getItemLevel() < avgItemLevel)
 		SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
 }
@@ -10594,67 +10598,69 @@ uint32 Player::getExpectedItemLevel() const
 {
 	switch (getLevel())
 	{
-		case 10: return 20;
-		case 11: return 22;
-		case 12: return 29;
-		case 13: return 32;
-		case 14: return 40;
-		case 15: return 48;
-		case 16: return 51;
-		case 17: return 59;
-		case 18: return 77;
-		case 19: return 81;
-		case 20: return 85;
-		case 21: return 99;
-		case 22: return 108;
-		case 23: return 113;
-		case 24: return 128;
-		case 25: return 133;
-		case 26: return 148;
-		case 27: return 153;
-		case 28: return 158;
-		case 29: return 174;
-		case 30: return 180;
-		case 31: return 186;
-		case 32: return 192;
-		case 33: return 199;
-		case 34: return 206;
-		case 35: return 213;
-		case 36: return 230;
-		case 37: return 237;
-		case 38: return 239;
-		case 39: return 247;
-		case 40: return 255;
-		case 41: return 263;
-		case 42: return 271;
-		case 43: return 280;
-		case 44: return 299;
-		case 45: return 323;
-		case 46: return 332;
-		case 47: return 341;
-		case 48: return 350;
-		case 49: return 360;
-		case 50: return 380;
-		case 51: return 390;
-		case 52: return 415;
-		case 53: return 436;
-		case 54: return 447;
-		case 55: return 458;
-		case 56: return 464;
-		case 57: return 475;
-		case 58: return 501;
-		case 59: return 523;
-		case 60: return 530;
-		case 61: return 542;
-		case 62: return 554;
-		case 63: return 582;
-		case 64: return 600;
-		case 65: return 613;
-		case 66: return 626;
-		case 67: return 654;
-		case 68: return 662;
-		case 69: return 676;
-		case 70: return 690;
+		case 70: return 112;
+		case 69: return 85;
+		case 68: return 83;
+		case 67: return 81;
+		case 66: return 79;
+		case 65: return 76;
+		case 64: return 74;
+		case 63: return 71;
+		case 62: return 67;
+		case 61: return 62;
+		case 60: return 50;
+		case 59: return 46;
+		case 58: return 45;
+		case 57: return 44;
+		case 56: return 43;
+		case 55: return 43;
+		case 54: return 43;
+		case 53: return 42;
+		case 52: return 42;
+		case 51: return 41;
+		case 50: return 40;
+		case 49: return 40;
+		case 48: return 39;
+		case 47: return 38;
+		case 46: return 37;
+		case 45: return 37;
+		case 44: return 36;
+		case 43: return 35;
+		case 42: return 35;
+		case 41: return 34;
+		case 40: return 33;
+		case 39: return 33;
+		case 38: return 31;
+		case 37: return 30;
+		case 36: return 29;
+		case 35: return 28;
+		case 34: return 27;
+		case 33: return 27;
+		case 32: return 26;
+		case 31: return 25;
+		case 30: return 23;
+		case 29: return 23;
+		case 28: return 23;
+		case 27: return 22;
+		case 26: return 21;
+		case 25: return 20;
+		case 24: return 19;
+		case 23: return 19;
+		case 22: return 18;
+		case 21: return 17;
+		case 20: return 16;
+		case 19: return 15;
+		case 18: return 14;
+		case 17: return 13;
+		case 16: return 12;
+		case 15: return 11;
+		case 14: return 10;
+		case 13: return 9;
+		case 12: return 8;
+		case 11: return 8;
+		case 10: return 7;
+		case 9: return 6;
+		case 8: return 6;
 		default: return getLevel() + 5;
 	}
 }
@@ -10676,10 +10682,10 @@ float Player::getItemLevelCoeff(uint32 Quality) const
 			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
 			break;
 		case ITEM_QUALITY_RARE:     // BLUE
-			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
+			quantityModifier = drop_blue[getLevel() - 1] / countRelevant(Quality, true);
 			break;
 		case ITEM_QUALITY_EPIC:     // PURPLE
-			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
+			quantityModifier = drop_purple[getLevel() - 1] / countRelevant(Quality, true);
 			break;
 		break;
 	}

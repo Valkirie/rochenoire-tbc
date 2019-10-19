@@ -275,14 +275,13 @@ void LootStore::ReportNotExistedId(uint32 id) const
 
 // Checks if the entry (quest, non-quest, reference) takes it's chance (at loot generation)
 // RATE_DROP_ITEMS is no longer used for all types of entries
-bool LootStoreItem::Roll(bool rate, float f_GroupSize, Player const* lootOwner) const
+bool LootStoreItem::Roll(bool rate, Player const* lootOwner) const
 {
     if (chance >= 100.0f)
         return true;
 
 	float n_chance = chance;
 
-	float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(f_GroupSize, false) : 1.0f;
 	float qualityModifier = 1.0f;
 
 	if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemid))
@@ -295,8 +294,6 @@ bool LootStoreItem::Roll(bool rate, float f_GroupSize, Player const* lootOwner) 
 			n_chance *= ilevelModifier; // increase drop chance when average item level is lagging behind
 		}
 	}
-
-	qualityModifier *= groupModifier;
 
 	if (mincountOrRef < 0)                                  // reference case
 	{
@@ -1768,8 +1765,8 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 					{
 						for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
 						{
-							if (Player const* pl = itr->getSource())
-								if (pl != player && pl->IsAtGroupRewardDistance(creature))
+							if (Player* pl = itr->getSource())
+								if (pl != player && IsEligibleForLoot(pl, creature))
 									player_level += pl->getLevel();
 						}
 						player_level /= grp->GetMembersCount();
@@ -1960,8 +1957,8 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 					{
 						for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
 						{
-							if (Player const* pl = itr->getSource())
-								if (pl != player && pl->IsAtGroupRewardDistance(gameObject))
+							if (Player * pl = itr->getSource())
+								if (pl != player && IsEligibleForLoot(pl, gameObject))
 									player_level += pl->getLevel();
 						}
 						player_level /= grp->GetMembersCount();
@@ -2109,8 +2106,8 @@ Loot::Loot(Player* player, Item* item, LootType type) :
 			{
 				for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
 				{
-					if (Player const* pl = itr->getSource())
-						if (pl != player && pl->IsAtGroupRewardDistance(player))
+					if (Player * pl = itr->getSource())
+						if (pl != player && IsEligibleForLoot(pl, player))
 							player_level += pl->getLevel();
 				}
 				player_level /= grp->GetMembersCount();
@@ -2794,14 +2791,19 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
 {
 	//Gestion du drop rate pour des groups
 	float f_GroupSize = 1.0f;
-	f_GroupSize = lootOwner->GetGroup() ? lootOwner->GetGroup()->GetMembersCount() - 1 : 1.0f;
+
+	if (Group const* grp = lootOwner->GetGroup())
+		for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+			if (Player* pl = itr->getSource())
+				if (pl != lootOwner && pl->IsAtGroupRewardDistance(lootOwner))
+					f_GroupSize++;
 
 	if (groupId)                                            // Group reference uses own processing of the group
     {
         if (groupId > Groups.size())
             return;                                         // Error message already printed at loading stage
 		
-		for (uint32 ITEM_QUALITY = 0; ITEM_QUALITY < MAX_ITEM_QUALITY; ++ITEM_QUALITY) // Ref multiplicator
+		for (int ITEM_QUALITY = MAX_ITEM_QUALITY - 1; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
 			Groups[groupId - 1].Process(loot, lootOwner, ITEM_QUALITY);
         return;
     }
@@ -2813,7 +2815,7 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
         if (Entrie.conditionId && lootOwner && !PlayerOrGroupFulfilsCondition(loot, lootOwner, Entrie.conditionId))
             continue;
 
-        if (!Entrie.Roll(rate, f_GroupSize, lootOwner))
+        if (!Entrie.Roll(rate, lootOwner))
             continue;                                       // Bad luck for the entry
 
         if (Entrie.mincountOrRef < 0)                           // References processing
@@ -2823,7 +2825,9 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
             if (!Referenced)
                 continue;                                   // Error message already printed at loading stage
 
-			uint32 maxcount = uint32(float(Entrie.maxcount) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED_AMOUNT));
+			float amountModifier = rate ? sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED_AMOUNT) : 1.0f;
+			float groupModifier = rate ? MaNGOS::DROP::drop_in_group_rate(f_GroupSize, false) : 1.0f;
+			uint32 maxcount = uint32(float(Entrie.maxcount) * amountModifier * groupModifier);
             for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
                 Referenced->Process(loot, lootOwner, store, rate, Entrie.group);
         }

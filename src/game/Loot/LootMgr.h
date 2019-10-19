@@ -179,7 +179,7 @@ struct LootStoreItem
           group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId), qualityId(_qualityId)
     {}
 
-    bool Roll(bool rate, float f_GroupSize, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)
+    bool Roll(bool rate, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)
     bool IsValid(LootStore const& store, uint32 entry) const;
     // Checks correctness of values
 };
