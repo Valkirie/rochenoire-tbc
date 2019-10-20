@@ -2397,6 +2397,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
     uint32 money;
     uint32 total_player_time;
     uint32 level;
+	uint32 ilevel;
     uint32 latency = 0;
 
     // get additional information from Player object
@@ -2410,6 +2411,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
         money = target->GetMoney();
         total_player_time = target->GetTotalPlayedTime();
         level = target->getLevel();
+		ilevel = target->getItemLevel();
         latency = target->GetSession()->GetLatency();
     }
     // get additional information from DB
@@ -2419,8 +2421,8 @@ bool ChatHandler::HandlePInfoCommand(char* args)
         if (HasLowerSecurity(nullptr, target_guid))
             return false;
 
-        //                                                     0          1      2      3
-        QueryResult* result = CharacterDatabase.PQuery("SELECT totaltime, level, money, account FROM characters WHERE guid = '%u'", target_guid.GetCounter());
+        //                                                     0          1      2      3        4
+        QueryResult* result = CharacterDatabase.PQuery("SELECT totaltime, level, money, account, ilevel FROM characters WHERE guid = '%u'", target_guid.GetCounter());
         if (!result)
             return false;
 
@@ -2429,6 +2431,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
         level = fields[1].GetUInt32();
         money = fields[2].GetUInt32();
         accId = fields[3].GetUInt32();
+		ilevel = fields[4].GetUInt32();
         delete result;
     }
 
@@ -2467,6 +2470,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
     uint32 silv = (money % GOLD) / SILVER;
     uint32 copp = (money % GOLD) % SILVER;
     PSendSysMessage(LANG_PINFO_LEVEL,  timeStr.c_str(), level, gold, silv, copp);
+	PSendSysMessage("Equipement Level: %u", ilevel);
 
     return true;
 }

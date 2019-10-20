@@ -821,6 +821,8 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     else
         SetUInt32Value(UNIT_FIELD_LEVEL, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_LEVEL));
 
+	SetUInt32Value(UNIT_FIELD_ILEVEL, 5);
+
     SetUInt32Value(PLAYER_FIELD_COINAGE, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_MONEY));
     SetHonorPoints(sWorld.getConfig(CONFIG_UINT32_START_HONOR_POINTS));
     SetArenaPoints(sWorld.getConfig(CONFIG_UINT32_START_ARENA_POINTS));
@@ -3884,6 +3886,7 @@ void Player::InitVisibleBits()
     updateVisualBits.SetBit(UNIT_FIELD_MAXPOWER4);
     updateVisualBits.SetBit(UNIT_FIELD_MAXPOWER5);
     updateVisualBits.SetBit(UNIT_FIELD_LEVEL);
+	updateVisualBits.SetBit(UNIT_FIELD_ILEVEL);
     updateVisualBits.SetBit(UNIT_FIELD_FACTIONTEMPLATE);
     updateVisualBits.SetBit(UNIT_FIELD_BYTES_0);
     updateVisualBits.SetBit(UNIT_FIELD_FLAGS);
@@ -10506,7 +10509,7 @@ void Player::setItemLevel(bool inventory)
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
-				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
+				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 				{
 					nbItem++;
 					avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
@@ -10517,7 +10520,7 @@ void Player::setItemLevel(bool inventory)
 		for (int i = INVENTORY_SLOT_ITEM_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				if (ItemPrototype const* pProto = pItem->GetProto())
-					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
+					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 					{
 						nbItem++;
 						avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
@@ -10528,7 +10531,7 @@ void Player::setItemLevel(bool inventory)
 				for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
 					if (Item const* pItem = GetItemByPos(i, j))
 						if (ItemPrototype const* pProto = pItem->GetProto())
-							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
+							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 							{
 								nbItem++;
 								avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
@@ -10545,15 +10548,15 @@ void Player::setItemLevel(bool inventory)
 }
 
 
-float Player::countRelevant(uint32 Quality, bool inventory) const
+float Player::countRelevant(uint32 pQuality, bool inventory) const
 {
-	uint8 nbItem = 0;
+	float nbItem = 0;
 
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 			if (ItemPrototype const* pProto = pItem->GetProto())
 				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
-					if (pProto->Quality == Quality)
+					if (pProto->Quality == pQuality)
 						nbItem++;
 
 	if (inventory)
@@ -10562,7 +10565,7 @@ float Player::countRelevant(uint32 Quality, bool inventory) const
 			if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				if (ItemPrototype const* pProto = pItem->GetProto())
 					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
-						if (pProto->Quality == Quality)
+						if (pProto->Quality == pQuality)
 							nbItem++;
 
 		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10571,11 +10574,11 @@ float Player::countRelevant(uint32 Quality, bool inventory) const
 					if (Item const* pItem = GetItemByPos(i, j))
 						if (ItemPrototype const* pProto = pItem->GetProto())
 							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && IsRelevant(pItem))
-								if(pProto->Quality == Quality)
+								if(pProto->Quality == pQuality)
 									nbItem++;
 	}
 
-	return std::max((float)nbItem, 0.5f);
+	return nbItem;
 }
 
 uint32 Player::getExpectedItemLevel() const
@@ -10645,38 +10648,36 @@ uint32 Player::getExpectedItemLevel() const
 		case 10: return 7;
 		case 9: return 6;
 		case 8: return 6;
-		default: return getLevel() + 5;
+		default: return 5;
 	}
 }
 
-const std::array<float, 70> drop_green  { { 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1 } };
-const std::array<float, 70> drop_blue   { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9 } };
-const std::array<float, 70> drop_purple { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 } };
+std::map<uint32, std::vector<uint32>> drop_map = {
+	{ITEM_QUALITY_UNCOMMON, { 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1 }},
+	{ITEM_QUALITY_RARE,     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9 }},
+	{ITEM_QUALITY_EPIC,     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 }},
+};
 
-float Player::getItemLevelCoeff(uint32 Quality) const
+float Player::getItemLevelCoeff(uint32 pQuality) const
 {
 	float qualityModifier = std::max((float)getExpectedItemLevel() / (float)getItemLevel(), 1.0f);
-	qualityModifier *= sWorld.getConfig(qualityToRate[Quality]);
+	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
 
 	float quantityModifier = 1.0f;
-	
-	switch (Quality)
+	uint32 pLevel = getLevel() - 1;
+
+	switch (pQuality)
 	{
 		case ITEM_QUALITY_UNCOMMON: // GREEN
-			quantityModifier = drop_green[getLevel() - 1] / countRelevant(Quality, true);
-			break;
 		case ITEM_QUALITY_RARE:     // BLUE
-			quantityModifier = drop_blue[getLevel() - 1] / countRelevant(Quality, true);
-			break;
 		case ITEM_QUALITY_EPIC:     // PURPLE
-			quantityModifier = drop_purple[getLevel() - 1] / countRelevant(Quality, true);
-			break;
+			quantityModifier = drop_map[pQuality][pLevel] / countRelevant(pQuality, true);
 		break;
 	}
 
-	qualityModifier *= std::max(quantityModifier, 1.0f);
+	quantityModifier = isinf(quantityModifier) ? drop_map[pQuality][pLevel] : quantityModifier;
 	
-	return qualityModifier;
+	return std::max(qualityModifier, quantityModifier);
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
@@ -18729,6 +18730,13 @@ void Player::TakeExtendedCost(uint32 extendedCostId, uint32 count)
         if (extendedCost->reqitem[i])
             DestroyItemCount(extendedCost->reqitem[i], extendedCost->reqitemcount[i] * count, true);
     }
+}
+
+
+// Return true if the item is relevant for the player
+bool Player::IsRelevant(const Item* item) const
+{
+	return (((float)item->GetProto()->RequiredLevel / float(getLevel()) >= 0.75f) && CanUseItem(item->GetProto()) == EQUIP_ERR_OK);
 }
 
 // Return true is the bought item has a max count to force refresh of window by caller

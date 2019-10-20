@@ -856,7 +856,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 				ItemLevel = 120;
 		}
 
-		uint32 scaleid = (41000 + itemid * 2 * 180 /* + 0 Bonus Quality  * 180 */ + ItemLevel);
+		uint32 scaleid = (41000 + itemid * 2 * 180 + ItemLevel);
 
 		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
 		if (pProtoScale)

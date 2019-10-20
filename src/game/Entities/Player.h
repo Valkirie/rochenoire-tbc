@@ -1223,7 +1223,7 @@ class Player : public Unit
         }
         void SendNewItem(Item* item, uint32 count, bool received, bool created, bool broadcast = false, bool showInChat = true);
         bool BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, uint8 bag, uint8 slot);
-		bool IsRelevant(const Item* item) const { return (item->GetProto()->RequiredLevel <= getLevel() /*&& ((float)item->GetProto()->RequiredLevel / float(getLevel()) >= 0.9f)*/ && CanUseItem(item->GetProto()) == EQUIP_ERR_OK); }
+		bool IsRelevant(const Item* item) const;
 
         float GetReputationPriceDiscount(Creature const* creature) const;
         float GetReputationPriceDiscount(FactionTemplateEntry const* factionTemplate) const;
@@ -1250,8 +1250,8 @@ class Player : public Unit
 		void setItemLevel(bool inventory);
 		uint32 getItemLevel() const { return GetUInt32Value(UNIT_FIELD_ILEVEL); }
 		uint32 getExpectedItemLevel() const;
-		float countRelevant(uint32 Quality, bool inventory) const;
-		float  getItemLevelCoeff(uint32 Quality) const;
+		float countRelevant(uint32 pQuality, bool inventory) const;
+		float  getItemLevelCoeff(uint32 pQuality) const;
 
         uint32 m_stableSlots;
 

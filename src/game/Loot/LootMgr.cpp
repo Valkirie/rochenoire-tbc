@@ -2100,6 +2100,7 @@ Loot::Loot(Player* player, Item* item, LootType type) :
             FillLoot(item->GetEntry(), LootTemplates_Item, player, true, item->GetProto()->MaxMoneyLoot == 0);
 
 			uint32 item_level = item->GetProto()->RequiredLevel;
+			item_level = item_level == 0 ? item->GetProto()->ItemLevel : item_level;
 			uint32 player_level = player->getLevel();
 
 			if (Group const* grp = player->GetGroup())
@@ -2588,9 +2589,13 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot const& loot, Player cons
     {
         std::vector <LootStoreItem const*> lootStoreItemVector; // we'll use new vector to make easy the randomization
 
-        // fill the new vector with correct pointer to our item list
-        for (auto& itr : ExplicitlyChanced)
-            lootStoreItemVector.push_back(&itr);
+		// fill the new vector with correct pointer to our item list
+		for (auto& itr : ExplicitlyChanced)
+		{
+			if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itr.itemid))
+				if (pProto->Quality == quality_id)
+					lootStoreItemVector.push_back(&itr);
+		}
 
         // randomize the new vector
         random_shuffle(lootStoreItemVector.begin(), lootStoreItemVector.end());
