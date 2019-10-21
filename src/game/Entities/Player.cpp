@@ -14240,7 +14240,7 @@ void Player::SetQuestStatus(uint32 quest_id, QuestStatus status)
 
         q_status.m_status = status;
 
-        if (q_status.uState != QUEST_NEW)
+		if (q_status.uState != QUEST_NEW)
             q_status.uState = QUEST_CHANGED;
     }
 
@@ -14332,7 +14332,6 @@ void Player::RewardPlayerAndGroupAtEventExplored(uint32 questId, WorldObject con
 
 void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
 {
-	entry = Item::LoadScaledParent(entry);
 	for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
@@ -14351,7 +14350,7 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
         for (int j = 0; j < QUEST_ITEM_OBJECTIVES_COUNT; ++j)
         {
             uint32 reqitem = qInfo->ReqItemId[j];
-            if (reqitem == entry)
+            if (reqitem == Item::LoadScaledParent(entry))
             {
                 uint32 reqitemcount = qInfo->ReqItemCount[j];
                 uint32 curitemcount = q_status.m_itemcount[j];
@@ -14362,7 +14361,7 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
                     if (q_status.uState != QUEST_NEW)
                         q_status.uState = QUEST_CHANGED;
 
-                    SendQuestUpdateAddItem(qInfo, j, curitemcount, additemcount);
+                    SendQuestUpdateAddItem(qInfo, j, curitemcount, additemcount, entry);
                 }
 
                 if (CanCompleteQuest(questid))
@@ -14379,7 +14378,6 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
 
 void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
 {
-	entry = Item::LoadScaledParent(entry);
 	for (int i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
@@ -14394,7 +14392,7 @@ void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
         for (int j = 0; j < QUEST_ITEM_OBJECTIVES_COUNT; ++j)
         {
             uint32 reqitem = qInfo->ReqItemId[j];
-            if (reqitem == entry)
+            if (reqitem == Item::LoadScaledParent(entry))
             {
                 QuestStatusData& q_status = mQuestStatus[questid];
 
@@ -14873,14 +14871,16 @@ void Player::SendPushToPartyResponse(Player* pPlayer, uint32 msg) const
     }
 }
 
-void Player::SendQuestUpdateAddItem(Quest const* pQuest, uint32 item_idx, uint32 current, uint32 count)
+void Player::SendQuestUpdateAddItem(Quest const* pQuest, uint32 item_idx, uint32 current, uint32 count, uint32 itemid)
 {
     MANGOS_ASSERT(count < 256 && "Quest slot count store is limited to 8 bits 2^8 = 256 (0..255)");
+
+	itemid = itemid != 0 ? itemid : pQuest->ReqItemId[item_idx];
 
     // Update quest watcher and fire QUEST_WATCH_UPDATE
     DEBUG_LOG("WORLD: Sent SMSG_QUESTUPDATE_ADD_ITEM");
     WorldPacket data(SMSG_QUESTUPDATE_ADD_ITEM, (4 + 4));
-    data << pQuest->ReqItemId[item_idx];
+	data << itemid;
     data << count;
     GetSession()->SendPacket(data);
 

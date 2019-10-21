@@ -811,12 +811,16 @@ void PlayerMenu::SendQuestGiverRequestItems(Player const* pPlayer, Quest const* 
     data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer) < 0 ? -pQuest->GetRewOrReqMoney((Player*)pPlayer) : 0);
 
     data << uint32(pQuest->GetReqItemsCount());
+
+	ItemPrototype const* pItem;
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
     {
         if (!pQuest->ReqItemId[i])
             continue;
-        ItemPrototype const* pItem = ObjectMgr::GetItemPrototype(pQuest->ReqItemId[i]);
-        data << uint32(pQuest->ReqItemId[i]);
+
+		uint32 ReqItemIdS = pPlayer->HasScaledItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i]);
+		pItem = ObjectMgr::GetItemPrototype(ReqItemIdS);
+		data << uint32(ReqItemIdS);
         data << uint32(pQuest->ReqItemCount[i]);
 
         if (pItem)

@@ -729,17 +729,14 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
-		ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid);
-		if (sItem)
+		if (ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid))
 			return sItem->ItemId;
 	}
 	else
 	{
-		// outdated !
 		uint32 scaleid = std::floor((itemid - 41000 - 1)/(2 * 180));
 
-		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
-		if (pProtoScale)
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
 			return scaleid;
 	}
 
@@ -858,8 +855,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 
 		uint32 scaleid = (41000 + itemid * 2 * 180 + ItemLevel);
 
-		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
-		if (pProtoScale)
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
 			return scaleid;
 	}
 
