@@ -821,7 +821,7 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     else
         SetUInt32Value(UNIT_FIELD_LEVEL, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_LEVEL));
 
-	SetUInt32Value(UNIT_FIELD_ILEVEL, 5);
+	SetUInt32Value(UNIT_FIELD_ILEVEL, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_ILEVEL));
 
     SetUInt32Value(PLAYER_FIELD_COINAGE, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_MONEY));
     SetHonorPoints(sWorld.getConfig(CONFIG_UINT32_START_HONOR_POINTS));
@@ -14871,16 +14871,16 @@ void Player::SendPushToPartyResponse(Player* pPlayer, uint32 msg) const
     }
 }
 
-void Player::SendQuestUpdateAddItem(Quest const* pQuest, uint32 item_idx, uint32 current, uint32 count, uint32 itemid)
+void Player::SendQuestUpdateAddItem(Quest const* pQuest, uint32 item_idx, uint32 current, uint32 count, uint32 ReqItemId)
 {
     MANGOS_ASSERT(count < 256 && "Quest slot count store is limited to 8 bits 2^8 = 256 (0..255)");
 
-	itemid = itemid != 0 ? itemid : pQuest->ReqItemId[item_idx];
+	ReqItemId = ReqItemId != 0 ? ReqItemId : pQuest->ReqItemId[item_idx];
 
     // Update quest watcher and fire QUEST_WATCH_UPDATE
     DEBUG_LOG("WORLD: Sent SMSG_QUESTUPDATE_ADD_ITEM");
     WorldPacket data(SMSG_QUESTUPDATE_ADD_ITEM, (4 + 4));
-	data << itemid;
+	data << ReqItemId;
     data << count;
     GetSession()->SendPacket(data);
 

@@ -657,7 +657,7 @@ void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQue
             data << uint32(pQuest->ReqCreatureOrGOId[iI]);
         }
         data << uint32(pQuest->ReqCreatureOrGOCount[iI]);
-        data << uint32(pQuest->ReqItemId[iI]);
+		data << uint32(pPlayer->HasScaledItemCount(pQuest->ReqItemId[iI], pQuest->ReqItemCount[iI]));
         data << uint32(pQuest->ReqItemCount[iI]);
     }
 
@@ -818,9 +818,9 @@ void PlayerMenu::SendQuestGiverRequestItems(Player const* pPlayer, Quest const* 
         if (!pQuest->ReqItemId[i])
             continue;
 
-		uint32 ReqItemIdS = pPlayer->HasScaledItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i]);
-		pItem = ObjectMgr::GetItemPrototype(ReqItemIdS);
-		data << uint32(ReqItemIdS);
+		uint32 ReqItemId = pPlayer->HasScaledItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i]);
+		pItem = ObjectMgr::GetItemPrototype(ReqItemId);
+		data << uint32(ReqItemId);
         data << uint32(pQuest->ReqItemCount[i]);
 
         if (pItem)

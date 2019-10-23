@@ -252,8 +252,8 @@ MaxWhoListReturns = 49
 #
 #    WowPatch
 #        Set the server progressive patch
-#        Default: 0  (1.2)
-#                 15 (2.4)
+#        Default: 15 (2.4)
+#                 0  (1.2)
 #
 #    Rochenoire.Scaling.MinLevel.Player
 #        Minimum player level for the content scaling to enable
@@ -265,7 +265,7 @@ MaxWhoListReturns = 49
 #
 #    Rochenoire.Scaling.MinLevel.Expansion
 #        Minimum player level for the expansion content scaling to enable
-#        Default: 1
+#        Default: 60
 #
 #    Rochenoire.Scaling.Dungeons.Enabled
 #        Enable/Disable dungeons level scaling
@@ -316,10 +316,10 @@ MaxWhoListReturns = 49
 #
 ###################################################################################################################
 
-WowPatch = 0
+WowPatch = 15
 Rochenoire.Scaling.MinLevel.Player = 10
 Rochenoire.Scaling.MinLevel.Creature = 1
-Rochenoire.Scaling.MinLevel.Expansion = 10
+Rochenoire.Scaling.MinLevel.Expansion = 60
 Rochenoire.Scaling.Dungeons.Enabled = 1
 Rochenoire.Scaling.Raids.Upscale = 1
 Rochenoire.Scaling.Raids.Downscale = 0
@@ -633,8 +633,12 @@ LogColors = ""
 #        Default: 70
 #
 #    StartPlayerLevel
-#        Staring level that have character at creating (in range 1 to MaxPlayerLevel)
+#        Starting level that have character at creating (in range 1 to MaxPlayerLevel)
 #        Default: 1
+#
+#    StartPlayerILevel
+#        Starting ilevel that have character at creating (in range 1 to MaxPlayerLevel)
+#        Default: 5
 #
 #    StartPlayerMoney
 #        Amount of money that new players will start with.
