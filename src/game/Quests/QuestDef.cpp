@@ -216,23 +216,21 @@ uint32 Quest::XPValue(Player* pPlayer) const
 
 int32 Quest::GetRewOrReqMoney(Player *p) const
 {
+	int32 sRewOrReqMoney = RewOrReqMoney;
 	if (p && p->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
 	{
-		if (RewOrReqMoney <= 0)
-			return RewOrReqMoney;
+		/* if (RewOrReqMoney <= 0)
+			return RewOrReqMoney; */
 
-		uint32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
+		int32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
 
-		uint32 expected_RewOrReqMoney = uint32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
+		int32 expected_RewOrReqMoney = int32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
 		double difference_RewOrReqMoney = double((double)RewOrReqMoney / (double)expected_RewOrReqMoney);
-		uint32 leveled_RewOrReqMoney = uint32(0.0472 * pow(pQuest_slevel, 3) + 1.894 * pow(pQuest_slevel, 2) + 8.6352 * (pQuest_slevel));
+		int32 leveled_RewOrReqMoney = int32(0.0472 * pow(pQuest_slevel, 3) + 1.894 * pow(pQuest_slevel, 2) + 8.6352 * (pQuest_slevel));
 
-		double scaled_RewOrReqMoney = double((double)difference_RewOrReqMoney * (double)leveled_RewOrReqMoney);
-		uint32 return_value = uint32(scaled_RewOrReqMoney);
-
-		return return_value * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
+		sRewOrReqMoney = (double)difference_RewOrReqMoney * (double)leveled_RewOrReqMoney;
 	}
-	return RewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
+	return sRewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
 }
 
 uint32 Quest::GetRewMoneyMaxLevel(Player *p) const
