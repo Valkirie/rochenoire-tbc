@@ -894,17 +894,12 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 	uint32 olddamage = damage;
 	CleanDamage const* oldcleanDamage = cleanDamage;
 
-	if (!spell || (spell && !spell->IsDeletable()))
+	if (cleanDamage)
 	{
-		if (!damage)
-		{
-			if (cleanDamage)
-			{
-				uint32 cdamage = sObjectMgr.ScaleDamage(this, pVictim, cleanDamage->damage, isScaled);
-				cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
-			}
-		}
+		uint32 cdamage = sObjectMgr.ScaleDamage(this, pVictim, cleanDamage->damage, isScaled);
+		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
 	}
+
 	damage = sObjectMgr.ScaleDamage(this, pVictim, olddamage, isScaled);
 
     // remove affects from attacker at any non-DoT damage (including 0 damage)
@@ -919,7 +914,7 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
     {
         // Rage from physical damage received .
         if (cleanDamage && cleanDamage->damage && (damageSchoolMask & SPELL_SCHOOL_MASK_NORMAL) && pVictim->GetTypeId() == TYPEID_PLAYER && (pVictim->GetPowerType() == POWER_RAGE))
-            ((Player*)pVictim)->RewardRage(oldcleanDamage->damage, 0, false);
+            ((Player*)pVictim)->RewardRage(cleanDamage->damage, 0, false);
 
         return 0;
     }
