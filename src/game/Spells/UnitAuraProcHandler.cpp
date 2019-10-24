@@ -645,14 +645,24 @@ bool Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder*
     // Get chance from spell
     float chance = (float)spellProto->procChance;
 
-	// Scale ON_EQUIP spell procChance
+    // If in spellProcEvent exist custom chance, chance = spellProcEvent->customChance;
+    if (spellProcEvent && spellProcEvent->customChance)
+        chance = spellProcEvent->customChance;
+    // If PPM exist calculate chance from PPM
+    if (!data.isVictim && spellProcEvent && spellProcEvent->ppmRate != 0)
+    {
+        uint32 WeaponSpeed = GetAttackTime(data.attType);
+        chance = GetPPMProcChance(WeaponSpeed, spellProcEvent->ppmRate);
+    }
+
+	// Scale chance value
 	if (GetTypeId() == TYPEID_PLAYER)
 	{
 		if (chance > 0 && chance < 100)
 		{
 			for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
 			{
-				if (Item* pItem = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+				if (Item * pItem = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
 				{
 					uint32 parentItem = Item::LoadScaledParent(pItem->GetProto()->ItemId);
 					if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(parentItem))
@@ -677,15 +687,6 @@ bool Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder*
 		}
 	}
 
-    // If in spellProcEvent exist custom chance, chance = spellProcEvent->customChance;
-    if (spellProcEvent && spellProcEvent->customChance)
-        chance = spellProcEvent->customChance;
-    // If PPM exist calculate chance from PPM
-    if (!data.isVictim && spellProcEvent && spellProcEvent->ppmRate != 0)
-    {
-        uint32 WeaponSpeed = GetAttackTime(data.attType);
-        chance = GetPPMProcChance(WeaponSpeed, spellProcEvent->ppmRate);
-    }
     // Apply chance modifier aura
     if (Player* modOwner = GetSpellModOwner())
         modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_CHANCE_OF_SUCCESS, chance);
