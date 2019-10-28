@@ -2650,6 +2650,34 @@ void Player::GiveLevel(uint32 level)
     if (MailLevelReward const* mailReward = sObjectMgr.GetMailLevelReward(level, getRaceMask()))
         MailDraft(mailReward->mailTemplateId).SendMailTo(this, MailSender(MAIL_CREATURE, mailReward->senderEntry));
 
+	// LEVEL 10 : Send a note to players
+	if (level == 10)
+	{
+		uint32 NPC_SENDER = 0;
+		uint32 LANG_PROGRESS = 0;
+		uint32 SUBJECT_PROGRESS = 0;
+
+		switch (TeamForRace(getRace()))
+		{
+			case ALLIANCE:
+				NPC_SENDER = 1748;
+				SUBJECT_PROGRESS = LANG_PROGRESS_SUBJECT_A2;
+				LANG_PROGRESS = LANG_PROGRESS_CONGRATS_A2;
+				break;
+			case HORDE:
+				NPC_SENDER = 4949;
+				SUBJECT_PROGRESS = LANG_PROGRESS_SUBJECT_H2;
+				LANG_PROGRESS = LANG_PROGRESS_CONGRATS_H2;
+				break;
+		}
+
+		std::string letterText = this->GetSession()->GetMangosString(LANG_PROGRESS);
+		std::string letterSubject = this->GetSession()->GetMangosString(SUBJECT_PROGRESS);
+
+		MailDraft(letterSubject.c_str(), letterText.c_str())
+			.SendMailTo(this, MailSender(MAIL_CREATURE, NPC_SENDER));
+	}
+
     // resend quests status directly
     SendQuestGiverStatusMultiple();
 }
@@ -10503,8 +10531,8 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
 
 void Player::setItemLevel(bool inventory)
 {
-	float avgItemLevel = 0.0f;
-	uint8 nbItem = 0;
+	float iLevel = 0.0f;
+	float nbItem = 0;
 
 	for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
 		if (Item const* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
@@ -10512,7 +10540,7 @@ void Player::setItemLevel(bool inventory)
 				if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 				{
 					nbItem++;
-					avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
+					iLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 				}
 
 	if (inventory)
@@ -10523,7 +10551,7 @@ void Player::setItemLevel(bool inventory)
 					if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 					{
 						nbItem++;
-						avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
+						iLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 					}
 
 		for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
@@ -10534,17 +10562,15 @@ void Player::setItemLevel(bool inventory)
 							if ((pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR) && CanUseItem(pProto) == EQUIP_ERR_OK)
 							{
 								nbItem++;
-								avgItemLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
+								iLevel += std::max((float)pProto->ItemLevel * sWorld.getConfig(qualityToCoeff[pProto->Quality]), 1.0f);
 							}
 	}
 
-	if(nbItem != 0)
-		avgItemLevel /= nbItem;
+	iLevel /= std::max(nbItem, (float)getExpItemCount());
+	iLevel = std::max(iLevel, 5.0f);
 
-	avgItemLevel = std::max(avgItemLevel, 5.0f);
-
-	if (getItemLevel() < avgItemLevel)
-		SetUInt32Value(UNIT_FIELD_ILEVEL, avgItemLevel);
+	if (getItemLevel() < (uint32)iLevel)
+		SetUInt32Value(UNIT_FIELD_ILEVEL, (uint32)iLevel);
 }
 
 
@@ -10578,10 +10604,88 @@ float Player::countRelevant(uint32 pQuality, bool inventory) const
 									nbItem++;
 	}
 
-	return std::max(1.0f, nbItem);
+	return nbItem;
 }
 
-uint32 Player::getExpectedItemLevel() const
+uint32 Player::getExpItemCount() const
+{
+	switch (getLevel())
+	{
+		case 1: return 4;
+		case 2: return 4;
+		case 3: return 5;
+		case 4: return 5;
+		case 5: return 6;
+		case 6: return 7;
+		case 7: return 7;
+		case 8: return 8;
+		case 9: return 8;
+		case 10: return 8;
+		case 11: return 8;
+		case 12: return 9;
+		case 13: return 9;
+		case 14: return 9;
+		case 15: return 9;
+		case 16: return 9;
+		case 17: return 9;
+		case 18: return 10;
+		case 19: return 10;
+		case 20: return 10;
+		case 21: return 11;
+		case 22: return 11;
+		case 23: return 11;
+		case 24: return 11;
+		case 25: return 12;
+		case 26: return 12;
+		case 27: return 12;
+		case 28: return 12;
+		case 29: return 12;
+		case 30: return 12;
+		case 31: return 13;
+		case 32: return 13;
+		case 33: return 13;
+		case 34: return 13;
+		case 35: return 13;
+		case 36: return 14;
+		case 37: return 14;
+		case 38: return 14;
+		case 39: return 14;
+		case 40: return 14;
+		case 41: return 14;
+		case 42: return 14;
+		case 43: return 14;
+		case 44: return 14;
+		case 45: return 14;
+		case 46: return 15;
+		case 47: return 15;
+		case 48: return 15;
+		case 49: return 15;
+		case 50: return 15;
+		case 51: return 15;
+		case 52: return 15;
+		case 53: return 15;
+		case 54: return 15;
+		case 55: return 15;
+		case 56: return 15;
+		case 57: return 15;
+		case 58: return 15;
+		case 59: return 15;
+		case 60: return 15;
+		case 61: return 15;
+		case 62: return 15;
+		case 63: return 15;
+		case 64: return 15;
+		case 65: return 15;
+		case 66: return 15;
+		case 67: return 16;
+		case 68: return 16;
+		case 69: return 16;
+		case 70: return 16;
+		default: return 4;
+	}
+}
+
+uint32 Player::getExpItemLevel() const
 {
 	switch (getLevel())
 	{
@@ -10661,10 +10765,11 @@ std::map<uint32, std::vector<uint32>> drop_map = {
 
 float Player::getItemLevelCoeff(uint32 pQuality) const
 {
-	float qualityModifier = std::max((float)getExpectedItemLevel() / (float)getItemLevel(), 1.0f);
+	float qualityModifier = std::max((float)getExpItemLevel() / (float)getItemLevel(), 1.0f);
 	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
 
 	float quantityModifier = 1.0f;
+	float pCount = countRelevant(pQuality, true);
 	uint32 pLevel = getLevel() - 1;
 
 	switch (pQuality)
@@ -10672,7 +10777,7 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 		case ITEM_QUALITY_UNCOMMON: // GREEN
 		case ITEM_QUALITY_RARE:     // BLUE
 		case ITEM_QUALITY_EPIC:     // PURPLE
-			quantityModifier = (float)drop_map[pQuality][pLevel] / countRelevant(pQuality, true);
+			quantityModifier = pCount != 0 ? (float)drop_map[pQuality][pLevel] / pCount : std::max((float)drop_map[pQuality][pLevel], 2.0f);
 		break;
 	}
 	

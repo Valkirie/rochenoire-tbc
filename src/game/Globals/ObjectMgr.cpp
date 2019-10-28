@@ -1202,7 +1202,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
 	uint32 level = p_level + v_level;
 
-	if (!IsDungeon)
+	/* if (!IsDungeon)
 	{
 		// var vars
 		float inc_lvl = 1.55f;    //De combien de level en moyenne doit-on augmenter les levels 
@@ -1212,7 +1212,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 		float s_eps = std::log(inc_lvl / red_lvl);
 
 		level += round((inc_lvl + red_lvl) / (1.0f + std::exp(-s_coeff * (c_level - p_level) + s_eps)) - red_lvl);
-	}
+	} */
 
 	if (level > sWorld.GetCurrentMaxLevel())
 		level = sWorld.GetCurrentMaxLevel();

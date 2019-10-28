@@ -1249,7 +1249,8 @@ class Player : public Unit
 
 		void setItemLevel(bool inventory);
 		uint32 getItemLevel() const { return GetUInt32Value(UNIT_FIELD_ILEVEL); }
-		uint32 getExpectedItemLevel() const;
+		uint32 getExpItemCount() const;
+		uint32 getExpItemLevel() const;
 		float countRelevant(uint32 pQuality, bool inventory) const;
 		float  getItemLevelCoeff(uint32 pQuality) const;
 

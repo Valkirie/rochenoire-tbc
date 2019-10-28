@@ -871,7 +871,7 @@ bool Unit::IsInStartLocation()
 		}
 		else if (zone == 3430)
 		{
-			if (area == 3431 || area == 3485 || area == 3532 || area == 3532 || area == 3665 || area == 3531) // BloodElf
+			if (area == 3431 || area == 3485 || area == 3532 || area == 3665 || area == 3531) // BloodElf
 				return true;
 		}
 	}

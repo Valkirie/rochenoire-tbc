@@ -1026,6 +1026,10 @@ enum MangosStrings
     //                                    10000-10999
 
     // Use for custom patches             11000-11999
+	LANG_PROGRESS_CONGRATS_H2           = 11019,
+	LANG_PROGRESS_CONGRATS_A2           = 11020,
+	LANG_PROGRESS_SUBJECT_H2            = 11021,
+	LANG_PROGRESS_SUBJECT_A2            = 11022,
 	LANG_FLEXIBLE_RAID_INC              = 11036,
 	LANG_FLEXIBLE_RAID_DEC              = 11037,
 	LANG_FLEXIBLE_RAID_FORCED           = 11038,
