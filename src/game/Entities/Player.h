@@ -1248,7 +1248,7 @@ class Player : public Unit
         void LoadPet();
 
 		void setItemLevel(bool inventory);
-		uint32 getItemLevel() const { return GetUInt32Value(UNIT_FIELD_ILEVEL); }
+		uint32 getItemLevel() const { return std::max((float)GetUInt32Value(UNIT_FIELD_ILEVEL), 5.0f); }
 		uint32 getExpItemCount() const;
 		uint32 getExpItemLevel() const;
 		float countRelevant(uint32 pQuality, bool inventory) const;
