@@ -10765,6 +10765,11 @@ std::map<uint32, std::vector<uint32>> drop_map = {
 
 float Player::getItemLevelCoeff(uint32 pQuality) const
 {
+	bool IsEnabled = sWorld.getConfig(CONFIG_BOOL_SMART_LOOT);
+
+	if (!IsEnabled)
+		return 1.0f;
+
 	float qualityModifier = std::max((float)getExpItemLevel() / (float)getItemLevel(), 1.0f);
 	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
 
