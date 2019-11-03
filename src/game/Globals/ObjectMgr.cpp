@@ -2669,7 +2669,7 @@ void ObjectMgr::LoadItemPrototypes()
     for (uint32 i = 1; i < sItemStorage.GetMaxEntry(); ++i)
     {
         ItemPrototype const* proto = sItemStorage.LookupEntry<ItemPrototype >(i);
-        ItemEntry const* dbcitem = sItemStore.LookupEntry(i);
+        // ItemEntry const* dbcitem = sItemStore.LookupEntry(i);
         if (!proto)
         {
             /* to many errors, and possible not all items really used in game
@@ -2688,7 +2688,7 @@ void ObjectMgr::LoadItemPrototypes()
                     sLog.outErrorDb("Item (Entry: %u) not correct %u spell id, must exist in spell table.", i, Spell.SpellId);
             }
 
-        if (dbcitem)
+        /* if (dbcitem)
         {
             if (proto->InventoryType != dbcitem->InventoryType)
             {
@@ -2710,7 +2710,7 @@ void ObjectMgr::LoadItemPrototypes()
         else
         {
             sLog.outErrorDb("Item (Entry: %u) not correct (not listed in list of existing items).", i);
-        }
+        } */
 
         if (proto->Class >= MAX_ITEM_CLASS)
         {
