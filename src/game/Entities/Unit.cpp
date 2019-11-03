@@ -7277,6 +7277,8 @@ uint32 Unit::SpellDamageBonusDone(Unit* pVictim, SpellEntry const* spellProto, u
 
     // Done fixed damage bonus auras
     int32 DoneAdvertisedBenefit = SpellBaseDamageBonusDone(GetSpellSchoolMask(spellProto));
+	// FIXME !
+	DoneAdvertisedBenefit = sObjectMgr.ScaleDamage(this, pVictim, DoneAdvertisedBenefit, false);
 
     AuraList const& mOverrideClassScript = owner->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
     for (auto i : mOverrideClassScript)

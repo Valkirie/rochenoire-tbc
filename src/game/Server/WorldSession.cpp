@@ -676,7 +676,7 @@ void WorldSession::SendExpectedSpamRecords()
     SendPacket(data);
 }
 
-void WorldSession::SendMotd()
+void WorldSession::SendMotd() const
 {
     std::vector<std::string> lines;
     std::string token;
@@ -684,8 +684,13 @@ void WorldSession::SendMotd()
     std::string motd = sWorld.GetMotd();
     std::istringstream ss(motd);
 
+	std::string patch = ObjectMgr::GetPatchName();
+	std::istringstream ssm(patch);
+
     while (std::getline(ss, token, '@'))
         lines.push_back(token);
+	while (std::getline(ssm, token, '@'))
+		lines.push_back(token);
 
     WorldPacket data(SMSG_MOTD, 4);
     data << (uint32) lines.size();
@@ -698,13 +703,13 @@ void WorldSession::SendMotd()
     DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
 }
 
-void WorldSession::SendPatch()
+void WorldSession::SendPatch() const
 {
 	std::vector<std::string> lines;
 	std::string token;
 
-	std::string patch = ObjectMgr::GetPatchName();
-	std::istringstream ss(patch);
+	std::string motd = ObjectMgr::GetPatchName();
+	std::istringstream ss(motd);
 
 	while (std::getline(ss, token, '@'))
 		lines.push_back(token);
@@ -717,7 +722,7 @@ void WorldSession::SendPatch()
 
 	SendPacket(data);
 
-	DEBUG_LOG("WORLD: Sent patch (SMSG_MOTD)");
+	DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
 }
 
 void WorldSession::SendAreaTriggerMessage(const char* Text, ...) const
