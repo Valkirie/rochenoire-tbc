@@ -6800,6 +6800,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                         break;
                     default:
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(spellProto)) * bonus->direct_damage;
+						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit, false);
                         break;
                 }
             }
@@ -7764,6 +7765,8 @@ void Aura::HandleManaShield(bool apply, bool Real)
     if (!Real)
         return;
 
+	Unit* target = GetTarget();
+
     // prevent double apply bonuses
     if (apply && (GetTarget()->GetTypeId() != TYPEID_PLAYER || !((Player*)GetTarget())->GetSession()->PlayerLoading()))
     {
@@ -7778,6 +7781,7 @@ void Aura::HandleManaShield(bool apply, bool Real)
                         // Mana Shield
                         // +50% from +spd bonus
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
+						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit, false);
                         break;
                     }
                     break;

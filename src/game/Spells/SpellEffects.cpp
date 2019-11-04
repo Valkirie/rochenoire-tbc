@@ -3264,8 +3264,12 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     // found spelldamage coefficients of 0.381% per 0.1 speed and 15.244 per 4.0 speed
                     // but own calculation say 0.385 gives at most one point difference to published values
-                    int32 bonusDamage = m_caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(m_spellInfo))
-                                        + unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
+					int32 DoneTotal = m_caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(m_spellInfo));
+					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal, false);
+					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
+					TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal, false); // inverted owner and target
+
+					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.
                     float weaponSpeed = float(m_CastItem->GetProto()->Delay) / IN_MILLISECONDS;
                     bonusDamage = m_caster->SpellBonusWithCoeffs(m_spellInfo, 0, bonusDamage, 0, SPELL_DIRECT_DAMAGE, false); // apply spell coeff
