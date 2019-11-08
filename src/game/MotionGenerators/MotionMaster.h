@@ -42,11 +42,11 @@ enum MovementGeneratorType
     CONFUSED_MOTION_TYPE            = 4,                    // RandomMovementGenerator.h
     CHASE_MOTION_TYPE               = 5,                    // TargetedMovementGenerator.h
     HOME_MOTION_TYPE                = 6,                    // HomeMovementGenerator.h
-    FLIGHT_MOTION_TYPE              = 7,                    // WaypointMovementGenerator.h
+    TAXI_MOTION_TYPE                = 7,                    // WaypointMovementGenerator.h
     POINT_MOTION_TYPE               = 8,                    // PointMovementGenerator.h
     FLEEING_MOTION_TYPE             = 9,                    // RandomMovementGenerator.h
     DISTRACT_MOTION_TYPE            = 10,                   // IdleMovementGenerator.h
-    ASSISTANCE_MOTION_TYPE          = 11,                   // PointMovementGenerator.h
+    RETREAT_MOTION_TYPE             = 11,                   // PointMovementGenerator.h
     // (Deprecated)                 = 12,                   // to be reused
     TIMED_FLEEING_MOTION_TYPE       = 13,                   // RandomMovementGenerator.h
     FOLLOW_MOTION_TYPE              = 14,                   // TargetedMovementGenerator.h
@@ -117,7 +117,7 @@ class MotionMaster : private std::stack<MovementGenerator*>
         void MoveFleeing(Unit* enemy, uint32 time = 0);
         void MovePoint(uint32 id, float x, float y, float z, bool generatePath = true, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE);
         void MovePoint(uint32 id, float x, float y, float z, float o, bool generatePath = true, ForcedMovement forcedMovement = FORCED_MOVEMENT_NONE);
-        void MoveRetreat(float x, float y, float z, float o);
+        void MoveRetreat(float x, float y, float z, float o, uint32 delay);
         void MoveWaypoint(uint32 pathId = 0, uint32 source = 0, uint32 initialDelay = 0, uint32 overwriteEntry = 0);
         void MoveTaxiFlight();
         void MoveDistract(uint32 timer);

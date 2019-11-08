@@ -340,23 +340,13 @@ void MotionMaster::MovePoint(uint32 id, float x, float y, float z, float o, bool
     else
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), id, x, y, z);
 
-    if (m_owner->GetTypeId() == TYPEID_PLAYER)
-        Mutate(new PointMovementGenerator<Player>(id, x, y, z, o, generatePath, forcedMovement));
-    else
-        Mutate(new PointMovementGenerator<Creature>(id, x, y, z, o, generatePath, forcedMovement));
+    Mutate(new PointMovementGenerator(id, x, y, z, o, generatePath, forcedMovement));
 }
 
-void MotionMaster::MoveRetreat(float x, float y, float z, float o)
+void MotionMaster::MoveRetreat(float x, float y, float z, float o, uint32 delay)
 {
-    if (m_owner->GetTypeId() == TYPEID_PLAYER)
-    {
-        sLog.outError("%s attempts to retreat for assistance", m_owner->GetGuidStr().c_str());
-    }
-    else
-    {
-        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s retreats for assistance (X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), x, y, z);
-        Mutate(new RetreatMovementGenerator(x, y, z, o));
-    }
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s retreats for assistance (X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), x, y, z);
+    Mutate(new RetreatMovementGenerator(x, y, z, o, delay));
 }
 
 void MotionMaster::MoveFleeing(Unit* source, uint32 time)
@@ -398,11 +388,11 @@ void MotionMaster::MoveWaypoint(uint32 pathId /*=0*/, uint32 source /*=0==PATH_N
 
 void MotionMaster::MoveTaxiFlight()
 {
-    if (m_owner->GetMotionMaster()->GetCurrentMovementGeneratorType() == FLIGHT_MOTION_TYPE)
+    if (m_owner->GetMotionMaster()->GetCurrentMovementGeneratorType() == TAXI_MOTION_TYPE)
     {
         if (m_owner->GetTypeId() == TYPEID_PLAYER)
         {
-            auto flightMGen = static_cast<FlightPathMovementGenerator const*>(m_owner->GetMotionMaster()->GetCurrent());
+            auto flightMGen = static_cast<TaxiMovementGenerator const*>(m_owner->GetMotionMaster()->GetCurrent());
             flightMGen->Resume(*static_cast<Player*>(m_owner));
             return;
         }
@@ -412,7 +402,7 @@ void MotionMaster::MoveTaxiFlight()
             // remove this generator from stack
             m_owner->GetMotionMaster()->MovementExpired(false);
         }
-        while (m_owner->GetMotionMaster()->GetCurrentMovementGeneratorType() == FLIGHT_MOTION_TYPE);
+        while (m_owner->GetMotionMaster()->GetCurrentMovementGeneratorType() == TAXI_MOTION_TYPE);
 
         sLog.outError("%s can't be in taxi flight", m_owner->GetGuidStr().c_str());
         return;
@@ -421,7 +411,7 @@ void MotionMaster::MoveTaxiFlight()
     if (m_owner->GetTypeId() == TYPEID_PLAYER)
     {
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s is now in taxi flight", m_owner->GetGuidStr().c_str());
-        Mutate(new FlightPathMovementGenerator());
+        Mutate(new TaxiMovementGenerator());
     }
     else
         sLog.outError("%s can't be in taxi flight", m_owner->GetGuidStr().c_str());
