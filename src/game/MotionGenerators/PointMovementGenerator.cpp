@@ -25,23 +25,24 @@
 #include "Movement/MoveSplineInit.h"
 
 //----- Point Movement Generator
+
 void PointMovementGenerator::Initialize(Unit& unit)
 {
     if (unit.hasUnitState(UNIT_STAT_NO_FREE_MOVE | UNIT_STAT_NOT_MOVE))
         return;
 
-    unit.StopMoving();
+    // Stop any previously dispatched splines no matter the source
+    if (!unit.movespline->Finalized() && !m_speedChanged)
+    {
+        if (unit.IsClientControlled())
+            unit.StopMoving(true);
+        else
+            unit.InterruptMoving();
+    }
 
     unit.addUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE);
 
-    Movement::MoveSplineInit init(unit);
-    init.MoveTo(i_x, i_y, i_z, m_generatePath);
-    if (m_forcedMovement == FORCED_MOVEMENT_WALK)
-        init.SetWalk(true);
-    if (i_o != 0.f)
-        init.SetFacing(i_o);
-    init.SetVelocity(i_speed);
-    init.Launch();
+    Move(unit);
 
     m_speedChanged = false;
 }
@@ -50,7 +51,15 @@ void PointMovementGenerator::Finalize(Unit& unit)
 {
     unit.clearUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE);
 
-    if (unit.movespline->Finalized())
+    // Stop any previously dispatched splines no matter the source
+    if (!unit.movespline->Finalized())
+    {
+        if (unit.IsClientControlled())
+            unit.StopMoving(true);
+        else
+            unit.InterruptMoving();
+    }
+    else
         MovementInform(unit);
 }
 
@@ -74,10 +83,22 @@ bool PointMovementGenerator::Update(Unit& unit, const uint32&/* diff*/)
         return true;
     }
 
-    if ((!unit.hasUnitState(UNIT_STAT_ROAMING_MOVE) && unit.movespline->Finalized()) || this->m_speedChanged)
+    if ((!unit.hasUnitState(UNIT_STAT_ROAMING_MOVE) && unit.movespline->Finalized()) || m_speedChanged)
         Initialize(unit);
 
     return !unit.movespline->Finalized();
+}
+
+void PointMovementGenerator::Move(Unit& unit)
+{
+    Movement::MoveSplineInit init(unit);
+    init.MoveTo(m_x, m_y, m_z, m_generatePath);
+    if (m_forcedMovement == FORCED_MOVEMENT_WALK)
+        init.SetWalk(true);
+    if (m_o != 0.f)
+        init.SetFacing(m_o);
+    init.SetVelocity(m_speed);
+    init.Launch();
 }
 
 void PointMovementGenerator::MovementInform(Unit& unit)
@@ -100,9 +121,6 @@ void PointMovementGenerator::MovementInform(Unit& unit)
 
 void RetreatMovementGenerator::Initialize(Unit& unit)
 {
-    if (m_arrived)
-        return;
-
     // Non-client controlled unit with an AI should drop target
     if (unit.AI() && !unit.IsClientControlled())
     {
@@ -112,7 +130,8 @@ void RetreatMovementGenerator::Initialize(Unit& unit)
 
     unit.addUnitState(UNIT_STAT_RETREATING);
 
-    PointMovementGenerator::Initialize(unit);
+    if (!m_arrived)
+        PointMovementGenerator::Initialize(unit);
 }
 
 void RetreatMovementGenerator::Finalize(Unit& unit)
@@ -131,6 +150,12 @@ void RetreatMovementGenerator::Interrupt(Unit& unit)
 
     if (UnitAI* ai = unit.AI())
         ai->RetreatingEnded();
+}
+
+void RetreatMovementGenerator::Reset(Unit& unit)
+{
+    if (!m_arrived)
+        PointMovementGenerator::Reset(unit);
 }
 
 bool RetreatMovementGenerator::Update(Unit& unit, const uint32& diff)
@@ -152,16 +177,43 @@ bool RetreatMovementGenerator::Update(Unit& unit, const uint32& diff)
     return true;
 }
 
-void FlyOrLandMovementGenerator::Initialize(Unit& unit)
+void StayMovementGenerator::Initialize(Unit &unit)
 {
-    if (unit.hasUnitState(UNIT_STAT_NO_FREE_MOVE | UNIT_STAT_NOT_MOVE))
-        return;
+    unit.addUnitState(UNIT_STAT_STAY);
+    PointMovementGenerator::Initialize(unit);
+}
 
-    unit.StopMoving();
+void StayMovementGenerator::Finalize(Unit &unit)
+{
+    unit.clearUnitState(UNIT_STAT_STAY);
+    PointMovementGenerator::Finalize(unit);
+}
 
-    unit.addUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE);
+void StayMovementGenerator::Interrupt(Unit& unit)
+{
+    m_arrived = false;
+    PointMovementGenerator::Interrupt(unit);
+}
+
+bool StayMovementGenerator::Update(Unit& unit, const uint32& diff)
+{
+    if (!m_arrived && !PointMovementGenerator::Update(unit, diff))
+    {
+        unit.clearUnitState(UNIT_STAT_ROAMING_MOVE);
+        m_arrived = true;
+    }
+    return true;
+}
+
+void FlyOrLandMovementGenerator::Move(Unit& unit)
+{
     Movement::MoveSplineInit init(unit);
+    init.MoveTo(m_x, m_y, m_z, m_generatePath);
+    if (m_forcedMovement == FORCED_MOVEMENT_WALK)
+        init.SetWalk(true);
+    if (m_o != 0.f)
+        init.SetFacing(m_o);
+    init.SetVelocity(m_speed);
     init.SetFly();
-    init.MoveTo(i_x, i_y, i_z, false);
     init.Launch();
 }
