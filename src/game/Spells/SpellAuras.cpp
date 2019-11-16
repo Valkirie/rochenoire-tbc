@@ -1275,6 +1275,15 @@ void Aura::TriggerSpell()
                             return;
                         }
                     }
+                    case 29351:                             // Plague Wave Controller (Slow)
+                    case 30114:                             // Plague Wave Controller (Fast)
+                    {
+                        uint32 spellForTick[6] = { 30116, 30117, 30118, 30119, 30118, 30117 };  // Circling back and forth through the 4 plague areas
+                        uint32 tick = (GetAuraTicks() - 1) % 6;
+
+                        triggerTarget->CastSpell(triggerTarget, spellForTick[tick], TRIGGERED_OLD_TRIGGERED, nullptr, this, casterGUID);
+                        return;
+                    }
 //                    // Silithyst
 //                    case 29519: break;
                     case 29528:                             // Inoculate Nestlewood Owlkin
@@ -2678,8 +2687,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             case 28169:                                     // Mutating Injection
             {
-                // Mutagen Explosion
-                target->CastSpell(target, 28206, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+                if (m_removeMode == AURA_REMOVE_BY_EXPIRE)
+                    // Embalming Cloud
+                    target->CastSpell(target, 28322, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+                else // Removed by dispell
+                    // Mutagen Explosion
+                    target->CastSpell(target, 28206, TRIGGERED_OLD_TRIGGERED, nullptr, this);
                 // Poison Cloud
                 target->CastSpell(target, 28240, TRIGGERED_OLD_TRIGGERED, nullptr, this);
                 return;
@@ -2926,7 +2939,11 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 case 28819:                             // Submerge Visual
                 {
                     if (apply)
+                    {
                         target->SetStandState(UNIT_STAND_STATE_CUSTOM);
+                        if (target->GetTypeId() == TYPEID_UNIT)
+                            ((Creature*)target)->ForcedDespawn(700);
+                    }
                     else
                         target->SetStandState(UNIT_STAND_STATE_STAND);
                     return;
