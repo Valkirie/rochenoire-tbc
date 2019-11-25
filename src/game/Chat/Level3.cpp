@@ -2388,6 +2388,13 @@ bool ChatHandler::HandleAddItemCommand(char* args)
     if (!plTarget)
         plTarget = pl;
 
+	int32 plevel;
+	if (!ExtractOptInt32(&args, plevel, pl->getLevel()))
+		return false;
+
+	if(plevel != -1)
+		itemId = Item::LoadScaledLoot(itemId, plevel);
+
     DETAIL_LOG(GetMangosString(LANG_ADDITEM), itemId, count);
 
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemId);
