@@ -946,6 +946,13 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     }
     // all item positions resolved
 
+	// welcome letter
+	std::string letterText = this->GetSession()->GetMangosString(LANG_WELCOME_CONTENT);
+	std::string letterSubject = this->GetSession()->GetMangosString(LANG_WELCOME_SUBJECT);
+
+	MailDraft(letterSubject.c_str(), letterText.c_str())
+		.SendMailTo(this, MailSender(this, MAIL_STATIONERY_GM));
+
     return true;
 }
 
@@ -2650,8 +2657,8 @@ void Player::GiveLevel(uint32 level)
     if (MailLevelReward const* mailReward = sObjectMgr.GetMailLevelReward(level, getRaceMask()))
         MailDraft(mailReward->mailTemplateId).SendMailTo(this, MailSender(MAIL_CREATURE, mailReward->senderEntry));
 
-	// LEVEL 10 : Send a note to players
-	if (level == 10)
+	// Send a note to players when they reach scaling level
+	if (level == sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
 	{
 		uint32 NPC_SENDER = 0;
 		uint32 LANG_PROGRESS = 0;
