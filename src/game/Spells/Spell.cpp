@@ -4790,6 +4790,7 @@ SpellCastResult Spell::CheckCast(bool strict)
         uint32 targetType = m_spellInfo->EffectImplicitTargetA[i];
         switch (targetType)
         {
+            case TARGET_UNIT_CASTER_MASTER:
             case TARGET_UNIT_CASTER: break; // never check anything
             case TARGET_UNIT_CASTER_PET: // special pet checks
             {
@@ -4872,24 +4873,20 @@ SpellCastResult Spell::CheckCast(bool strict)
 
     if (!m_IsTriggeredSpell)
     {
+        SpellCastResult castResult;
         if (!m_triggeredByAuraSpell)
         {
-            SpellCastResult castResult = CheckRange(strict);
+            castResult = CheckRange(strict);
             if (castResult != SPELL_CAST_OK)
                 return castResult;
         }
-    }
 
-    if (!m_IsTriggeredSpell)
-    {
-        SpellCastResult castResult = CheckPower();
+        castResult = CheckPower();
         if (castResult != SPELL_CAST_OK)
             return castResult;
-    }
 
-    if (!m_IsTriggeredSpell)                                // triggered spell not affected by stun/etc
-    {
-        SpellCastResult castResult = CheckCasterAuras();
+        // triggered spell not affected by stun/etc
+        castResult = CheckCasterAuras();
         if (castResult != SPELL_CAST_OK)
             return castResult;
     }
@@ -5068,7 +5065,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                 if (!pet->CanTakeMoreActiveSpells(learn_spellproto->Id))
                     return SPELL_FAILED_TOO_MANY_SKILLS;
 
-                if (m_spellInfo->spellLevel > pet->getLevel())
+                if (learn_spellproto->spellLevel > pet->getLevel())
                     return SPELL_FAILED_LOWLEVEL;
 
                 if (!pet->HasTPForSpell(learn_spellproto->Id))
@@ -5091,7 +5088,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                 if (!pet->CanTakeMoreActiveSpells(learn_spellproto->Id))
                     return SPELL_FAILED_TOO_MANY_SKILLS;
 
-                if (m_spellInfo->spellLevel > pet->getLevel())
+                if (learn_spellproto->spellLevel > pet->getLevel())
                     return SPELL_FAILED_LOWLEVEL;
 
                 if (!pet->HasTPForSpell(learn_spellproto->Id))
