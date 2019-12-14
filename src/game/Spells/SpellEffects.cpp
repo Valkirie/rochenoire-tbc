@@ -1576,6 +1576,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     if (unitTarget)
                     {
+                        DoScriptText(-1533150, unitTarget, unitTarget);
                         unitTarget->RemoveAllAuras();
                         unitTarget->CastSpell(unitTarget, 28159, TRIGGERED_NONE);   // Shock
                     }
@@ -8962,6 +8963,11 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
     const float speed = (m_spellInfo->speed != 0.f ? m_spellInfo->speed : BASE_CHARGE_SPEED);
 
     m_caster->GetMotionMaster()->MoveCharge(*unitTarget, speed, m_spellInfo->Id);
+
+    // Players: charge against hostiles initiates auto-attack
+    // TODO: This is executed after spell effects. Verify if this should be executed before spell effects
+    if (m_caster->IsClientControlled() && m_caster->CanAttackNow(unitTarget) && m_caster->CanAttackSpell(unitTarget, m_spellInfo))
+        m_caster->Attack(unitTarget, !m_spellInfo->HasAttribute(SPELL_ATTR_RANGED));
 }
 
 void Spell::EffectChargeDest(SpellEffectIndex /*eff_idx*/)
