@@ -7301,10 +7301,11 @@ void Aura::PeriodicTick()
             }
 
             int32 drain_amount = target->GetPower(power) > pdamage ? pdamage : target->GetPower(power);
+            int32 scaled_amount = target->GetPower(power) > sdamage ? sdamage : target->GetPower(power);
 
-            drain_amount -= target->GetResilienceRatingDamageReduction(uint32(drain_amount), SpellDmgClass(spellProto->DmgClass), false, power);
+            scaled_amount -= target->GetResilienceRatingDamageReduction(uint32(scaled_amount), SpellDmgClass(spellProto->DmgClass), false, power);
 
-            target->ModifyPower(power, -drain_amount);
+            target->ModifyPower(power, -scaled_amount);
 
             float gain_multiplier = 0.0f;
 
