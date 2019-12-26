@@ -1035,11 +1035,11 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
 
     DamageEffectType damageType = SELF_DAMAGE;
 
-    DealDamageMods(this, damage, &absorb, damageType);
+    Unit::DealDamageMods(this, this, damage, &absorb, damageType);
 
     SendEnvironmentalDamageLog(type, damage, absorb, resist);
 
-    uint32 final_damage = DealDamage(this, damage, nullptr, damageType, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+    uint32 final_damage = Unit::DealDamage(this, this, damage, nullptr, damageType, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 
     if (type == DAMAGE_FALL && !isAlive())                  // DealDamage not apply item durability loss at self damage
     {
@@ -12152,13 +12152,8 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
                 case ITEM_ENCHANTMENT_TYPE_NONE:
                     break;
                 case ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL:
-                    if (SpellModifier* mod = item->GetEnchantmentModifier())
-                    {
-                        if (!apply)
-                            item->SetEnchantmentModifier(nullptr);
-                        else
-                            AddSpellMod(mod, apply);
-                    }
+                    if (!apply) // clear modifier set by some spells
+                        item->SetEnchantmentModifier(0);
                     // processed in Player::CastItemCombatSpell
                     break;
                 case ITEM_ENCHANTMENT_TYPE_DAMAGE:

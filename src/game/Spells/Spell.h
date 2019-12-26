@@ -414,11 +414,11 @@ class Spell
 
         SpellCastResult CheckItems();
         SpellCastResult CheckRange(bool strict);
-        SpellCastResult CheckPower();
+        SpellCastResult CheckPower(bool strict);
         SpellCastResult CheckCasterAuras() const;
 
-        int32 CalculateDamage(SpellEffectIndex i, Unit* target) const { return m_caster->CalculateSpellDamage(target, m_spellInfo, i, &m_currentBasePoints[i], (Spell*)this); }
-        static uint32 CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell const* spell = nullptr, Item* castItem = nullptr);
+        int32 CalculateDamage(SpellEffectIndex i, Unit* target) { return m_caster->CalculateSpellDamage(target, m_spellInfo, i, &m_currentBasePoints[i], (Spell*)this); }
+        static uint32 CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell* spell = nullptr, Item* castItem = nullptr, bool finalUse = false);
 
         bool HaveTargetsForEffect(SpellEffectIndex effect) const;
         void Delayed();
@@ -493,6 +493,8 @@ class Spell
         bool m_doNotProc;
         bool m_petCast;
         bool m_notifyAI;
+        bool m_ignoreGCD;
+        bool m_ignoreCosts;
 
         int32 GetCastTime() const { return m_casttime; }
         uint32 GetCastedTime() const { return m_timer; }
