@@ -7649,7 +7649,7 @@ void Spell::OnSuccessfulSpellStart()
         case 25234:
         case 25236:
         {
-            int32 basePoints0 = m_caster->CalculateSpellEffectValue(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0)) + int32((m_caster->GetPower(POWER_RAGE) - m_powerCost) * m_spellInfo->DmgMultiplier[0], this);
+            int32 basePoints0 = m_caster->CalculateSpellEffectValue(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0), nullptr, this) + int32((m_caster->GetPower(POWER_RAGE) - m_powerCost) * m_spellInfo->DmgMultiplier[0]);
             SpellCastResult result = m_caster->CastCustomSpell(m_targets.getUnitTarget(), 20647, &basePoints0, nullptr, nullptr, TRIGGERED_NONE);
             m_powerCost = 0;
             break;

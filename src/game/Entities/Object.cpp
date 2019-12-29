@@ -40,6 +40,7 @@
 #include "Chat/Chat.h"
 #include "Loot/LootMgr.h"
 #include "Spells/SpellMgr.h"
+#include "Spells/Spell.h"
 
 Object::Object(): m_updateFlag(0), m_itsNewObject(false)
 {
@@ -2611,7 +2612,7 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
     chat.PSendSysMessage("Found %u permanent cooldown%s.", permCDCount, (permCDCount > 1) ? "s" : "");
 }
 
-int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints) const
+int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints, Spell* spell) const
 {
     Unit const* unitCaster = dynamic_cast<Unit const*>(this);
     Player const* unitPlayer = (GetTypeId() == TYPEID_PLAYER) ? static_cast<Player const*>(this) : nullptr;
@@ -2726,6 +2727,76 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->getLevel() - 1);
             if (spellScaler && casterScaler)
                 value *= casterScaler->ratio / spellScaler->ratio;
+        }
+
+        bool value_neg = (value < 0) ? true : false;
+
+        if (unitCaster && target && target->GetObjectGuid() != unitCaster->GetObjectGuid())
+        {
+            if (value == 0)
+                return value;
+
+            Unit* p1 = ((Unit*)target)->GetCharmerOrOwnerOrSelf();
+            Unit* p2 = ((Unit*)unitCaster)->GetCharmerOrOwnerOrSelf();
+
+            if (!p1 || !p2)
+                return value;
+
+            bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+            bool IsBattleGround = p1->GetMap() ? p1->GetMap()->IsBattleGround() : false;
+
+            if (!p1->IsPlayer() && !p2->IsPlayer())
+                return value;
+
+            if (!spellProto)
+                return value;
+
+            bool canScale = false;
+            bool canKeep = false;
+
+            if ((p1->IsFriend(p2)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
+            {
+                // if caster level is superior to min. scaling level
+                if (p2->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+                    canKeep = true;
+            }
+            else if (p1->IsPlayer() && !p2->IsPlayer()) // Creature spells
+                canKeep = true;
+            else if (p2->IsPlayer() && !p1->IsPlayer()) // Player spells
+                canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
+
+            if (canKeep)
+            {
+                if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+                    canScale = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
+                else
+                    canScale = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
+            }
+
+            if (!canScale)
+                return value;
+
+            if (spell && canScale)
+                spell->isScaled = true;
+
+            // Fix the below calculation
+            if (value_neg)
+                value *= -1;
+
+            uint32 target_level = target->getLevel();
+            uint32 caster_level = unitCaster->getLevel();
+
+            float caster_value = value;
+            float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
+            float caster_ratio = caster_value / caster_funct;
+
+            float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
+            float target_scale = target_value * caster_ratio;
+            value = (int)ceil(target_scale);
+
+            // Restore value sign
+            if (value_neg)
+                value *= -1;
         }
     }
 
