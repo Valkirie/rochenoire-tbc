@@ -73,6 +73,9 @@ SpellCastTargets::SpellCastTargets()
     m_srcX = m_srcY = m_srcZ = m_destX = m_destY = m_destZ = 0.0f;
     m_strTarget.clear();
     m_targetMask = 0;
+
+    m_destOri = 0.f;
+    m_mapId = 0;
 }
 
 SpellCastTargets::~SpellCastTargets()
@@ -433,7 +436,7 @@ void Spell::FillTargetMap()
     // TODO: ADD the correct target FILLS!!!!!!
     TempTargetingData targetingData;
     uint8 effToIndex[MAX_EFFECT_INDEX] = {0, 1, 2};         // Helper array, to link to another tmpUnitList, if the targets for both effects match
-    for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+    for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
         // not call for empty effect.
         // Also some spells use not used effect targets for store targets for dummy effect in triggered spells
@@ -441,7 +444,7 @@ void Spell::FillTargetMap()
             continue;
 
         auto& data = SpellTargetMgr::GetSpellTargetingData(m_spellInfo->Id);
-        SpellTargetImplicitType effectTargetType = data.implicitType[i];
+        SpellTargetImplicitType effectTargetType = data.implicitType[i]; // prefilled data on load
         auto& targetMask = data.targetMask[i];
         auto& ignoredTargets = data.ignoredTargets[i];
 
@@ -450,6 +453,7 @@ void Spell::FillTargetMap()
             uint32 targetA = m_spellInfo->EffectImplicitTargetA[i];
             uint32 targetB = m_spellInfo->EffectImplicitTargetB[i];
             bool hadTarget = false;
+            // need to pick a single unit target if existant and use it for area aura owner
             if (targetA && !ignoredTargets.first)
             {
                 if (SpellTargetInfoTable[targetA].type == TARGET_TYPE_UNIT && SpellTargetInfoTable[targetA].enumerator == TARGET_ENUMERATOR_SINGLE)
@@ -463,7 +467,7 @@ void Spell::FillTargetMap()
                 if (SpellTargetInfoTable[targetB].enumerator != TARGET_ENUMERATOR_AOE)
                     SetTargetMap(SpellEffectIndex(i), targetB, true, targetingData);
             }
-            if (!hadTarget)
+            if (!hadTarget) // if no single targeting available use caster as default
                 targetingData.data[i].tmpUnitList[false].push_back(m_caster);
         }
         else
@@ -472,48 +476,21 @@ void Spell::FillTargetMap()
             uint32 targetB = m_spellInfo->EffectImplicitTargetB[i];
             if (targetA == TARGET_NONE && targetB == TARGET_NONE)
             {
+                // if no targeting available, attempt to use entry mask
                 if (m_spellInfo->Targets && SpellTargetMgr::CanEffectBeFilledWithMask(m_spellInfo->Id, i, m_spellInfo->Targets))
-                {
-                    if (m_spellInfo->Targets & (TARGET_FLAG_UNIT_ALLY | TARGET_FLAG_UNIT | TARGET_FLAG_UNIT_ENEMY))
-                    {
-                        if (Unit* unit = m_targets.getUnitTarget())
-                            targetingData.data[i].tmpUnitList[false].push_back(unit);
-                    }
-                    else if (m_spellInfo->Targets & (TARGET_FLAG_CORPSE_ENEMY | TARGET_FLAG_CORPSE_ALLY))
-                    {
-                        if (Unit* unit = m_targets.getUnitTarget())
-                            targetingData.data[i].tmpUnitList[false].push_back(unit);
-                        else if (m_targets.getCorpseTargetGuid())
-                        {
-                            if (Corpse* corpse = m_targets.getCorpseTarget())
-                                if (Player* owner = ObjectAccessor::FindPlayer(corpse->GetOwnerGuid()))
-                                    targetingData.data[i].tmpUnitList[false].push_back(owner);
-                        }
-                    }
-                    else if (m_spellInfo->Targets & (TARGET_FLAG_ITEM | TARGET_FLAG_TRADE_ITEM))
-                    {
-                        if (Item* item = m_targets.getItemTarget())
-                            targetingData.data[i].tempItemList.push_back(item);
-                    }
-                    else if (m_spellInfo->Targets & TARGET_FLAG_DEST_LOCATION)
-                    {
-                        if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) == 0)
-                        {
-                            sLog.outError("No destination for spell with flag TARGET_FLAG_DEST_LOCATION, spell ID: %u", m_spellInfo->Id); // should never occur
-                            if (WorldObject* caster = GetCastingObject())
-                                m_targets.setDestination(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ());
-                        }
-                    }
-                }
-                else if (uint32 defaultTarget = SpellEffectInfoTable[m_spellInfo->Effect[i]].defaultTarget)
+                    FillFromTargetFlags(targetingData, SpellEffectIndex(i));
+                else if (uint32 defaultTarget = SpellEffectInfoTable[m_spellInfo->Effect[i]].defaultTarget) // else resort to default effect type if it exists
                     SetTargetMap(SpellEffectIndex(i), defaultTarget, false, targetingData);
             }
-            else
+            else // normal case, use existing spell data
             {
                 if (targetA && !ignoredTargets.first)
                     SetTargetMap(SpellEffectIndex(i), targetA, false, targetingData);
                 if (targetB && !ignoredTargets.second)
                     SetTargetMap(SpellEffectIndex(i), targetB, true, targetingData);
+                if (effectTargetType == TARGET_TYPE_UNIT_DEST) // special case - no unit target, but need to check for valid units
+                    if (SpellTargetInfoTable[targetA].type != TARGET_TYPE_UNIT && SpellTargetInfoTable[targetB].type != TARGET_TYPE_UNIT) // no fill for unit out of targets
+                        FillFromTargetFlags(targetingData, SpellEffectIndex(i)); // inefficient call, very rare, less code duplicity
             }
         }
 
@@ -534,7 +511,7 @@ void Spell::FillTargetMap()
             case TARGET_TYPE_SPECIAL_UNIT:
             case TARGET_TYPE_CORPSE:
                 processedUnits = true;
-                for (uint8 rightTarget = 0; rightTarget < 2; ++rightTarget)
+                for (uint8 rightTarget = 0; rightTarget < 2; ++rightTarget) // need to process target A and B separately due to effect masks
                 {
                     UnitList& unitTargetList = targetingData.data[i].tmpUnitList[rightTarget];
                     uint8 effectMask = targetMask[rightTarget];
@@ -548,7 +525,7 @@ void Spell::FillTargetMap()
                                 ++itr;
                         }
 
-                        // Secial target filter before adding targets to list
+                        // Special target filter before adding targets to list
                         FilterTargetMap(unitTargetList, SpellEffectIndex(i));
 
                         if (m_affectedTargetCount && unitTargetList.size() > m_affectedTargetCount)
@@ -599,7 +576,7 @@ void Spell::FillTargetMap()
                 // [[fallthrough]]
             case TARGET_TYPE_GAMEOBJECT:
                 processedGOs = true;
-                for (uint8 rightTarget = 0; rightTarget < 2; ++rightTarget)
+                for (uint8 rightTarget = 0; rightTarget < 2; ++rightTarget) // need to process target A and B separately due to effect masks
                 {
                     GameObjectList& goTargetList = targetingData.data[i].tmpGOList[rightTarget];
                     uint8 effectMask = targetMask[rightTarget];
@@ -1597,7 +1574,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             // Get a random point AT the circumference
             float angle = 2.0f * M_PI_F * rand_norm_f();
             float dest_x, dest_y, dest_z;
-            target->GetNearPoint(nullptr, dest_x, dest_y, dest_z, target->GetObjectBoundingRadius(), radius, angle, target->IsInWater());
+            target->GetNearPoint(target, dest_x, dest_y, dest_z, target->GetObjectBoundingRadius(), radius, angle, target->IsInWater());
             if (m_spellInfo->Id == 41289)
                 dest_z = 342.9485f; // confirmed with sniffs
             m_targets.setDestination(dest_x, dest_y, dest_z);
@@ -1646,7 +1623,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (radius == 0.f) // All shaman totems have 0 radius - need to override with proper value
                 radius = 2.f;
 
-            m_caster->GetNearPoint(nullptr, x, y, z, m_caster->GetObjectBoundingRadius(), radius, angle, m_caster->IsInWater());
+            m_caster->GetNearPoint(m_caster, x, y, z, m_caster->GetObjectBoundingRadius(), radius, angle, m_caster->IsInWater());
             m_targets.setDestination(x, y, z);
             break;
         }
@@ -1715,7 +1692,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (SpellTargetPosition const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id))
             {
                 m_targets.setDestination(st->target_X, st->target_Y, st->target_Z);
-                // TODO - maybe use an (internal) value for the map for neat far teleport handling
+                m_targets.m_destOri = st->target_Orientation;
+                m_targets.m_mapId = st->target_mapId;
 
                 // far-teleport spells are handled in SpellEffect, elsewise report an error about an unexpected map (spells are always locally)
                 if (st->target_mapId != m_caster->GetMapId() && m_spellInfo->Effect[effIndex] != SPELL_EFFECT_TELEPORT_UNITS && m_spellInfo->Effect[effIndex] != SPELL_EFFECT_BIND)
@@ -1730,7 +1708,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (m_caster->GetTypeId() == TYPEID_PLAYER)
             {
                 float x, y, z;
-                static_cast<Player*>(m_caster)->GetHomebindLocation(x, y, z);
+                static_cast<Player*>(m_caster)->GetHomebindLocation(x, y, z, m_targets.m_mapId);
                 m_targets.setDestination(x, y, z);
             }
             break;
@@ -1762,7 +1740,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                 }
 
                 float x, y, z;
-                target->GetNearPoint(nullptr, x, y, z, target->GetObjectBoundingRadius(), radius, angle, target->IsInWater());
+                target->GetNearPoint(target, x, y, z, target->GetObjectBoundingRadius(), radius, angle, target->IsInWater());
                 m_targets.setDestination(x, y, z);
             }
             break;
@@ -7620,6 +7598,40 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex effIndex)
                 filterUnitList.resize(m_affectedTargetCount);
             }
             return;
+        }
+    }
+}
+
+void Spell::FillFromTargetFlags(TempTargetingData& targetingData, SpellEffectIndex effIdx)
+{
+    if (m_spellInfo->Targets & (TARGET_FLAG_UNIT_ALLY | TARGET_FLAG_UNIT | TARGET_FLAG_UNIT_ENEMY))
+    {
+        if (Unit* unit = m_targets.getUnitTarget())
+            targetingData.data[effIdx].tmpUnitList[false].push_back(unit);
+    }
+    else if (m_spellInfo->Targets & (TARGET_FLAG_CORPSE_ENEMY | TARGET_FLAG_CORPSE_ALLY))
+    {
+        if (Unit* unit = m_targets.getUnitTarget())
+            targetingData.data[effIdx].tmpUnitList[false].push_back(unit);
+        else if (m_targets.getCorpseTargetGuid())
+        {
+            if (Corpse* corpse = m_targets.getCorpseTarget())
+                if (Player* owner = ObjectAccessor::FindPlayer(corpse->GetOwnerGuid()))
+                    targetingData.data[effIdx].tmpUnitList[false].push_back(owner);
+        }
+    }
+    else if (m_spellInfo->Targets & (TARGET_FLAG_ITEM | TARGET_FLAG_TRADE_ITEM))
+    {
+        if (Item* item = m_targets.getItemTarget())
+            targetingData.data[effIdx].tempItemList.push_back(item);
+    }
+    else if (m_spellInfo->Targets & TARGET_FLAG_DEST_LOCATION)
+    {
+        if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) == 0)
+        {
+            sLog.outError("No destination for spell with flag TARGET_FLAG_DEST_LOCATION, spell ID: %u", m_spellInfo->Id); // should never occur
+            if (WorldObject* caster = GetCastingObject())
+                m_targets.setDestination(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ());
         }
     }
 }
