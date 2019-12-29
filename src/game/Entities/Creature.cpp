@@ -201,7 +201,7 @@ void Creature::AddToWorld()
 
     // Check if visibility distance different
     if (GetCreatureInfo()->visibilityDistanceType != VisibilityDistanceType::Normal)
-        SetVisibilityDistanceOverride(GetCreatureInfo()->visibilityDistanceType);
+        GetVisibilityData().SetVisibilityDistanceOverride(GetCreatureInfo()->visibilityDistanceType);
 
     if (m_countSpawns)
         GetMap()->AddToSpawnCount(GetObjectGuid());
@@ -859,16 +859,6 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
     if (!cPos.Relocate(this))
         return false;
 
-    // Notify the outdoor pvp script
-    if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(GetZoneId()))
-        outdoorPvP->HandleCreatureCreate(this);
-
-    // Notify the map's instance data.
-    // Only works if you create the object in it, not if it is moves to that map.
-    // Normally non-players do not teleport to other maps.
-    if (InstanceData* iData = GetMap()->GetInstanceData())
-        iData->OnCreatureCreate(this);
-
     if (sObjectMgr.IsEncounter(GetEntry(), GetMapId()))
     {
         // encounter boss forced decay timer to 1h
@@ -895,6 +885,16 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
                 break;
         }
     }
+
+    // Notify the outdoor pvp script
+    if (OutdoorPvP * outdoorPvP = sOutdoorPvPMgr.GetScript(GetZoneId()))
+        outdoorPvP->HandleCreatureCreate(this);
+
+    // Notify the map's instance data.
+    // Only works if you create the object in it, not if it is moves to that map.
+    // Normally non-players do not teleport to other maps.
+    if (InstanceData * iData = GetMap()->GetInstanceData())
+        iData->OnCreatureCreate(this);
 
     // Add to CreatureLinkingHolder if needed
     if (sCreatureLinkingMgr.GetLinkedTriggerInformation(this))

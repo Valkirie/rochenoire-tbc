@@ -190,6 +190,11 @@ inline bool IsSpellHaveAura(SpellEntry const* spellInfo, AuraType aura, uint32 e
     return false;
 }
 
+inline bool IsNextMeleeSwingSpell(SpellEntry const* spellInfo)
+{
+	return spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_1) || spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_2);
+}
+
 inline bool IsSpellLastAuraEffect(SpellEntry const* spellInfo, SpellEffectIndex effecIdx)
 {
     for (int i = effecIdx + 1; i < MAX_EFFECT_INDEX; ++i)
@@ -421,7 +426,14 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 12898:         // Smoke Aura Visual
         case 13299:         // Poison Proc
         case 13767:         // Hate to Zero (Hate to Zero)
+        case 14178:         // Sticky Tar
+        case 15088:         // Flurry
+        case 15097:         // Enrage
+        case 15876:         // Ice Blast
         case 16140:         // Exploding Cadaver (Exploding Cadaver)
+        case 16563:         // Drowning Death
+        case 16577:         // Disease Cloud
+        case 16592:         // Shadowform
         case 17327:         // Spirit Particles
         case 17467:         // Unholy Aura
         case 18943:         // Double Attack
@@ -437,6 +449,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 21061:         // Putrid Breath
         case 21857:         // Lava Shield
         case 22128:         // Thorns
+        case 22578:         // Glowy (Black)
         case 22735:         // Spirit of Runn Tum
         case 22856:         // Ice Lock (Guard Slip'kik ice trap in Dire Maul)
         case 25592:         // Hate to Zero (Hate to Zero)
@@ -449,15 +462,20 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 31690:         // Putrid Mushroom
         case 31792:         // Bear Form (Shapeshift)
         case 32007:         // Mo'arg Engineer Transform Visual
+        case 32900:         // Bone Shards Proc
+        case 32942:         // Phasing Invisibility
         case 33460:         // Inhibit Magic
         case 33900:         // Shroud of Death
         case 33908:         // Burning Spikes
         case 34343:         // Thorns
+        case 35194:         // Shadowform
+        case 35319:         // Electric Skin
         case 35408:         // Fear Proc
         case 35596:         // Power of the Legion
         case 35841:         // Draenei Spirit Visual
         case 35850:         // Draenei Spirit Visual 2
         case 36006:         // Fel Fire Aura
+        case 36118:         // Phasing Invisibility
         case 36784:         // Entropic Aura
         case 36788:         // Diminish Soul
         case 37119:         // Spirit Particles (Spawn)
@@ -473,8 +491,10 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 39311:         // Scrapped Fel Reaver transform aura that is never removed even on evade
         case 39918:         // Soulgrinder Ritual Visual ( in progress)
         case 39920:         // Soulgrinder Ritual Visual ( beam)
+        case 40453:         // Aura of Fear
         case 40816:         // Saber Lash - Mother Shahraz
         case 41634:         // Invisibility and Stealth Detection
+        case 42459:         // Dual Wield (Passive)
         case 44537:         // Fel Lightning
         case 44604:         // Enchantment of Spell Haste
         case 44855:         // Out of Phase
@@ -1287,7 +1307,7 @@ inline bool IsSpellRequiresRangedAP(SpellEntry const* spellInfo)
     return (spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && spellInfo->DmgClass != SPELL_DAMAGE_CLASS_MELEE);
 }
 
-inline uint32 GetAffectedTargets(SpellEntry const* spellInfo)
+inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caster)
 {
     // custom target amount cases
     switch (spellInfo->SpellFamilyName)
@@ -1360,6 +1380,12 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo)
                     return 15;
                 case 46771:                                 // Flame Sear (SWP, Grand Warlock Alythess)
                     return urand(3, 5);
+                case 42471:                                 // Hatch Eggs
+                    if (UnitAI* ai = static_cast<Unit*>(caster)->AI())
+                        return ai->GetScriptData();
+                    else
+                        return 1; // for testing purposes
+                default: break;
             }
             break;
         }

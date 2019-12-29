@@ -42,6 +42,7 @@
 #include "WorldPacket.h"
 #include "Timer.h"
 #include "AI/BaseAI/UnitAI.h"
+#include "PlayerDefines.h"
 
 #include <list>
 
@@ -106,40 +107,6 @@ enum SpellPartialResist
 };
 
 #define NUM_SPELL_PARTIAL_RESISTS 5
-
-enum SpellModOp
-{
-    SPELLMOD_DAMAGE                     = 0,
-    SPELLMOD_DURATION                   = 1,
-    SPELLMOD_THREAT                     = 2,
-    SPELLMOD_EFFECT1                    = 3,
-    SPELLMOD_CHARGES                    = 4,
-    SPELLMOD_RANGE                      = 5,
-    SPELLMOD_RADIUS                     = 6,
-    SPELLMOD_CRITICAL_CHANCE            = 7,
-    SPELLMOD_ALL_EFFECTS                = 8,
-    SPELLMOD_NOT_LOSE_CASTING_TIME      = 9,
-    SPELLMOD_CASTING_TIME               = 10,
-    SPELLMOD_COOLDOWN                   = 11,
-    SPELLMOD_EFFECT2                    = 12,
-    SPELLMOD_UNK1                       = 13, // unused
-    SPELLMOD_COST                       = 14,
-    SPELLMOD_CRIT_DAMAGE_BONUS          = 15,
-    SPELLMOD_RESIST_MISS_CHANCE         = 16,
-    SPELLMOD_JUMP_TARGETS               = 17,
-    SPELLMOD_CHANCE_OF_SUCCESS          = 18, // Only used with SPELL_AURA_ADD_FLAT_MODIFIER and affects proc spells
-    SPELLMOD_ACTIVATION_TIME            = 19,
-    SPELLMOD_EFFECT_PAST_FIRST          = 20,
-    SPELLMOD_GLOBAL_COOLDOWN            = 21,
-    SPELLMOD_DOT                        = 22,
-    SPELLMOD_EFFECT3                    = 23,
-    SPELLMOD_SPELL_BONUS_DAMAGE         = 24,
-    SPELLMOD_UNK2                       = 25, // unused
-    // SPELLMOD_FREQUENCY_OF_SUCCESS    = 26,                // not used in 2.4.3
-    SPELLMOD_MULTIPLE_VALUE             = 27,
-    SPELLMOD_RESIST_DISPEL_CHANCE       = 28,
-    MAX_SPELLMOD                        = 32,
-};
 
 enum SpellFacingFlags
 {
@@ -335,6 +302,7 @@ enum TriggerCastFlags : uint32
     TRIGGERED_NORMAL_COMBAT_CAST                = 0x00000100,   // AI needs to be notified about change of target TODO: change into TRIGGERED_NONE
     TRIGGERED_IGNORE_GCD                        = 0x00000200,   // Ignores GCD - to be used in spell scripts
     TRIGGERED_IGNORE_COSTS                      = 0x00000400,   // Ignores spell costs
+    TRIGGERED_IGNORE_COOLDOWNS                  = 0x00000800,   // Ignores cooldowns
     TRIGGERED_FULL_MASK                         = 0xFFFFFFFF
 };
 
@@ -1036,7 +1004,6 @@ enum CurrentSpellTypes
 
 #define CURRENT_FIRST_NON_MELEE_SPELL 1
 #define CURRENT_MAX_SPELL             4
-#define INVISIBILITY_MAX              32
 
 enum ActiveStates
 {
@@ -1899,7 +1866,10 @@ class Unit : public WorldObject
         void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false);
         // do not use - kept only for cinematics
         void MonsterMoveWithSpeed(float x, float y, float z, float speed, bool generatePath = false, bool forceDestination = false);
-        
+
+        // recommend use MonsterMove/MonsterMoveWithSpeed for most case that correctly work with movegens
+        // if used additional args in ... part then floats must explicitly casted to double
+        void SendTeleportPacket(float x, float y, float z, float ori);
         void SendHeartBeat();
 
         void SendMoveRoot(bool state, bool broadcastOnly = false);
@@ -2213,17 +2183,7 @@ class Unit : public WorldObject
         void UpdateVisibilityAndView() override;            // overwrite WorldObject::UpdateVisibilityAndView()
 
         // common function for visibility checks for player/creatures with detection code
-        bool IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true, bool spell = false) const;
-        float GetVisibleDistance(Unit const * target, bool alert = false) const;
-        bool CanDetectInvisibilityOf(Unit const* u) const;
-        uint32 GetInvisibilityDetectMask() const;
-        void SetInvisibilityDetectMask(uint32 index, bool apply);
-        uint32 GetInvisibilityMask() const;
-        void SetInvisibilityMask(uint32 index, bool apply);
-        void AddInvisibilityValue(uint32 index, int32 value) { m_invisibilityValues[index] += value; }
-        void AddInvisibilityDetectValue(uint32 index, int32 value) { m_invisibilityDetectValues[index] += value; }
-        int32 GetInvisibilityValue(uint32 index) const;
-        int32 GetInvisibilityDetectValue(uint32 index) const;
+        bool IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true, bool spell = false) const;     
 
         // virtual functions for all world objects types
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const override;
@@ -2336,7 +2296,8 @@ class Unit : public WorldObject
         SpellAuraProcResult HandleProcTriggerSpellAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleProcTriggerDamageAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleOverrideClassScriptAuraProc(ProcExecutionData& data);
-        SpellAuraProcResult HandleMendingAuraProc(ProcExecutionData& data);
+        SpellAuraProcResult HandleRaidProcFromChargeAuraProc(ProcExecutionData& data);
+        SpellAuraProcResult HandleRaidProcFromChargeWithValueAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleModCastingSpeedNotStackAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleReflectSpellsSchoolAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleModPowerCostSchoolAuraProc(ProcExecutionData& data);
@@ -2363,7 +2324,7 @@ class Unit : public WorldObject
         {
             m_lastManaUseTimer = 5000;
         }
-        bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer != 0; }
+        bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer != 0 && m_lastManaUseTimer != 5000; }
 
         void SetContestedPvP(Player* attackedPlayer = nullptr);
 
@@ -2387,8 +2348,6 @@ class Unit : public WorldObject
 
         void _RemoveAllAuraMods();
         void _ApplyAllAuraMods();
-
-        int32 CalculateSpellDamage(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints = nullptr, Spell* spell = nullptr);
 
         int32 CalculateAuraDuration(SpellEntry const* spellProto, uint32 effectMask, int32 duration, Unit const* caster);
 
@@ -2535,6 +2494,8 @@ class Unit : public WorldObject
         void UpdateAllowedPositionZ(float x, float y, float& z, Map* atMap = nullptr) const override;
 
         virtual uint32 GetSpellRank(SpellEntry const* spellInfo);
+
+        Player* GetNextRandomRaidMember(float radius, AuraType noAuraType);
 
     protected:
 
@@ -2712,12 +2673,6 @@ class Unit : public WorldObject
 
         uint32 m_evadeTimer; // Used for evade during combat when mob is not running home and target isnt reachable
         EvadeState m_evadeMode; // Used for evade during running home
-
-        // invisibility data
-        uint32 m_invisibilityMask;
-        uint32 m_detectInvisibilityMask; // is inherited from controller in PC case
-        int32 m_invisibilityValues[INVISIBILITY_MAX];
-        int32 m_invisibilityDetectValues[INVISIBILITY_MAX];
 
         uint64 m_auraUpdateMask;
 

@@ -55,7 +55,7 @@ void UnitAI::MoveInLineOfSight(Unit* who)
         return;
 
     if (!m_unit->CanFly() && who->IsFlying())
-        if (m_unit->GetDistanceZ(who) > IsRangedUnit() ? CREATURE_Z_ATTACK_RANGE_RANGED : CREATURE_Z_ATTACK_RANGE_MELEE)
+        if (m_unit->GetDistanceZ(who) > (IsRangedUnit() ? CREATURE_Z_ATTACK_RANGE_RANGED : CREATURE_Z_ATTACK_RANGE_MELEE))
             return;
 
     if (m_unit->getVictim() && !m_unit->GetMap()->IsDungeon())
@@ -280,6 +280,9 @@ void UnitAI::HandleMovementOnAttackStart(Unit* victim) const
 
 void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject* target)
 {
+    if (!state && spell != m_currentSpell)
+        return;
+
     SpellEntry const* spellInfo = spell->m_spellInfo;
     if (spellInfo->HasAttribute(SPELL_ATTR_EX4_CAN_CAST_WHILE_CASTING) || spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_1) || spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_2) || spellInfo->HasAttribute(SPELL_ATTR_EX5_DONT_TURN_DURING_CAST))
         return;
@@ -324,10 +327,16 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
         else
             m_unit->SetTarget(nullptr);
     }
+
+    if (state)
+        m_currentSpell = spell;
 }
 
 void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* target)
 {
+    if (state)
+        m_currentSpell = nullptr;
+
     SpellEntry const* spellInfo = spell->m_spellInfo;
     // TODO: Determine if CHANNEL_FLAG_MOVEMENT is worth implementing
     if (!spellInfo->HasAttribute(SPELL_ATTR_EX_CHANNEL_TRACK_TARGET))
@@ -448,8 +457,7 @@ bool UnitAI::CanTriggerStealthAlert(Unit* who, float /*attackRadius*/) const
     if (m_unit->hasUnitState(UNIT_STAT_DISTRACTED))
         return false;
 
-    return who->HasStealthAura() &&
-        !m_unit->IsWithinDistInMap(who, who->GetVisibleDistance(m_unit));
+    return who->HasStealthAura() && m_unit->GetDistance(who, true, DIST_CALC_NONE) > who->GetVisibilityData().GetStealthVisibilityDistance(m_unit);
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////

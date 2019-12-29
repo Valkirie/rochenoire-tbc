@@ -408,6 +408,12 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                         damage = unitTarget->GetMaxHealth() / 3;
                         break;
                     }
+                    case 43657: // Electrical Storm - Akil'zon
+                    {
+                        if (Aura* aura = m_caster->GetAura(43648, EFFECT_INDEX_1))
+                            damage *= std::min(aura->GetAuraTicks(), uint32(3));
+                        break;
+                    }
                 }
                 break;
             }
@@ -2386,7 +2392,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
-                    unitTarget->CastSpell(unitTarget, 42629, TRIGGERED_OLD_TRIGGERED);
+                    unitTarget->CastSpell(nullptr, 42629, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
                 case 42631:                                 // Fire Bomb (explode)
@@ -2414,7 +2420,23 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
-                    unitTarget->CastSpell(unitTarget, 42493, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_caster->GetObjectGuid());
+                    unitTarget->CastSpell(nullptr, 42493, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_caster->GetObjectGuid());
+                    return;
+                }
+                case 43152:                                 // Lynx Rush - Zul'Jin
+                {
+                    if (!unitTarget || m_scriptValue)
+                        return;
+
+                    m_scriptValue = 1;
+                    GuidVector targets;
+                    for (TargetList::const_iterator ihit = m_UniqueTargetInfo.begin(); ihit != m_UniqueTargetInfo.end(); ++ ihit)
+                        if (ihit->effectMask & (1 << eff_idx) && ihit->missCondition == SPELL_MISS_NONE)
+                            targets.push_back(ihit->targetGUID);
+
+                    ObjectGuid guid = targets[urand(0, targets.size() - 1)];
+                    if (Unit * target = m_caster->GetMap()->GetUnit(guid))
+                        m_caster->CastSpell(target, 43153, TRIGGERED_NONE);
                     return;
                 }
                 case 43498:                                 // Siphon Soul
@@ -2906,7 +2928,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastCustomSpell(m_caster, 31818, &mana, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
 
                     // Mana Feed
-                    int32 manaFeedVal = m_caster->CalculateSpellDamage(m_caster, m_spellInfo, EFFECT_INDEX_1);
+                    int32 manaFeedVal = m_caster->CalculateSpellEffectValue(m_caster, m_spellInfo, EFFECT_INDEX_1);
                     manaFeedVal = manaFeedVal * mana / 100;
                     if (manaFeedVal > 0)
                         m_caster->CastCustomSpell(m_caster, 32553, &manaFeedVal, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr);
@@ -3637,7 +3659,7 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)   // TODO - Use target
             float orientation = unitTarget->GetOrientation();
             // Teleport
             unitTarget->NearTeleportTo(x, y, z, orientation, unitTarget == m_caster);
-            return;
+            break;
         }
     }
 
@@ -5278,16 +5300,10 @@ bool Spell::DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry co
     TempSpawnType summonType = (m_duration == 0) ? TEMPSPAWN_DEAD_DESPAWN : TEMPSPAWN_TIMED_OR_DEAD_DESPAWN;
 
     for (CreatureSummonPositions::iterator itr = list.begin(); itr != list.end(); ++itr)
-        if (Creature* summon = m_caster->SummonCreature(creature_entry, itr->x, itr->y, itr->z, m_caster->GetOrientation(), summonType, m_duration, false, IsSpellSetRun(m_spellInfo)))
+        if (Creature* summon = WorldObject::SummonCreature(TempSpawnSettings(m_caster, creature_entry, itr->x, itr->y, itr->z, m_caster->GetOrientation(), summonType, m_duration, false,
+                IsSpellSetRun(m_spellInfo), 0, 0, false, false, m_spellInfo->Id), m_caster->GetMap()))
         {
             itr->creature = summon;
-
-            summon->SetUInt32Value(UNIT_CREATED_BY_SPELL, m_spellInfo->Id);
-
-            // UNIT_FIELD_CREATEDBY are not set for these kind of spells.
-            // Does exceptions exist? If so, what are they?
-            // summon->SetCreatorGuid(m_caster->GetObjectGuid());
-
 
             switch(m_spellInfo->Id)
             {
@@ -7336,6 +7352,22 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         return;
 
                     unitTarget->CastSpell(unitTarget, 38353, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_caster->GetObjectGuid());
+                    return;
+                }
+                case 38573:                                 // Spore Drop Effect
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 38574, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
+                case 38650:                                 // Rancid Mushroom Primer
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(nullptr, 38651, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
                 case 38629:                                 // Poison Keg

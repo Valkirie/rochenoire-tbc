@@ -388,10 +388,11 @@ Spell::Spell(Unit* caster, SpellEntry const* info, uint32 triggeredFlags, Object
     m_notifyAI = (triggeredFlags & TRIGGERED_NORMAL_COMBAT_CAST) != 0;
     m_ignoreGCD = m_IsTriggeredSpell | ((triggeredFlags & TRIGGERED_IGNORE_GCD) != 0);
     m_ignoreCosts = m_IsTriggeredSpell | ((triggeredFlags & TRIGGERED_IGNORE_COSTS) != 0);
+    m_ignoreCooldowns = m_IsTriggeredSpell | ((triggeredFlags & TRIGGERED_IGNORE_COOLDOWNS) != 0);
 
     m_reflectable = IsReflectableSpell(m_spellInfo);
 
-    m_affectedTargetCount = GetAffectedTargets(m_spellInfo);
+    m_affectedTargetCount = GetAffectedTargets(m_spellInfo, caster);
 
     m_scriptValue = 0;
 
@@ -762,7 +763,7 @@ void Spell::PrepareMasksForProcSystem(uint8 effectMask, uint32& procAttacker, ui
     if (m_spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && m_spellInfo->SpellFamilyFlags & uint64(0x000020000000001C))
         procAttacker |= PROC_FLAG_ON_TRAP_ACTIVATION;
 
-    if (IsNextMeleeSwingSpell())
+    if (IsNextMeleeSwingSpell(m_spellInfo))
     {
         procAttacker |= PROC_FLAG_SUCCESSFUL_MELEE_HIT;
         procVictim |= PROC_FLAG_TAKEN_MELEE_HIT;
@@ -1126,11 +1127,6 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
             Unit::ProcDamageAndSpell(ProcSystemArguments(caster, unitTarget, real_caster ? procAttacker : uint32(PROC_FLAG_NONE), procVictim, procEx, damageInfo.damage, m_attackType, m_spellInfo, this));
-
-        // trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC
-        if (m_caster->GetTypeId() == TYPEID_PLAYER && m_spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON &&
-            !m_spellInfo->HasAttribute(SPELL_ATTR_STOP_ATTACK_TARGET))
-            ((Player*)m_caster)->CastItemCombatSpell(unitTarget, m_attackType, !IsNextMeleeSwingSpell());
     }
     // Passive spell hits/misses or active spells only misses (only triggers if proc flags set)
     else if (procAttacker || procVictim)
@@ -1149,7 +1145,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     {
         // cast at creature (or GO) quest objectives update at successful cast finished (+channel finished)
         // ignore pets or autorepeat/melee casts for speed (not exist quest for spells (hm... )
-        if (real_caster && !((Creature*)unit)->IsPet() && !IsAutoRepeat() && !IsNextMeleeSwingSpell() && !IsChannelActive())
+        if (real_caster && !((Creature*)unit)->IsPet() && !IsAutoRepeat() && !IsNextMeleeSwingSpell(m_spellInfo) && !IsChannelActive())
             if (Player* p = real_caster->GetBeneficiaryPlayer())
                 p->RewardPlayerAndGroupAtCast(unit, m_spellInfo->Id);
 
@@ -1375,7 +1371,7 @@ void Spell::DoAllEffectOnTarget(GOTargetInfo* target)
 
     // cast at creature (or GO) quest objectives update at successful cast finished (+channel finished)
     // ignore autorepeat/melee casts for speed (not exist quest for spells (hm... )
-    if (!IsAutoRepeat() && !IsNextMeleeSwingSpell() && !IsChannelActive())
+    if (!IsAutoRepeat() && !IsNextMeleeSwingSpell(m_spellInfo) && !IsChannelActive())
     {
         if (Player* p = m_caster->GetBeneficiaryPlayer())
             p->RewardPlayerAndGroupAtCast(go, m_spellInfo->Id);
@@ -1706,10 +1702,11 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (!(m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
                 if (WorldObject* caster = GetCastingObject())
                     m_targets.setDestination(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ());
-            if (m_spellInfo->Id == 40186) // Summon Blossom Move Target - Teron Gorefiend
+            switch (m_spellInfo->Id)
             {
-                m_targets.m_destZ += 12.f;
-                return;
+                case 40186: m_targets.m_destZ += 12.f; break; // Summon Blossom Move Target - Teron Gorefiend
+                case 44006: m_targets.m_destZ += 10.f; break; // Teleport Self - Akil'zon
+                default: break;
             }
             break;
         }
@@ -1948,7 +1945,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
 
             z = liqData.level;
             // finally, check LoS
-            if (!m_caster->IsWithinLOS(x, y, z))
+            if (!m_caster->IsWithinLOS(x, y, z + 1.f))
             {
                 SendCastResult(SPELL_FAILED_LINE_OF_SIGHT);
                 finish(false);
@@ -3046,7 +3043,7 @@ void Spell::Prepare()
         m_caster->AddGCD(*m_spellInfo);
 
         // Execute instant spells immediate
-        if (m_timer == 0 && !IsNextMeleeSwingSpell() && (!IsAutoRepeat() || m_triggerAutorepeat))
+        if (m_timer == 0 && !IsNextMeleeSwingSpell(m_spellInfo) && (!IsAutoRepeat() || m_triggerAutorepeat))
             cast();
     }
     // execute triggered without cast time explicitly in call point
@@ -3079,21 +3076,16 @@ void Spell::cancel()
         case SPELL_STATE_TARGETING:
         case SPELL_STATE_CASTING:
             m_caster->ResetGCD(m_spellInfo);
-
-        //(no break)
+            // [[fallthrough]]
         case SPELL_STATE_TRAVELING:
-        {
             SendInterrupted(SPELL_FAILED_INTERRUPTED);
             if (sendInterrupt)
                 SendCastResult(SPELL_FAILED_INTERRUPTED);
-        } break;
-
+            break;
         case SPELL_STATE_LANDING:
             sLog.outError("Spell [%u] is interrupted while processing", m_spellInfo->Id);
-        // no break
-
+            // [[fallthrough]]
         case SPELL_STATE_CHANNELING:
-        {
             for (auto& ihit : m_UniqueTargetInfo)
             {
                 if (ihit.missCondition == SPELL_MISS_NONE)
@@ -3110,8 +3102,7 @@ void Spell::cancel()
             SendInterrupted(SPELL_FAILED_INTERRUPTED);
             if (sendInterrupt)
                 SendCastResult(SPELL_FAILED_INTERRUPTED);
-        } break;
-
+            break;
         case SPELL_STATE_FINISHED: break; // should not occur
     }
 
@@ -3123,9 +3114,6 @@ void Spell::cancel()
 void Spell::cast(bool skipCheck)
 {
     SetExecutedCurrently(true);
-
-    if (m_notifyAI && m_caster->AI())
-        m_caster->AI()->OnSpellCastStateChange(this, false);
 
     if (!m_caster->CheckAndIncreaseCastCounter())
     {
@@ -3491,7 +3479,7 @@ void Spell::update(uint32 difftime)
                 cancel();
         }
         // don't cancel for melee, autorepeat, triggered and instant spells
-        else if (!IsNextMeleeSwingSpell() && !IsAutoRepeat() && !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_MOVEMENT))
+        else if (!IsNextMeleeSwingSpell(m_spellInfo) && !IsAutoRepeat() && !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_MOVEMENT))
             cancel();
     }
 
@@ -3507,7 +3495,7 @@ void Spell::update(uint32 difftime)
                     m_timer -= difftime;
             }
 
-            if (m_timer == 0 && !IsNextMeleeSwingSpell() && !IsAutoRepeat())
+            if (m_timer == 0 && !IsNextMeleeSwingSpell(m_spellInfo) && !IsAutoRepeat())
                 cast();
         } break;
         case SPELL_STATE_CHANNELING:
@@ -3599,7 +3587,7 @@ void Spell::update(uint32 difftime)
                 // channeled spell processed independently for quest targeting
                 // cast at creature (or GO) quest objectives update at successful cast channel finished
                 // ignore autorepeat/melee casts for speed (not exist quest for spells (hm... )
-                if (!IsAutoRepeat() && !IsNextMeleeSwingSpell())
+                if (!IsAutoRepeat() && !IsNextMeleeSwingSpell(m_spellInfo))
                 {
                     if (Player* p = m_caster->GetBeneficiaryPlayer())
                     {
@@ -3665,6 +3653,9 @@ void Spell::finish(bool ok)
     bool channeledChannel = m_spellState == SPELL_STATE_CHANNELING;
 
     m_spellState = SPELL_STATE_FINISHED;
+
+    if (m_notifyAI && m_caster->AI())
+        m_caster->AI()->OnSpellCastStateChange(this, false);
 
     // other code related only to successfully finished spells
     if (!ok)
@@ -4493,8 +4484,8 @@ Unit* Spell::GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex effIndex) const
 SpellCastResult Spell::CheckCast(bool strict)
 {
     // check cooldowns to prevent cheating (ignore passive spells, that client side visual only)
-    if (m_caster->GetTypeId() == TYPEID_PLAYER && !m_spellInfo->HasAttribute(SPELL_ATTR_PASSIVE) &&
-            !m_IsTriggeredSpell && !m_caster->IsSpellReady(*m_spellInfo, m_CastItem ? m_CastItem->GetProto() : nullptr))
+    if (!m_ignoreCooldowns && m_caster->GetTypeId() == TYPEID_PLAYER && !m_spellInfo->HasAttribute(SPELL_ATTR_PASSIVE)
+            && !m_caster->IsSpellReady(*m_spellInfo, m_CastItem ? m_CastItem->GetProto() : nullptr))
     {
         return m_triggeredByAuraSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_NOT_READY;
     }
@@ -5891,7 +5882,7 @@ std::pair<float, float> Spell::GetMinMaxRange(bool strict)
 {
     float minRange = 0.0f, maxRange = 0.0f, rangeMod = 0.0f;
 
-    if (strict && IsNextMeleeSwingSpell())
+    if (strict && IsNextMeleeSwingSpell(m_spellInfo))
         return { 0.0f, 100.0f };
 
     Unit* caster = dynamic_cast<Unit*>(m_caster); // preparation for GO casting
@@ -5962,9 +5953,6 @@ SpellCastResult Spell::CheckRange(bool strict)
         if ((spellRange->Flags & SPELL_RANGE_FLAG_MELEE) == 0 && !strict)
             maxRange += std::min(3.f, maxRange * 0.1f); // 10% but no more than MAX_SPELL_RANGE_TOLERANCE
 
-    if (!target && m_spellInfo->Targets & (TARGET_FLAG_LOCKED | TARGET_FLAG_GAMEOBJECT))
-        target = m_targets.getGOTarget();
-
     if (target && target != m_caster)
     {
         // distance from target in checks
@@ -5978,6 +5966,10 @@ SpellCastResult Spell::CheckRange(bool strict)
             return SPELL_FAILED_UNIT_NOT_INFRONT;
     }
 
+    if (GameObject* goTarget = m_targets.getGOTarget())
+        if (!goTarget->IsAtInteractDistance(dynamic_cast<Player*>(m_caster), maxRange)) // only player casts these
+            return SPELL_FAILED_OUT_OF_RANGE;
+
     if (m_targets.m_targetMask == TARGET_FLAG_DEST_LOCATION)
     {
         float dist = m_caster->GetDistance(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, DIST_CALC_NONE);
@@ -5985,7 +5977,7 @@ SpellCastResult Spell::CheckRange(bool strict)
             return SPELL_FAILED_OUT_OF_RANGE;
         if (minRange && dist < minRange * minRange)
             return SPELL_FAILED_TOO_CLOSE;
-        if (!m_caster->IsWithinLOS(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ))
+        if (!m_caster->IsWithinLOS(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ + 1.f))
             return SPELL_FAILED_LINE_OF_SIGHT;
     }
 
@@ -6601,7 +6593,7 @@ bool Spell::CheckTargetCreatureType(Unit* target) const
 
 CurrentSpellTypes Spell::GetCurrentContainer() const
 {
-    if (IsNextMeleeSwingSpell())
+    if (IsNextMeleeSwingSpell(m_spellInfo))
         return (CURRENT_MELEE_SPELL);
     if (IsAutoRepeat())
         return (CURRENT_AUTOREPEAT_SPELL);
@@ -6854,6 +6846,7 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
         case 36797:                             // Mind Control (Kael'thas)
         case 40243:                             // Crushing Shadows - Teron Gorefiend
         case 41376:                             // Spite
+        case 43550:                             // Mind Control - Malacrass
             if (m_caster->getVictim() == target)
                 return false;
             break;
@@ -6888,6 +6881,10 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
             break;
         case 40870:                             // Fatal Attraction - tick - Mother Shahraz
             if (!target->HasAura(41001)) // Fatal Attraction Aura
+                return false;
+            break;
+        case 43657:                             // Electrical Storm - Akil'zon
+            if (target->HasAura(44007)) // Electrical Storm - Safe within eye
                 return false;
             break;
         case 37676:                             // Insidious Whisper
@@ -7017,6 +7014,9 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, CheckE
 
     if (target->GetTypeId() != TYPEID_PLAYER && m_spellInfo->HasAttribute(SPELL_ATTR_EX3_TARGET_ONLY_PLAYER)
         && targetType != TARGET_UNIT_CASTER)
+        return false;
+
+    if (m_spellInfo->MaxTargetLevel && target->getLevel() > m_spellInfo->MaxTargetLevel)
         return false;
 
     return CheckTargetScript(target, eff);
@@ -7356,7 +7356,7 @@ void Spell::ProcSpellAuraTriggers()
                 const uint32 procid = auraSpellInfo->EffectTriggerSpell[auraSpellIdx];
                 int32 auraBasePoints = targetTrigger->GetBasePoints();
                 // Calculate chance at that moment (can be depend for example from combo points)
-                int32 chance = m_caster->CalculateSpellDamage(target, auraSpellInfo, auraSpellIdx, &auraBasePoints, this);
+                int32 chance = m_caster->CalculateSpellEffectValue(target, auraSpellInfo, auraSpellIdx, &auraBasePoints, this);
                 if (roll_chance_i(chance))
                     m_caster->CastSpell(target, procid, TRIGGERED_OLD_TRIGGERED, nullptr, targetTrigger);
             }
@@ -7649,8 +7649,8 @@ void Spell::OnSuccessfulSpellStart()
         case 25234:
         case 25236:
         {
-            int32 basePoints0 = m_caster->CalculateSpellDamage(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0), nullptr, this) + int32(m_caster->GetPower(POWER_RAGE) * m_spellInfo->DmgMultiplier[0]);
-            SpellCastResult result = m_caster->CastCustomSpell(m_targets.getUnitTarget(), 20647, &basePoints0, nullptr, nullptr, TRIGGERED_NONE, nullptr);
+            int32 basePoints0 = m_caster->CalculateSpellEffectValue(m_targets.getUnitTarget(), m_spellInfo, SpellEffectIndex(0)) + int32((m_caster->GetPower(POWER_RAGE) - m_powerCost) * m_spellInfo->DmgMultiplier[0], this);
+            SpellCastResult result = m_caster->CastCustomSpell(m_targets.getUnitTarget(), 20647, &basePoints0, nullptr, nullptr, TRIGGERED_NONE);
             m_powerCost = 0;
             break;
         }

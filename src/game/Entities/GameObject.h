@@ -129,7 +129,7 @@ struct GameObjectInfo
             uint32 serverOnly;                              //8
             uint32 stealthed;                               //9
             uint32 large;                                   //10
-            uint32 stealthAffected;                         //11
+            uint32 invisible;                               //11
             uint32 openTextID;                              //12 can be used to replace castBarCaption?
             uint32 closeTextID;                             //13
         } trap;
@@ -609,6 +609,18 @@ class Unit;
 class GameObjectModel;
 struct GameObjectDisplayInfoEntry;
 
+struct QuaternionData
+{
+    float x, y, z, w;
+
+    QuaternionData() : x(0.0f), y(0.0f), z(0.0f), w(1.0f) { }
+    QuaternionData(float X, float Y, float Z, float W) : x(X), y(Y), z(Z), w(W) { }
+
+    bool isUnit() const;
+    void toEulerAnglesZYX(float& Z, float& Y, float& X) const;
+    static QuaternionData fromEulerAnglesZYX(float Z, float Y, float X);
+};
+
 // 5 sec for bobber catch
 #define FISHING_BOBBER_READY_TIME 5
 
@@ -633,6 +645,8 @@ class GameObject : public WorldObject
         bool HasStaticDBSpawnData() const;                  // listed in `gameobject` table and have fixed in DB guid
 
         void UpdateRotationFields(float rotation2 = 0.0f, float rotation3 = 0.0f);
+        QuaternionData GetWorldRotation() const; // compatibility with wotlk
+        QuaternionData const GetLocalRotation() const;
 
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 loc_idx) const override;
@@ -694,8 +708,6 @@ class GameObject : public WorldObject
         void SetGoAnimProgress(uint32 animprogress) { SetUInt32Value(GAMEOBJECT_ANIMPROGRESS, animprogress); }
         uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
         void SetDisplayId(uint32 modelId);
-
-        float GetObjectBoundingRadius() const override;     // overwrite WorldObject version
 
         void Use(Unit* user);
 
@@ -765,6 +777,7 @@ class GameObject : public WorldObject
         float GetCapturePointSliderValue() const { return m_captureSlider; }
 
         float GetInteractionDistance() const;
+        float GetCollisionHeight() const override { return 1.f; } // to get away with ground collision
 
         GridReference<GameObject>& GetGridRef() { return m_gridRef; }
 
@@ -774,6 +787,11 @@ class GameObject : public WorldObject
         GameObjectAI* AI() const { return m_AI.get(); }
 
         GameObjectModel* m_model;
+
+        bool IsAtInteractDistance(Position const& pos, float radius) const;
+        bool IsAtInteractDistance(Player const* player, uint32 maxRange = 0) const;
+
+        SpellEntry const* GetSpellForLock(Player const* player) const;
 
     protected:
         uint32      m_spellId;
