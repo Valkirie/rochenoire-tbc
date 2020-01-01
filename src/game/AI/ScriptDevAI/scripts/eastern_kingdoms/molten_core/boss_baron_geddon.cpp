@@ -23,6 +23,7 @@ EndScriptData */
 
 #include "AI/ScriptDevAI/include/precompiled.h"
 #include "molten_core.h"
+#include "AI/ScriptDevAI/base/CombatAI.h"
 
 enum
 {
@@ -34,105 +35,89 @@ enum
     SPELL_ARMAGEDDON            = 20478
 };
 
-struct boss_baron_geddonAI : public ScriptedAI
+enum GeddonActions
 {
-    boss_baron_geddonAI(Creature* pCreature) : ScriptedAI(pCreature)
+    GEDDON_ARMAGEDDON,
+    GEDDON_INFERNO,
+    GEDDON_IGNITE_MANA,
+    GEDDON_LIVING_BOMB,
+    GEDDON_ACTION_MAX,
+};
+
+struct boss_baron_geddonAI : public CombatAI
+{
+    boss_baron_geddonAI(Creature* creature) : CombatAI(creature, GEDDON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        AddTimerlessCombatAction(GEDDON_ARMAGEDDON, true);
+        AddCombatAction(GEDDON_INFERNO, 45000u);
+        AddCombatAction(GEDDON_IGNITE_MANA, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 0.35f));
+        AddCombatAction(GEDDON_LIVING_BOMB, sObjectMgr.GetScaleSpellTimer(m_creature, 35000u, 0.35f));
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_instance;
 
-    bool m_bIsArmageddon;
-    uint32 m_uiInfernoTimer;
-    uint32 m_uiIgniteManaTimer;
-    uint32 m_uiLivingBombTimer;
-
-    void Reset() override
+    void Aggro(Unit* /*who*/) override
     {
-        m_bIsArmageddon = false;
-        m_uiInfernoTimer = 45000;
-        m_uiIgniteManaTimer = 30000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
-        m_uiLivingBombTimer = 35000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.25f);
+        if (m_instance)
+            m_instance->SetData(TYPE_GEDDON, IN_PROGRESS);
     }
 
-    void Aggro(Unit* /*pWho*/) override
+    void JustDied(Unit* /*killer*/) override
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GEDDON, IN_PROGRESS);
-    }
-
-    void JustDied(Unit* /*pKiller*/) override
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GEDDON, DONE);
+        if (m_instance)
+            m_instance->SetData(TYPE_GEDDON, DONE);
     }
 
     void JustReachedHome() override
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GEDDON, NOT_STARTED);
+        if (m_instance)
+            m_instance->SetData(TYPE_GEDDON, NOT_STARTED);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void ExecuteAction(uint32 action)
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (m_bIsArmageddon)                                // Do nothing untill armageddon triggers
-            return;
-
-        // If we are <2% hp cast Armageddom
-        if (m_creature->GetHealthPercent() <= 2.0f && !m_bIsArmageddon)
+        switch (action)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_ARMAGEDDON, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
+            case GEDDON_ARMAGEDDON:
             {
-                DoScriptText(EMOTE_SERVICE, m_creature);
-                m_bIsArmageddon = true;
-                return;
+                if (m_creature->GetHealthPercent() <= 2.0f)
+                {
+                    if (DoCastSpellIfCan(nullptr, SPELL_ARMAGEDDON) == CAST_OK)
+                    {
+                        DoScriptText(EMOTE_SERVICE, m_creature);
+                        SetActionReadyStatus(action, false);
+                        return;
+                    }
+                }
+                break;
+            }
+            case GEDDON_INFERNO:
+            {
+                if (DoCastSpellIfCan(nullptr, SPELL_INFERNO) == CAST_OK)
+                    ResetCombatAction(action, 45000);
+                break;
+            }
+            case GEDDON_IGNITE_MANA:
+            {
+                if (DoCastSpellIfCan(nullptr, SPELL_IGNITE_MANA) == CAST_OK)
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, 0.35f));
+                break;
+            }
+            case GEDDON_LIVING_BOMB:
+            {
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LIVING_BOMB, SELECT_FLAG_PLAYER))
+                    if (DoCastSpellIfCan(target, SPELL_LIVING_BOMB) == CAST_OK)
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 35000, 0.35f));
+                break;
             }
         }
-
-        // Inferno_Timer
-        if (m_uiInfernoTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature, SPELL_INFERNO) == CAST_OK)
-                m_uiInfernoTimer = 45000;
-        }
-        else
-            m_uiInfernoTimer -= uiDiff;
-
-        // Ignite Mana Timer
-        if (m_uiIgniteManaTimer < uiDiff)
-        {
-			float m_uiIgniteManaTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.35f);
-			if (DoCastSpellIfCan(m_creature, SPELL_IGNITE_MANA) == CAST_OK)
-				m_uiIgniteManaTimer = 30000 / m_uiIgniteManaTimer_ratio;
-        }
-        else
-            m_uiIgniteManaTimer -= uiDiff;
-
-        // Living Bomb Timer
-        if (m_uiLivingBombTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-            {
-				float m_uiLivingBombTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.25f);
-				if (DoCastSpellIfCan(pTarget, SPELL_LIVING_BOMB) == CAST_OK)
-					m_uiLivingBombTimer = 35000 / m_uiLivingBombTimer_ratio;
-            }
-        }
-        else
-            m_uiLivingBombTimer -= uiDiff;
-
-        DoMeleeAttackIfReady();
     }
 };
 
-UnitAI* GetAI_boss_baron_geddon(Creature* pCreature)
+UnitAI* GetAI_boss_baron_geddon(Creature* creature)
 {
-    return new boss_baron_geddonAI(pCreature);
+    return new boss_baron_geddonAI(creature);
 }
 
 void AddSC_boss_baron_geddon()

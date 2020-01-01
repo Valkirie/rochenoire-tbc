@@ -3494,6 +3494,16 @@ void Spell::update(uint32 difftime)
                             cancel();
                     }
 
+                    if (m_spellInfo->HasAttribute(SPELL_ATTR_EX2_TAME_BEAST)) // these fail on lost target attention (aggro)
+                    {
+                        if (Unit* target = m_caster->GetChannelObject())
+                        {
+                            Unit* targetsTarget = target->GetTarget();
+                            if (targetsTarget && targetsTarget != m_caster)
+                                cancel();
+                        }
+                    }
+
                     if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_CHANNEL_TRACK_TARGET) && m_UniqueTargetInfo.begin() != m_UniqueTargetInfo.end())
                     {
                         if (Unit* target = m_caster->GetChannelObject())
@@ -5181,6 +5191,10 @@ SpellCastResult Spell::CheckCast(bool strict)
                     // check if its in use only when cast is finished (called from spell::cast() with strict = false)
                     if (!strict && go->IsInUse())
                         return SPELL_FAILED_CHEST_IN_USE;
+
+                    // done in client but we need to recheck anyway
+                    if (go->GetGOInfo()->CannotBeUsedUnderImmunity() && m_caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE))
+                        return SPELL_FAILED_DAMAGE_IMMUNE;
                 }
                 else if (Item* item = m_targets.getItemTarget())
                 {
@@ -7707,6 +7721,13 @@ SpellCastResult Spell::OnCheckCast(bool /*strict*/)
             Unit* target = m_targets.getUnitTarget();
             if (!target || target->GetTypeId() == TYPEID_PLAYER)
                 return SPELL_FAILED_BAD_TARGETS;
+            break;
+        }
+        case 4131: // Banish Cresting Exile
+        {
+            if (ObjectGuid target = m_targets.getUnitTargetGuid()) // can be cast only on this target
+                if (target.GetEntry() != 2761)
+                    return SPELL_FAILED_BAD_TARGETS;
             break;
         }
         case 7914: // Capture Spirit

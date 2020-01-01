@@ -305,8 +305,8 @@ void GameObject::Update(const uint32 diff)
                             {
                                 m_reStockTimer = 0;
                                 m_lootState = GO_READY;
-                                delete loot;
-                                loot = nullptr;
+                                delete m_loot;
+                                m_loot = nullptr;
                                 ForceValuesUpdateAtIndex(GAMEOBJECT_DYN_FLAGS);
                             }
                         }
@@ -466,14 +466,14 @@ void GameObject::Update(const uint32 diff)
                         ResetDoorOrButton();
                     break;
                 case GAMEOBJECT_TYPE_CHEST:
-                    if (loot)
+                    if (m_loot)
                     {
-                        if (loot->IsChanged())
+                        if (m_loot->IsChanged())
                             m_despawnTimer = time(nullptr) + 5 * MINUTE; // TODO:: need to add a define?
                         else if (m_despawnTimer != 0 && m_despawnTimer <= time(nullptr))
                             m_lootState = GO_JUST_DEACTIVATED;
 
-                        loot->Update();
+                        m_loot->Update();
                     }
                     break;
                 case GAMEOBJECT_TYPE_TRAP:
@@ -559,7 +559,7 @@ void GameObject::Update(const uint32 diff)
                     if (m_goInfo->chest.chestRestockTime)
                     {
                         m_reStockTimer = time(nullptr) + m_goInfo->chest.chestRestockTime;
-                        m_lootState = GO_NOT_READY;
+                        SetLootState(GO_NOT_READY);
                         ForceValuesUpdateAtIndex(GAMEOBJECT_DYN_FLAGS);
                         return;
                     }
@@ -592,10 +592,14 @@ void GameObject::Update(const uint32 diff)
                     SetUInt32Value(GAMEOBJECT_FLAGS, GetGOInfo()->flags);
             }
 
-            delete loot;
-            loot = nullptr;
+            delete m_loot;
+            m_loot = nullptr;
             SetLootRecipient(nullptr);
             SetLootState(GO_READY);
+
+            // non-consumable chests and goobers should never despawn
+            if ((GetGoType() == GAMEOBJECT_TYPE_CHEST || GetGoType() == GAMEOBJECT_TYPE_GOOBER) && !GetGOInfo()->IsDespawnAtAction())
+                return;
 
             if (!m_respawnDelayTime)
                 return;
@@ -1217,6 +1221,10 @@ void GameObject::Use(Unit* user)
     uint32 triggeredFlags = 0;
     bool originalCaster = true;
 
+    if (user->IsPlayer())
+        if (!m_goInfo->IsUsableMounted())
+            user->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+
     // test only for exist cooldown data (cooldown timer used for door/buttons reset that not have use cooldown)
     if (uint32 cooldown = GetGOInfo()->GetCooldown())
     {
@@ -1575,9 +1583,9 @@ void GameObject::Use(Unit* user)
                         }
                         else
                         {
-                            delete loot;
-                            loot = new Loot(player, this, success ? LOOT_FISHING : LOOT_FISHING_FAIL);
-                            loot->ShowContentTo(player);
+                            delete m_loot;
+                            m_loot = new Loot(player, this, success ? LOOT_FISHING : LOOT_FISHING_FAIL);
+                            m_loot->ShowContentTo(player);
                         }
                     }
                     else
@@ -1755,9 +1763,9 @@ void GameObject::Use(Unit* user)
 
             Player* player = (Player*)user;
             
-            delete loot;
-            loot = new Loot(player, this, LOOT_FISHINGHOLE);
-            loot->ShowContentTo(player);
+            delete m_loot;
+            m_loot = new Loot(player, this, LOOT_FISHINGHOLE);
+            m_loot->ShowContentTo(player);
 
             return;
         }

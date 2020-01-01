@@ -130,11 +130,17 @@ CanCastResult UnitAI::CanCastSpell(Unit* target, const SpellEntry* spellInfo, bo
 
         if (!m_unit->IsSpellReady(*spellInfo))
             return CAST_FAIL_COOLDOWN;
+        
+        // already active next melee swing spell
+        if (IsNextMeleeSwingSpell(spellInfo))
+            if (Spell* autorepeatSpell = m_unit->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
+                if (autorepeatSpell->m_spellInfo->Id == spellInfo->Id)
+                    return CAST_FAIL_OTHER;
     }
     return CAST_OK;
 }
 
-CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 castFlags) const
+CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 castFlags)
 {
     Unit* caster = m_unit;
 
@@ -433,7 +439,7 @@ void UnitAI::DetectOrAttack(Unit* who)
             m_unit->SendAIReaction(AI_REACTION_ALERT);
             m_unit->SetFacingTo(m_unit->GetAngle(who));
             m_unit->GetMotionMaster()->MoveDistract(TIME_INTERVAL_LOOK);
-
+            OnStealthAlert(who);
             return;
         }
 
@@ -655,3 +661,23 @@ void UnitAI::DistancingEnded()
 {
     SetCombatScriptStatus(false);
 }
+
+void UnitAI::AttackClosestEnemy()
+{
+    Unit* closestEnemy = nullptr;
+    float distance = FLT_MAX;
+    ThreatList const& list = m_unit->getThreatManager().getThreatList();
+    for (auto& data : list)
+    {
+        Unit* enemy = data->getTarget();
+        float curDistance = enemy->GetDistance(m_unit, true, DIST_CALC_NONE);
+        if (!closestEnemy || curDistance < distance)
+        {
+            closestEnemy = enemy;
+            distance = curDistance;
+        }
+    }
+
+    AttackStart(closestEnemy);
+}
+

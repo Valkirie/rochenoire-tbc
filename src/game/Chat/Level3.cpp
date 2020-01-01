@@ -56,6 +56,7 @@
 #include "AuctionHouseBot/AuctionHouseBot.h"
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
+#include "World/WorldState.h"
 
 static uint32 ahbotQualityIds[MAX_AUCTION_QUALITY] =
 {
@@ -4159,11 +4160,11 @@ bool ChatHandler::HandleNpcThreatCommand(char* /*args*/)
     ThreatList const& tList = target->getThreatManager().getThreatList();
     for (auto itr : tList)
     {
-        Unit* pUnit = itr->getTarget();
+        Unit* unit = itr->getTarget();
 
-        if (pUnit)
+        if (unit)
             // Player |cffff0000%s|r [GUID: %u] has |cffff0000%f|r threat, taunt state %u and hostile state %u
-            PSendSysMessage(LANG_NPC_THREAT_PLAYER, pUnit->GetName(), pUnit->GetGUIDLow(), target->getThreatManager().getThreat(pUnit), itr->GetTauntState(), itr->GetHostileState());
+            PSendSysMessage(LANG_NPC_THREAT_PLAYER, unit->GetName(), unit->GetGUIDLow(), target->getThreatManager().getThreat(unit), itr->GetTauntState(), itr->GetHostileState());
     }
 
     return true;
@@ -7316,3 +7317,28 @@ bool ChatHandler::HandleLinkCheckCommand(char* args)
 
     return true;
 }
+
+bool ChatHandler::HandleExpansionRelease(char* args)
+{
+    uint32 curExpansion = sWorldState.GetExpansion();
+
+    uint32 param;
+    if (!ExtractUInt32(&args, param))
+    {
+        PSendSysMessage("Current Expansion: %u", curExpansion);
+        return true;
+    }
+
+    if (param == curExpansion)
+    {
+        SendSysMessage("Current Expansion is same as given expansion.");
+        return true;
+    }
+
+    if (sWorldState.SetExpansion(param))
+        PSendSysMessage("New Expansion set to %u", param);
+    else
+        PSendSysMessage("Setting expansion failed. Consult manual.");
+    return true;
+}
+

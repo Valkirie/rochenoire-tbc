@@ -536,8 +536,8 @@ enum UnitFlags
     UNIT_FLAG_MOUNT                 = 0x08000000,
     UNIT_FLAG_UNK_28                = 0x10000000,
     UNIT_FLAG_UNK_29                = 0x20000000,           // used in Feing Death spell
-    UNIT_FLAG_SHEATHE               = 0x40000000
-                                      // UNIT_FLAG_UNK_31              = 0x80000000           // no affect in 2.4.3
+    UNIT_FLAG_SHEATHE               = 0x40000000,
+    UNIT_FLAG_IMMUNE                = 0x80000000
 };
 
 // Value masks for UNIT_FIELD_FLAGS_2
@@ -2467,7 +2467,8 @@ class Unit : public WorldObject
         bool CanEnterCombat() { return m_canEnterCombat && !IsEvadingHome(); }
         void SetCanEnterCombat(bool can) { m_canEnterCombat = can; }
 
-        virtual bool IsIgnoringRangedTargets() { return false; }
+        void SetIgnoreRangedTargets(bool state) { m_ignoreRangedTargets = state; }
+        bool IsIgnoringRangedTargets() { return m_ignoreRangedTargets; }
 
         float GetAttackDistance(Unit const* pl) const;
         virtual uint32 GetDetectionRange() const { return 20.f; }
@@ -2667,6 +2668,7 @@ class Unit : public WorldObject
 
         bool m_alwaysHit;
         bool m_noThreat;
+        bool m_ignoreRangedTargets;                         // Ignores ranged targets when picking someone to attack
 
         // guard to prevent chaining extra attacks
         bool m_extraAttacksExecuting;

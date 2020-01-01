@@ -23,6 +23,7 @@ EndScriptData */
 
 #include "AI/ScriptDevAI/include/precompiled.h"
 #include "molten_core.h"
+#include "AI/ScriptDevAI/base/CombatAI.h"
 
 enum
 {
@@ -37,112 +38,92 @@ enum
     // SPELL_CONFLAGRATION         = 19428                     // Trap spell for GO 177704
 };
 
-struct boss_magmadarAI : public ScriptedAI
+enum MagmadarActions
 {
-    boss_magmadarAI(Creature* pCreature) : ScriptedAI(pCreature)
+    MAGMADAR_FRENZY,
+    MAGMADAR_PANIC,
+    MAGMADAR_LAVABOMB,
+    MAGMADAR_LAVABOMB_MANA,
+    MAGMADAR_ACTION_MAX,
+};
+
+struct boss_magmadarAI : public CombatAI
+{
+    boss_magmadarAI(Creature* creature) : CombatAI(creature, MAGMADAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        AddCombatAction(MAGMADAR_FRENZY, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 1.0f));
+        AddCombatAction(MAGMADAR_PANIC, sObjectMgr.GetScaleSpellTimer(m_creature, 7000u, 0.0f));
+        AddCombatAction(MAGMADAR_LAVABOMB, sObjectMgr.GetScaleSpellTimer(m_creature, 12000u, 0.0f));
+        AddCombatAction(MAGMADAR_LAVABOMB_MANA, sObjectMgr.GetScaleSpellTimer(m_creature, 18000u, 0.0f));
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiFrenzyTimer;
-    uint32 m_uiPanicTimer;
-    uint32 m_uiLavabombTimer;
-    uint32 m_uiLavabombManaTimer;
+    ScriptedInstance* m_instance;
 
     void Reset() override
     {
-        m_uiFrenzyTimer = 30000 / sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
-        m_uiPanicTimer = 7000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
-        m_uiLavabombTimer = 12000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
-        m_uiLavabombManaTimer = 18000 / sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
+        CombatAI::Reset();
+        DoCastSpellIfCan(nullptr, SPELL_MAGMASPIT, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
-    void Aggro(Unit* /*pWho*/) override
+    void Aggro(Unit* /*who*/) override
     {
-        DoCastSpellIfCan(m_creature, SPELL_MAGMASPIT, true);
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_MAGMADAR, IN_PROGRESS);
+        if (m_instance)
+            m_instance->SetData(TYPE_MAGMADAR, IN_PROGRESS);
     }
 
-    void JustDied(Unit* /*pKiller*/) override
+    void JustDied(Unit* /*killer*/) override
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_MAGMADAR, DONE);
+        if (m_instance)
+            m_instance->SetData(TYPE_MAGMADAR, DONE);
     }
 
     void JustReachedHome() override
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_MAGMADAR, NOT_STARTED);
+        if (m_instance)
+            m_instance->SetData(TYPE_MAGMADAR, NOT_STARTED);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void ExecuteAction(uint32 action) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        // Frenzy_Timer
-        if (m_uiFrenzyTimer < uiDiff)
+        switch (action)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_FRENZY) == CAST_OK)
+            case MAGMADAR_FRENZY:
             {
-				float m_uiFrenzyTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 1.0f);
-				DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-				m_uiFrenzyTimer = urand(15000, 20000) / m_uiFrenzyTimer_ratio;
+                if (DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK)
+                {
+                    DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), 1.0f));
+                }
+                break;
+            }
+            case MAGMADAR_PANIC:
+            {
+                if (DoCastSpellIfCan(nullptr, SPELL_PANIC) == CAST_OK)
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 40000), 0.0f));
+                break;
+            }
+            case MAGMADAR_LAVABOMB:
+            {
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB, SELECT_FLAG_POWER_NOT_MANA))
+                    if (DoCastSpellIfCan(target, SPELL_LAVABOMB) == CAST_OK)
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), 0.0f));
+                break;
+            }
+            case MAGMADAR_LAVABOMB_MANA:
+            {
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB_MANA, SELECT_FLAG_POWER_MANA))
+                    if (DoCastSpellIfCan(target, SPELL_LAVABOMB_MANA) == CAST_OK)
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), 0.0f));
+                break;
             }
         }
-        else
-            m_uiFrenzyTimer -= uiDiff;
-
-        // Panic_Timer
-        if (m_uiPanicTimer < uiDiff)
-        {
-			float m_uiPanicTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
-			if (DoCastSpellIfCan(m_creature, SPELL_PANIC) == CAST_OK)
-				m_uiPanicTimer = urand(30000, 40000) / m_uiPanicTimer_ratio;
-        }
-        else
-            m_uiPanicTimer -= uiDiff;
-
-        // Lavabomb_Timer - non mana users
-        if (m_uiLavabombTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB, SELECT_FLAG_POWER_NOT_MANA))
-            {
-                debug_log("SD2 casting NO MANA user lava bombe onto %s", pTarget->GetName());
-				float m_uiLavabombTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
-				if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB) == CAST_OK)
-					m_uiLavabombTimer = urand(12000, 15000) / m_uiLavabombTimer_ratio;
-            }
-        }
-        else
-            m_uiLavabombTimer -= uiDiff;
-
-        // Lavabomb_Timer - mana users
-        if (m_uiLavabombManaTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB_MANA, SELECT_FLAG_POWER_MANA))
-            {
-                debug_log("SD2 casting MANA user lava bombe onto %s", pTarget->GetName());
-				float m_uiLavabombManaTimer_ratio = sObjectMgr.GetScaleSpellTimer(m_creature, 0.0f);
-				if (DoCastSpellIfCan(pTarget, SPELL_LAVABOMB_MANA) == CAST_OK)
-					m_uiLavabombManaTimer = urand(12000, 15000) / m_uiLavabombManaTimer_ratio;
-            }
-        }
-        else
-            m_uiLavabombManaTimer -= uiDiff;
-
-        DoMeleeAttackIfReady();
     }
 };
 
-UnitAI* GetAI_boss_magmadar(Creature* pCreature)
+UnitAI* GetAI_boss_magmadar(Creature* creature)
 {
-    return new boss_magmadarAI(pCreature);
+    return new boss_magmadarAI(creature);
 }
 
 void AddSC_boss_magmadar()

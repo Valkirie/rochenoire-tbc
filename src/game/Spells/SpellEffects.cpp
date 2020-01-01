@@ -659,6 +659,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
+                case 4131:                                  // Banish Cresting Exile
+                {
+                    if (!unitTarget)
+                        return;
+
+                    DoScriptText(-1010004, unitTarget, m_caster);
+                    unitTarget->CastSpell(nullptr, 3617, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
                 case 7671:                                  // Transformation (human<->worgen)
                 {
                     if (unitTarget) // Transform Visual
@@ -875,6 +884,54 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         ai->SendAIEvent(AI_EVENT_CUSTOM_A, m_caster, m_caster);
                     return;
                 }
+                case 16378:                                 // Temperature Reading
+                {
+                    if (!unitTarget || !m_caster->IsPlayer())
+                        return;
+
+                    switch (unitTarget->GetGUIDLow()) // sadly each spawn does different texts - meant to be db guids
+                    {
+                        case 23712: // Z: -241.0724
+                        {
+                            static std::vector<int32> textIds = {-1010012, -1010013, -1010014};
+                            DoScriptText(textIds[urand(0, textIds.size() - 1)], unitTarget, m_caster);
+                            break;
+                        }
+                        case 23713: // Z: -265.2025
+                        {
+                            static std::vector<int32> textIds = {-1010009, -1010010, -1010011};
+                            DoScriptText(textIds[urand(0, textIds.size() - 1)], unitTarget, m_caster);
+                            break;
+                        }
+                        case 23714: // Z: -240.8598
+                        {
+                            static std::vector<int32> textIds = {-1010015, -1010016, -1010017};
+                            DoScriptText(textIds[urand(0, textIds.size() - 1)], unitTarget, m_caster);
+                            break;
+                        }
+                        case 23715: // Z: -246.8467
+                        {
+                            static std::vector<int32> textIds = {-1010015, -1010016, -1010017};
+                            DoScriptText(textIds[urand(0, textIds.size() - 1)], unitTarget, m_caster);
+                            break;
+                        }
+                        case 23716: // Z: -186.0754 quest completion one
+                        {
+                            static std::vector<int32> textIds = {-1010018, -1010019, -1010020, -1010021};
+                            DoScriptText(textIds[urand(0, textIds.size() - 1)], unitTarget, m_caster);
+                            Player* player = static_cast<Player*>(m_caster);
+                            player->RewardPlayerAndGroupAtEventCredit(unitTarget->GetEntry(), unitTarget);
+                            break;
+                        }
+                        default:
+                        {
+                            sLog.outErrorDb("Database has wrong data for q.974 - guids do not correspond.");
+                            break;
+                        }
+                    }
+
+                    return;
+                }
                 case 16589:                                 // Noggenfogger Elixir
                 {
                     if (m_caster->GetTypeId() == TYPEID_PLAYER)
@@ -1039,6 +1096,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
+                case 18947:                                 // Baron Geddon - Inferno
+                {
+                    Aura* aura = m_caster->GetAura(m_triggeredByAuraSpell->Id, EFFECT_INDEX_0);
+                    if (!aura)
+                        return;
+                    int32 damageForTick[8] = { 500, 500, 1000, 1000, 2000, 2000, 3000, 5000 };
+                    m_caster->CastCustomSpell(nullptr, 19698, &damageForTick[aura->GetAuraTicks() - 1], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
                 case 19395:                                 // Gordunni Trap
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER)
@@ -1051,6 +1117,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (unitTarget)
                         unitTarget->CastSpell(unitTarget, 20494, TRIGGERED_OLD_TRIGGERED);
 
+                    return;
+                }
+                case 19484:
+                {
+                    if (unitTarget)
+                    {
+                        unitTarget->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                        unitTarget->CastSpell(nullptr, 19527, TRIGGERED_OLD_TRIGGERED);
+                    }
                     return;
                 }
                 case 20474:                                 // Lava Bomb
@@ -1207,10 +1282,28 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 23138:                                 // Gate of Shazzrah
                 {
-                    // Effect probably include a threat change, but it is unclear if fully
-                    // reset or just forced upon target for teleport (SMSG_HIGHEST_THREAT_UPDATE)
-                    if (unitTarget)
-                        m_caster->CastSpell(unitTarget, 23139, TRIGGERED_OLD_TRIGGERED);
+                    if (!unitTarget || m_scriptValue > 0)
+                        return;
+                    m_scriptValue = 1; // mark as executed
+
+                    std::vector<Unit*> possibleTargets;
+                    possibleTargets.reserve(m_UniqueTargetInfo.size());
+                    for (TargetList::const_iterator itr = m_UniqueTargetInfo.begin(); itr != m_UniqueTargetInfo.end(); ++itr)
+                    {
+                        // Skip Non-Players
+                        if (!itr->targetGUID.IsPlayer())
+                            continue;
+
+                        if (Unit* target = m_caster->GetMap()->GetPlayer(itr->targetGUID))
+                            possibleTargets.push_back(target);
+                    }
+
+                    // Cast Siphon Soul channeling spell
+                    if (!possibleTargets.empty())
+                        possibleTargets[urand(0, possibleTargets.size() - 1)]->CastSpell(m_caster, 23139, TRIGGERED_NONE);
+
+                    if (m_caster->AI())
+                        m_caster->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, m_caster, m_caster);
 
                     return;
                 }
@@ -4362,7 +4455,7 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
                 if (m_caster->GetTypeId() != TYPEID_PLAYER)
                     return;
 
-                Loot*& loot = gameObjTarget->loot;
+                Loot*& loot = gameObjTarget->m_loot;
                 if (!loot)
                 {
                     loot = new Loot((Player*)m_caster, gameObjTarget, loottype);
@@ -4378,7 +4471,7 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
         {
             if (itemTarget)
             {
-                Loot*& loot = itemTarget->loot;
+                Loot*& loot = itemTarget->m_loot;
                 if (!loot)
                 {
                     loot = new Loot((Player*)m_caster, itemTarget, loottype);
@@ -4466,14 +4559,14 @@ void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
         // update skill if really known
         if (uint32 pureSkillValue = player->GetSkillValuePure(skillId))
         {
-            if (gameObjTarget && !gameObjTarget->loot)
+            if (gameObjTarget && !gameObjTarget->m_loot)
             {
                 // Allow one skill-up until respawned
                 if (!gameObjTarget->IsInSkillupList(player) &&
                         player->UpdateGatherSkill(skillId, pureSkillValue, reqSkillValue))
                     gameObjTarget->AddToSkillupList(player);
             }
-            else if (itemTarget && !itemTarget->loot)
+            else if (itemTarget && !itemTarget->m_loot)
             {
                 // Do one skill-up
                 player->UpdateGatherSkill(skillId, pureSkillValue, reqSkillValue);
@@ -5197,7 +5290,7 @@ void Spell::EffectPickPocket(SpellEffectIndex /*eff_idx*/)
         // Stealing successful
         //BASIC_LOG("Successfull pickpocket result %i for chance %i", result, chance);
 
-        Loot*& loot = unitTarget->loot;
+        Loot*& loot = unitTarget->m_loot;
         if (!loot)
             loot = new Loot(playerCaster, creatureTarget, LOOT_PICKPOCKETING);
         else
@@ -7822,6 +7915,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 44852, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
+                case 45071:                                 // Quest - Sunwell Daily - Dead Scar Bombing Run
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    m_caster->PlayMusic(12318, PlayPacketParameters(PLAY_TARGET, static_cast<Player*>(unitTarget)));
+                    return;
+                }
                 case 45141:                                 // Burn
                 {
                     if (!unitTarget)
@@ -8629,7 +8730,7 @@ void Spell::EffectDisEnchant(SpellEffectIndex /*eff_idx*/)
 
     p_caster->UpdateCraftSkill(m_spellInfo->Id);
 
-    Loot*& loot = itemTarget->loot;
+    Loot*& loot = itemTarget->m_loot;
     if (!loot)
         loot = new Loot(p_caster, itemTarget, LOOT_DISENCHANTING);
     else
@@ -8942,7 +9043,7 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
 
     uint32 skill = creature->GetCreatureInfo()->GetRequiredLootSkill();
 
-    Loot*& loot = unitTarget->loot;
+    Loot*& loot = unitTarget->m_loot;
 
     if (loot)
     {
@@ -9467,7 +9568,7 @@ void Spell::EffectProspecting(SpellEffectIndex /*eff_idx*/)
         p_caster->UpdateGatherSkill(SKILL_JEWELCRAFTING, SkillValue, reqSkillValue);
     }
 
-    Loot*& loot = itemTarget->loot;
+    Loot*& loot = itemTarget->m_loot;
     delete loot;
 
     loot = new Loot(p_caster, itemTarget, LOOT_PROSPECTING);
