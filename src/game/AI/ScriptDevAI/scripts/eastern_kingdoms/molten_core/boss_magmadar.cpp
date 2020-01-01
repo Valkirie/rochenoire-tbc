@@ -52,7 +52,7 @@ struct boss_magmadarAI : public CombatAI
     boss_magmadarAI(Creature* creature) : CombatAI(creature, MAGMADAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
         AddCombatAction(MAGMADAR_FRENZY, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 1.0f));
-        AddCombatAction(MAGMADAR_PANIC, sObjectMgr.GetScaleSpellTimer(m_creature, 7000u, 0.0f));
+        AddCombatAction(MAGMADAR_PANIC, sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000,10000), 0.0f));
         AddCombatAction(MAGMADAR_LAVABOMB, sObjectMgr.GetScaleSpellTimer(m_creature, 12000u, 0.0f));
         AddCombatAction(MAGMADAR_LAVABOMB_MANA, sObjectMgr.GetScaleSpellTimer(m_creature, 18000u, 0.0f));
         Reset();
@@ -100,7 +100,7 @@ struct boss_magmadarAI : public CombatAI
             case MAGMADAR_PANIC:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_PANIC) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 40000), 0.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(16000, 21000), 0.0f));
                 break;
             }
             case MAGMADAR_LAVABOMB:

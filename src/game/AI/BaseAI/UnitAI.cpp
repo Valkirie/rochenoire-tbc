@@ -26,6 +26,7 @@
 #include "Grids/CellImpl.h"
 #include "Spells/SpellMgr.h"
 #include "World/World.h"
+#include <float.h>
 
 static_assert(MAXIMAL_AI_EVENT_EVENTAI <= 32, "Maximal 32 AI_EVENTs supported with EventAI");
 
@@ -92,7 +93,12 @@ void UnitAI::EnterEvadeMode()
 
     // only alive creatures that are not on transport can return to home position
     if (GetReactState() != REACT_PASSIVE && m_unit->isAlive() && !m_unit->IsBoarded())
-        m_unit->GetMotionMaster()->MoveTargetedHome();
+    {
+        if (!m_unit->IsImmobilizedState()) // if still rooted after aura removal - permarooted
+            m_unit->GetMotionMaster()->MoveTargetedHome();
+        else
+            JustReachedHome();
+    }
 
     m_unit->TriggerEvadeEvents();
 }
@@ -227,10 +233,7 @@ void UnitAI::AttackStart(Unit* who)
 
     if (m_unit->Attack(who, m_meleeEnabled))
     {
-        m_unit->AddThreat(who);
-        m_unit->SetInCombatWith(who);
-        who->SetInCombatWith(m_unit);
-
+        m_unit->EngageInCombatWith(who);
         HandleMovementOnAttackStart(who);
     }
 }
@@ -322,13 +325,16 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
         }
         else
         {
-            m_unit->SetFacingTo(m_unit->GetOrientation());
-            m_unit->SetTarget(nullptr);
+            if (m_unit->HasTarget())
+            {
+                m_unit->SetFacingTo(m_unit->GetOrientation());
+                m_unit->SetTarget(nullptr);
+            }
         }
     }
     else
     {
-        if (m_unit->getVictim())
+        if (m_unit->getVictim() && !GetCombatScriptStatus())
             m_unit->SetTarget(m_unit->getVictim());
         else
             m_unit->SetTarget(nullptr);
@@ -385,7 +391,7 @@ void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* t
     }
     else
     {
-        if (m_unit->getVictim())
+        if (m_unit->getVictim() && !GetCombatScriptStatus())
             m_unit->SetTarget(m_unit->getVictim());
         else
             m_unit->SetTarget(nullptr);
@@ -447,9 +453,7 @@ void UnitAI::DetectOrAttack(Unit* who)
     }
     else if (m_unit->GetMap()->IsDungeon())
     {
-        m_unit->AddThreat(who);
-        m_unit->SetInCombatWith(who);
-        who->SetInCombatWith(m_unit);
+        m_unit->EngageInCombatWith(who);
     }
 }
 
@@ -623,6 +627,11 @@ void UnitAI::DoStartMovement(Unit* victim)
 {
     if (victim)
         m_unit->GetMotionMaster()->MoveChase(victim, m_attackDistance, m_attackAngle, m_moveFurther, !m_chaseRun);
+}
+
+SpellSchoolMask UnitAI::GetMainAttackSchoolMask() const
+{
+    return m_unit->GetMeleeDamageSchoolMask();
 }
 
 void UnitAI::TimedFleeingEnded()

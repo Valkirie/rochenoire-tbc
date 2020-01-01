@@ -390,6 +390,11 @@ class UnitAI
          */
         virtual void OnStealthAlert(Unit* who) {}
 
+        /*
+         * Notifies AI on evade from combat due to leash
+         */
+        virtual void OnLeash() {}
+
         void CheckForHelp(Unit* /*who*/, Unit* /*me*/, float /*dist*/);
         void DetectOrAttack(Unit* who);
         bool CanTriggerStealthAlert(Unit* who, float attackRadius) const;
@@ -443,6 +448,7 @@ class UnitAI
         * Checking main spell school instead of melee school for immunity suppress - TODO
         */
         virtual bool IsRangedUnit() { return false; }
+        virtual SpellSchoolMask GetMainAttackSchoolMask() const;
 
         // Movement generator responses
         virtual void TimedFleeingEnded();

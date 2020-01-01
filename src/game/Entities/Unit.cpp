@@ -304,7 +304,8 @@ Unit::Unit() :
     m_spellUpdateHappening(false),
     m_spellProcsHappening(false),
     m_auraUpdateMask(0),
-    m_ignoreRangedTargets(false)
+    m_ignoreRangedTargets(false),
+    m_combatManager(this)
 {
     m_objectType |= TYPEMASK_UNIT;
     m_objectTypeId = TYPEID_UNIT;
@@ -376,7 +377,6 @@ Unit::Unit() :
     m_canParry = true;
     m_canBlock = true;
 
-    m_CombatTimer = 0;
     m_lastManaUseTimer = 0;
 
     // m_victimThreat = 0.0f;
@@ -397,13 +397,11 @@ Unit::Unit() :
 
     m_alwaysHit = false;
     m_noThreat = false;
+    m_supportThreatOnly = false;
     m_extraAttacksExecuting = false;
 
     m_baseSpeedWalk = 1.f;
     m_baseSpeedRun = 1.f;
-
-    m_evadeTimer = 0;
-    m_evadeMode = EVADE_NONE;
 }
 
 Unit::~Unit()
@@ -463,31 +461,11 @@ void Unit::Update(const uint32 diff)
             m_lastManaUseTimer -= diff;
     }
 
-    if (!CanHaveThreatList() && isInCombat())
-    {
-        // update combat timer only for players and pets (they have no threat list)
-        // Check UNIT_STAT_MELEE_ATTACKING or UNIT_STAT_CHASE (without UNIT_STAT_FOLLOW in this case) so pets can reach far away
-        // targets without stopping half way there and running off.
-        // These flags are reset after target dies or another command is given.
-        if (getHostileRefManager().isEmpty())
-        {
-            // m_CombatTimer set at aura start and it will be freeze until aura removing
-            if (m_CombatTimer <= diff)
-                CombatStop();
-            else
-                m_CombatTimer -= diff;
-        }
-    }
-
     if (uint32 base_att = getAttackTimer(BASE_ATTACK))
-    {
         setAttackTimer(BASE_ATTACK, (diff >= base_att ? 0 : base_att - diff));
-    }
 
     if (uint32 base_att = getAttackTimer(OFF_ATTACK))
-    {
         setAttackTimer(OFF_ATTACK, (diff >= base_att ? 0 : base_att - diff));
-    }
 
     // update abilities available only for fraction of time
     UpdateReactives(diff);
@@ -498,16 +476,7 @@ void Unit::Update(const uint32 diff)
     if (AI() && isAlive())
         AI()->UpdateAI(diff);   // AI not react good at real update delays (while freeze in non-active part of map)
 
-    if (m_evadeTimer)
-    {
-        if (m_evadeTimer <= diff)
-        {
-            EvadeTimerExpired();
-            m_evadeTimer = 0;
-        }
-        else
-            m_evadeTimer -= diff;
-    }
+    GetCombatManager().Update(diff);
 
     if (isAlive())
     {
@@ -553,6 +522,14 @@ void Unit::TriggerEvadeEvents()
 
     if (m_isCreatureLinkingTrigger)
         GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_EVADE, static_cast<Creature*>(this));
+
+
+    for (auto &guardianGuid : m_guardianPets)
+    {
+        if (auto pet = GetMap()->GetPet(guardianGuid))
+            if (pet->AI())
+                pet->AI()->EnterEvadeMode();
+    }
 }
 
 void Unit::EvadeTimerExpired()
@@ -564,25 +541,20 @@ void Unit::EvadeTimerExpired()
     // When there is no target to switch to, leave combat
     if (getThreatManager().getThreatList().size() == 1)
     {
-        if (GetMap()->IsDungeon())
-            SetEvade(EVADE_COMBAT);
-        else
-            AI()->EnterEvadeMode();
+        AI()->EnterEvadeMode();
         return;
     }
 
     getThreatManager().SetTargetSuppressed(getVictim());
 }
 
-void Unit::StopEvade()
+enum SwingErrors
 {
-    if (m_evadeTimer)
-    {
-        m_evadeTimer = 0;
-        return;
-    }
-    SetEvade(EVADE_NONE);
-}
+    SWING_ERROR_NOT_IN_RANGE,
+    SWING_ERROR_TARGET_NOT_ALIVE,
+    SWING_ERROR_BAD_FACING,
+    SWING_ERROR_CANT_ATTACK_TARGET,
+};
 
 bool Unit::UpdateMeleeAttackingState()
 {
@@ -590,10 +562,7 @@ bool Unit::UpdateMeleeAttackingState()
     if (!victim || IsNonMeleeSpellCasted(false))
         return false;
 
-    if (GetTypeId() != TYPEID_PLAYER && (!((Creature*)this)->CanInitiateAttack() || !victim->isInAccessablePlaceFor((Creature*)this)))
-        return false;
-
-    if (!CanAttack(victim))
+    if (GetTypeId() != TYPEID_PLAYER && (!static_cast<Creature*>(this)->CanInitiateAttack() || !victim->isInAccessablePlaceFor(static_cast<Creature*>(this))))
         return false;
 
     if (!isAttackReady(BASE_ATTACK) && !(isAttackReady(OFF_ATTACK) && hasOffhandWeaponForAttack()))
@@ -601,24 +570,13 @@ bool Unit::UpdateMeleeAttackingState()
 
     uint8 swingError = 0;
     if (!CanReachWithMeleeAttack(victim))
-    {
-        if (isAttackReady(BASE_ATTACK))
-            setAttackTimer(BASE_ATTACK, 100);
-        if (hasOffhandWeaponForAttack() && isAttackReady(OFF_ATTACK))
-            setAttackTimer(OFF_ATTACK, 100);
-
-        swingError = 1;
-    }
-    // 120 degrees of radiant range
-    else if (!HasInArc(victim, 2 * M_PI_F / 3))
-    {
-        if (isAttackReady(BASE_ATTACK))
-            setAttackTimer(BASE_ATTACK, 100);
-        if (hasOffhandWeaponForAttack() && isAttackReady(OFF_ATTACK))
-            setAttackTimer(OFF_ATTACK, 100);
-
-        swingError = 2;
-    }
+        swingError = SWING_ERROR_NOT_IN_RANGE;
+    else if (!HasInArc(victim))
+        swingError = SWING_ERROR_BAD_FACING;
+    else if (!victim->isAlive())
+        swingError = SWING_ERROR_TARGET_NOT_ALIVE;
+    else if (!CanAttack(victim))
+        swingError = SWING_ERROR_CANT_ATTACK_TARGET;
     else
     {
         if (isAttackReady(BASE_ATTACK))
@@ -644,13 +602,30 @@ bool Unit::UpdateMeleeAttackingState()
         }
     }
 
-    Player* player = (GetTypeId() == TYPEID_PLAYER ? (Player*)this : nullptr);
+    if (swingError)
+    {
+        setAttackTimer(BASE_ATTACK, 100);
+        setAttackTimer(OFF_ATTACK, 100);
+    }
+
+    Player* player = IsClientControlled() ? const_cast<Player*>(GetClientControlling()) : nullptr;
     if (player && swingError != player->LastSwingErrorMsg())
     {
-        if (swingError == 1)
-            player->SendAttackSwingNotInRange();
-        else if (swingError == 2)
-            player->SendAttackSwingBadFacingAttack();
+        switch (swingError)
+        {
+            case SWING_ERROR_NOT_IN_RANGE:
+                player->SendAttackSwingNotInRange();
+                break;
+            case SWING_ERROR_TARGET_NOT_ALIVE:
+                player->SendAttackSwingDeadTarget();
+                break;
+            case SWING_ERROR_BAD_FACING:
+                player->SendAttackSwingBadFacingAttack();
+                break;
+            case SWING_ERROR_CANT_ATTACK_TARGET:
+                player->SendAttackSwingCantAttack();
+                break;
+        }
         player->SwingErrorMsg(swingError);
     }
 
@@ -780,10 +755,11 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, ObjectGuid casterGuid)
 
 void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* absorb, DamageEffectType damagetype, SpellEntry const* spellProto, bool isScaled)
 {
-    if (!victim->isAlive() || victim->IsTaxiFlying() || victim->IsInEvadeMode())
+    if (!victim->isAlive() || victim->IsTaxiFlying() || victim->GetCombatManager().IsInEvadeMode())
     {
         if (absorb)
             *absorb += damage;
+
         damage = 0;
         return;
     }
@@ -1200,6 +1176,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
             {
                 dealer->SetInCombatWith(victim);
                 victim->SetInCombatWith(dealer);
+                dealer->GetCombatManager().TriggerCombatTimer(victim);
             }
         }
 
@@ -1748,7 +1725,7 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage* spellDamageInfo, bool durability
     if (!pVictim)
         return;
 
-    if (!pVictim->isAlive() || pVictim->IsTaxiFlying() || pVictim->IsInEvadeMode())
+    if (!pVictim->isAlive() || pVictim->IsTaxiFlying() || pVictim->GetCombatManager().IsInEvadeMode())
         return;
 
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(spellDamageInfo->SpellID);
@@ -2097,7 +2074,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo* calcDamageInfo, bool durabilityLoss)
     if (!victim)
         return;
 
-    if (!victim->isAlive() || victim->IsTaxiFlying() || victim->IsInEvadeMode())
+    if (!victim->isAlive() || victim->IsTaxiFlying() || victim->GetCombatManager().IsInEvadeMode())
         return;
 
     // You don't lose health from damage taken from another player while in a sanctuary
@@ -2159,8 +2136,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo* calcDamageInfo, bool durabilityLoss)
         // If not immune
         if (calcDamageInfo->TargetState != VICTIMSTATE_IS_IMMUNE)
         {
-            SetInCombatWithVictim(victim);
-            victim->SetInCombatWithAggressor(this);
+            EngageInCombatWithAggressor(victim);
         }
     }
 
@@ -2315,7 +2291,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
     int32  reflectDamage = 0;
     Aura*  reflectTriggeredBy = nullptr;                       // expected as not expired at reflect as in current cases
     // Death Prevention Aura
-    SpellEntry const*  preventDeathSpell = nullptr;
+    Aura* preventDeathAura = nullptr;
 
     // full absorb cases (by chance)
     /* none cases, but preserve for better backporting conflict resolve
@@ -2407,22 +2383,16 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
                     case 31229:
                     case 31230:
                     {
-                        if (!preventDeathSpell &&
+                        if (!preventDeathAura &&
                             GetTypeId() == TYPEID_PLAYER && // Only players
                             IsSpellReady(31231) &&
                             // Only if no cooldown
                             roll_chance_i((*i)->GetModifier()->m_amount))
                             // Only if roll
                         {
-                            preventDeathSpell = (*i)->GetSpellProto();
+                            preventDeathAura = (*i);
                         }
                         // always skip this spell in charge dropping, absorb amount calculation since it has chance as m_amount and doesn't need to absorb any damage
-                        continue;
-                    }
-                    case 40251: // Shadow of Death
-                    {
-                        preventDeathSpell = spellProto;
-                        currentAbsorb = 0;
                         continue;
                     }
                 }
@@ -2480,6 +2450,11 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
 		}
 
+        bool preventedDeath = false;
+        (*i)->OnAbsorb(currentAbsorb, reflectSpell, reflectDamage, preventedDeath);
+        if (preventedDeath)
+            preventDeathAura = (*i);
+
 		RemainingDamage -= currentAbsorb;
 
 		// Reduce shield amount
@@ -2516,8 +2491,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 	AuraList const& vManaShield = GetAurasByType(SPELL_AURA_MANA_SHIELD);
 	for (AuraList::const_iterator i = vManaShield.begin(), next; i != vManaShield.end() && RemainingDamage > 0; i = next)
 	{
-		next = i;
-		++next;
+		next = i; ++next;
 
 		// check damage school mask
 		if (((*i)->GetModifier()->m_miscvalue & schoolMask) == 0)
@@ -2540,7 +2514,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 		if (float manaMultiplier = (*i)->GetSpellProto()->EffectMultipleValue[(*i)->GetEffIndex()])
 		{
 			if (Player *modOwner = GetSpellModOwner())
-				modOwner->ApplySpellMod((*i)->GetId(), SPELLMOD_MULTIPLE_VALUE, manaMultiplier, spell);
+				modOwner->ApplySpellMod((*i)->GetId(), SPELLMOD_MULTIPLE_VALUE, manaMultiplier);
 
 			int32 maxAbsorb = int32(GetPower(POWER_MANA) / manaMultiplier);
 			if (s_currentAbsorb > maxAbsorb)
@@ -2549,6 +2523,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 			int32 manaReduction = int32(s_currentAbsorb * manaMultiplier);
 			ApplyPowerMod(POWER_MANA, manaReduction, false);
 		}
+
+        (*i)->OnManaAbsorb(currentAbsorb);
 
 		(*i)->GetModifier()->m_amount -= s_currentAbsorb;
 		if ((*i)->GetModifier()->m_amount <= 0)
@@ -2644,13 +2620,14 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
     }
 
     // Apply death prevention spells effects
-    if (preventDeathSpell && RemainingDamage >= (int32)GetHealth())
+    if (preventDeathAura && RemainingDamage >= (int32)GetHealth())
     {
-        switch (preventDeathSpell->SpellFamilyName)
+        SpellEntry const* spellInfo = preventDeathAura->GetSpellProto();
+        switch (spellInfo->SpellFamilyName)
         {
             case SPELLFAMILY_ROGUE:
             {
-                switch (preventDeathSpell->Id)
+                switch (spellInfo->Id)
                 {
                     case 31228: // Cheat Death
                     case 31229:
@@ -2664,19 +2641,11 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
                         RemainingDamage = GetHealth() > health10 ? GetHealth() - health10 : 0;
                         break;
                     }
-                    case 40251: // Shadow of Death
-                    {
-                        if (RemainingDamage >= int32(GetHealth()))
-                        {
-                            RemainingDamage = GetHealth() - 1;
-                            RemoveAurasDueToSpell(40251, nullptr, AURA_REMOVE_BY_SHIELD_BREAK);
-                        }
-                        break;
-                    }
                     default: break;
                 }
             }
         }
+        preventDeathAura->OnAuraDeathPrevention(RemainingDamage);
     }
 
     *absorb = damage - RemainingDamage - *resist;
@@ -2765,19 +2734,11 @@ void Unit::AttackerStateUpdate(Unit* pVictim, WeaponAttackType attType, bool ext
 
         if (Unit* owner = GetOwner())
             if (owner->GetTypeId() == TYPEID_UNIT)
-            {
-                owner->AddThreat(pVictim);
-                owner->SetInCombatWith(pVictim);
-                pVictim->SetInCombatWith(owner);
-            }
+                owner->EngageInCombatWith(pVictim);
 
         for (auto m_guardianPet : m_guardianPets)
             if (Unit* pet = (Unit*)GetMap()->GetPet(m_guardianPet))
-            {
-                pet->AddThreat(pVictim);
-                pet->SetInCombatWith(pVictim);
-                pVictim->SetInCombatWith(pet);
-            }
+                pet->EngageInCombatWith(pVictim);
     }
 }
 
@@ -2795,7 +2756,7 @@ void Unit::DoExtraAttacks(Unit* pVictim)
 
 MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(const Unit* pVictim, WeaponAttackType attType, SpellSchoolMask schoolMask) const
 {
-    if (pVictim->IsInEvadeMode())
+    if (pVictim->GetCombatManager().IsInEvadeMode())
         return MELEE_HIT_EVADE;
 
     if (m_alwaysHit)
@@ -3001,9 +2962,11 @@ SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8
     // Dead units can't be missed, can't resist, reflect, etc
     if (!pVictim->isAlive())
         return SPELL_MISS_NONE;
+
     // Return evade for units in evade mode
-    if (pVictim->IsInEvadeMode())
+    if (pVictim->GetCombatManager().IsInEvadeMode())
         return SPELL_MISS_EVADE;
+
     // All positive spells can`t miss
     // TODO: client not show miss log for this spells - so need find info for this in dbc and use it!
     if (IsPositiveEffectMask(spell, effectMask, this, pVictim))
@@ -5180,30 +5143,20 @@ void Unit::RemoveSingleAuraFromSpellAuraHolder(uint32 spellId, SpellEffectIndex 
     }
 }
 
-void Unit::RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller)
+void Unit::RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 dispellingSpellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller)
 {
-    SpellEntry const* spellEntry = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-
-    // Custom dispel case
-    // Unstable Affliction
-    if (spellEntry->SpellFamilyName == SPELLFAMILY_WARLOCK && (spellEntry->SpellFamilyFlags & uint64(0x010000000000)))
+    SpellAuraHolderBounds spair = GetSpellAuraHolderBounds(spellId);
+    for (SpellAuraHolderMap::iterator iter = spair.first; iter != spair.second; ++iter)
     {
-        if (Aura* dotAura = GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, uint64(0x010000000000), casterGuid))
+        if (!casterGuid || iter->second->GetCasterGuid() == casterGuid)
         {
-            // use clean value for initial damage
-            int32 damage = dotAura->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_0);
-            damage *= 9;
-
-            // Remove spell auras from stack
-            RemoveAuraHolderFromStack(spellId, stackAmount, casterGuid, AURA_REMOVE_BY_DISPEL);
-
-            // backfire damage and silence
-            dispeller->CastCustomSpell(dispeller, 31117, &damage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, casterGuid);
-            return;
+            uint32 originalStacks = iter->second->GetStackAmount();
+            if (iter->second->ModStackAmount(-int32(stackAmount), nullptr))
+                RemoveSpellAuraHolder(iter->second, AURA_REMOVE_BY_DISPEL);
+            iter->second->OnDispel(dispeller, dispellingSpellId, originalStacks);
+            break;
         }
     }
-
-    RemoveAuraHolderFromStack(spellId, stackAmount, casterGuid, AURA_REMOVE_BY_DISPEL);
 }
 
 void Unit::RemoveAurasDueToSpellBySteal(uint32 spellId, ObjectGuid casterGuid, Unit* stealer)
@@ -6147,6 +6100,7 @@ void Unit::CasterHitTargetWithSpell(Unit* realCaster, Unit* target, SpellEntry c
             realCaster->AddThreat(target);
             target->SetInCombatWithAggressor(realCaster);
             realCaster->SetInCombatWithVictim(target);
+            realCaster->GetCombatManager().TriggerCombatTimer(target);
         }
 
         if (attack && spellInfo->HasAttribute(SPELL_ATTR_EX3_OUT_OF_COMBAT_ATTACK))
@@ -6397,7 +6351,7 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     }
     else
     {
-        if (((Creature*)victim)->IsInEvadeMode())
+        if (victim->GetCombatManager().IsInEvadeMode())
             return false;
     }
 
@@ -6440,6 +6394,8 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
         return false;
 
     m_attacking = victim;
+    if (CanHaveThreatList())
+        getThreatManager().setCurrentVictimByTarget(victim);
 
     if (AI())
     {
@@ -6498,6 +6454,8 @@ void Unit::CombatStop(bool includingCast, bool includingCombo)
 
     if (AI())
         AI()->CombatStop();
+
+    GetCombatManager().StopCombatTimer();
 
     ClearInCombat();
 }
@@ -6854,21 +6812,9 @@ Unit* Unit::GetOwner(WorldObject const* pov /*= nullptr*/, bool recursive /*= fa
     return owner;
 }
 
-bool Unit::IsCharmerOrOwnerPlayerOrPlayerItself() const
+bool Unit::HasMaster() const
 {
-	if (GetTypeId() == TYPEID_PLAYER)
-		return true;
-
-	return GetCharmerOrOwnerGuid().IsPlayer();
-}
-
-Player* Unit::GetCharmerOrOwnerPlayerOrPlayerItself() const
-{
-	ObjectGuid guid = GetCharmerOrOwnerGuid();
-	if (guid.IsPlayer())
-		return ObjectAccessor::FindPlayer(guid);
-
-	return GetTypeId() == TYPEID_PLAYER ? (Player*)this : NULL;
+    return HasCharmer() || GetOwnerGuid().IsUnit();
 }
 
 Unit* Unit::GetMaster(WorldObject const* pov /*= nullptr*/) const
@@ -8230,13 +8176,12 @@ void Unit::Unmount(bool from_aura)
 
 void Unit::SetInCombatWith(Unit* enemy)
 {
-    SetInCombatState(enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED), enemy);
+    SetInCombatState(enemy && enemy->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED), enemy);
 }
 
 void Unit::SetInCombatWithAggressor(Unit* aggressor, bool touchOnly/* = false*/)
 {
     // This is a wrapper for SetInCombatWith initially created to improve PvP timers responsiveness. Can be extended in the future for broader use.
-
     if (!aggressor)
         return;
 
@@ -8272,6 +8217,8 @@ void Unit::SetInCombatWithAssisted(Unit* assisted, bool touchOnly/* = false*/)
     if (!assisted)
         return;
 
+    bool pvp = false;
+
     // PvP combat participation pulse: refresh pvp timers on pvp combat (we are the assister)
     if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
     {
@@ -8292,6 +8239,8 @@ void Unit::SetInCombatWithAssisted(Unit* assisted, bool touchOnly/* = false*/)
 
                         if (assistedPlayer->IsPvPContested())
                             thisPlayer->UpdatePvPContested(true);
+
+                        pvp = true;
                     }
                 }
             }
@@ -8299,13 +8248,12 @@ void Unit::SetInCombatWithAssisted(Unit* assisted, bool touchOnly/* = false*/)
     }
 
     if (!touchOnly)
-        SetInCombatState(assisted->GetCombatTimer() > 0);
+        SetInCombatState(pvp);
 }
 
 void Unit::SetInCombatWithVictim(Unit* victim, bool touchOnly/* = false*/)
 {
     // This is a wrapper for SetInCombatWith initially created to improve PvP timers responsiveness. Can be extended in the future for broader use.
-
     if (!victim)
         return;
 
@@ -8341,10 +8289,11 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     if (!isAlive())
         return;
 
-    if (PvP || (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsTotem()))
-        m_CombatTimer = 5000;
-
     bool creatureNotInCombat = GetTypeId() == TYPEID_UNIT && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+
+    // For player itself and his pet during pvp combat enable own combat timer
+    if (PvP || creatureNotInCombat)
+        GetCombatManager().TriggerCombatTimer(PvP);
 
     SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
 
@@ -8353,16 +8302,21 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
         if (enemy)
         {
+            // TODO: Unify this combat propagation with linking combat propagation in threat system
             Unit* controller = HasCharmer() ? GetCharmer() : GetOwner();
             if (controller && enemy->CanAttack(controller) && !hasUnitState(UNIT_STAT_FEIGN_DEATH))
             {
                 if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                {
                     controller->SetInCombatWith(enemy); // player only enters combat
+                    enemy->AddThreat(controller);
+                }
                 else if (controller->isInCombat())
                 {
                     controller->AddThreat(enemy);
                     enemy->AddThreat(controller);
                     enemy->SetInCombatWith(controller);
+                    enemy->GetCombatManager().TriggerCombatTimer(controller);
                 }
                 else
                     controller->AI()->AttackStart(enemy);
@@ -8406,15 +8360,40 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     }
 }
 
+void Unit::EngageInCombatWith(Unit* enemy)
+{
+    MANGOS_ASSERT(enemy);
+    AddThreat(enemy);
+    SetInCombatWith(enemy);
+    enemy->SetInCombatWith(this);
+    GetCombatManager().TriggerCombatTimer(enemy);
+}
+
+void Unit::EngageInCombatWithAggressor(Unit* aggressor)
+{
+    MANGOS_ASSERT(aggressor);
+    SetInCombatWithAggressor(aggressor);
+    aggressor->SetInCombatWithAggressor(this);
+    GetCombatManager().TriggerCombatTimer(aggressor);
+}
+
 void Unit::ClearInCombat()
 {
-    m_CombatTimer = 0;
-    m_evadeTimer = 0;
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
 
     if (GetTypeId() == TYPEID_PLAYER)
         static_cast<Player*>(this)->pvpInfo.inPvPCombat = false;
+}
+
+void Unit::HandleExitCombat()
+{
+    if (AI() && !IsClientControlled())
+        AI()->EnterEvadeMode();
+    else
+        CombatStop();
+
+    CallForAllControlledUnits([](Unit* unit) { unit->HandleExitCombat(); }, CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_TOTEMS);
 }
 
 int32 Unit::ModifyHealth(int32 dVal)
@@ -8677,6 +8656,14 @@ void Unit::UpdateVisibilityAndView()
     GetViewPoint().Event_ViewPointVisibilityChanged();
 }
 
+SpellSchoolMask Unit::GetMainAttackSchoolMask()
+{
+    if (UnitAI* ai = AI())
+        return ai->GetMainAttackSchoolMask();
+    else
+        return GetMeleeDamageSchoolMask();
+}
+
 void Unit::SetVisibility(UnitVisibility x)
 {
     m_Visibility = x;
@@ -8876,8 +8863,7 @@ void Unit::SetDeathState(DeathState s)
         i_motionMaster.Clear(false, true);
         i_motionMaster.MoveIdle();
 
-        m_evadeTimer = 0;
-        m_evadeMode = EVADE_NONE;
+        GetCombatManager().StopEvade();
 
         ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, false);
         ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, false);
@@ -9062,12 +9048,6 @@ bool Unit::SelectHostileTarget()
 
     if (target)
     {
-        if (IsLeashingTarget(target))
-        {
-            AI()->EnterEvadeMode();
-            return false;
-        }
-
         // needs a much better check, seems to cause quite a bit of trouble
         SetInFront(target);
 
@@ -9080,12 +9060,13 @@ bool Unit::SelectHostileTarget()
         {
             if (!GetMotionMaster()->GetCurrent()->IsReachable() || !target->isInAccessablePlaceFor(this))
             {
-                if (!IsInEvadeMode())
-                    StartEvadeTimer();
+                if (!GetCombatManager().IsInEvadeMode())
+                    GetCombatManager().StartEvadeTimer();
             }
-            else if (IsInEvadeMode())
-                StopEvade();
+            else if(GetCombatManager().IsInEvadeMode())
+                GetCombatManager().StopEvade();
         }
+
         return true;
     }
     if (IsIgnoringRangedTargets() && !getThreatManager().isThreatListEmpty())
@@ -9291,21 +9272,6 @@ bool Unit::IsOfflineTarget(Unit* victim) const
         return true;
 
     return false;
-}
-
-bool Unit::IsLeashingTarget(Unit* victim) const
-{
-    float AttackDist = GetAttackDistance(victim);
-    float ThreatRadius = sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS);
-    float x, y, z, ori;
-    if (GetTypeId() == TYPEID_UNIT)
-        static_cast<Creature const*>(this)->GetCombatStartPosition(x, y, z, ori);
-    else
-        GetPosition(x, y, z);
-
-    // Use AttackDistance in distance check if threat radius is lower. This prevents creature bounce in and out of combat every update tick.
-    // TODO: Implement proper leashing. In the meantime, we ignore leashing for all creatures in dungeon though this is not always true
-    return !GetMap()->IsDungeon() && !victim->IsWithinDist3d(x, y, z, ThreatRadius > AttackDist ? ThreatRadius : AttackDist);
 }
 
 uint32 Unit::GetCreatureType() const
@@ -10965,28 +10931,6 @@ void Unit::SetPvP(bool state)
     }
 }
 
-struct SetEvadeHelper
-{
-    explicit SetEvadeHelper(EvadeState _state) : state(_state) {}
-    void operator()(Unit* unit) const { unit->SetEvade(state); }
-    EvadeState state;
-};
-
-void Unit::SetEvade(EvadeState state)
-{
-    if (m_evadeMode == state)
-        return;
-
-    if (state == EVADE_NONE && m_evadeMode == EVADE_HOME)
-        AI()->SetAIOrder(ORDER_NONE);
-    else if (state == EVADE_HOME)
-        AI()->SetAIOrder(ORDER_EVADE);
-    m_evadeMode = state;
-    // Do not propagate during charm
-    if (!HasCharmer())
-        CallForAllControlledUnits(SetEvadeHelper(state), CONTROLLED_PET | CONTROLLED_TOTEMS | CONTROLLED_GUARDIANS | CONTROLLED_CHARM);
-}
-
 bool Unit::IsPvPFreeForAll() const
 {
     // Pre-WotLK free for all check (query player in charge)
@@ -11432,9 +11376,8 @@ bool Unit::TakePossessOf(Unit* possessed)
     if (const Player* controllingClientPlayer = possessed->GetClientControlling())
         controllingClientPlayer->UpdateClientControl(possessed, false);
 
-    // stop combat but keep threat list
+    // stop attacking
     possessed->AttackStop(true, true);
-    possessed->ClearInCombat();
 
     Creature* possessedCreature = nullptr;
     Player* possessedPlayer = nullptr;
@@ -11485,6 +11428,12 @@ bool Unit::TakePossessOf(Unit* possessed)
     if (possessed->IsImmuneToNPC() != immuneNPC)
         possessed->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
 
+    if (!isInCombat())
+    {
+        possessed->GetCombatManager().StopCombatTimer();
+        possessed->ClearInCombat();
+    }
+
     if (player)
     {
         player->GetCamera().SetView(possessed);
@@ -11529,9 +11478,8 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
     if (const Player* controllingClientPlayer = charmed->GetClientControlling())
         controllingClientPlayer->UpdateClientControl(charmed, false);
 
-    // stop combat but keep threat list
+    // stop attacking
     charmed->AttackStop(true, true);
-    charmed->ClearInCombat();
 
     charmed->SetCharmerGuid(GetObjectGuid());
     if (advertised)
@@ -11653,11 +11601,11 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
             charmed->AddThreat(enemy, 0.f);
     }
 
-    //if (!isInCombat())
-    //{
-    //    charmed->GetCombatManager().StopCombatTimer();
-    //    charmed->ClearInCombat();
-    //}
+    if (!isInCombat())
+    {
+        charmed->GetCombatManager().StopCombatTimer();
+        charmed->ClearInCombat();
+    }
 
     if (UnitAI* ai = charmed->AI())
         ai->JustGotCharmed(this);
@@ -11762,7 +11710,9 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
     Creature* charmedCreature = nullptr;
     CharmInfo* charmInfo = charmed->GetCharmInfo();
 
-    charmed->SetEvade(EVADE_NONE); // if charm expires mid evade clear evade since movement is also cleared - TODO: maybe should be done on HomeMovementGenerator::MovementExpires?
+    // if charm expires mid evade clear evade since movement is also cleared
+    // TODO: maybe should be done on HomeMovementGenerator::MovementExpires
+    charmed->GetCombatManager().SetEvadeState(EVADE_NONE); 
 
     if (charmed->GetTypeId() == TYPEID_UNIT)
     {
@@ -11846,10 +11796,7 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
         if (charmed->CanAttack(this))
         {
             if (!charmed->isInCombat())
-            {
-                SetInCombatWithVictim(charmed);
-                charmed->SetInCombatWithAggressor(this);
-            }
+                EngageInCombatWithAggressor(charmed);
             else
             {
                 if (charmed->GetTypeId() == TYPEID_UNIT)

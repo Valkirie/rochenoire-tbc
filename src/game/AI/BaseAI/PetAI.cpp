@@ -101,7 +101,7 @@ void PetAI::AttackStart(Unit* who)
         return;
 
     // Do not start attack if target is moving home
-    if (who->IsEvadingHome())
+    if (who->GetCombatManager().IsEvadingHome())
         return;
 
     if (m_unit->Attack(who, m_meleeEnabled))
@@ -118,6 +118,7 @@ void PetAI::AttackStart(Unit* who)
 
 void PetAI::EnterEvadeMode()
 {
+    m_unit->CombatStop();
 }
 
 void PetAI::UpdateAI(const uint32 diff)
@@ -140,7 +141,7 @@ void PetAI::UpdateAI(const uint32 diff)
     Unit* victim = (pet && pet->GetModeFlags() & PET_MODE_DISABLE_ACTIONS) ? nullptr : m_unit->getVictim();
 
     // Do not continue attacking if victim is moving home
-    if (victim && victim->IsEvadingHome())
+    if (victim && victim->GetCombatManager().IsEvadingHome())
         victim = nullptr;
 
     // Stop auto attack and chase if victim was dropped
@@ -190,7 +191,7 @@ void PetAI::UpdateAI(const uint32 diff)
             {
                 uint32 spellId = charminfo->GetSpellOpener();
                 SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-                Spell* spell = new Spell(m_unit, spellInfo, false);
+                Spell* spell = new Spell(m_unit, spellInfo, TRIGGERED_NONE);
 
                 // Push back stored spell
                 targetSpellStore.push_back(TargetSpellList::value_type(victim, spell));
@@ -238,7 +239,7 @@ void PetAI::UpdateAI(const uint32 diff)
                 else if (IsNonCombatSpell(spellInfo))
                     continue;
 
-                Spell* spell = new Spell(m_unit, spellInfo, false);
+                Spell* spell = new Spell(m_unit, spellInfo, TRIGGERED_NONE);
 
                 if (inCombat && spell->CanAutoCast(victim))
                 {

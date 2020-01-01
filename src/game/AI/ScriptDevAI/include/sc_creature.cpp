@@ -388,16 +388,13 @@ void ScriptedAI::SetEquipmentSlots(bool loadDefault, int32 mainHand, int32 offHa
 enum
 {
     NPC_BROODLORD               = 12017,
-    NPC_VOID_REAVER             = 19516,
     NPC_TALON_KING_IKISS        = 18473,
     NPC_KARGATH_BLADEFIST       = 16808,
-    NPC_NETHERMANCER_SEPETHREA  = 19221,
     NPC_MOROES                  = 15687,
     NPC_MOROGRIM_TIDEWALKER     = 21213,
     NPC_KELIDAN_THE_BREAKER     = 17377,
     NPC_NAZAN                   = 17536,
     NPC_VAZRUDEN                = 17537,
-    NPC_BLACK_STALKER           = 17882,
     NPC_LEOTHERAS               = 21215,
 
     // Black Temple
@@ -422,7 +419,7 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
         return false;
     }
 
-    if (m_creature->IsInEvadeMode() || !m_creature->getVictim())
+    if (m_creature->GetCombatManager().IsInEvadeMode() || !m_creature->getVictim())
         return false;
 
     float x = m_creature->GetPositionX();
@@ -435,10 +432,6 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
             if (z > 448.60f)
                 return false;
             break;
-        case NPC_VOID_REAVER:                               // void reaver (calculate from center of room)
-            if (m_creature->GetDistance2d(432.59f, 371.93f) < 105.0f)
-                return false;
-            break;
         case NPC_TALON_KING_IKISS:
         {
             m_creature->GetRespawnCoord(x, y, z);
@@ -448,10 +441,6 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
         }
         case NPC_KARGATH_BLADEFIST:
             if (x < 270.0f && x > 185.0f)
-                return false;
-            break;
-        case NPC_NETHERMANCER_SEPETHREA:
-            if (x > 266.0f)
                 return false;
             break;
         case NPC_MOROES:                                    // Moroes - Generate bounding box - TODO: Despawn Remaining Adds upon Evade after Death
@@ -469,10 +458,6 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
         case NPC_VAZRUDEN:
         case NPC_NAZAN:
             if (x < -1336.0f)
-                return false;
-            break;
-        case NPC_BLACK_STALKER:
-            if (x > 100.0f && y > -30.0f)
                 return false;
             break;
         case NPC_LEOTHERAS:
@@ -519,7 +504,7 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
 void ScriptedAI::DespawnGuids(GuidVector& spawns)
 {
     for (ObjectGuid& guid : spawns)
-        if (Creature* spawn = m_creature->GetMap()->GetCreature(guid))
+        if (Creature* spawn = m_creature->GetMap()->GetAnyTypeCreature(guid))
             spawn->ForcedDespawn();
     spawns.clear();
 }
@@ -527,16 +512,4 @@ void ScriptedAI::DespawnGuids(GuidVector& spawns)
 void Scripted_NoMovementAI::GetAIInformation(ChatHandler& reader)
 {
     reader.PSendSysMessage("Subclass of Scripted_NoMovementAI");
-}
-
-void Scripted_NoMovementAI::AttackStart(Unit* who)
-{
-    if (who && m_creature->Attack(who, m_meleeEnabled))
-    {
-        m_creature->AddThreat(who);
-        m_creature->SetInCombatWith(who);
-        who->SetInCombatWith(m_creature);
-
-        DoStartNoMovement(who);
-    }
 }

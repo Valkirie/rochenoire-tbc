@@ -43,11 +43,12 @@ npc_evergrove_druid
 EndContentData */
 
 #include "AI/ScriptDevAI/include/precompiled.h"
-#include "AI/ScriptDevAI/scripts/world/world_map_scripts.h"
+#include "AI/ScriptDevAI/scripts/outland/world_outland.h"
 #include "Entities/TemporarySpawn.h"
 #include "Reputation/ReputationMgr.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 #include "Spells/Spell.h"
+#include "Spells/Scripts/SpellScript.h"
 
 /*######
 ## mobs_nether_drake
@@ -1884,6 +1885,8 @@ struct npc_fel_cannon : public Scripted_NoMovementAI
             }
 
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NOT_SELECTABLE);
+
+            m_creature->GetCombatManager().SetLeashingDisable(true);
         }
     }
 
@@ -3989,6 +3992,14 @@ UnitAI* GetAI_npc_grand_collector(Creature* creature)
     return new npc_grand_collectorAI(creature);
 }
 
+struct EtherealRingSignalFlare : public SpellScript
+{
+    void OnDestTarget(Spell* spell) const override
+    {
+        spell->m_targets.m_destZ = 342.9485f; // confirmed with sniffs
+    }
+};
+
 void AddSC_blades_edge_mountains()
 {
     Script* pNewScript = new Script;
@@ -4149,4 +4160,6 @@ void AddSC_blades_edge_mountains()
     pNewScript->Name = "npc_grand_collector";
     pNewScript->GetAI = &GetAI_npc_grand_collector;
     pNewScript->RegisterSelf();
+
+    RegisterSpellScript<EtherealRingSignalFlare>("spell_ethereal_ring_signal_flare");
 }

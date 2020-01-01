@@ -34,6 +34,7 @@
 #include "Globals/SharedDefines.h"
 #include "Combat/ThreatManager.h"
 #include "Combat/HostileRefManager.h"
+#include "Combat/CombatManager.h"
 #include "MotionGenerators/FollowerReference.h"
 #include "MotionGenerators/FollowerRefManager.h"
 #include "Utilities/EventProcessor.h"
@@ -928,7 +929,7 @@ enum SpellAuraProcResult
 {
     SPELL_AURA_PROC_OK              = 0,                    // proc was processed, will remove charges
     SPELL_AURA_PROC_FAILED          = 1,                    // proc failed - if at least one aura failed the proc, charges won't be taken
-    SPELL_AURA_PROC_CANT_TRIGGER    = 2                     // aura can't trigger - skip charges taking, move to next aura if exists
+    SPELL_AURA_PROC_CANT_TRIGGER    = 2,                    // aura can't trigger - skip charges taking, move to next aura if exists
 };
 
 // Unit* victim, uint32 procAttacker, uint32 procVictim, uint32 procExtra, uint32 amount, WeaponAttackType attType, SpellEntry const* procSpell, bool dontTriggerSpecial
@@ -981,6 +982,10 @@ struct ProcExecutionData
 
     Aura* triggeredByAura;
     uint32 cooldown;
+
+    // Scripting data
+    uint32 triggeredSpellId;
+    int32 basepoints[MAX_EFFECT_INDEX] = { 0, 0, 0 };
 
     ProcExecutionData(ProcSystemArguments& data, bool isVictim);
 };
@@ -1193,13 +1198,6 @@ enum PowerDefaults
     POWER_FOCUS_DEFAULT             = 100,
     POWER_ENERGY_DEFAULT            = 100,
     POWER_HAPPINESS_DEFAULT         = 1000000,
-};
-
-enum EvadeState
-{
-    EVADE_NONE,
-    EVADE_COMBAT, // In a dungeon in combat evades all hits until target becomes reachable
-    EVADE_HOME, // When running home evades all hits and disables some AI actions
 };
 
 struct SpellProcEventEntry;                                 // used only privately
@@ -1638,7 +1636,7 @@ class Unit : public WorldObject
         void SetCanParry(const bool flag);
         void SetCanBlock(const bool flag);
 
-        bool CanReactInCombat() const { return (isAlive() && !IsCrowdControlled() && !IsEvadingHome()); }
+        bool CanReactInCombat() const { return (isAlive() && !IsCrowdControlled() && !GetCombatManager().IsEvadingHome()); }
         bool CanDodgeInCombat() const;
         bool CanDodgeInCombat(const Unit* attacker) const;
         bool CanParryInCombat() const;
@@ -1756,7 +1754,8 @@ class Unit : public WorldObject
 
         bool IsTaxiFlying()  const { return hasUnitState(UNIT_STAT_TAXI_FLIGHT); }
 
-        bool isInCombat()  const { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT); }
+        bool isInCombat() const { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT); }
+        // unidirectional API - only use when absolutely necessary
         void SetInCombatState(bool PvP, Unit* enemy = nullptr);
         void SetInCombatWith(Unit* enemy);
         void SetInCombatWithAggressor(Unit* aggressor, bool touchOnly = false);
@@ -1765,8 +1764,11 @@ class Unit : public WorldObject
         inline void SetOutOfCombatWithAssisted(Unit* assisted) { SetInCombatWithAssisted(assisted, true); }
         void SetInCombatWithVictim(Unit* victim, bool touchOnly = false);
         inline void SetOutOfCombatWithVictim(Unit* victim) { SetInCombatWithVictim(victim, true); }
+        // bidirectional api - we need info about who is the attacker - handles leashing
+        void EngageInCombatWith(Unit* enemy);
+        void EngageInCombatWithAggressor(Unit* aggressor);
         void ClearInCombat();
-        uint32 GetCombatTimer() const { return m_CombatTimer; }
+        void HandleExitCombat();
 
         SpellAuraHolderBounds GetSpellAuraHolderBounds(uint32 spell_id)
         {
@@ -1903,6 +1905,7 @@ class Unit : public WorldObject
         bool HasCharm(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? GetCharmGuid().IsUnit() : (GetCharmGuid() == exactGuid)); }
         bool HasCharmer(ObjectGuid const& exactGuid) const { return exactGuid.IsUnit() && GetCharmerGuid().IsUnit() && GetCharmerGuid() == exactGuid; }
         bool HasCharmer() const { return GetCharmerGuid().IsUnit(); }
+        bool HasMaster() const;
         bool HasTarget(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? GetTargetGuid().IsUnit() : (GetTargetGuid() == exactGuid)); }
         bool HasChannelObject(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? !(GetChannelObjectGuid().IsEmpty()) : (GetChannelObjectGuid() == exactGuid)); }
 
@@ -2051,7 +2054,7 @@ class Unit : public WorldObject
 
         // removing specific aura FROM stack by diff reasons and selections
         void RemoveAuraHolderFromStack(uint32 spellId, uint32 stackAmount = 1, ObjectGuid casterGuid = ObjectGuid(), AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
-        void RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller);
+        void RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 dispellingSpellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller);
 
         void DelaySpellAuraHolder(uint32 spellId, int32 delaytime, ObjectGuid casterGuid);
 
@@ -2176,6 +2179,8 @@ class Unit : public WorldObject
         inline void SetMeleeDamageSchool(bool main, SpellSchools school) { SetAttackDamageSchool((main ? BASE_ATTACK : OFF_ATTACK), school); }
         inline void SetMeleeDamageSchool(SpellSchools school) { SetMeleeDamageSchool(true, school); SetMeleeDamageSchool(false, school); }
 
+        SpellSchoolMask GetMainAttackSchoolMask();
+
         // Visibility system
         UnitVisibility GetVisibility() const { return m_Visibility; }
         void SetVisibility(UnitVisibility x);
@@ -2203,7 +2208,6 @@ class Unit : public WorldObject
         bool SelectHostileTarget();
         bool IsSuppressedTarget(Unit* target) const;
         bool IsOfflineTarget(Unit* victim) const;
-        bool IsLeashingTarget(Unit* victim) const;
         void TauntUpdate();
         void FixateTarget(Unit* taunter);
         ThreatManager& getThreatManager() { return GetCombatData()->threatManager; }
@@ -2213,6 +2217,11 @@ class Unit : public WorldObject
         HostileRefManager& getHostileRefManager() { return GetCombatData()->hostileRefManager; }
         void SetNoThreatState(bool state) { m_noThreat = state; }
         bool GetNoThreatState() { return m_noThreat; }
+
+        CombatManager& GetCombatManager() { return m_combatManager; }
+        CombatManager const& GetCombatManager() const { return const_cast<Unit*>(this)->m_combatManager; }
+        void TriggerEvadeEvents();
+        void EvadeTimerExpired();
 
         Aura* GetAura(uint32 spellId, SpellEffectIndex effindex);
         Aura* GetAura(AuraType type, SpellFamily family, uint64 familyFlag, ObjectGuid casterGuid = ObjectGuid());
@@ -2290,6 +2299,9 @@ class Unit : public WorldObject
         uint32 MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto = nullptr, DamageEffectType damagetype = DIRECT_DAMAGE, uint32 stack = 1, bool flat = true);
 
         bool IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder* holder, SpellProcEventEntry const*& spellProcEvent);
+        // only to be used in proc handlers - basepoints is expected to be a MAX_EFFECT_INDEX sized array
+        SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, uint32 triggeredSpellId, Item* castItem, Aura* triggeredByAura, uint32 cooldown);
+        SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, SpellEntry const* spellInfo, Item* castItem, Aura* triggeredByAura, uint32 cooldown);
         // Aura proc handlers
         SpellAuraProcResult HandleDummyAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleHasteAuraProc(ProcExecutionData& data);
@@ -2433,15 +2445,6 @@ class Unit : public WorldObject
         virtual bool CanWalk() const = 0;
         virtual bool IsFlying() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING); }
 
-        void TriggerEvadeEvents();
-        void EvadeTimerExpired();
-        bool IsInEvadeMode() const { return m_evadeTimer > 0 || m_evadeMode; }
-        bool IsEvadingHome() const { return m_evadeMode == EVADE_HOME; }
-        bool IsEvadeRegen() const { return (m_evadeTimer > 0 && m_evadeTimer <= 5000) || m_evadeMode; } // Only regen after 5 seconds, or when in permanent evade
-        void StartEvadeTimer() { m_evadeTimer = 10000; } // 10 seconds after which action is taken
-        void StopEvade(); // Stops either timer or evade state
-        void SetEvade(EvadeState state); // Propagated to pets
-
         // Take possession of an unit (pet, creature, ...)
         bool TakePossessOf(Unit* possessed);
 
@@ -2464,11 +2467,14 @@ class Unit : public WorldObject
         void Uncharm(Unit* charmed, uint32 spellId = 0);
 
         // Combat prevention
-        bool CanEnterCombat() { return m_canEnterCombat && !IsEvadingHome(); }
+        bool CanEnterCombat() { return m_canEnterCombat && !GetCombatManager().IsEvadingHome(); }
         void SetCanEnterCombat(bool can) { m_canEnterCombat = can; }
 
         void SetIgnoreRangedTargets(bool state) { m_ignoreRangedTargets = state; }
         bool IsIgnoringRangedTargets() { return m_ignoreRangedTargets; }
+
+        void SetSupportThreatOnly(bool state) { m_supportThreatOnly = state; }
+        bool IsSupportThreatOnly() { return m_supportThreatOnly; }
 
         float GetAttackDistance(Unit const* pl) const;
         virtual uint32 GetDetectionRange() const { return 20.f; }
@@ -2522,8 +2528,6 @@ class Unit : public WorldObject
         void _UpdateSpells(uint32 time);
         void _UpdateAutoRepeatSpell();
         bool m_AutoRepeatFirstCast;
-
-        EvadeState GetEvade() const { return m_evadeMode; }
 
         uint32 m_attackTimer[MAX_ATTACK];
 
@@ -2579,6 +2583,7 @@ class Unit : public WorldObject
         bool m_isSpawningLinked;
 
         CombatData* m_combatData;
+        CombatManager m_combatManager;
 
         // base speeds set by model/template
         float m_baseSpeedWalk;
@@ -2633,7 +2638,6 @@ class Unit : public WorldObject
         static void JustKilledCreature(Unit* killer, Creature* victim, Player* responsiblePlayer);
 
         uint32 m_state;                                     // Even derived shouldn't modify
-        uint32 m_CombatTimer;
 
         AttackerSet m_attackers;                            // Used to help know who is currently attacking this unit
         Spell* m_currentSpells[CURRENT_MAX_SPELL];
@@ -2668,13 +2672,11 @@ class Unit : public WorldObject
 
         bool m_alwaysHit;
         bool m_noThreat;
+        bool m_supportThreatOnly;
         bool m_ignoreRangedTargets;                         // Ignores ranged targets when picking someone to attack
 
         // guard to prevent chaining extra attacks
         bool m_extraAttacksExecuting;
-
-        uint32 m_evadeTimer; // Used for evade during combat when mob is not running home and target isnt reachable
-        EvadeState m_evadeMode; // Used for evade during running home
 
         uint64 m_auraUpdateMask;
 

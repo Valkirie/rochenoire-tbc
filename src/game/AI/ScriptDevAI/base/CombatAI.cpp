@@ -62,6 +62,7 @@ void RangedCombatAI::AddMainSpell(uint32 spellId)
         SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(m_mainSpellId);
         m_mainSpellCost = Spell::CalculatePowerCost(spellInfo, m_creature);
         m_mainSpellMinRange = GetSpellMinRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex));
+        m_mainAttackMask = SpellSchoolMask(m_mainAttackMask + spellInfo->SchoolMask);
     }
     m_mainSpells.insert(spellId);
 }
@@ -165,7 +166,6 @@ CanCastResult RangedCombatAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uin
             {
                 switch (castResult)
                 {
-                    case CAST_FAIL_COOLDOWN:
                     case CAST_FAIL_POWER:
                     case CAST_FAIL_TOO_CLOSE:
                         SetCurrentRangedMode(false);

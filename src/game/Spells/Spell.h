@@ -28,7 +28,6 @@
 #include "Entities/Player.h"
 #include "Server/SQLStorages.h"
 #include "Spells/SpellEffectDefines.h"
-#include "Spells/SpellMgr.h"
 
 class WorldSession;
 class WorldPacket;
@@ -38,6 +37,7 @@ class GameObject;
 class Group;
 class Aura;
 struct SpellTargetEntry;
+struct SpellScript;
 
 enum SpellCastFlags
 {
@@ -446,7 +446,7 @@ class Spell
         };
         typedef std::vector<CreaturePosition> CreatureSummonPositions;
 
-        bool DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype);
+        bool DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype, bool reportError = true);
         bool DoSummonPet(SpellEffectIndex eff_idx);
         bool DoSummonTotem(CreatureSummonPositions& list, SpellEffectIndex eff_idx, uint8 slot_dbc = 0);
         bool DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
@@ -459,8 +459,6 @@ class Spell
 
         template<typename T> WorldObject* FindCorpseUsing();
 
-        bool CheckTargetGOScript(GameObject* target, SpellEffectIndex eff) const;
-        bool CheckTargetScript(Unit* target, SpellEffectIndex eff) const;
         bool CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, CheckException exception = EXCEPTION_NONE) const;
         bool CanAutoCast(Unit* target);
 
@@ -542,6 +540,7 @@ class Spell
         bool IsNeedSendToClient() const;                    // use for hide spell cast for client in case when cast not have client side affect (animation or log entries)
         bool IsTriggeredSpellWithRedundantCastTime() const; // use for ignore some spell data for triggered spells like cast time, some triggered spells have redundent copy data from main spell for client use purpose
         bool IsTriggeredByAura() const { return m_triggeredByAuraSpell != nullptr; }
+        SpellEntry const* GetTriggeredByAuraSpellInfo() const { return m_triggeredByAuraSpell; }
 
         CurrentSpellTypes GetCurrentContainer() const;
 
@@ -580,10 +579,26 @@ class Spell
         uint64 GetScriptValue() const { return m_scriptValue; }
         void SetScriptValue(uint64 value) { m_scriptValue = value; }
 
-        // Spell Script hooks
-        void OnSuccessfulSpellStart();
-        void OnSuccessfulSpellFinish();
+        // Scripting system
+        SpellScript* GetSpellScript() const { return m_spellScript; }
+        // hooks
+        void OnInit();
+        void OnSuccessfulStart();
+        void OnSuccessfulFinish();
         SpellCastResult OnCheckCast(bool strict);
+        void OnEffectExecute(SpellEffectIndex effIndex);
+        void OnDestTarget();
+        bool OnCheckTarget(GameObject* target, SpellEffectIndex eff) const;
+        bool OnCheckTarget(Unit* target, SpellEffectIndex eff) const;
+        void OnCast();
+        void OnHit();
+        void OnAfterHit();
+        // effect execution info access - only to be used in OnEffectExecute OnHit and OnAfterHit
+        Unit* GetUnitTarget() { return unitTarget; }
+        Item* GetItemTarget() { return itemTarget; }
+        GameObject* GetGOTarget() { return gameObjTarget; }
+        uint32 GetDamage() { return damage; }
+        void SetDamage(uint32 newDamage) { damage = newDamage; }
 
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
@@ -759,11 +774,9 @@ class Spell
         SpellInfoList m_TriggerSpells;                      // casted by caster to same targets settings in m_targets at success finish of current spell
         SpellInfoList m_preCastSpells;                      // casted by caster to each target at spell hit before spell effects apply
 
-        //*****************************************
-        // Spell scripting subsystem
-        //*****************************************
-        // persistent value to enable storing in script
-        uint64 m_scriptValue;
+        // Scripting System
+        uint64 m_scriptValue; // persistent value for spell script state
+        SpellScript* m_spellScript;
 
         uint32 m_spellState;
         uint32 m_timer;

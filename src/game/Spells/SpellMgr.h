@@ -403,6 +403,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 8247:          // Wandering Plague
         case 8279:          // Stealth Detection
         case 8393:          // Barbs
+        case 8599:          // Enrage
         case 8601:          // Slowing Poison
         case 8876:          // Thrash
         case 9205:          // Hate to Zero (Hate to Zero)
@@ -1293,6 +1294,19 @@ inline bool IsChainAOESpell(SpellEntry const* spellInfo)
     }
 }
 
+inline bool IsSpellCanTargetUnattackable(SpellEntry const* spellInfo) // TODO: Remove through targeting research
+{
+    switch (spellInfo->Id) // spells that target minipets, which are inherently non attackable
+    {
+        case 33346:
+        case 33827:
+        case 44877:
+            return true;
+        default:
+            return false;
+    }
+}
+
 inline bool IsDispelSpell(SpellEntry const* spellInfo)
 {
     return IsSpellHaveEffect(spellInfo, SPELL_EFFECT_DISPEL);
@@ -1325,7 +1339,7 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 802:                                   // Mutate Bug (AQ40, Emperor Vek'nilash)
                 case 804:                                   // Explode Bug (AQ40, Emperor Vek'lor)
                 case 23138:                                 // Gate of Shazzrah (MC, Shazzrah)
-                case 23173:                                 // Brood Affliction (BWL, Chromaggus)
+                case 23173:                                 // Brood Affliction (BWL, Chromaggus) - TODO: Remove along with rework
                 case 24019:                                 // Axe Flurry (ZG - Gurubashi Axe Thrower)
                 case 24150:                                 // Stinger Charge Primer (AQ20, Hive'Zara Stinger)
                 case 24781:                                 // Dream Fog (Emerald Dragons)
@@ -1382,8 +1396,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 26457:                                 // Drain Mana (correct number has to be researched)
                 case 26559:
                     return 12;
-                case 26052:                                 // Poison Bolt Volley (AQ40, Princess Huhuran)
-                    return 15;
                 case 46771:                                 // Flame Sear (SWP, Grand Warlock Alythess)
                     return urand(3, 5);
                 case 42471:                                 // Hatch Eggs
@@ -1402,17 +1414,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 23603:                                 // Wild Polymorph (BWL, Nefarian)
                 case 38194:                                 // Blink
                     return 1;
-                default:
-                    break;
-            }
-            break;
-        }
-        case SPELLFAMILY_HUNTER:
-        {
-            switch (spellInfo->Id)
-            {
-                case 26180:                                 // Wyvern Sting (AQ40, Princess Huhuran)
-                    return 10;
                 default:
                     break;
             }

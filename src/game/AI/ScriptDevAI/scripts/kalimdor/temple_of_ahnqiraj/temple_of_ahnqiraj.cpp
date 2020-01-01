@@ -133,7 +133,11 @@ void instance_temple_of_ahnqiraj::OnCreatureCreate(Creature* creature)
         case NPC_MASTERS_EYE:
         case NPC_OURO_SPAWNER:
         case NPC_CTHUN:
+        case NPC_VISCIDUS:
             m_npcEntryGuidStore[creature->GetEntry()] = creature->GetObjectGuid();
+            break;
+        case NPC_POISON_CLOUD:
+            m_bugTrioSpawns.push_back(creature->GetObjectGuid());
             break;
     }
 }
@@ -147,6 +151,8 @@ void instance_temple_of_ahnqiraj::OnObjectCreate(GameObject* pGo)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_TWINS_ENTER_DOOR:
+            if (m_auiEncounter[TYPE_HUHURAN] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_TWINS_EXIT_DOOR:
             if (m_auiEncounter[TYPE_TWINS] == DONE)
@@ -162,6 +168,23 @@ void instance_temple_of_ahnqiraj::OnObjectCreate(GameObject* pGo)
     m_goEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
+void instance_temple_of_ahnqiraj::OnCreatureRespawn(Creature* creature)
+{
+    switch (creature->GetEntry())
+    {
+        case NPC_VISCIDUS_TRIGGER:
+        {
+            if (Creature* viscidus = GetSingleCreatureFromStorage(NPC_VISCIDUS))
+                viscidus->AI()->JustSummoned(creature);
+            break;
+        }
+        case NPC_QIRAJI_SCARAB:
+        case NPC_QIRAJI_SCORPION:
+            creature->SetCorpseDelay(5);
+            break;
+    }   
+}
+
 void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
@@ -172,11 +195,20 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
                 DoUseDoorOrButton(GO_SKERAM_GATE);
             break;
         case TYPE_BUG_TRIO:
-            if (uiData == SPECIAL)
+            if (uiData > SPECIAL)
             {
                 ++m_uiBugTrioDeathCount;
-                if (m_uiBugTrioDeathCount == 3)
-                    SetData(TYPE_BUG_TRIO, DONE);
+                Creature* deadGuy = GetSingleCreatureFromStorage(uiData);
+                // notify bugs on death to heal / remove invul
+                if (Creature* vem = GetSingleCreatureFromStorage(NPC_VEM))
+                    if (vem->isAlive())
+                        vem->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, deadGuy, vem, m_uiBugTrioDeathCount);
+                if (Creature* yauj = GetSingleCreatureFromStorage(NPC_YAUJ))
+                    if (yauj->isAlive())
+                        yauj->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, deadGuy, yauj, m_uiBugTrioDeathCount);
+                if (Creature* kri = GetSingleCreatureFromStorage(NPC_KRI))
+                    if (kri->isAlive())
+                        kri->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, deadGuy, kri, m_uiBugTrioDeathCount);
 
                 // don't store any special data
                 break;
@@ -200,6 +232,10 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
                     else
                         kri->Respawn();
                 }
+                for (auto guid : m_bugTrioSpawns)
+                    if (Creature* spawn = instance->GetCreature(guid))
+                        spawn->ForcedDespawn();
+                m_bugTrioSpawns.clear();
             }
             if (uiData == IN_PROGRESS)
                 m_uiBugTrioDeathCount = 0;
@@ -208,8 +244,12 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
         case TYPE_SARTURA:
         case TYPE_FANKRISS:
         case TYPE_VISCIDUS:
+            m_auiEncounter[uiType] = uiData;
+            break;
         case TYPE_HUHURAN:
             m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_TWINS_ENTER_DOOR);
             break;
         case TYPE_TWINS:
             // Either of the twins can set data, so return to avoid double changing

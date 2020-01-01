@@ -431,6 +431,13 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         AddCustomAction(ILLIDAN_ACTION_PHASE_TRANSITION, true, [&]() { HandlePhaseTransition(); });
 
         SetDeathPrevention(true);
+        if (m_instance)
+        {
+            m_creature->GetCombatManager().SetLeashingCheck([](Unit* unit, float x, float y, float z)
+            {
+                return static_cast<ScriptedInstance*>(unit->GetInstanceData())->GetPlayerInMap(true, false) == nullptr;
+            });
+        }
         InitializeDialogueHelper(m_instance);
         Reset();
     }
@@ -1173,7 +1180,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             {
                 if (m_creature->GetHealthPercent() > 90.0f)
                     return;
-                m_creature->PlayMusic(SOUND_KIT_ILLIDAN_AGGRO);
+                m_creature->PlayMusic(SOUND_KIT_ILLIDAN_90);
                 StartNextDialogueText(SAY_ILLIDAN_MINION);
                 SetActionReadyStatus(action, false);
                 return;
@@ -1323,21 +1330,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
     void UpdateAI(const uint32 diff) override
     {
         DialogueUpdate(diff);
-
-        UpdateTimers(diff, m_creature->isInCombat());
-
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (m_instance->GetPlayerInMap(true, false) == nullptr)
-        {
-            EnterEvadeMode();
-            return;
-        }
-
-        ExecuteActions();
-
-        DoMeleeAttackIfReady();
+        CombatAI::UpdateAI(diff);
     }
 };
 

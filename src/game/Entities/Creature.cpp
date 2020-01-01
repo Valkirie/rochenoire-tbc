@@ -133,7 +133,7 @@ bool CreatureCreatePos::Relocate(Creature* cr) const
 Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_lootMoney(0), m_lootGroupRecipientId(0),
     m_lootStatus(CREATURE_LOOT_STATUS_NONE),
-    m_respawnTime(0), m_respawnDelay(25), m_corpseDelay(60), m_canAggro(false),
+    m_respawnTime(0), m_respawnDelay(25), m_respawnOverriden(false), m_respawnOverrideOnce(false), m_corpseDelay(60), m_canAggro(false),
     m_respawnradius(5.0f), m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE),
     m_equipmentId(0), m_AlreadyCallAssistance(false),
     m_isDeadByDefault(false),
@@ -456,13 +456,11 @@ bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, 
     {
         uint32 healthPercent = GetHealthPercent();
         SelectLevel();
-        UpdateAllStats(); // to be sure stats is correct regarding level of the creature
         SetHealthPercent(healthPercent);
     }
     else
     {
         SelectLevel();
-        UpdateAllStats(); // to be sure stats is correct regarding level of the creature
         if (data)
         {
             uint32 curhealth = data->curhealth ? data->curhealth : GetMaxHealth();
@@ -563,12 +561,9 @@ void Creature::ResetEntry(bool respawn)
 
     if (respawn)
     {
-        auto spawnEntriesMap = sObjectMgr.GetCreatureSpawnEntry();
-        auto itr = spawnEntriesMap.find(GetGUIDLow());
-        if (itr != spawnEntriesMap.end())
+        uint32 newEntry = sObjectMgr.GetRandomEntry(GetGUIDLow());
+        if (newEntry)
         {
-            auto& spawnList = (*itr).second;
-            uint32 newEntry = spawnList[irand(0, spawnList.size() - 1)];
             UpdateEntry(newEntry, data, eventData, false);
             AIM_Initialize();
         }
@@ -717,6 +712,11 @@ void Creature::Update(const uint32 diff)
 
             Unit::Update(diff);
 
+            // creature can be dead after Unit::Update call
+            // CORPSE/DEAD state will processed at next tick (in other case death timer will be updated unexpectedly)
+            if (!isAlive())
+                break;
+
             // Creature can be dead after unit update
             if (isAlive())
                 RegenerateAll(diff);
@@ -740,7 +740,7 @@ void Creature::RegenerateAll(uint32 update_diff)
     if (m_regenTimer != 0)
         return;
 
-    if (!isInCombat() || IsEvadeRegen())
+    if (!isInCombat() || GetCombatManager().IsEvadeRegen())
         RegenerateHealth();
 
     RegeneratePower(2.f);
@@ -1397,8 +1397,6 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
     SetMaxHealth(health);
     SetHealth(health);
 
-    SetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE, float(health));
-
     // all power types
     for (int i = POWER_MANA; i <= POWER_HAPPINESS; ++i)
     {
@@ -1420,12 +1418,13 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
             value = 0;
 
         // Mana requires an extra field to be set
-        if (i == POWER_MANA)
-            SetCreateMana(value);
-
         SetMaxPower(Powers(i), maxValue);
         SetPower(Powers(i), value);
-        SetModifierValue(UnitMods(UNIT_MOD_POWER_START + i), BASE_VALUE, float(value));
+
+        if (i == POWER_MANA)
+            SetCreateMana(value);
+        else // do not set modifier for mana
+            SetModifierValue(UnitMods(UNIT_MOD_POWER_START + i), BASE_VALUE, float(value));
     }
 
     // Armor
@@ -1442,6 +1441,8 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
     // attack power
     SetModifierValue(UNIT_MOD_ATTACK_POWER, BASE_VALUE, meleeAttackPwr * damageMod);
     SetModifierValue(UNIT_MOD_ATTACK_POWER_RANGED, BASE_VALUE, rangedAttackPwr * damageMod);
+
+    UpdateAllStats();
 }
 
 float Creature::_GetHealthMod(int32 Rank)
@@ -1509,13 +1510,8 @@ bool Creature::CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, const 
 
     Object::_Create(guidlow, newEntry, cinfo->GetHighGuid());
 
-    auto spawnEntriesMap = sObjectMgr.GetCreatureSpawnEntry();
-    auto itr = spawnEntriesMap.find(guidlow);
-    if (itr != spawnEntriesMap.end())
-    {
-        auto& spawnList = (*itr).second;
-        newEntry = spawnList[irand(0, spawnList.size() - 1)];
-    }
+    if (uint32 entry = sObjectMgr.GetRandomEntry(guidlow))
+        newEntry = entry;
 
     return UpdateEntry(newEntry, data, eventData, false);
 }
@@ -1722,8 +1718,13 @@ void Creature::SetDeathState(DeathState s)
 {
     if ((s == JUST_DIED && !m_isDeadByDefault) || (s == JUST_ALIVED && m_isDeadByDefault))
     {
-        if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
-            m_respawnDelay = data->GetRandomRespawnTime();
+        if (!m_respawnOverriden)
+        {
+            if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
+                m_respawnDelay = data->GetRandomRespawnTime();
+        }
+        else if (m_respawnOverrideOnce)
+            m_respawnOverriden = false;
 
         m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(m_corpseDelay * IN_MILLISECONDS); // the max/default time for corpse decay (before creature is looted/AllLootRemovedFromCorpse() is called)
         m_respawnTime = time(nullptr) + m_respawnDelay; // respawn delay (spawntimesecs)
@@ -1753,6 +1754,8 @@ void Creature::SetDeathState(DeathState s)
         Unit::SetDeathState(ALIVE);
 
         ResetEntry(true);
+
+        ResetSpellHitCounter();
 
         SetLootRecipient(nullptr);
         if (GetTemporaryFactionFlags() & TEMPFACTION_RESTORE_RESPAWN)
@@ -2192,9 +2195,7 @@ void Creature::SetInCombatWithZone(bool checkAttackability)
                 if (checkAttackability && !CanAttack(pPlayer))
                     continue;
 
-                AddThreat(pPlayer);
-                SetInCombatWith(pPlayer);
-                pPlayer->SetInCombatWith(this);
+                EngageInCombatWith(pPlayer);
             }
         }
     }
@@ -3077,4 +3078,19 @@ bool Creature::CanRestockPickpocketLoot() const
 void Creature::StartPickpocketRestockTimer()
 {
     m_pickpocketRestockTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(sWorld.getConfig(CONFIG_UINT32_CREATURE_PICKPOCKET_RESTOCK_DELAY) * IN_MILLISECONDS);
+}
+
+bool Creature::HasBeenHitBySpell(uint32 spellId)
+{
+    return m_hitBySpells.find(spellId) != m_hitBySpells.end();
+}
+
+void Creature::RegisterHitBySpell(uint32 spellId)
+{
+    m_hitBySpells.insert(spellId);
+}
+
+void Creature::ResetSpellHitCounter()
+{
+    m_hitBySpells.clear();
 }

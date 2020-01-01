@@ -84,9 +84,7 @@ struct boss_ragnarosAI : public CombatAI
         AddCombatAction(RAGNAROS_MIGHT_OF_RAGNAROS, 11000u);
         AddCombatAction(RAGNAROS_MAGMA_BLAST, 2000u);
         AddCombatAction(RAGNAROS_LAVA_BURST, uint32(20 * IN_MILLISECONDS));
-        m_creature->SetImmobilizedState(true);
         m_bHasAggroYelled = false;
-        Reset();
     }
 
     instance_molten_core* m_instance;
@@ -99,6 +97,8 @@ struct boss_ragnarosAI : public CombatAI
     bool m_bHasYelledMagmaBurst;
     bool m_bHasSubmergedOnce;
 
+    GuidVector m_spawns;
+
     void Reset() override
     {
         CombatAI::Reset();
@@ -109,8 +109,16 @@ struct boss_ragnarosAI : public CombatAI
         m_bHasYelledMagmaBurst = false;
         m_bHasSubmergedOnce = false;
 
+        m_creature->SetImmobilizedState(true);
+
+        m_creature->HandleEmote(EMOTE_STATE_STAND);
+        m_creature->RemoveAurasDueToSpell(SPELL_RAGNA_SUBMERGE);
+        m_creature->RemoveAurasDueToSpell(SPELL_SUBMERGE_EFFECT);
+
         DoCastSpellIfCan(nullptr, SPELL_MELT_WEAPON, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
         DoCastSpellIfCan(nullptr, SPELL_ELEMENTAL_FIRE, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+
+        DespawnGuids(m_spawns);
     }
 
     void KilledUnit(Unit* victim) override
@@ -176,13 +184,17 @@ struct boss_ragnarosAI : public CombatAI
             summoned->AI()->AttackClosestEnemy();
         }
         else if (summoned->GetEntry() == NPC_FLAME_OF_RAGNAROS)
-            summoned->CastSpell(summoned, SPELL_INTENSE_HEAT, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
+            summoned->CastSpell(nullptr, SPELL_INTENSE_HEAT, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
+
+        m_spawns.push_back(summoned->GetObjectGuid());
     }
 
-    void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
+    void SpellHitTarget(Unit* target, const SpellEntry* spellInfo, SpellMissInfo /*missInfo*/) override
     {
+        if (spellInfo->Id == SPELL_WRATH_OF_RAGNAROS)
+            m_creature->getThreatManager().modifyThreatPercent(target, -100);
         // As Majordomo is now killed, the last timer (until attacking) must be handled with ragnaros script
-        if (spellInfo->Id == SPELL_ELEMENTAL_FIRE_KILL && target->GetTypeId() == TYPEID_UNIT && target->GetEntry() == NPC_MAJORDOMO)
+        else if (spellInfo->Id == SPELL_ELEMENTAL_FIRE_KILL && target->GetTypeId() == TYPEID_UNIT && target->GetEntry() == NPC_MAJORDOMO)
             ResetTimer(RAGNAROS_ENTER_COMBAT, 10000);
     }
 
@@ -201,11 +213,8 @@ struct boss_ragnarosAI : public CombatAI
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
             if (m_instance)
             {
-                if (Player* pPlayer = m_instance->GetPlayerInMap(true, false))
-                {
-                    m_creature->AI()->AttackStart(pPlayer);
-                    return;
-                }
+                m_creature->SetInCombatWithZone();
+                AttackClosestEnemy();
             }
         }
 
@@ -253,6 +262,7 @@ struct boss_ragnarosAI : public CombatAI
                 m_creature->HandleEmote(EMOTE_STATE_STAND);
                 m_creature->RemoveAurasDueToSpell(SPELL_RAGNA_SUBMERGE);
                 m_creature->RemoveAurasDueToSpell(SPELL_SUBMERGE_EFFECT);
+                m_creature->RemoveAurasDueToSpell(SPELL_RAGNA_SUBMERGE_VISUAL);
                 ResetCombatAction(RAGNAROS_PHASE_TRANSITION, 500);
                 m_phase = PHASE_EMERGING;
                 break;
@@ -307,7 +317,7 @@ struct boss_ragnarosAI : public CombatAI
             {
                 uint32 timer = 500;
                 // If victim exists we have a target in melee range
-                if (m_creature->getVictim())
+                if (m_creature->getVictim() && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
                     m_rangeCheckState = -1;
                 // Spam Waterbolt spell when not tanked
                 else
@@ -317,13 +327,13 @@ struct boss_ragnarosAI : public CombatAI
                     {
                         if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_MAGMA_BLAST, SELECT_FLAG_PLAYER))
                         {
-                            if (DoCastSpellIfCan(nullptr, SPELL_MAGMA_BLAST) == CAST_OK)
+                            if (DoCastSpellIfCan(target, SPELL_MAGMA_BLAST) == CAST_OK)
                             {
-                                if (!m_bHasYelledMagmaBurst)
-                                {
-                                    DoScriptText(SAY_MAGMABURST, m_creature);
-                                    m_bHasYelledMagmaBurst = true;
-                                }
+                                //if (!m_bHasYelledMagmaBurst)
+                                //{
+                                //    DoScriptText(SAY_MAGMABURST, m_creature);
+                                //    m_bHasYelledMagmaBurst = true;
+                                //}
                                 timer = 2500;
                             }
                         }
