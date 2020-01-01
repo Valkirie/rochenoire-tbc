@@ -1137,9 +1137,16 @@ bool ObjectMgr::isSafeExpansionZone(uint32 mapId, uint32 zoneId) const
 	return true;
 }
 
+// TEMP, to be deleted
 float ObjectMgr::GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const
 {
-	return GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+    return GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+}
+
+uint32 ObjectMgr::GetScaleSpellTimer(Creature* creature, uint32 timer, float CoeffSpellRatio) const
+{
+    float Coeff = GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+	return (uint32)timer / Coeff;
 }
 
 float ObjectMgr::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const

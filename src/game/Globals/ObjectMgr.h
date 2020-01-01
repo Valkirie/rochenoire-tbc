@@ -1288,7 +1288,8 @@ class ObjectMgr
 
 		int sign(int x) const { return (x > 0) - (x < 0); };
 
-		float GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const;
+        uint32 GetScaleSpellTimer(Creature* creature, uint32 timer, float CoeffSpellRatio) const;
+        float GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const;
 		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const;
     protected:
 

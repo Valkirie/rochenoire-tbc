@@ -52,7 +52,6 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
 		{
 			if (SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(event.action[j].cast.spellId))
 			{
-				float Ratio_Add_SpellTimer	= 1.0f;
 				float CoeffSpellRatio		= 1.0f;
 				uint32 mapId				= creature->GetMap()->GetId();
 
@@ -60,10 +59,8 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
 				if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
 					CoeffSpellRatio = s_values->ratio_spell;
 
-				Ratio_Add_SpellTimer = sObjectMgr.GetScaleSpellTimer(creature, CoeffSpellRatio);
-
-				repeatMin = event.timer.repeatMin / Ratio_Add_SpellTimer;
-				repeatMax = event.timer.repeatMax / Ratio_Add_SpellTimer;
+				repeatMin = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMin, CoeffSpellRatio);
+				repeatMax = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMax, CoeffSpellRatio);
 			}
 		}
 	}
