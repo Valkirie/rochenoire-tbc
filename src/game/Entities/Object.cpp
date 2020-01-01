@@ -2743,8 +2743,8 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             if (value == 0)
                 return value;
 
-            Unit* p1 = ((Unit*)target)->GetCharmerOrOwnerOrSelf();
-            Unit* p2 = ((Unit*)unitCaster)->GetCharmerOrOwnerOrSelf();
+            Unit* p1 = ((Unit*)target)->GetBeneficiary();
+            Unit* p2 = ((Unit*)unitCaster)->GetBeneficiary();
 
             if (!p1 || !p2)
                 return value;

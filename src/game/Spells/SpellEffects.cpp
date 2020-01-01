@@ -3860,8 +3860,8 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(power, SpellDmgClass(m_spellInfo->DmgClass), false, powerType);
 
-	Unit *target = unitTarget->GetCharmerOrOwnerOrSelf();
-	Unit *caster = m_caster->GetCharmerOrOwnerOrSelf();
+	Unit *target = unitTarget->GetBeneficiary();
+	Unit *caster = m_caster->GetBeneficiary();
 	int32 scaled_power = sObjectMgr.ScaleDamage(caster, target, power, isScaled);
 
     int32 new_damage;
@@ -3922,8 +3922,8 @@ void Spell::EffectPowerBurn(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(uint32(power), SpellDmgClass(m_spellInfo->DmgClass), false, powertype);
 
-	Unit *target = unitTarget->GetCharmerOrOwnerOrSelf();
-	Unit *caster = m_caster->GetCharmerOrOwnerOrSelf();
+	Unit *target = unitTarget->GetBeneficiary();
+	Unit *caster = m_caster->GetBeneficiary();
 	int32 scaled_power = sObjectMgr.ScaleDamage(caster, target, power, isScaled); // We scale the mana burn
 
 	int32 new_damage = (curPower < scaled_power) ? curPower : scaled_power;

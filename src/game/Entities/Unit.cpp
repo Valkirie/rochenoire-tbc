@@ -5899,9 +5899,9 @@ void Unit::RemoveAllGameObjects()
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
 	uint32 damage = log->damage;
-	Unit *target = log->target->GetCharmerOrOwnerOrSelf();
-	Unit *caster = log->attacker->GetCharmerOrOwnerOrSelf();
-	if (target->IsPlayer() && !log->target->isCharmed())
+	Unit *target = log->target->GetBeneficiary();
+	Unit *caster = log->attacker->GetBeneficiary();
+	if (target->IsPlayer() && !log->target->HasCharmer())
 		damage = sObjectMgr.ScaleDamage(caster, target, log->damage, log->isScaled);
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
@@ -5975,9 +5975,9 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
 
 	uint32 damage = pInfo->damage;
 
-	Unit *target = aura->GetTarget()->GetCharmerOrOwnerOrSelf();
-	Unit *caster = aura->GetCaster()->GetCharmerOrOwnerOrSelf();
-	if (target->IsPlayer() && !aura->GetTarget()->isCharmed())
+	Unit *target = aura->GetTarget()->GetBeneficiary();
+	Unit *caster = aura->GetCaster()->GetBeneficiary();
+	if (target->IsPlayer() && !aura->GetTarget()->HasCharmer())
 		damage = sObjectMgr.ScaleDamage(caster, target, damage, pInfo->scaled);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
@@ -6155,9 +6155,9 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
 	uint32 totalDamage = calcDamageInfo->totalDamage;
-	Unit *target = calcDamageInfo->target->GetCharmerOrOwnerOrSelf();
-	Unit *caster = calcDamageInfo->attacker->GetCharmerOrOwnerOrSelf();
-	if (target->IsPlayer() && !calcDamageInfo->target->isCharmed())
+	Unit *target = calcDamageInfo->target->GetBeneficiary();
+	Unit *caster = calcDamageInfo->attacker->GetBeneficiary();
+	if (target->IsPlayer() && !calcDamageInfo->target->HasCharmer())
 		totalDamage = sObjectMgr.ScaleDamage(caster, target, calcDamageInfo->totalDamage, isScaled);
 
     // Subdamage count:
@@ -6178,9 +6178,9 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
         auto &line = calcDamageInfo->subDamage[i];
 
 		uint32 subDamaged = line.damage;
-		Unit *target = calcDamageInfo->target->GetCharmerOrOwnerOrSelf();
-		Unit *caster = calcDamageInfo->attacker->GetCharmerOrOwnerOrSelf();
-		if (target->IsPlayer() && !calcDamageInfo->target->isCharmed())
+		Unit *target = calcDamageInfo->target->GetBeneficiary();
+		Unit *caster = calcDamageInfo->attacker->GetBeneficiary();
+		if (target->IsPlayer() && !calcDamageInfo->target->HasCharmer())
 			subDamaged = sObjectMgr.ScaleDamage(caster, target, line.damage, isScaled);
 
         data << uint32(line.damageSchoolMask);
@@ -7063,9 +7063,9 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
 
 void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical, bool isScaled)
 {
-	Unit *target = pVictim->GetCharmerOrOwnerOrSelf();
-	Unit *caster = this->GetCharmerOrOwnerOrSelf();
-	if (target->IsPlayer() && !pVictim->isCharmed())
+	Unit *target = pVictim->GetBeneficiary();
+	Unit *caster = this->GetBeneficiary();
+	if (target->IsPlayer() && !pVictim->HasCharmer())
 		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
 
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
@@ -7080,9 +7080,9 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
-	Unit *target = pVictim->GetCharmerOrOwnerOrSelf();
-	Unit *caster = ((Unit*)this)->GetCharmerOrOwnerOrSelf();
-	if (target->IsPlayer() && !target->isCharmed())
+	Unit *target = pVictim->GetBeneficiary();
+	Unit *caster = ((Unit*)this)->GetBeneficiary();
+	if (target->IsPlayer() && !target->HasCharmer())
 		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
 
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));

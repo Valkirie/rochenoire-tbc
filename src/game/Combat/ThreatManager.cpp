@@ -461,8 +461,8 @@ void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchool
     if (!victim->isAlive() || !getOwner()->isAlive())
         return;
 
-	Unit *target = victim->GetCharmerOrOwnerOrSelf();
-	Unit *caster = getOwner()->GetCharmerOrOwnerOrSelf();
+	Unit *target = victim->GetBeneficiary();
+	Unit *caster = getOwner()->GetBeneficiary();
 
 	Unit *real_target = pSpellTarget ? pSpellTarget : target;
 	isScaled = pSpellTarget ? false : isScaled;

@@ -975,8 +975,8 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (!owner || !target)
 		return false;
 
-	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
-	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+	Unit* target1 = (Unit *)owner->GetBeneficiary();
+	Unit* target2 = (Unit *)target->GetBeneficiary();
 
 	if (!target1 || !target2)
 		return false;
@@ -1161,8 +1161,8 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	if (!target)
 		return owner->getLevel();
 
-	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
-	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+	Unit* target1 = (Unit *)owner->GetBeneficiary();
+	Unit* target2 = (Unit *)target->GetBeneficiary();
 
 	if (!target1 || !target2)
 		return target->getLevel();
@@ -1234,8 +1234,8 @@ int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
 	if (!target)
 		return 0;
 
-	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
-	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+	Unit* target1 = (Unit *)owner->GetBeneficiary();
+	Unit* target2 = (Unit *)target->GetBeneficiary();
 
 	if (!target1 || !target2)
 		return 0;
@@ -1275,8 +1275,8 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 
 	uint32 armor = oldarmor;
 
-	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
-	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+	Unit* target1 = (Unit *)owner->GetBeneficiary();
+	Unit* target2 = (Unit *)target->GetBeneficiary();
 
 	if (!target1 || !target2)
 		return oldarmor;
@@ -1286,7 +1286,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 
 	// Mind Controlled creatures should not have scaled armor
 	if (owner->IsCreature() && target->IsCreature())
-		if (owner->isCharmed() || target->isCharmed())
+		if (owner->HasCharmer() || target->HasCharmer())
 			return oldarmor;
 
 	if (target1->IsCreature() && target2->IsCreature())
@@ -1356,8 +1356,8 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 
 	float damage = olddamage;
 
-	Unit* target1 = (Unit *)owner->GetCharmerOrOwnerOrSelf();
-	Unit* target2 = (Unit *)target->GetCharmerOrOwnerOrSelf();
+	Unit* target1 = (Unit *)owner->GetBeneficiary();
+	Unit* target2 = (Unit *)target->GetBeneficiary();
 
 	if (!target1 || !target2)
 		return damage;
@@ -1367,7 +1367,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 
 	// Mind Controlled creatures should not have scaled damage dealt/received
 	if (owner->IsCreature() && target->IsCreature())
-		if (owner->isCharmed() || target->isCharmed())
+		if (owner->HasCharmer() || target->HasCharmer())
 			return damage;
 
 	// Do not scale creature's pet damage <-> creature's pet damage
@@ -1437,8 +1437,8 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 	}
 	else if (pAggro >= 2)
 	{
-		if (player->IsCharmerOrOwnerPlayerOrPlayerItself())
-			player = player->GetCharmerOrOwnerPlayerOrPlayerItself();
+        if (Player* pPlayer = player->GetBeneficiaryPlayer())
+            player = pPlayer;
 
 		if (!player)
 			return olddamage;

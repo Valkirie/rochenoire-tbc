@@ -1914,38 +1914,7 @@ class Unit : public WorldObject
         Unit* GetCreator(WorldObject const* pov = nullptr) const;
         Unit* GetTarget(WorldObject const* pov = nullptr) const;
         Unit* GetChannelObject(WorldObject const* pov = nullptr) const;
-		Unit* GetCharmerOrOwner() const { return !GetCharmerGuid().IsEmpty() ? GetCharmer() : !GetOwnerGuid().IsEmpty() ? GetOwner() : NULL; }
-		Unit* GetCharmerOrOwnerOrSelf()
-		{
-			if (!this)
-				return NULL;
 
-			if (Unit* u = GetCharmerOrOwner())
-				return u;
-
-			return this;
-		}
-
-		Unit const* GetCharmerOrOwnerOrSelf() const
-		{
-			if (!this)
-				return NULL;
-
-			Unit const*u = GetCharmerOrOwner();
-			return u ? u : this;
-		}
-
-		ObjectGuid const& GetCharmerOrOwnerGuid() const { return GetCharmerGuid() ? GetCharmerGuid() : GetOwnerGuid(); }
-		ObjectGuid const& GetCharmerOrOwnerOrOwnGuid() const
-		{
-			if (ObjectGuid const& guid = GetCharmerOrOwnerGuid())
-				return guid;
-			return GetObjectGuid();
-		}
-		bool IsCharmerOrOwnerPlayerOrPlayerItself() const;
-		Player* GetCharmerOrOwnerPlayerOrPlayerItself() const;
-
-		bool isCharmed() const { return !GetCharmerGuid().IsEmpty(); }
         void SetCharm(Unit* charmed) { SetCharmGuid(charmed ? charmed->GetObjectGuid() : ObjectGuid()); }
         void SetCharmer(Unit* charmer) { SetCharmerGuid(charmer ? charmer->GetObjectGuid() : ObjectGuid()); }
         void SetTarget(WorldObject* target) { SetTargetGuid(target ? target->GetObjectGuid() : ObjectGuid()); }
