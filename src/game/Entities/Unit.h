@@ -992,13 +992,6 @@ struct ProcExecutionData
 typedef SpellAuraProcResult(Unit::*pAuraProcHandler)(ProcExecutionData& data);
 extern pAuraProcHandler AuraProcHandler[TOTAL_AURAS];
 
-#define MAX_DECLINED_NAME_CASES 5
-
-struct DeclinedName
-{
-    std::string name[MAX_DECLINED_NAME_CASES];
-};
-
 enum CurrentSpellTypes
 {
     CURRENT_MELEE_SPELL             = 0,

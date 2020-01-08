@@ -713,24 +713,34 @@ void WorldSession::SendMotd() const
 
 void WorldSession::SendPatch() const
 {
-	std::vector<std::string> lines;
-	std::string token;
+    std::vector<std::string> lines;
+    std::string token;
 
-	std::string motd = ObjectMgr::GetPatchName();
-	std::istringstream ss(motd);
+    std::string motd = ObjectMgr::GetPatchName();
+    std::istringstream ss(motd);
 
-	while (std::getline(ss, token, '@'))
-		lines.push_back(token);
+    while (std::getline(ss, token, '@'))
+        lines.push_back(token);
 
-	WorldPacket data(SMSG_MOTD, 4);
-	data << (uint32)lines.size();
+    WorldPacket data(SMSG_MOTD, 4);
+    data << (uint32)lines.size();
 
-	for (const std::string& line : lines)
-		data << line;
+    for (const std::string& line : lines)
+        data << line;
 
-	SendPacket(data);
+    SendPacket(data);
 
-	DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
+    DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
+}
+
+void WorldSession::SendOfflineNameQueryResponses()
+{
+    m_offlineNameQueries.clear();
+
+    for (auto& response : m_offlineNameResponses)
+        SendNameQueryResponse(response);
+
+    m_offlineNameResponses.clear();
 }
 
 void WorldSession::SendAreaTriggerMessage(const char* Text, ...) const
