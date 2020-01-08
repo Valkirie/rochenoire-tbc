@@ -641,9 +641,9 @@ void AreaAura::Update(uint32 diff)
                 // flag for selection is need apply aura to current iteration target
                 bool apply = true;
 
-				uint32 target_level = sObjectMgr.getLevelScaled(target, caster);
+				uint32 target_level = sObjectMgr.getLevelScaled(caster, target);
 
-				// custom : PARTY or SAME FACTION spells should not be downscaled on target level
+				/* PARTY AURAS should not be downscaled on target level
 				switch (m_areaAuraType)
 				{
 					case AREA_AURA_PARTY:
@@ -654,7 +654,7 @@ void AreaAura::Update(uint32 diff)
 						target_level = caster->getLevel();
 						break;
 					}
-				}
+				} */
 
                 SpellEntry const* actualSpellInfo;
                 if (GetCasterGuid() == target->GetObjectGuid()) // if caster is same as target then no need to change rank of the spell
@@ -712,7 +712,7 @@ void AreaAura::Update(uint32 diff)
                 int32 actualDamage = m_modifier.m_baseAmount;
                 // recalculate basepoints for lower rank (all AreaAura spell not use custom basepoints?)
                 if (actualSpellInfo != GetSpellProto())
-                    actualBasePoints = actualSpellInfo->CalculateSimpleValue(m_effIndex);
+                    actualBasePoints = actualDamage = actualSpellInfo->CalculateSimpleValue(m_effIndex);
 
                 SpellAuraHolder* holder = target->GetSpellAuraHolder(actualSpellInfo->Id, GetCasterGuid());
 
