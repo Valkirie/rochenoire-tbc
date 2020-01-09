@@ -1207,7 +1207,10 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	if (!isSafeExpansionZone(mapId, zoneId))
 		p_level = p_level < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) ? sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) : p_level;
 
-	uint32 level = p_level + v_level;
+    uint32 level = p_level;
+    
+    if (target1->IsCreature())
+        level += v_level;
 
 	/* if (!IsDungeon)
 	{
