@@ -1379,9 +1379,9 @@ bool SpellMgr::IsSkillBonusSpell(uint32 spellId) const
 
 SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, uint32 level) const
 {
-    // fast case
+    /* fast case
     if (level + 10 >= spellInfo->spellLevel)
-        return spellInfo;
+        return spellInfo; */
 
     // ignore selection for passive spells
     if (IsPassiveSpell(spellInfo))
@@ -1406,6 +1406,26 @@ SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, 
     if (!needRankSelection || GetSpellRank(spellInfo->Id) == 0)
         return spellInfo;
 
+    // Check for higher rank of same spell if config is set to auto uprank
+    if (sWorld.getConfig(CONFIG_BOOL_AUTO_UPRANK))
+    {
+        SpellEntry const* currSpellInfo = nullptr;
+        for (uint32 nextSpellId = spellInfo->Id; nextSpellId != 0; nextSpellId = GetNextSpellInChain(nextSpellId))
+        {
+            SpellEntry const* nextSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(nextSpellId);
+            if (!nextSpellInfo)
+                break;
+
+            // if found appropriate level
+            // partial Playerbot mod: fix for core bug (commit 073cdd0e...)
+            if (level >= nextSpellInfo->spellLevel)
+                currSpellInfo = nextSpellInfo;
+        }
+
+        if (currSpellInfo)
+            return currSpellInfo;
+    }
+
     // Check for lower rank of same spell if config is set to auto downrank
     if (sWorld.getConfig(CONFIG_BOOL_AUTO_DOWNRANK))
     {
@@ -1417,7 +1437,7 @@ SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, 
 
             // if found appropriate level
             // partial Playerbot mod: fix for core bug (commit 073cdd0e...)
-            if (level + 10 >= nextSpellInfo->spellLevel || GetPrevSpellInChain(nextSpellId) == 0)
+            if (level + 10 >= nextSpellInfo->spellLevel)
                 return nextSpellInfo;
 
             // one rank less then
