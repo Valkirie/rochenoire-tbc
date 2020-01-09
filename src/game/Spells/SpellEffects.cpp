@@ -3180,32 +3180,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                 return;
             }
-            // Kill command
-            if (m_spellInfo->SpellFamilyFlags & uint64(0x00080000000000))
-            {
-                if (m_caster->getClass() != CLASS_HUNTER)
-                    return;
-
-                // clear hunter crit aura state
-                m_caster->ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, false);
-
-                // additional damage from pet to pet target
-                Pet* pet = m_caster->GetPet();
-                if (!pet || !pet->getVictim())
-                    return;
-
-                uint32 spell_id = 0;
-                switch (m_spellInfo->Id)
-                {
-                    case 34026: spell_id = 34027; break;    // rank 1
-                    default:
-                        sLog.outError("Spell::EffectDummy: Spell %u not handled in KC", m_spellInfo->Id);
-                        return;
-                }
-
-                pet->CastSpell(pet->getVictim(), spell_id, TRIGGERED_OLD_TRIGGERED);
-                return;
-            }
 
             switch (m_spellInfo->Id)
             {
@@ -5805,17 +5779,8 @@ void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
             case CLASS_WARLOCK:
             {
                 // Remove Demonic Sacrifice auras (known pet)
-                Unit::AuraList const& auraClassScripts = m_caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-                for (Unit::AuraList::const_iterator itr = auraClassScripts.begin(); itr != auraClassScripts.end();)
-                {
-                    if ((*itr)->GetModifier()->m_miscvalue == 2228)
-                    {
-                        m_caster->RemoveAurasDueToSpell((*itr)->GetId());
-                        itr = auraClassScripts.begin();
-                    }
-                    else
-                        ++itr;
-                }
+                if (Aura* aura = m_caster->GetOverrideScript(2228))
+                    m_caster->RemoveAurasDueToSpell(aura->GetId());
             }
             default:
             {
@@ -6139,18 +6104,8 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
             // Skyshatter Harness item set bonus
             // Stormstrike
             if (m_spellInfo->SpellFamilyFlags & uint64(0x001000000000))
-            {
-                Unit::AuraList const& m_OverrideClassScript = m_caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-                for (Unit::AuraList::const_iterator citr = m_OverrideClassScript.begin(); citr != m_OverrideClassScript.end(); ++citr)
-                {
-                    // Stormstrike AP Buff
-                    if ((*citr)->GetModifier()->m_miscvalue == 5634)
-                    {
-                        m_caster->CastSpell(m_caster, 38430, TRIGGERED_OLD_TRIGGERED, nullptr, *citr);
-                        break;
-                    }
-                }
-            }
+                if (Aura* aura = m_caster->GetOverrideScript(5634))
+                    m_caster->CastSpell(nullptr, 38430, TRIGGERED_OLD_TRIGGERED, nullptr, aura);
             break;
         }
     }

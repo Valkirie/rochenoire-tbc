@@ -170,7 +170,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS] =
     &Aura::HandleNoImmediateEffect,                         //109 SPELL_AURA_ADD_TARGET_TRIGGER
     &Aura::HandleModPowerRegenPCT,                          //110 SPELL_AURA_MOD_POWER_REGEN_PERCENT
     &Aura::HandleNoImmediateEffect,                         //111 SPELL_AURA_ADD_CASTER_HIT_TRIGGER implemented in Unit::SelectMagnetTarget
-    &Aura::HandleNoImmediateEffect,                         //112 SPELL_AURA_OVERRIDE_CLASS_SCRIPTS implemented in diff functions.
+    &Aura::HandleOverrideClassScript,                       //112 SPELL_AURA_OVERRIDE_CLASS_SCRIPTS implemented in diff functions.
     &Aura::HandleNoImmediateEffect,                         //113 SPELL_AURA_MOD_RANGED_DAMAGE_TAKEN implemented in Unit::MeleeDamageBonusTaken
     &Aura::HandleNoImmediateEffect,                         //114 SPELL_AURA_MOD_RANGED_DAMAGE_TAKEN_PCT implemented in Unit::MeleeDamageBonusTaken
     &Aura::HandleNoImmediateEffect,                         //115 SPELL_AURA_MOD_HEALING                 implemented in Unit::SpellBaseHealingBonusTaken
@@ -223,7 +223,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS] =
     &Aura::HandleAuraPowerBurn,                             //162 SPELL_AURA_POWER_BURN_MANA
     &Aura::HandleNoImmediateEffect,                         //163 SPELL_AURA_MOD_CRIT_DAMAGE_BONUS      implemented in Unit::CalculateMeleeDamage and Unit::SpellCriticalDamageBonus
     &Aura::HandleUnused,                                    //164 useless, only one test spell
-    &Aura::HandleNoImmediateEffect,                         //165 SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS implemented in Unit::MeleeDamageBonusDone
+    &Aura::HandleUnused,                                    //165 SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS implemented in Unit::MeleeDamageBonusDone
     &Aura::HandleAuraModAttackPowerPercent,                 //166 SPELL_AURA_MOD_ATTACK_POWER_PCT
     &Aura::HandleAuraModRangedAttackPowerPercent,           //167 SPELL_AURA_MOD_RANGED_ATTACK_POWER_PCT
     &Aura::HandleNoImmediateEffect,                         //168 SPELL_AURA_MOD_DAMAGE_DONE_VERSUS            implemented in Unit::SpellDamageBonusDone, Unit::MeleeDamageBonusDone
@@ -398,7 +398,7 @@ Aura::Aura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* curr
                 damage = (caster->GetStat(STAT_AGILITY) * damage) / 100;
                 break;
             default:
-                damage = OnDamageCalculate(caster, damage);
+                damage = OnAuraValueCalculate(caster, damage);
                 break;
         }
     }
@@ -712,7 +712,10 @@ void AreaAura::Update(uint32 diff)
                 int32 actualDamage = m_modifier.m_baseAmount;
                 // recalculate basepoints for lower rank (all AreaAura spell not use custom basepoints?)
                 if (actualSpellInfo != GetSpellProto())
-                    actualBasePoints = actualDamage = actualSpellInfo->CalculateSimpleValue(m_effIndex);
+                {
+                    actualBasePoints = actualSpellInfo->CalculateSimpleValue(m_effIndex);
+                    actualDamage = caster->CalculateSpellEffectValue(target, actualSpellInfo, m_effIndex, &actualBasePoints);
+                }
 
                 SpellAuraHolder* holder = target->GetSpellAuraHolder(actualSpellInfo->Id, GetCasterGuid());
 
@@ -2713,7 +2716,8 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             case 27243:                                     // Seed of Corruption
             {
                 if (m_removeMode == AURA_REMOVE_BY_DEATH)
-                    target->CastSpell(target, 27285, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCasterGuid());
+                    if (Unit* caster = GetCaster())
+                        caster->CastSpell(target, 27285, TRIGGERED_OLD_TRIGGERED);
                 return;
             }
             case 28169:                                     // Mutating Injection
@@ -3585,18 +3589,8 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
                     ShapeshiftForm previousForm = target->GetShapeshiftForm();
                     uint32 ragePercent = 0;
                     if (previousForm == FORM_DEFENSIVESTANCE)
-                    {
-                        Unit::AuraList const& auraClassScripts = target->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-                        for (Unit::AuraList::const_iterator itr = auraClassScripts.begin(); itr != auraClassScripts.end();)
-                        {
-                            if ((*itr)->GetModifier()->m_miscvalue == 831)
-                            {
-                                ragePercent = (*itr)->GetModifier()->m_amount;
-                            }
-                            else
-                                ++itr;
-                        }
-                    }
+                        if (Aura* aura = target->GetOverrideScript(831))
+                            ragePercent = aura->GetModifier()->m_amount;
                     uint32 Rage_val = 0;
                     // Stance mastery + Tactical mastery (both passive, and last have aura only in defense stance, but need apply at any stance switch)
                     if (target->GetTypeId() == TYPEID_PLAYER)
@@ -8039,6 +8033,11 @@ void Aura::HandleFactionOverride(bool apply, bool Real)
         target->RestoreOriginalFaction();
 }
 
+void Aura::HandleOverrideClassScript(bool apply, bool real)
+{
+    GetTarget()->RegisterOverrideScriptAura(this, m_modifier.m_miscvalue, apply);
+}
+
 bool Aura::IsLastAuraOnHolder()
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -8441,7 +8440,7 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount, Unit* newCaster)
         {
             int32 baseAmount = aur->GetModifier()->m_baseAmount;
             int32 amount = m_stackAmount * baseAmount;
-            amount = aur->OnDamageCalculate(newCaster, amount);
+            amount = aur->OnAuraValueCalculate(newCaster, amount);
             // Reapply if amount change
             if (!baseAmount || amount != aur->GetModifier()->m_amount)
             {
@@ -8990,11 +8989,17 @@ void SpellAuraHolder::OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32
         script->OnDispel(this, dispeller, dispellingSpellId, originalStacks);
 }
 
-int32 Aura::OnDamageCalculate(Unit* caster, int32 currentValue)
+int32 Aura::OnAuraValueCalculate(Unit* caster, int32 currentValue)
 {
     if (AuraScript* script = GetAuraScript())
-        return script->OnDamageCalculate(this, caster, currentValue);
+        return script->OnAuraValueCalculate(this, caster, currentValue);
     return currentValue;
+}
+
+void Aura::OnDamageCalculate(int32& advertisedBenefit, float& totalMod)
+{
+    if (AuraScript* script = GetAuraScript())
+        return script->OnDamageCalculate(this, advertisedBenefit, totalMod);
 }
 
 void Aura::OnApply(bool apply)

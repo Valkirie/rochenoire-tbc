@@ -40,6 +40,14 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 -- Wotlk
 
 
+-- Hunter
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(1130,'spell_hunters_mark'),
+(14323,'spell_hunters_mark'),
+(14324,'spell_hunters_mark'),
+(14325,'spell_hunters_mark'),
+(34026,'spell_kill_command');
+
 -- Priest
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (32676,'spell_consume_magic');
@@ -56,7 +64,9 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (27218,'spell_curse_of_agony'),
 (30108,'spell_unstable_affliction'),
 (30404,'spell_unstable_affliction'),
-(30405,'spell_unstable_affliction');
+(30405,'spell_unstable_affliction'),
+(32379,'spell_shadow_word_death'),
+(32996,'spell_shadow_word_death');
 
 -- Alterac Valley
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
