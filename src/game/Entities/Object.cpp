@@ -2805,6 +2805,28 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             }
         }
 
+        // Check for higher rank of same spell if config is set to auto uprank
+        if (sWorld.getConfig(CONFIG_BOOL_AUTO_UPRANK) && caster_level <= target_level)
+        {
+            for (uint32 nextSpellId = spellProto->Id; nextSpellId != 0; nextSpellId = sSpellMgr.GetNextSpellInChain(nextSpellId))
+            {
+                SpellEntry const* nextSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(nextSpellId);
+                if (!nextSpellInfo)
+                    break;
+
+                // if found appropriate level
+                if (target_level >= nextSpellInfo->spellLevel)
+                {
+                    // get close to proper value
+                    caster_level = nextSpellInfo->spellLevel;
+                    value = nextSpellInfo->CalculateSimpleValue(effect_index);
+                }
+            }
+
+            if (caster_level >= target_level)
+                return value;
+        }
+
         // Avoid breaking the below calculation
         if (value_neg)
             value *= -1;
