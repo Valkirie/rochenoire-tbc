@@ -2686,10 +2686,10 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         }
     }
 
+    bool damage = false;
     if (unitCaster && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION) && spellProto->spellLevel)
     {
         // TODO: Drastically beter than before, but still needs some additional aura scaling research
-        bool damage = false;
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
@@ -2801,7 +2801,12 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
                 // if found appropriate level
                 if (target_level + 10 >= prevSpellInfo->spellLevel)
-                    return value;
+                {
+                    if(damage)
+                        break;
+                    else
+                        return value;
+                }
             }
         }
 
