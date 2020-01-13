@@ -594,6 +594,7 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE, "Rochenoire.Scaling.Raids.Downscale", false);
 	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", false);
 	setConfig(CONFIG_BOOL_SMART_LOOT, "Rochenoire.SmartLoot.Enabled", true);
+    setConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT, "Rochenoire.SmartLoot.Enabled", 4);
 
 	setConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP, "Rochenoire.Rate.Drop.Item.Group", 1.0f);
 	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);

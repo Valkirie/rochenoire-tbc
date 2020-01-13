@@ -10796,7 +10796,10 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 		break;
 	}
 	
-	return std::max(qualityModifier, quantityModifier);
+    uint32 coeffMaxAmount = sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
+    float coeffModifier = std::max(qualityModifier, quantityModifier);
+
+	return std::min(coeffModifier, (float)coeffMaxAmount);
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
