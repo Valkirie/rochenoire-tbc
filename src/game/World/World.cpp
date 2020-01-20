@@ -914,6 +914,9 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading broadcast_text...");
     sObjectMgr.LoadBroadcastText();
 
+    sLog.outString("Loading world safe locs ...");
+    sObjectMgr.LoadWorldSafeLocs();
+    
     ///- Load the DBC files
     sLog.outString("Initialize DBC data stores...");
     LoadDBCStores(m_dataPath);

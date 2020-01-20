@@ -6652,7 +6652,7 @@ void ObjectMgr::LoadGraveyardZones()
         uint32 zoneId = fields[1].GetUInt32();
         uint32 team   = fields[2].GetUInt32();
 
-        WorldSafeLocsEntry const* entry = sWorldSafeLocsStore.LookupEntry(safeLocId);
+        WorldSafeLocsEntry const* entry = sWorldSafeLocsStore.LookupEntry<WorldSafeLocsEntry>(safeLocId);
         if (!entry)
         {
             sLog.outErrorDb("Table `game_graveyard_zone` has record for not existing graveyard (WorldSafeLocs.dbc id) %u, skipped.", safeLocId);
@@ -6729,7 +6729,7 @@ WorldSafeLocsEntry const* ObjectMgr::GetClosestGraveYard(float x, float y, float
         GraveYardData const& data = itr->second;
 
         // Checked on load
-        WorldSafeLocsEntry const* entry = sWorldSafeLocsStore.LookupEntry(data.safeLocId);
+        WorldSafeLocsEntry const* entry = sWorldSafeLocsStore.LookupEntry<WorldSafeLocsEntry>(data.safeLocId);
 
         // skip enemy faction graveyard
         // team == TEAM_BOTH_ALLOWED case can be at call from .neargrave
@@ -6853,6 +6853,12 @@ void ObjectMgr::SetGraveYardLinkTeam(uint32 id, uint32 zoneId, Team team)
     // Link expected but not exist.
     sLog.outErrorDb("ObjectMgr::SetGraveYardLinkTeam called for safeLoc %u, zoneId %u, but no graveyard link for this found in database.", id, zoneId);
     AddGraveYardLink(id, zoneId, team);                     // Add to prevent further error message and correct mechanismn
+}
+
+void ObjectMgr::LoadWorldSafeLocs() const
+{
+    sWorldSafeLocsStore.Load(true);
+    sLog.outString(">> Loaded %u world safe locs", sWorldSafeLocsStore.GetRecordCount());
 }
 
 void ObjectMgr::LoadAreaTriggerTeleports()

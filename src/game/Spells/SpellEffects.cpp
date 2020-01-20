@@ -1732,6 +1732,16 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 28526:                                 // Icebolt
+                {
+                    if (!m_caster || m_caster->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    if (Unit* target = ((Creature*)m_caster)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, 31800, SELECT_FLAG_PLAYER | SELECT_FLAG_NOT_AURA))
+                        m_caster->CastSpell(target, 28522, TRIGGERED_NONE); // Icebolt
+
+                    return;
+                }
                 case 29969:                                 // Summon Blizzard
                 {
                     if (unitTarget)
@@ -7003,8 +7013,9 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER)
                     {
-                        unitTarget->RemoveAurasDueToSpell(31800); // Icebolt immunity spell
-                        unitTarget->RemoveAurasDueToSpell(28522); // Icebolt stun/damage spell
+                        unitTarget->RemoveAurasDueToSpell(31800);                           // Icebolt immunity spell
+                        unitTarget->RemoveAurasDueToSpell(28522);                           // Icebolt stun/damage spell
+                        unitTarget->CastSpell(nullptr, 28523, TRIGGERED_OLD_TRIGGERED);     // Despawn Ice Block (targets Ice Block GOs)
                     }
                     return;
                 }
