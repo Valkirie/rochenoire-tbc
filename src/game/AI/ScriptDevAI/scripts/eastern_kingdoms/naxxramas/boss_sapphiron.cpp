@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Sapphiron
-SD%Complete: 98
-SDComment: Flying visual is bugged: Sapphiron uses standing animation instead of the flying/hovering one when not moving in the air
+SD%Complete: 100
+SDComment:
 SDCategory: Naxxramas
 EndScriptData */
 
@@ -37,12 +37,21 @@ enum
     SPELL_CLEAVE                = 19983,
     SPELL_TAIL_SWEEP            = 15847,
     SPELL_LIFE_DRAIN            = 28542,
-    SPELL_SUMMON_BLIZZARD       = 28560,
+    SPELL_SUMMON_BLIZZARD_INIT  = 28560,
+    SPELL_SUMMON_BLIZZARD       = 28561,
 
     // Air phase spells
-    SPELL_ICEBOLT               = 28526,            // Triggers spell 28522 (Icebolt)
+    SPELL_DRAGON_HOVER          = 18430,
+    SPELL_ICEBOLT_INIT          = 28526,            // Triggers spell 28522 (Icebolt)
+    SPELL_ICEBOLT               = 28522,
+    SPELL_ICEBOLT_IMMUNITY      = 31800,
+    SPELL_ICEBLOCK_SUMMON       = 28535,
     SPELL_FROST_BREATH_DUMMY    = 30101,
     SPELL_FROST_BREATH          = 28524,            // Triggers spells 29318 (Frost Breath) and 30132 (Despawn Ice Block)
+    SPELL_DESPAWN_ICEBLOCK_GO   = 28523,
+    SPELL_SUMMON_WING_BUFFET    = 29329,
+    SPELL_DESPAWN_WING_BUFFET   = 29330,            // Triggers spell 29336 (Despawn Buffet)
+    SPELL_DESPAWN_BUFFET_EFFECT = 29336,
 
     NPC_BLIZZARD                = 16474,
 };
@@ -96,11 +105,9 @@ struct boss_sapphironAI : public ScriptedAI
         m_iceboltCount        = 0;
 
         SetCombatMovement(true);
-//      m_creature->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
-        m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND);
-        m_creature->SetCanFly(false);
+        SetDeathPrevention(false);
+        SetMeleeEnabled(true);
         m_creature->SetHover(false);
-        m_creature->SetLevitate(false);
     }
 
     void Aggro(Unit* /*who*/) override
@@ -136,8 +143,14 @@ struct boss_sapphironAI : public ScriptedAI
     {
         if (type == POINT_MOTION_TYPE && m_phase == PHASE_LIFT_OFF)
         {
+            // Summon the Wing Buffet NPC and cast the triggered aura to despawn it
+            if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_WING_BUFFET) == CAST_OK)
+                DoCastSpellIfCan(m_creature, SPELL_DESPAWN_WING_BUFFET);
+
+            // Actual take off
             m_creature->HandleEmote(EMOTE_ONESHOT_LIFTOFF);
-            m_creature->SetLevitate(true);
+            m_creature->SetHover(true);
+            m_creature->CastSpell(nullptr, SPELL_DRAGON_HOVER, TRIGGERED_OLD_TRIGGERED);
             m_phase = PHASE_AIR_BOLTS;
 
             m_frostBreathTimer = 5 * IN_MILLISECONDS;
@@ -180,7 +193,7 @@ struct boss_sapphironAI : public ScriptedAI
 
                 if (m_blizzardTimer < diff)
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_BLIZZARD) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_BLIZZARD_INIT) == CAST_OK)
                         m_blizzardTimer = urand(10, 30) * IN_MILLISECONDS;
                 }
                 else
@@ -191,18 +204,14 @@ struct boss_sapphironAI : public ScriptedAI
                     if (m_flyTimer < diff)
                     {
                         m_phase = PHASE_LIFT_OFF;
+                        m_iceboltTimer = 7 * IN_MILLISECONDS;
+
                         SetDeathPrevention(true);
                         m_creature->InterruptNonMeleeSpells(false);
                         SetCombatMovement(false);
-                        m_iceboltTimer = 7 * IN_MILLISECONDS;
-                        m_creature->GetMotionMaster()->Clear(false);
-                        m_creature->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND);
-//                        m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
-                        m_creature->SetCanFly(true);
-                        m_creature->SetHover(true);
-                        m_creature->GetMotionMaster()->MoveIdle();
+                        SetMeleeEnabled(false);
+                        m_creature->SetTarget(nullptr);
                         m_creature->GetMotionMaster()->MovePoint(1, aLiftOffPosition[0], aLiftOffPosition[1], aLiftOffPosition[2]);
-                        // TODO This should clear the target, too
 
                         return;
                     }
@@ -235,7 +244,7 @@ struct boss_sapphironAI : public ScriptedAI
                 {
                     if (m_iceboltTimer < diff)
                     {
-                        if (DoCastSpellIfCan(m_creature, SPELL_ICEBOLT) == CAST_OK)
+                        if (DoCastSpellIfCan(m_creature, SPELL_ICEBOLT_INIT) == CAST_OK)
                         {
                             ++m_iceboltCount;
                             m_iceboltTimer = 3 * IN_MILLISECONDS;
@@ -253,8 +262,6 @@ struct boss_sapphironAI : public ScriptedAI
                     {
                         // Begin Landing
                         m_creature->HandleEmote(EMOTE_ONESHOT_LAND);
-                        m_creature->SetLevitate(false);
-
                         m_phase = PHASE_LANDING;
                         m_landTimer = 2 * IN_MILLISECONDS;
                     }
@@ -269,9 +276,9 @@ struct boss_sapphironAI : public ScriptedAI
                     m_phase = PHASE_GROUND;
                     SetDeathPrevention(false);
                     SetCombatMovement(true);
-                    m_creature->SetCanFly(false);
+                    SetMeleeEnabled(true);
+                    m_creature->RemoveAurasDueToSpell(SPELL_DRAGON_HOVER);
                     m_creature->SetHover(false);
-                    m_creature->SetLevitate(false);
                     m_creature->GetMotionMaster()->Clear(false);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
 
@@ -322,6 +329,67 @@ bool GOUse_go_sapphiron_birth(Player* /*player*/, GameObject* go)
     return false;
 }
 
+struct IceBolt : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
+    {
+        if (Unit* caster = spell->GetCaster())
+        {
+            if (Unit* target = ((Creature*)caster)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_ICEBOLT, SELECT_FLAG_PLAYER | SELECT_FLAG_NOT_AURA))
+                caster->CastSpell(target, SPELL_ICEBOLT, TRIGGERED_NONE); // Icebolt
+        }
+    }
+};
+
+struct PeriodicIceBolt : public AuraScript
+{
+    void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
+    {
+        if (Unit* target =  aura->GetTarget())
+        {
+            if (target->isAlive() && !target->HasAura(SPELL_ICEBOLT_IMMUNITY))
+            {
+                target->CastSpell(target, SPELL_ICEBOLT_IMMUNITY, TRIGGERED_OLD_TRIGGERED);     // Icebolt which causes immunity to frost dmg
+                data.spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(SPELL_ICEBLOCK_SUMMON); // Summon Ice Block
+            }
+        }
+    }
+};
+
+struct SummonBlizzard : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
+    {
+        if (Unit* unitTarget = spell->GetUnitTarget())
+            unitTarget->CastSpell(unitTarget, SPELL_SUMMON_BLIZZARD, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, spell->GetCaster()->GetObjectGuid());
+    }
+};
+
+struct DespawnIceBlock : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /* effIdx */) const override
+    {
+        if (Unit* unitTarget = spell->GetUnitTarget())
+        {
+            if (unitTarget->GetTypeId() == TYPEID_PLAYER)
+            {
+                unitTarget->RemoveAurasDueToSpell(SPELL_ICEBOLT_IMMUNITY);                          // Icebolt immunity spell
+                unitTarget->RemoveAurasDueToSpell(SPELL_ICEBOLT);                                   // Icebolt stun/damage spell
+                unitTarget->CastSpell(nullptr, SPELL_DESPAWN_ICEBLOCK_GO, TRIGGERED_OLD_TRIGGERED); // Despawn Ice Block (targets Ice Block GOs)
+            }
+        }
+    }
+};
+
+struct DespawnBuffet : public AuraScript
+{
+    void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
+    {
+        if (Unit* target =  aura->GetTarget())
+            data.spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(SPELL_DESPAWN_BUFFET_EFFECT); // Summon Ice Block
+    }
+};
+
 void AddSC_boss_sapphiron()
 {
     Script* newScript = new Script;
@@ -333,4 +401,10 @@ void AddSC_boss_sapphiron()
     newScript->Name = "go_sapphiron_birth";
     newScript->pGOUse = &GOUse_go_sapphiron_birth;
     newScript->RegisterSelf();
+
+    RegisterAuraScript<PeriodicIceBolt>("spell_sapphiron_icebolt_aura");
+    RegisterSpellScript<IceBolt>("spell_sapphiron_icebolt");
+    RegisterSpellScript<SummonBlizzard>("spell_sapphiron_blizzard");
+    RegisterSpellScript<DespawnIceBlock>("spell_sapphiron_iceblock");
+    RegisterAuraScript<DespawnBuffet>("spell_sapphiron_despawn_buffet");
 }
