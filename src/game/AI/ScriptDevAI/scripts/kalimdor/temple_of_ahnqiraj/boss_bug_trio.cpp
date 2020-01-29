@@ -21,7 +21,7 @@ SDComment: Summon Player spell NYI (when current target is unreachable); Consume
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "temple_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
@@ -75,7 +75,10 @@ enum RoyaltyActions
 
 struct boss_silithidRoyaltyAI : public CombatAI
 {
-    boss_silithidRoyaltyAI(Creature* creature, uint32 actionCount) : CombatAI(creature, actionCount), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
+    boss_silithidRoyaltyAI(Creature* creature, uint32 actionCount) :
+        CombatAI(creature, actionCount),
+        m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
+        m_deathAbility(0)
     {
         AddCustomAction(ROYALTY_DEVOUR_DELAY, true, [&]() { HandleDevourDelay(); });
         m_creature->GetCombatManager().SetLeashingCheck([&](Unit* /*unit*/, float /*x*/, float /*y*/, float /*z*/) -> bool

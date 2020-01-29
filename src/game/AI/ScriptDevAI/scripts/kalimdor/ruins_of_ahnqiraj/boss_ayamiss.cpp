@@ -21,7 +21,7 @@ SDComment: Swarmers need movement added for RP before they attack
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "MotionGenerators/WaypointManager.h"
@@ -90,7 +90,9 @@ enum AyamissActions
 
 struct boss_ayamissAI : public CombatAI
 {
-    boss_ayamissAI(Creature* creature) : CombatAI(creature, AYAMISS_ACTION_MAX)
+    boss_ayamissAI(Creature* creature) :
+        CombatAI(creature, AYAMISS_ACTION_MAX),
+        m_phase(0)
     {
         AddTimerlessCombatAction(AYAMISS_FLY_UP, true);
         AddTimerlessCombatAction(AYAMISS_PHASE_2, true);

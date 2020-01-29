@@ -230,7 +230,7 @@ bool IsValidTargetType(EventAI_Type eventType, EventAI_ActionType actionType, ui
                     return false;
             }
         case TARGET_T_EVENT_SENDER:                         // Unit who sent an AIEvent that was received with EVENT_T_RECEIVE_AI_EVENT
-            if (eventType != EVENT_T_RECEIVE_AI_EVENT)
+            if (eventType != EVENT_T_RECEIVE_AI_EVENT && eventType != EVENT_T_SPELLHIT && eventType != EVENT_T_SPELLHIT_TARGET)
             {
                 sLog.outErrorEventAI("Event %u Action%u uses incorrect Target type %u for event-type %u", eventId, action, targetType, eventType);
                 return false;
@@ -720,6 +720,15 @@ void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
                         // Cast is always triggered if target is forced to cast on self
                         if (action.cast.castFlags & CAST_FORCE_TARGET_SELF)
                             action.cast.castFlags |= CAST_TRIGGERED;
+
+                        if (spell && spell->Targets) // causes crash if not handled
+                        {
+                            if (action.cast.target == TARGET_T_NONE || action.cast.target == TARGET_T_NEAREST_AOE_TARGET)
+                            {
+                                sLog.outErrorEventAI("Event %u Action %u uses SpellID %u that must have a target supplied (target is %u). Resetting to TARGET_T_HOSTILE.", i, j + 1, action.cast.spellId, action.cast.target);
+                                action.cast.target = TARGET_T_HOSTILE;
+                            }
+                        }
 
                         IsValidTargetType(temp.event_type, action.type, action.cast.target, i, j + 1);
 

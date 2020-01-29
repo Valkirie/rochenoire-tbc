@@ -188,6 +188,7 @@ endif()
 # Be sure to search only static lib
 add_definitions(-DBOOST_ALL_NO_LIB)
 set(Boost_USE_STATIC_LIBS ON)
+set(Boost_NO_BOOST_CMAKE ON)   # should fix build for boost 1.71
 #set(Boost_DEBUG ON)
 
 if(MSVC)
@@ -336,6 +337,15 @@ endif()
 if(NOT BUILD_GAME_SERVER AND BUILD_PLAYERBOT)
   set(BUILD_PLAYERBOT OFF)
   message(STATUS "BUILD_PLAYERBOT forced to OFF due to BUILD_GAME_SERVER is not set")
+endif()
+
+if(PCH)
+  if(${CMAKE_VERSION} VERSION_LESS "3.16") 
+    message("PCH is not supported by your CMake version")
+    message("Please consider to switch to CMake 3.16")
+    message("PCH is forced to OFF")
+    set(PCH OFF)
+  endif()
 endif()
 
 # print out the results before continuing

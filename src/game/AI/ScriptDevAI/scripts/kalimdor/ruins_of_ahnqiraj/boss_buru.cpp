@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
@@ -67,7 +67,10 @@ enum BuruActions
 
 struct boss_buruAI : public CombatAI
 {
-    boss_buruAI(Creature* creature) : CombatAI(creature, BURU_ACTION_MAX)
+    boss_buruAI(Creature* creature) :
+        CombatAI(creature, BURU_ACTION_MAX),
+        m_uiPhase(0),
+        m_transitionStep(0)
     {
         AddTimerlessCombatAction(BURU_PHASE_2_TRANSITION, true);
         AddTimerlessCombatAction(BURU_NEW_TARGET, false);

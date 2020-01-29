@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "ruins_of_ahnqiraj.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Globals/ObjectMgr.h"
@@ -83,7 +83,11 @@ enum OssirianActions
 struct boss_ossirianAI : public CombatAI
 {
 
-    boss_ossirianAI(Creature* creature) : CombatAI(creature, OSSIRIAN_ACTION_MAX), m_instance(static_cast<instance_ruins_of_ahnqiraj*>(m_creature->GetInstanceData())), m_saidIntro(false)
+    boss_ossirianAI(Creature* creature) :
+        CombatAI(creature, OSSIRIAN_ACTION_MAX),
+        m_instance(static_cast<instance_ruins_of_ahnqiraj*>(m_creature->GetInstanceData())),
+        m_saidIntro(false),
+        m_uiCrystalPosition(0)
     {
         AddCombatAction(OSSIRIAN_INITIAL_SPAWN, 10000u);
         AddCombatAction(OSSIRIAN_SUPREME, 45000u);

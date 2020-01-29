@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
 
@@ -57,7 +57,9 @@ enum MoamActions
 
 struct boss_moamAI : public CombatAI
 {
-    boss_moamAI(Creature* creature) : CombatAI(creature, MOAM_ACTION_MAX)
+    boss_moamAI(Creature* creature) :
+        CombatAI(creature, MOAM_ACTION_MAX),
+        m_uiPhase(0)
     {
         AddCombatAction(MOAM_ARCANE_ERUPTION, 0u);
         AddCombatAction(MOAM_TRAMPLE, 9000u);

@@ -21,7 +21,7 @@ SDComment: Visual improvement needed in phase 2: flying animation while hovering
 SDCategory: Onyxia's Lair
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "onyxias_lair.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 
@@ -136,7 +136,16 @@ enum OnyxiaActions
 
 struct boss_onyxiaAI : public CombatAI
 {
-    boss_onyxiaAI(Creature* creature) : CombatAI(creature, ONYXIA_ACTION_MAX), m_instance(static_cast<instance_onyxias_lair*>(creature->GetInstanceData()))
+    boss_onyxiaAI(Creature* creature) :
+        CombatAI(creature, ONYXIA_ACTION_MAX),
+        m_instance(static_cast<instance_onyxias_lair*>(creature->GetInstanceData())),
+        m_uiPhase(0),
+        m_uiMovePoint(POINT_ID_NORTH),
+        m_uiSummonCount(0),
+        m_uiWhelpsPerWave(20),
+        m_bIsSummoningWhelps(false),
+        m_bHasYelledLured(false),
+        m_HasSummonedFirstWave(false)
     {
         AddTimerlessCombatAction(ONYXIA_PHASE_2_TRANSITION, true);
         AddTimerlessCombatAction(ONYXIA_PHASE_3_TRANSITION, false);
