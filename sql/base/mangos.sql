@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS `db_version`;
 CREATE TABLE `db_version` (
   `version` varchar(120) DEFAULT NULL,
   `creature_ai_version` varchar(120) DEFAULT NULL,
-  `required_s2398_01_mangos_world_safe_locs_facing` bit(1) DEFAULT NULL
+  `required_s2399_01_mangos_dbscript_priority_miliseconds` bit(1) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Used DB version notes';
 
 --
@@ -1473,7 +1473,7 @@ LOCK TABLES `custom_texts` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `db_script_string`
+-- Table structure for table `dbscript_string`
 --
 
 DROP TABLE IF EXISTS `dbscript_string`;
@@ -1498,12 +1498,12 @@ CREATE TABLE `dbscript_string` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
--- Dumping data for table `db_script_string`
+-- Dumping data for table `dbscript_string`
 --
 
-LOCK TABLES `db_script_string` WRITE;
-/*!40000 ALTER TABLE `db_script_string` DISABLE KEYS */;
-/*!40000 ALTER TABLE `db_script_string` ENABLE KEYS */;
+LOCK TABLES `dbscript_string` WRITE;
+/*!40000 ALTER TABLE `dbscript_string` DISABLE KEYS */;
+/*!40000 ALTER TABLE `dbscript_string` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1514,6 +1514,7 @@ DROP TABLE IF EXISTS `dbscripts_on_creature_movement`;
 CREATE TABLE `dbscripts_on_creature_movement` (
   `id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `delay` int(10) unsigned NOT NULL DEFAULT '0',
+  `priority` INT(11) UNSIGNED NOT NULL DEFAULT '0',
   `command` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `datalong` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `datalong2` int(10) unsigned NOT NULL DEFAULT '0',
@@ -1583,7 +1584,7 @@ CREATE TABLE `dbscript_random_templates` (
 DROP TABLE IF EXISTS `dbscript_string_template`;
 CREATE TABLE `dbscript_string_template` (
   `id` int(11) unsigned NOT NULL COMMENT 'Id of template' AUTO_INCREMENT,
-  `string_id` int(11) NOT NULL DEFAULT '0' COMMENT 'db_script_string id',
+  `string_id` int(11) NOT NULL DEFAULT '0' COMMENT 'dbscript_string id',
   PRIMARY KEY (`id`,`string_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT COMMENT='DBScript system';
 
