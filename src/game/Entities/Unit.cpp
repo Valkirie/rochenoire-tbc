@@ -9584,14 +9584,10 @@ void Unit::SetAttackDamageSchool(WeaponAttackType attType, SpellSchools school)
 
 uint32 Unit::GetLevelForTarget(Unit const* target) const
 {
-	bool IsWorldBoss = false;
-	if (target->IsCreature())
-		IsWorldBoss = ((Creature*)target)->IsWorldBoss();
+    if(IsCreature() && !((Creature*)this)->IsWorldBoss())
+        return sObjectMgr.getLevelScaled(((Unit*)this), ((Unit*)target));
 
-	if (!IsWorldBoss)
-		return sObjectMgr.getLevelScaled(((Unit*)this), ((Unit*)target));
-
-	uint32 level = target->getLevel() + sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+	uint32 level = target ? target->getLevel() + sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : getLevel();
 	if (level < 1)
 		return 1;
 	if (level > 255)
