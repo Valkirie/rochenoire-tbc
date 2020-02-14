@@ -5979,8 +5979,8 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
 
 	uint32 damage = pInfo->damage;
 
-	Unit *target = aura->GetTarget()->GetBeneficiary();
-	Unit *caster = aura->GetCaster()->GetBeneficiary();
+	Unit *target = aura->GetTarget() ? aura->GetTarget()->GetBeneficiary() : aura->GetTarget();
+	Unit *caster = aura->GetCaster() ? aura->GetCaster()->GetBeneficiary() : aura->GetCaster();
 	if (target->IsPlayer() && !aura->GetTarget()->HasCharmer())
 		damage = sObjectMgr.ScaleDamage(caster, target, damage, pInfo->scaled);
 
