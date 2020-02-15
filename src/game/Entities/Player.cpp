@@ -10785,14 +10785,16 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 
 	float quantityModifier = 1.0f;
 	float pCount = countRelevant(pQuality, true);
-	uint32 pLevel = getLevel() - 1;
+    uint32 mLevel = sWorld.GetCurrentMaxLevel();
+	uint32 pLevel = std::min((float)mLevel, (float)getLevel());
 
 	switch (pQuality)
 	{
 		case ITEM_QUALITY_UNCOMMON: // GREEN
 		case ITEM_QUALITY_RARE:     // BLUE
 		case ITEM_QUALITY_EPIC:     // PURPLE
-			quantityModifier = pCount != 0 ? (float)drop_map[pQuality][pLevel] / pCount : std::max((float)drop_map[pQuality][pLevel], 2.0f);
+            float drop_value = (float)drop_map[pQuality][pLevel - 1];
+			quantityModifier = pCount != 0 ? drop_value / pCount : std::max(drop_value, 2.0f);
 		break;
 	}
 	

@@ -445,6 +445,9 @@ int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 	// TODO use ilevel instead of plevel
 	uint32 displayid = loot_level;
 
+    uint32 mLevel = sWorld.GetCurrentMaxLevel();
+    ilevel = std::min((float)mLevel, (float)ilevel);
+
 	if (loot_level == 0 || won)
 	{
 		loot_level = ilevel;
@@ -481,6 +484,9 @@ int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
 {
 	// TODO use ilevel instead of plevel
 	uint32 displayid = loot_level;
+
+    uint32 mLevel = sWorld.GetCurrentMaxLevel();
+    ilevel = std::min((float)mLevel, (float)ilevel);
 
 	if (loot_level == 0 || won)
 	{
