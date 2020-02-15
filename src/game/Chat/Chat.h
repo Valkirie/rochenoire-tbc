@@ -348,6 +348,7 @@ class ChatHandler
         bool HandleInstanceUnbindCommand(char* args);
         bool HandleInstanceStatsCommand(char* args);
         bool HandleInstanceSaveDataCommand(char* args);
+        bool HandleInstanceRescaleCommand(char* args);
 
         bool HandleLearnCommand(char* args);
         bool HandleLearnAllCommand(char* args);
@@ -465,6 +466,7 @@ class ChatHandler
         bool HandleNpcSubNameCommand(char* args);
 
 		bool HandleNpcChangePackCommand(char* args);
+        bool HandleNpcSetScaleCommand(char* args);
         //----------------------------------------------------------
 
         bool HandlePDumpLoadCommand(char* args);
@@ -670,7 +672,6 @@ class ChatHandler
         bool HandleCooldownClearCommand(char* args);
         bool HandleCooldownClearClientSideCommand(char* args);
         bool HandleCooldownClearArenaCommand(char* args);
-		bool HandleRescaleCommand(char* args);
         bool HandleUnLearnCommand(char* args);
         bool HandleGetDistanceCommand(char* args);
         bool HandleGetLosCommand(char* args);
