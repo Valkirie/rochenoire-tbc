@@ -130,12 +130,12 @@ int ns1__executeCommand(soap* soap, char* command, char** result)
     buffer.push_back(0);
     auto const printBuffer = soap_strdup(soap, &buffer[0]);
 
-    if (!commandSucceeded)
+    /* if (!commandSucceeded)
     {
         auto ret = soap_sender_fault(soap, printBuffer, printBuffer);
 
         return ret;
-    }
+    } */
 
     *result = printBuffer;
     return SOAP_OK;
