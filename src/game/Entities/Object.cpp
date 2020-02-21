@@ -2694,7 +2694,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     }
 
     bool damage = false;
-    if (unitCaster && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION) && spellProto->spellLevel)
+    if (unitCaster && spellProto->spellLevel)
     {
         // TODO: Drastically beter than before, but still needs some additional aura scaling research
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
@@ -2704,34 +2704,34 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
             switch (aura)
             {
-                case SPELL_AURA_PERIODIC_DAMAGE:
-                case SPELL_AURA_PERIODIC_LEECH:
-                    //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
-                case SPELL_AURA_POWER_BURN_MANA:
-                    damage = true;
+            case SPELL_AURA_PERIODIC_DAMAGE:
+            case SPELL_AURA_PERIODIC_LEECH:
+                //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
+            case SPELL_AURA_POWER_BURN_MANA:
+                damage = true;
             }
         }
         else if (uint32 effect = spellProto->Effect[effect_index])
         {
             switch (effect)
             {
-                case SPELL_EFFECT_SCHOOL_DAMAGE:
-                case SPELL_EFFECT_POWER_DRAIN:
-                case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
-                case SPELL_EFFECT_HEALTH_LEECH:
-                case SPELL_EFFECT_HEAL:
-                case SPELL_EFFECT_SUMMON:
-                case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
-                    //   SPELL_EFFECT_WEAPON_PERCENT_DAMAGE: excluded, abs values only
-                case SPELL_EFFECT_WEAPON_DAMAGE:
-                case SPELL_EFFECT_POWER_BURN:
-                case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
-                case SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE:
-                    damage = true;
+            case SPELL_EFFECT_SCHOOL_DAMAGE:
+            case SPELL_EFFECT_POWER_DRAIN:
+            case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
+            case SPELL_EFFECT_HEALTH_LEECH:
+            case SPELL_EFFECT_HEAL:
+            case SPELL_EFFECT_SUMMON:
+            case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+                //   SPELL_EFFECT_WEAPON_PERCENT_DAMAGE: excluded, abs values only
+            case SPELL_EFFECT_WEAPON_DAMAGE:
+            case SPELL_EFFECT_POWER_BURN:
+            case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+            case SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE:
+                damage = true;
             }
         }
 
-        if (damage)
+        if (damage && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION))
         {
             GtNPCManaCostScalerEntry const* spellScaler = sGtNPCManaCostScalerStore.LookupEntry(spellProto->spellLevel - 1);
             GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->getLevel() - 1);
@@ -2747,36 +2747,38 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (value == 0)
             return value;
 
-        uint32 target_level = target->getLevel();
-        uint32 caster_level = unitCaster->getLevel();
+        Unit* uTarget = ((Unit*)target)->GetBeneficiary();
+        Unit* uCaster = ((Unit*)unitCaster)->GetBeneficiary();
 
-        Unit* p1 = ((Unit*)target)->GetBeneficiary();
-        Unit* p2 = ((Unit*)unitCaster)->GetBeneficiary();
-
-        if (!p1 || !p2)
+        if (!uTarget || !uCaster)
             return value;
 
-        bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-        bool IsBattleGround = p1->GetMap() ? p1->GetMap()->IsBattleGround() : false;
+        uint32 target_level = uTarget->getLevel();
+        uint32 caster_level = uCaster->getLevel();
 
-        if (!p1->IsPlayer() && !p2->IsPlayer())
+        if (caster_level == target_level)
+            return value;
+
+        if (!uTarget->IsPlayer() && !uCaster->IsPlayer())
             return value;
 
         if (!spellProto)
             return value;
 
+        bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+        bool IsBattleGround = uTarget->GetMap() ? uTarget->GetMap()->IsBattleGround() : false;
         bool canScale = false;
         bool canKeep = false;
 
-        if ((p1->IsFriend(p2)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
+        if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
         {
             // if caster level is superior to min. scaling level
-            if (p2->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+            if (uCaster->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
                 canKeep = true;
         }
-        else if (p1->IsPlayer() && !p2->IsPlayer()) // Creature spells
+        else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
             canKeep = true;
-        else if (p2->IsPlayer() && !p1->IsPlayer()) // Player spells
+        else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells
             canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
 
         if (canKeep)
@@ -2793,7 +2795,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (spell && canScale)
             spell->isScaled = true;
 
-        // Check for lower rank of same spell if config is set to auto downrank
+        /* Check for lower rank of same spell if config is set to auto downrank
         if (sWorld.getConfig(CONFIG_BOOL_AUTO_DOWNRANK) && caster_level > target_level)
         {
             for (uint32 prevSpellId = spellProto->Id; prevSpellId != 0; prevSpellId = sSpellMgr.GetPrevSpellInChain(prevSpellId))
@@ -2803,8 +2805,11 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                     break;
 
                 // get close to proper value
-                caster_level = prevSpellInfo->spellLevel;
-                value = prevSpellInfo->CalculateSimpleValue(effect_index);
+                if (prevSpellInfo->spellLevel < spellProto->spellLevel)
+                {
+                    caster_level = prevSpellInfo->spellLevel;
+                    value = prevSpellInfo->CalculateSimpleValue(effect_index);
+                }
 
                 // if found appropriate level
                 if (target_level + 10 >= prevSpellInfo->spellLevel)
@@ -2837,16 +2842,16 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
             if (caster_level >= target_level)
                 return value;
-        }
+        } */
 
         // Avoid breaking the below calculation
         if (value_neg)
             value *= -1;
 
-        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level) + 4.56252);
+        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
         float caster_ratio = value / caster_funct;
 
-        float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level) + 4.56252);
+        float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
         float target_scale = target_value * caster_ratio;
         value = (int)ceil(target_scale);
 
