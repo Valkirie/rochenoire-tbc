@@ -756,7 +756,8 @@ float Map::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float 
 float Map::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
 	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
-	return (u_nbr_players - NHT - NT) / (1 + f_ratio_heal_dps);
+    float left = std::max(1.0f, (float)(u_nbr_players - NHT - NT));
+	return left / (1 + f_ratio_heal_dps);
 }
 
 float Map::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
@@ -803,37 +804,33 @@ void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT,
 	Ratio_Add_SpellTimer *= sObjectMgr.GetScaleSpellTimer(Ratio_DPS, NbrAdds, FinalNAdds, CoeffSpellRatio);
 }
 
-uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive) const
+uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
 {
 	uint32 output = 0;
-	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+    for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
 	{
-		Creature* creature = ((Creature*)* it);
+		Creature* creature = ((Creature*)it->second);
+        uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
 
-		if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
-			if (cinfo->Entry == entry && (!IsAlive || (IsAlive && creature->isAlive())))
-			{
-				//if (IsInCombat || (!IsInCombat && !creature->isInCombat()))
-				output++;
-			}
+        if (packId != 0)
+            continue; // skip if in a pack
+
+		if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && creature->isAlive())))
+            output++;
 	}
 	return output;
 }
 
-uint32 Map::GetCreaturesPackSize(uint32 pack) const
+uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
 {
-	if (pack == 0)
-		return 1;
-
 	uint32 output = 0;
-	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
-	{
-		if(Creature* creature = ((Creature*)* it))
-		{
-			uint32 packid = creature->getPackId();
-			if(packid == pack)
-				output++;
-		}
+    for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+    {
+        Creature* creature = ((Creature*)it->second);
+        uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
+
+        if (packId == pack && (!IsAlive || (IsAlive && creature->isAlive())))
+            output++;
 	}
 	return output;
 }
@@ -853,8 +850,8 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 
 		if (lastKnownGroupSize != u_GroupSize || lastKnownPoolSize != m_creaturesStore.size() || ForceRefresh)
 		{
-			for (int i = 0; i < 40000; i++) // has to be improved ! supposed to be the biggest known creature entry in the db
-				COMPTEUR[i] = 0;
+            // clear the counter
+            mymap.clear();
 
 			if (lastKnownGroupSize != 0)
 			{
@@ -876,9 +873,9 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 
 			u_nbr_players = u_TmpPlayer < u_MinPlayer ? u_MinPlayer : u_TmpPlayer;
 
-			for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
-			{
-				Creature* creature = ((Creature*)* it);
+            for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+            {
+                Creature* creature = ((Creature*)it->second);
 
 				if (!creature)									// skip if no creature found
 					continue;
@@ -891,11 +888,16 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
+                if (cinfo->CreatureType == CREATURE_TYPE_CRITTER)
+                    continue;
+
 				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
 				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
 				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
 				float MaxHealth				= (float)creature->GetMaxHealth();
+
+                mymap[creature->GetEntry()] = 0;
 
 				// Flexible Raid Values
 				float f_nbr_fadds = 1.0f;					// store the number of adds (to keep)
@@ -911,7 +913,6 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				float f_ratio_spelltimer_adds = 1.0f;
 
 				// Creature based values
-				bool	f_is_flex = false;		// determine if the number of creature has to be alterated
 				uint32	u_nbr_tank = 2;			// number of tanks needed for that encounter
 				uint32	u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
 				float	f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
@@ -919,8 +920,8 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
 				float	f_ratio_c0 = 1.0f;		// used to compute c1 and c2
 
-				uint32 packEntry = creature->getPackId();	// store the creature pack entry
-				uint32 u_nbr_adds = 0;											// store the number of creatures (all)
+                uint32 packId       = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());	// store the creature pack entry
+				uint32 u_nbr_adds   = 0;                                                    // store the number of creatures (all)
 
 				float factorProbaSpwan;
 				float factorTimeSpawn;
@@ -933,65 +934,37 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
 				{
 					u_nbr_tank = f_values->nb_tank;
-
-					u_nbr_pack = GetCreaturesPackSize(packEntry) != 1 ? GetCreaturesPackSize(packEntry) : f_values->nb_pack;
-
+					u_nbr_pack = f_values->nb_pack;
 					f_ratio_hrht = f_values->ratio_hrht;
 					f_ratio_c1 = f_values->ratio_c1;
 					f_ratio_c2 = f_values->ratio_c2;
-					f_is_flex = u_nbr_pack > 1;
 					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
 				}
 
+                // is creature part of a pack ?
+                if (packId != 0)
+                {
+                    u_nbr_pack = GetCreaturesPackSize(packId);
+                    u_nbr_adds_alive = GetCreaturesPackSize(packId, true);
+                    u_nbr_adds = u_nbr_pack;
+                }
+                else
+                {
+                    packId = cinfo->Entry;
+                    u_nbr_adds = GetCreaturesCount(cinfo->Entry);
+                    u_nbr_adds_alive = GetCreaturesCount(cinfo->Entry, true);
+                }
+
+                // hardcoding stuff when required
 				switch (cinfo->Entry)
 				{
-				case 12416: // Razorgore adds
-				case 12420:
-				case 12422:
-					factorProbaSpwan = 2.3 + 0.6 / (std::exp((0.825 * u_MaxPlayer - u_nbr_players) / 2) + 1) + 1.1 / (std::exp((0.65 * u_MaxPlayer - u_nbr_players) / 2) + 1);
-					factorTimeSpawn = -0.015 * u_nbr_players + 1.6;
-					f_ratio_health = 4 * factorTimeSpawn / factorProbaSpwan;
-					f_ratio_attacktime = 4 * factorTimeSpawn / factorProbaSpwan;
-					f_ratio_damage = 4 * f_ratio_health / factorProbaSpwan;
-					break;
-				case 12463:
-				case 12464:
-				case 12465:
-					packEntry = 12463;
-					u_adds_multiplicity = 2;
-					u_nbr_adds += GetCreaturesCount(12463);
-					u_nbr_adds += GetCreaturesCount(12464);
-					u_nbr_adds += GetCreaturesCount(12465);
-					u_nbr_adds_alive += GetCreaturesCount(12463, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(12464, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(12465, false, true);
-					f_min_red_health = 1.0f;
-					break;
-				case 14022:
-				case 14023:
-				case 14024:
-				case 14025:
-					packEntry = 14022;
-					u_adds_multiplicity = 3;
-					u_nbr_adds += GetCreaturesCount(14022);
-					u_nbr_adds += GetCreaturesCount(14023);
-					u_nbr_adds += GetCreaturesCount(14024);
-					u_nbr_adds += GetCreaturesCount(14025);
-					u_nbr_adds_alive += GetCreaturesCount(14022, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14023, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14024, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14025, false, true);
-					f_min_red_health = 1.0f;
-					break;
 				default:
-					u_nbr_adds = GetCreaturesCount(cinfo->Entry);
-					u_nbr_adds_alive = GetCreaturesCount(cinfo->Entry, false, true);
 					f_min_red_health = 0.7f;
 					break;
 				}
 
 				// Argument 4: CoefSpellRatio
-				GetScaleRatio(u_nbr_tank, u_nbr_adds, f_ratio_hrht, 1, f_ratio_health, f_nbr_fadds, f_ratio_dps, f_ratio_damage, f_ratio_attacktime, f_ratio_spelltimer, f_ratio_health_adds, f_ratio_dps_adds, f_ratio_attacktime_adds, f_ratio_attacktime_adds, f_ratio_spelltimer_adds);
+				GetScaleRatio(u_nbr_tank, u_nbr_adds, f_ratio_hrht, 1.0f, f_ratio_health, f_nbr_fadds, f_ratio_dps, f_ratio_damage, f_ratio_attacktime, f_ratio_spelltimer, f_ratio_health_adds, f_ratio_dps_adds, f_ratio_attacktime_adds, f_ratio_attacktime_adds, f_ratio_spelltimer_adds);
 
 				// Default treatment
 				creature->f_ratio_dps = f_ratio_dps;
@@ -1002,33 +975,33 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				creature->f_ratio_attacktime = f_ratio_attacktime;
 				creature->u_nbr_players = u_nbr_players;
 
-				if (f_is_flex)
+                if (u_nbr_pack > 1)
 				{
 					creature->f_ratio_dps = f_ratio_dps_adds;
 
 					int l_alive = floor(f_nbr_fadds / u_nbr_adds * u_nbr_pack);
 
-					if (COMPTEUR[packEntry] >= u_nbr_pack)
+					if (mymap[packId] >= u_nbr_pack)
 					{
-						COMPTEUR[packEntry] = 0;
+                        mymap[packId] = 0;
 						u_adds_compteur = 0;
 					}
 
 					if (u_nbr_adds_alive > f_nbr_fadds)
 					{
-						if (COMPTEUR[packEntry] >= l_alive && u_adds_compteur % u_adds_multiplicity == 0)
+						if (mymap[packId] >= l_alive && u_adds_compteur % u_adds_multiplicity == 0)
 							if (!creature->isInCombat() || ForceRefresh)
 								creature->ForcedDespawn(0, false, true);
 					}
 
 					if (u_nbr_adds_alive < f_nbr_fadds)
 					{
-						if (COMPTEUR[packEntry] < l_alive)
+						if (mymap[packId] < l_alive)
 							if ((creature->isDead() && creature->isScaled()) || ForceRefresh)
 								creature->Respawn();
 					}
 
-					COMPTEUR[packEntry]++;
+                    mymap[packId] += 1;
 				}
 
 				// Temporary calculations

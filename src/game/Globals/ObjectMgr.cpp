@@ -1106,7 +1106,7 @@ bool ObjectMgr::isAuraSafe(uint32 EffectApplyAuraName) const
 
 bool ObjectMgr::isEffectRestricted(uint32 Effect) const
 {
-	int SPELL_EFFECT_RESTRICTED[] = { SPELL_EFFECT_LEARN_SPELL, SPELL_EFFECT_SKILL_STEP, SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL, SPELL_EFFECT_WEAPON_DAMAGE, SPELL_EFFECT_NORMALIZED_WEAPON_DMG, SPELL_EFFECT_DISPEL }; // Do not scale those effects
+	int SPELL_EFFECT_RESTRICTED[] = { SPELL_EFFECT_WEAPON_PERCENT_DAMAGE, SPELL_EFFECT_LEARN_SPELL, SPELL_EFFECT_SKILL_STEP, SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL, SPELL_EFFECT_WEAPON_DAMAGE, SPELL_EFFECT_NORMALIZED_WEAPON_DMG, SPELL_EFFECT_DISPEL }; // Do not scale those effects
 	return std::find(std::begin(SPELL_EFFECT_RESTRICTED), std::end(SPELL_EFFECT_RESTRICTED), Effect) == std::end(SPELL_EFFECT_RESTRICTED);
 }
 
@@ -1987,6 +1987,14 @@ void ObjectMgr::LoadCreatures()
         data.GuidPoolId         = fields[19].GetInt16();
         data.EntryPoolId        = fields[20].GetInt16();
 
+        if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA))
+        {
+            auto terrainInfo = sTerrainMgr.LoadTerrain(data.mapid);
+            uint32 zoneId = terrainInfo->GetZoneId(data.posX, data.posY, data.posZ);
+            uint32 areaId = terrainInfo->GetAreaId(data.posX, data.posY, data.posZ);
+            WorldDatabase.PExecute("UPDATE creature SET zoneId = %u, areaId = %u WHERE guid = %u", zoneId, areaId, guid);
+        }
+
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)
         {
@@ -2213,6 +2221,14 @@ void ObjectMgr::LoadGameObjects()
         data.gameEvent        = fields[16].GetInt16();
         data.GuidPoolId       = fields[17].GetInt16();
         data.EntryPoolId      = fields[18].GetInt16();
+
+        if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA))
+        {
+            auto terrainInfo = sTerrainMgr.LoadTerrain(data.mapid);
+            uint32 zoneId = terrainInfo->GetZoneId(data.posX, data.posY, data.posZ);
+            uint32 areaId = terrainInfo->GetAreaId(data.posX, data.posY, data.posZ);
+            WorldDatabase.PExecute("UPDATE gameobject SET zoneId = %u, areaId = %u WHERE guid = %u", zoneId, areaId, guid);
+        }
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)
@@ -2462,14 +2478,14 @@ uint32 ObjectMgr::GetPlayerAccountIdByPlayerName(const std::string& name) const
 void ObjectMgr::LoadFlexibleSpells()
 {
 	mSpellFlexMap.clear();
-	QueryResult *result = WorldDatabase.Query("SELECT * FROM spell_scaling");
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM scale_spell");
 
 	if (!result)
 	{
 		BarGoLink bar(1);
 		bar.step();
 		sLog.outString();
-		sLog.outString(">> Loaded 0 Spell scaling details. DB table `spell_scaling` is empty.");
+		sLog.outString(">> Loaded 0 Spell scaling details. DB table `scale_spell` is empty.");
 		return;
 	}
 
@@ -2497,17 +2513,17 @@ void ObjectMgr::LoadFlexibleSpells()
 	sLog.outString(">> Loaded %lu Spell scaling details", (unsigned long)mSpellFlexMap.size());
 }
 
-void ObjectMgr::LoadFlexibleCreatures()
+void ObjectMgr::LoadCreaturesScale()
 {
 	mCreatureFlexMap.clear();
-	QueryResult *result = WorldDatabase.Query("SELECT * FROM creature_template_scaling");
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM scale_creature_template");
 
 	if (!result)
 	{
 		BarGoLink bar(1);
 		bar.step();
 		sLog.outString();
-		sLog.outString(">> Loaded 0 Creature scaling details. DB table `creature_template_scaling` is empty.");
+		sLog.outString(">> Loaded 0 Creature scaling details. DB table `scale_creature_template` is empty.");
 		return;
 	}
 
@@ -2518,8 +2534,8 @@ void ObjectMgr::LoadFlexibleCreatures()
 		Field *fields = result->Fetch();
 		bar.step();
 
-		uint32 c_entry = fields[0].GetUInt32();
-		uint32 m_entry = fields[1].GetUInt32();
+		uint32 entry = fields[0].GetUInt32();
+		uint32 map = fields[1].GetUInt32();
 		uint32 nb_tank = fields[2].GetUInt32();
 		uint32 nb_pack = fields[3].GetUInt32();
 		float ratio_hrht = fields[4].GetFloat();
@@ -2527,10 +2543,10 @@ void ObjectMgr::LoadFlexibleCreatures()
 		float ratio_c2 = fields[6].GetFloat();
 		bool is_flex = fields[7].GetBool();
 
-		std::string s = std::to_string(c_entry) + ":" + std::to_string(m_entry);
+		std::string s = std::to_string(entry) + ":" + std::to_string(map);
 		CreatureFlex& data = mCreatureFlexMap[s];
-		data.c_entry = c_entry;
-		data.m_entry = m_entry;
+		data.c_entry = entry;
+		data.m_entry = map;
 		data.nb_tank = nb_tank;
 		data.nb_pack = nb_pack;
 		data.ratio_hrht = ratio_hrht;
@@ -2544,18 +2560,51 @@ void ObjectMgr::LoadFlexibleCreatures()
 	sLog.outString(">> Loaded %lu Creature scaling details", (unsigned long)mCreatureFlexMap.size());
 }
 
+void ObjectMgr::LoadCreaturesPools()
+{
+    mCreaturePoolMap.clear();
+    QueryResult* result = WorldDatabase.Query("SELECT * FROM scale_creature_pool");
+
+    if (!result)
+    {
+        BarGoLink bar(1);
+        bar.step();
+        sLog.outString();
+        sLog.outString(">> Loaded 0 Creature scaling pool details. DB table `scale_creature_pool` is empty.");
+        return;
+    }
+
+    BarGoLink bar(result->GetRowCount());
+
+    do
+    {
+        Field* fields = result->Fetch();
+        bar.step();
+
+        uint32 guid = fields[0].GetUInt32();
+        uint32 pool = fields[1].GetUInt32();
+
+        mCreaturePoolMap[guid] = pool;
+
+    } while (result->NextRow());
+
+    delete result;
+    sLog.outString();
+    sLog.outString(">> Loaded %lu Creature scaling pool details", (unsigned long)mCreaturePoolMap.size());
+}
+
 void ObjectMgr::LoadLootScale()
 {
 	mLootScaleMap.clear();
 	mLootScaleParentingMap.clear();
-	QueryResult *result = WorldDatabase.Query("SELECT * FROM item_loot_scale");
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM scale_loot");
 
 	if (!result)
 	{
 		BarGoLink bar(1);
 		bar.step();
 		sLog.outString();
-		sLog.outString(">> Loaded 0 Item loot scale. DB table `item_loot_scale` is empty.");
+		sLog.outString(">> Loaded 0 Item loot scale. DB table `scale_loot` is empty.");
 		return;
 	}
 

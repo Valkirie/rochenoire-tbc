@@ -838,23 +838,24 @@ bool ChatHandler::HandleReloadLootScaleCommand(char* /*args*/)
 {
 	sLog.outString("Re-Loading Item Loot Scale ... ");
 	sObjectMgr.LoadLootScale();
-	SendSysMessage("DB table `item_loot_scale` reloaded.");
+	SendSysMessage("DB table `scale_loot` reloaded.");
 	return true;
 }
 
 bool ChatHandler::HandleReloadCreatureFlexCommand(char* /*args*/)
 {
-	sLog.outString("Re-Loading Creature Flex Details ... ");
-	sObjectMgr.LoadFlexibleCreatures();
-	SendSysMessage("DB table `creature_flex` reloaded.");
+	sLog.outString("Re-Loading Creature Scaling Details ... ");
+	sObjectMgr.LoadCreaturesScale();
+    sObjectMgr.LoadCreaturesPools();
+	SendSysMessage("DB table `scale_creature_template` and `scale_creature_pool` reloaded.");
 	return true;
 }
 
 bool ChatHandler::HandleReloadSpellFlexCommand(char* /*args*/)
 {
-	sLog.outString("Re-Loading Spell Flex Details ... ");
+	sLog.outString("Re-Loading Spell Scaling Details ... ");
 	sObjectMgr.LoadFlexibleSpells();
-	SendSysMessage("DB table `spell_flex` reloaded.");
+	SendSysMessage("DB table `scale_spell` reloaded.");
 	return true;
 }
 
@@ -3460,21 +3461,20 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 	}
 	if (Creature* creature = (Creature*)unit)
 	{
-		creature->setPackId(newEntryNum);
 		Player* player = m_session->GetPlayer();
 
-		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM creature_addon WHERE guid = '%u'", player->GetSelectionGuid().GetCounter()))
+		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = '%u'", player->GetSelectionGuid().GetCounter()))
 		{
 			delete result;
-
-			WorldDatabase.PExecute("UPDATE creature_addon SET pack = %u WHERE guid = '%u'", newEntryNum, player->GetSelectionGuid().GetCounter());
+			WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u WHERE guid = '%u'", newEntryNum, player->GetSelectionGuid().GetCounter());
 		}
 		else
-		{
-			WorldDatabase.PExecute("REPLACE INTO creature_addon(guid,pack) VALUES('%u','%u')", player->GetSelectionGuid().GetCounter(), newEntryNum);
-		}
+			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id) VALUES('%u','%u')", player->GetSelectionGuid().GetCounter(), newEntryNum);
 
 		PSendSysMessage("Guid %u has pack value %u", player->GetSelectionGuid().GetCounter(), newEntryNum);
+        
+        // force refresh
+        HandleReloadCreatureFlexCommand("");
 	}
 	else
 		SendSysMessage(LANG_ERROR);
@@ -3490,19 +3490,19 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
         return false;
     }
 
-    uint32 nb_tank;
-    ExtractUInt32(&args, nb_tank);
+    int32 nb_tank;
+    ExtractInt32(&args, nb_tank);
 
-    uint32 nb_pack = 1;
-    ExtractUInt32(&args, nb_pack);
+    int32 nb_pack;
+    ExtractInt32(&args, nb_pack);
 
-    float ratio_hrht = 0.0f;
+    float ratio_hrht;
     ExtractFloat(&args, ratio_hrht);
 
-    float ratio_c1 = 0.85f;
+    float ratio_c1;
     ExtractFloat(&args, ratio_c1);
 
-    float ratio_c2 = 0.85f;
+    float ratio_c2;
     ExtractFloat(&args, ratio_c2);
 
     Unit* unit = getSelectedUnit();
@@ -3522,38 +3522,33 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
     else
         WorldDatabase.PExecute("REPLACE INTO creature_template_scaling(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str());
 
-    if (QueryResult* result = WorldDatabase.PQuery("SELECT c_entry FROM creature_template_scaling WHERE c_entry = '%u' AND m_entry = '%u'", c_entry, m_entry))
+    if (nb_tank > 0)
     {
-        if (nb_tank)
-        {
-            WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_tank, c_entry, m_entry);
-            PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
-        }
-        if (nb_pack)
-        {
-            WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_pack, c_entry, m_entry);
-            PSendSysMessage("Current creature pack size was set to: %u", nb_tank);
-        }
-        if (ratio_hrht)
-        {
-            WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_hrht, c_entry, m_entry);
-            PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
-        }
-        if (ratio_c1)
-        {
-            WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c1, c_entry, m_entry);
-            PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
-        }
-        if (ratio_c2)
-        {
-            WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c2, c_entry, m_entry);
-            PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
-        }
-        
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u'", comment.c_str(), c_entry, m_entry);
+        WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_tank, c_entry, m_entry);
+        PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
     }
-    else
-        PSendSysMessage("creature_template_scaling for %u has been created.", c_entry);
+    if (nb_pack > 0)
+    {
+        WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_pack, c_entry, m_entry);
+        PSendSysMessage("Current creature pack size was set to: %u", nb_pack);
+    }
+    if (ratio_hrht > 0)
+    {
+        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_hrht, c_entry, m_entry);
+        PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
+    }
+    if (ratio_c1 > 0)
+    {
+        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c1, c_entry, m_entry);
+        PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
+    }
+    if (ratio_c2 > 0)
+    {
+        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c2, c_entry, m_entry);
+        PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
+    }
+        
+    WorldDatabase.PExecute("UPDATE creature_template_scaling SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u'", comment.c_str(), c_entry, m_entry);
 
     // force refresh
     HandleReloadCreatureFlexCommand("");
@@ -3627,12 +3622,12 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
 
     if (target->GetMap()->IsRaid())
     {
-        uint32 packId = target->getPackId();
-        uint32	u_nbr_tank = 2;			// number of tanks needed for that encounter
-        uint32	u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
-        float	f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
-        float	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
-        float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
+        uint32          packId = sObjectMgr.GetCreaturePool(target->GetGUIDLow());
+        uint32          u_nbr_tank = 2;			// number of tanks needed for that encounter
+        uint32          u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
+        float           f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+        float       	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
+        float	        f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
 
         uint32 m_entry = target->GetMap()->GetId();
 
@@ -3646,7 +3641,7 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
             f_ratio_c2 = f_values->ratio_c2;
         }
 
-        if (packId)
+        if (packId != 0)
             u_nbr_pack = target->GetMap()->GetCreaturesPackSize(packId);
 
         PSendSysMessage("Expected number of tank(s): %u", u_nbr_tank);

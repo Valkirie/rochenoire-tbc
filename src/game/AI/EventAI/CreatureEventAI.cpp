@@ -52,12 +52,91 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
 		{
 			if (SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(event.action[j].cast.spellId))
 			{
-				float CoeffSpellRatio		= 1.0f;
-				uint32 mapId				= creature->GetMap()->GetId();
+                float CoeffSpellRatio = 1.0f;
+                
+                if (creature->GetMap() && creature->GetMap()->IsRaid())
+                {
+                    uint32 mapId = creature->GetMap()->GetId();
+                    uint32 spellId = spellInfo->Id;
+                    std::string comment = std::string(creature->GetMap()->GetMapName()) + ": " + std::string(spellInfo->SpellName[0]) + " (" + std::string(creature->GetName()) + ")";
 
-				std::string s = std::to_string(spellInfo->Id) + ":" + std::to_string(mapId);
-				if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
-					CoeffSpellRatio = s_values->ratio_spell;
+                    float min_range = std::min(100.0f, GetSpellMinRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex)));
+                    float max_range = std::min(100.0f, GetSpellMaxRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex)));
+
+                    bool isHarmful = false;
+                    float current_radius = 0.0f;
+                    int current_targets = 1;
+
+                    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+                    {
+                        if (spellInfo->Effect[i] == 0)
+                            continue;
+
+                        float max_radius = std::min(100.0f, GetSpellRadius(sSpellRadiusStore.LookupEntry(spellInfo->EffectRadiusIndex[i])));
+                        if (max_radius > current_radius)
+                            current_radius = max_radius;
+
+                        auto& data = SpellTargetMgr::GetSpellTargetingData(spellId);
+                        auto& ignoredTargets = data.ignoredTargets[i];
+
+                        uint32 targetModeA = spellInfo->EffectImplicitTargetA[i];
+                        uint32 targetModeB = spellInfo->EffectImplicitTargetB[i];
+
+                        SpellTargetInfo& dataA = SpellTargetInfoTable[targetModeA];
+                        SpellTargetInfo& dataB = SpellTargetInfoTable[targetModeB];
+
+                        if (targetModeA && !ignoredTargets.first)
+                            if (dataA.filter == TARGET_HARMFUL)
+                            {
+                                isHarmful = true;
+                                switch (dataA.enumerator)
+                                {
+                                case TARGET_ENUMERATOR_CONE:
+                                case TARGET_ENUMERATOR_AOE:
+                                    CoeffSpellRatio -= current_radius / 100.0f;
+                                    break;
+                                case TARGET_ENUMERATOR_CHAIN: // more target = lower value
+                                    current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
+                                    CoeffSpellRatio -= current_targets / 10.0f;
+                                    break;
+                                default: break;
+                                }
+                            }
+
+                        if (targetModeB && !ignoredTargets.second)
+                            if (dataB.filter == TARGET_HARMFUL)
+                            {
+                                isHarmful = true;
+                                switch (dataB.enumerator)
+                                {
+                                case TARGET_ENUMERATOR_CONE:
+                                case TARGET_ENUMERATOR_AOE:
+                                    CoeffSpellRatio -= current_radius / 100.0f;
+                                    break;
+                                case TARGET_ENUMERATOR_CHAIN: // more target = lower value
+                                    current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
+                                    CoeffSpellRatio -= current_targets / 10.0f;
+                                    break;
+                                default: break;
+                                }
+                            }
+                    }
+
+                    if (min_range > ATTACK_DISTANCE)
+                        CoeffSpellRatio -= 0.5f;
+
+                    CoeffSpellRatio -= max_range / 100.0f;
+                    CoeffSpellRatio = std::min(1.0f, CoeffSpellRatio);
+
+                    std::string s = std::to_string(spellId) + ":" + std::to_string(mapId);
+                    if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
+                    {
+                        CoeffSpellRatio = s_values->ratio_spell;
+                        WorldDatabase.PExecuteLog("UPDATE scale_spell SET comment = \"%s\", ratio_spell = %f WHERE s_entry = %u AND m_entry = %u;", comment.c_str(), CoeffSpellRatio, spellId, mapId);
+                    }
+                    else if (isHarmful)
+                        WorldDatabase.PExecuteLog("INSERT IGNORE INTO scale_spell VALUES ('%u', '%u', '%f', \"%s\");", spellId, mapId, CoeffSpellRatio, comment.c_str());
+                }
 
 				repeatMin = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMin, CoeffSpellRatio);
 				repeatMax = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMax, CoeffSpellRatio);

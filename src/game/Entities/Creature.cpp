@@ -170,7 +170,7 @@ void Creature::AddToWorld()
 	if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 	{
 		if (GetMap() && GetMap()->IsRaid())
-			GetMap()->InsertCreature(this);
+			GetMap()->InsertCreature(GetGUIDLow(), (Creature*)this);
 
 		GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
 	}
@@ -215,7 +215,7 @@ void Creature::RemoveFromWorld()
 		if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 		{
 			if (GetMap() && GetMap()->IsRaid() && IsInWorld())
-				GetMap()->EraseCreature(this);
+				GetMap()->EraseCreature(GetGUIDLow());
 
 			GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);
 		}
@@ -1226,6 +1226,8 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask)
        << GetGUIDLow() << ","
        << data.id << ","
        << data.mapid << ","
+        << GetZoneId() << ","
+        << GetAreaId() << ","
        << uint32(data.spawnMask) << ","                    // cast to prevent save as symbol
        << data.modelid_override << ","
        << data.equipmentId << ","
@@ -2154,8 +2156,6 @@ bool Creature::LoadCreatureAddon(bool reload)
             CastSpell(this, *cAura, TRIGGERED_OLD_TRIGGERED);
         }
     }
-
-	SetUInt32Value(UNIT_FIELD_PACK, cainfo->packId);
 
     return true;
 }

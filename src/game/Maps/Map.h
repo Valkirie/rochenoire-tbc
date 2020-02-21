@@ -128,7 +128,7 @@ class Map : public GridRefManager<NGridType>
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
         
 		// Flexible Raid
-		uint16 COMPTEUR[40000];
+        std::map<uint32, int> mymap;
 
 		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
 		void GetScaleRatio(float NT, float Nadds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer) const;
@@ -139,8 +139,8 @@ class Map : public GridRefManager<NGridType>
 		float GetFactorDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const;
 		float GetFactorAdds(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float MinAddShrinkDPS) const;
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
-		uint32 GetCreaturesCount(uint32 entry, bool IsInCombat = false, bool IsAlive = false) const;
-		uint32 GetCreaturesPackSize(uint32 pack) const;
+		uint32 GetCreaturesCount(uint32 entry, bool IsAlive = false) const;
+		uint32 GetCreaturesPackSize(uint32 pack, bool IsAlive = false) const;
 		uint32 GetPlayersCount() const;
 		
 		virtual void Update(const uint32&);
@@ -285,6 +285,9 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
 
+        typedef std::map<uint32, Creature*> CreatureList;
+        CreatureList m_creaturesStore;
+
         void AddUpdateObject(Object* obj)
         {
             i_objectsToClientUpdate.insert(obj);
@@ -295,12 +298,12 @@ class Map : public GridRefManager<NGridType>
             i_objectsToClientUpdate.erase(obj);
         }
 
-		void InsertCreature(Creature* cr) {
-			if (cr) m_creaturesStore.insert(cr);
+		void InsertCreature(uint32 guid, Creature* cr) {
+			m_creaturesStore.insert(std::make_pair(guid, (Creature*)cr));
 		}
 
-		void EraseCreature(Creature* cr) {
-			if (cr) m_creaturesStore.erase(cr);
+		void EraseCreature(uint32 guid) {
+			m_creaturesStore.erase(guid);
 		}
 
         // DynObjects currently
@@ -419,7 +422,6 @@ class Map : public GridRefManager<NGridType>
         ActiveNonPlayers m_activeNonPlayers;
         ActiveNonPlayers::iterator m_activeNonPlayersIter;
         MapStoredObjectTypesContainer m_objectsStore;
-		std::set<Creature*> m_creaturesStore;
         std::map<uint32, uint32> m_tempCreatures;
         std::map<uint32, uint32> m_tempPets;
 

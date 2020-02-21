@@ -602,6 +602,9 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_BOOL_FLEXIBLE_RAID, "Rochenoire.Flexible.Raids", true);
 	setConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 4);
 
+    setConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA, "Calculate.Creature.Zone.Area.Data", false);
+    setConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA, "Calculate.Gameoject.Zone.Area.Data", false);
+
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 
     setConfigMin(CONFIG_UINT32_MASS_MAILER_SEND_PER_TICK, "MassMailer.SendPerTick", 10, 1);
@@ -1225,7 +1228,8 @@ void World::SetInitialWorldSettings()
 	sObjectMgr.LoadLootScale();
 
 	sLog.outString("Loading Creature Flex Details...");
-	sObjectMgr.LoadFlexibleCreatures();
+	sObjectMgr.LoadCreaturesScale();
+    sObjectMgr.LoadCreaturesPools();
 
 	sLog.outString("Loading Spell Flex Details...");
 	sObjectMgr.LoadFlexibleSpells();
