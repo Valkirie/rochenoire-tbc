@@ -2541,23 +2541,27 @@ void ObjectMgr::LoadCreaturesScale()
 		float ratio_hrht = fields[4].GetFloat();
 		float ratio_c1 = fields[5].GetFloat();
 		float ratio_c2 = fields[6].GetFloat();
-		bool is_flex = fields[7].GetBool();
 
-		std::string s = std::to_string(entry) + ":" + std::to_string(map);
-		CreatureFlex& data = mCreatureFlexMap[s];
-		data.c_entry = entry;
-		data.m_entry = map;
-		data.nb_tank = nb_tank;
-		data.nb_pack = nb_pack;
-		data.ratio_hrht = ratio_hrht;
-		data.ratio_c1 = ratio_c1;
-		data.ratio_c2 = ratio_c2;
+        AddCreatureScale(entry, map, nb_tank, nb_pack, ratio_hrht, ratio_c1, ratio_c2);
 
 	} while (result->NextRow());
 
 	delete result;
 	sLog.outString();
 	sLog.outString(">> Loaded %lu Creature scaling details", (unsigned long)mCreatureFlexMap.size());
+}
+
+void ObjectMgr::AddCreatureScale(uint32 entry, uint32 map, uint32 nb_tank, uint32 nb_pack, float ratio_hrht, float ratio_c1, float ratio_c2)
+{
+    std::string s = std::to_string(entry) + ":" + std::to_string(map);
+    CreatureFlex& data = mCreatureFlexMap[s];
+    data.c_entry = entry;
+    data.m_entry = map;
+    data.nb_tank = nb_tank;
+    data.nb_pack = nb_pack;
+    data.ratio_hrht = ratio_hrht;
+    data.ratio_c1 = ratio_c1;
+    data.ratio_c2 = ratio_c2;
 }
 
 void ObjectMgr::LoadCreaturesPools()
@@ -2584,13 +2588,28 @@ void ObjectMgr::LoadCreaturesPools()
         uint32 guid = fields[0].GetUInt32();
         uint32 pool = fields[1].GetUInt32();
 
-        mCreaturePoolMap[guid] = pool;
+        AddCreaturePool(guid, pool);
 
     } while (result->NextRow());
 
     delete result;
     sLog.outString();
     sLog.outString(">> Loaded %lu Creature scaling pool details", (unsigned long)mCreaturePoolMap.size());
+}
+
+void ObjectMgr::AddCreaturePool(uint32 guid, uint32 pool_id)
+{
+    mCreaturePoolMap[guid] = pool_id;
+}
+
+CreatureFlexMap ObjectMgr::GetCreatureFlexMap() const
+{
+    return mCreatureFlexMap;
+}
+
+CreaturePoolMap ObjectMgr::GetCreaturePoolMap() const
+{
+    return mCreaturePoolMap;
 }
 
 void ObjectMgr::LoadLootScale()

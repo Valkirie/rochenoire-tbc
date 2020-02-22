@@ -3448,8 +3448,8 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 	if (!*args)
 		return false;
 
-	uint32 newEntryNum = atoi(args);
-	if (newEntryNum < 0)
+	uint32 pool = atoi(args);
+	if (pool < 0)
 		return false;
 
 	Unit* unit = getSelectedUnit();
@@ -3462,19 +3462,19 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 	if (Creature* creature = (Creature*)unit)
 	{
 		Player* player = m_session->GetPlayer();
+        uint32 guid = player->GetSelectionGuid().GetCounter();
 
-		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = '%u'", player->GetSelectionGuid().GetCounter()))
+		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = '%u'", guid))
 		{
 			delete result;
-			WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u WHERE guid = '%u'", newEntryNum, player->GetSelectionGuid().GetCounter());
+			WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u WHERE guid = '%u'", pool, guid);
 		}
 		else
-			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id) VALUES('%u','%u')", player->GetSelectionGuid().GetCounter(), newEntryNum);
+			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id) VALUES('%u','%u')", guid, pool);
 
-		PSendSysMessage("Guid %u has pack value %u", player->GetSelectionGuid().GetCounter(), newEntryNum);
+		PSendSysMessage("Guid %u has pack value %u", guid, pool);
         
-        // force refresh
-        HandleReloadCreatureFlexCommand("");
+        sObjectMgr.AddCreaturePool(guid, pool);
 	}
 	else
 		SendSysMessage(LANG_ERROR);
@@ -3557,8 +3557,7 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
     if (WorldDatabase.PExecute("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u';", comment.c_str(), c_entry, m_entry))
         PSendSysMessage("Current creature comment was successfully updated.");
 
-    // force refresh
-    HandleReloadCreatureFlexCommand("");
+    sObjectMgr.AddCreatureScale(c_entry, m_entry, nb_tank, nb_pack, ratio_hrht, ratio_c1, ratio_c2);
 
     return true;
 }
