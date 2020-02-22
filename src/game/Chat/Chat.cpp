@@ -668,9 +668,9 @@ ChatCommand* ChatHandler::getCommandTable()
         { "taxi_shortcuts",              SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadTaxiShortcuts,                  "", nullptr },
         { "trainer_greeting",            SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadTrainerGreetingCommand,         "", nullptr },
 		
-		{ "loot_scale",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootScaleCommand,               "", nullptr },
-		{ "creature_flex",			     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureFlexCommand,            "", nullptr },
-		{ "spell_flex",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellFlexCommand,               "", nullptr },
+		{ "scale_loot",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootScaleCommand,               "", nullptr },
+		{ "scale_creature",			     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureFlexCommand,            "", nullptr },
+		{ "scale_spell",				 SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellFlexCommand,               "", nullptr },
 
         { nullptr,                       0,                 false, nullptr,                                                  "", nullptr }
     };

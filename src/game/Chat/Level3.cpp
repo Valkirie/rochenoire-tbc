@@ -3517,38 +3517,45 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
     uint32 m_entry = unit->GetMap()->GetId();
     std::string comment = std::string(unit->GetMap()->GetMapName()) + " (" + std::string(unit->GetName()) + ")";
 
-    if (QueryResult* result = WorldDatabase.PQuery("SELECT c_entry FROM creature_template_scaling WHERE c_entry = '%u' AND m_entry = '%u'", c_entry, m_entry))
+    if (QueryResult* result = WorldDatabase.PQuery("SELECT c_entry FROM scale_creature_template WHERE c_entry = '%u' AND m_entry = '%u'", c_entry, m_entry))
         delete result;
     else
-        WorldDatabase.PExecute("REPLACE INTO creature_template_scaling(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str());
+    {
+        if (!WorldDatabase.PExecute("REPLACE INTO scale_creature_template(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str()))
+        {
+            PSendSysMessage("Error: couldn't not creature creature %u scaling template.", c_entry);
+            return false;
+        }
+    }
 
     if (nb_tank > 0)
     {
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_tank, c_entry, m_entry);
-        PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
+        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_tank, c_entry, m_entry))
+            PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
     }
     if (nb_pack > 0)
     {
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_pack, c_entry, m_entry);
-        PSendSysMessage("Current creature pack size was set to: %u", nb_pack);
+        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_pack, c_entry, m_entry))
+            PSendSysMessage("Current creature pack size was set to: %u", nb_pack);
     }
     if (ratio_hrht > 0)
     {
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_hrht, c_entry, m_entry);
-        PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
+        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_hrht, c_entry, m_entry))
+            PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
     }
     if (ratio_c1 > 0)
     {
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c1, c_entry, m_entry);
-        PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
+        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c1, c_entry, m_entry))
+            PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
     }
     if (ratio_c2 > 0)
     {
-        WorldDatabase.PExecute("UPDATE creature_template_scaling SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c2, c_entry, m_entry);
-        PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
+        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c2, c_entry, m_entry))
+            PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
     }
-        
-    WorldDatabase.PExecute("UPDATE creature_template_scaling SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u'", comment.c_str(), c_entry, m_entry);
+
+    if (WorldDatabase.PExecute("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u';", comment.c_str(), c_entry, m_entry))
+        PSendSysMessage("Current creature comment was successfully updated.");
 
     // force refresh
     HandleReloadCreatureFlexCommand("");

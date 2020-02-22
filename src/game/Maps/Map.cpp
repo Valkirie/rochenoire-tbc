@@ -1287,7 +1287,7 @@ uint32 Map::GetMaxPlayers() const
 
 uint32 Map::GetMinPlayers() const
 {
-	return GetMaxPlayers() / sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO);
+	return std::max((float)sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE), (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO)));
 }
 
 uint32 Map::GetMaxResetDelay() const

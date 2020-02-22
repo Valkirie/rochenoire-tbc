@@ -600,7 +600,8 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);
 
 	setConfig(CONFIG_BOOL_FLEXIBLE_RAID, "Rochenoire.Flexible.Raids", true);
-	setConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 4);
+	setConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 3.75);
+    setConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE, "Rochenoire.Flexible.Raids.MinSize", 5);
 
     setConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA, "Calculate.Creature.Zone.Area.Data", false);
     setConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA, "Calculate.Gameoject.Zone.Area.Data", false);
