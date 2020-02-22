@@ -69,6 +69,7 @@ LogsDatabaseInfo      = "127.0.0.1;3306;mangos;mangos;tbclogs"
 LoginDatabaseConnections = 1
 WorldDatabaseConnections = 1
 CharacterDatabaseConnections = 1
+LogsDatabaseConnections = 1
 MaxPingTime = 30
 WorldServerPort = 8085
 BindIP = "0.0.0.0"
@@ -309,6 +310,10 @@ MaxWhoListReturns = 49
 #        Set the flexible raids players ratio
 #        Default:     2 - (raid 40 become raid 20, raid 20 become raid 10)
 #
+#    Rochenoire.Flexible.Raids.MinSize
+#        Minimum rescaled raid size (number of players)
+#        Default:     5
+#
 #    Rochenoire.SmartLoot.Enabled
 #        Enable/Disable smart loot algorithm
 #        Default: 1 (enable)
@@ -324,6 +329,14 @@ MaxWhoListReturns = 49
 #         Equipment level rates coeff (used by smart loot)
 #         Default: 1
 #
+#     Calculate.Creature.Zone.Area.Data
+#        Description: Calculate at loading creature zoneId / areaId and save in creature table (WARNING: SLOW WORLD SERVER STARTUP)
+#        Default:     0  - (Do not show)
+#
+#     Calculate.Gameoject.Zone.Area.Data
+#        Description: Calculate at loading gameobject zoneId / areaId and save in gameobject table (WARNING: SLOW WORLD SERVER STARTUP)
+#        Default:     0  - (Do not show)
+#
 ###################################################################################################################
 
 WowPatch = 15
@@ -337,7 +350,8 @@ Rochenoire.Scaling.PvP.Enabled = 0
 Rochenoire.Rate.Drop.Item.Group = 0.25
 Rochenoire.Rate.XP.Group = 0.5
 Rochenoire.Flexible.Raids = 1
-Rochenoire.Flexible.Raids.Ratio = 3
+Rochenoire.Flexible.Raids.Ratio = 3.75
+Rochenoire.Flexible.Raids.MinSize = 5
 Rochenoire.SmartLoot.Enabled = 1
 Rochenoire.SmartLoot.Amount = 4
 Rate.Weight.Item.Poor = 1.0
@@ -347,6 +361,8 @@ Rate.Weight.Item.Rare = 1.0
 Rate.Weight.Item.Epic = 1.0
 Rate.Weight.Item.Legendary = 1.0
 Rate.Weight.Item.Artifact = 1.0
+Calculate.Creature.Zone.Area.Data = 0
+Calculate.Gameoject.Zone.Area.Data = 0
 
 ###################################################################################################################
 # SERVER LOGGING
