@@ -239,6 +239,8 @@ struct CreatureData
     uint16 EntryPoolId;
     uint16 OriginalZoneId;
 	uint32 spawnFlags;
+    uint32 patch_min;
+    uint32 patch_max;
 
     // helper function
     ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(CreatureInfo::GetHighGuid(), id, lowguid); }
@@ -787,7 +789,7 @@ class Creature : public Unit
         void RemoveCorpse(bool inPlace = false);
         bool IsDeadByDefault() const { return m_isDeadByDefault; };
 
-        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false, bool ForcedScale = false);
+        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false, bool ForcedScale = false, bool TriggerScript = false);
 
         time_t const& GetRespawnTime() const { return m_respawnTime; }
         time_t GetRespawnTimeEx() const;

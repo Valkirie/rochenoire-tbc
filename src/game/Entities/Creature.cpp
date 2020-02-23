@@ -1269,15 +1269,24 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
 	if (CreatureDataAddon const* cainfo = GetCreatureAddon())
 	{
 		if (cainfo->lvar != 0)
-			SetLevelVariation(cainfo->lvar);
+			SetLevelVar(cainfo->lvar);
 		else
 		{
-			// old formula
-			int x = rand() % 2;
-			if (x == 0)
-				SetLevelVariation(maxlevel - level);
-			else
-				SetLevelVariation(minlevel - level);
+            // keep relative difficulty
+            if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
+            {
+                if (minlevel > DEFAULT_VAN_MAX_LEVEL && data->patch_min <= WOW_PATCH_112)
+                    SetLevelVar(minlevel - DEFAULT_VAN_MAX_LEVEL);
+                else if (minlevel > DEFAULT_TBC_MAX_LEVEL && data->patch_min > WOW_PATCH_112)
+                    SetLevelVar(minlevel - DEFAULT_TBC_MAX_LEVEL);
+                else
+                {
+                    if (rand() % 2 == 0)
+                        SetLevelVar(maxlevel - level);
+                    else
+                        SetLevelVar(minlevel - level);
+                }
+            }
 		}
 	}
 
@@ -1800,7 +1809,7 @@ void Creature::Respawn()
 	RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
 }
 
-void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale)
+void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale, bool TriggerScript)
 {
     if (timeMSToDespawn)
     {
@@ -1816,8 +1825,17 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool Forced
     if (isAlive())
         SetDeathState(JUST_DIED);
 
-	if (ForcedScale)
-		SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
+    if (ForcedScale)
+    {
+        SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
+
+        if (TriggerScript)
+        {
+            // Inform Instance Data and Linking
+            if (InstanceData* mapInstance = GetInstanceData())
+                mapInstance->OnCreatureDeath(this);
+        }
+    }
 
     RemoveCorpse(true);                                     // force corpse removal in the same grid
 
