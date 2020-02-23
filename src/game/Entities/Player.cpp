@@ -823,7 +823,7 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
     else
         SetUInt32Value(UNIT_FIELD_LEVEL, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_LEVEL));
 
-	SetUInt32Value(UNIT_FIELD_ILEVEL, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_ILEVEL));
+    SetItemLevel(sWorld.getConfig(CONFIG_UINT32_START_PLAYER_ILEVEL));
 
     SetUInt32Value(PLAYER_FIELD_COINAGE, sWorld.getConfig(CONFIG_UINT32_START_PLAYER_MONEY));
     SetHonorPoints(sWorld.getConfig(CONFIG_UINT32_START_HONOR_POINTS));
@@ -3924,7 +3924,6 @@ void Player::InitVisibleBits()
     updateVisualBits.SetBit(UNIT_FIELD_MAXPOWER4);
     updateVisualBits.SetBit(UNIT_FIELD_MAXPOWER5);
     updateVisualBits.SetBit(UNIT_FIELD_LEVEL);
-	updateVisualBits.SetBit(UNIT_FIELD_ILEVEL);
     updateVisualBits.SetBit(UNIT_FIELD_FACTIONTEMPLATE);
     updateVisualBits.SetBit(UNIT_FIELD_BYTES_0);
     updateVisualBits.SetBit(UNIT_FIELD_FLAGS);
@@ -10430,7 +10429,7 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
     if (!pItem)
         return nullptr;
 
-	setItemLevel(true);
+	UpdateItemLevel(true);
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
@@ -10539,7 +10538,7 @@ Item* Player::EquipNewItem(uint16 pos, uint32 item, bool update)
     return nullptr;
 }
 
-void Player::setItemLevel(bool inventory)
+void Player::UpdateItemLevel(bool inventory)
 {
 	float iLevel = 0.0f;
 	float nbItem = 0;
@@ -10579,8 +10578,8 @@ void Player::setItemLevel(bool inventory)
 	iLevel /= std::max(nbItem, (float)getExpItemCount());
 	iLevel = std::max(iLevel, 5.0f);
 
-	if (getItemLevel() < (uint32)iLevel)
-		SetUInt32Value(UNIT_FIELD_ILEVEL, (uint32)iLevel);
+	if (GetItemLevel() < (uint32)iLevel)
+		SetItemLevel((uint32)iLevel);
 }
 
 
@@ -10780,7 +10779,7 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 	if (!IsEnabled)
 		return 1.0f;
 
-	float qualityModifier = std::max((float)getExpItemLevel() / (float)getItemLevel(), 1.0f);
+	float qualityModifier = std::max((float)getExpItemLevel() / (float)GetItemLevel(), 1.0f);
 	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
 
 	float quantityModifier = 1.0f;
@@ -10808,7 +10807,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
 {
     AddEnchantmentDurations(pItem);
     AddItemDurations(pItem);
-	setItemLevel(true);
+	UpdateItemLevel(true);
 
     uint8 bag = pos >> 8;
     uint8 slot = pos & 255;
@@ -15284,7 +15283,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     SetByteValue(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_PLAYER_CONTROLLED_DEBUFF_LIMIT);
 
     SetUInt32Value(UNIT_FIELD_LEVEL, fields[6].GetUInt8());
-	SetUInt32Value(UNIT_FIELD_ILEVEL, fields[60].GetUInt8());
+    SetItemLevel(fields[60].GetUInt8());
     SetUInt32Value(PLAYER_XP, fields[7].GetUInt32());
 
     _LoadIntoDataField(fields[55].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE);
@@ -17039,7 +17038,7 @@ void Player::SaveToDB()
     uberInsert.addString(ss);
 
     uberInsert.addUInt32(uint32(GetByteValue(PLAYER_FIELD_BYTES, 2)));
-	uberInsert.addUInt32(getItemLevel());
+	uberInsert.addUInt32(GetItemLevel());
 
     uberInsert.Execute();
 
