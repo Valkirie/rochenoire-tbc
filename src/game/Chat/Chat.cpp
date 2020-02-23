@@ -536,6 +536,7 @@ ChatCommand* ChatHandler::getCommandTable()
 
 		{ "setpack",        SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcChangePackCommand,       "", nullptr },
         { "setscale",       SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcSetScaleCommand,         "", nullptr },
+        { "setlevelvar",    SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcSetLevelVarCommand,      "", nullptr },
 
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };

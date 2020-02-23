@@ -467,6 +467,7 @@ class ChatHandler
 
 		bool HandleNpcChangePackCommand(char* args);
         bool HandleNpcSetScaleCommand(char* args);
+        bool HandleNpcSetLevelVarCommand(char* args);
         //----------------------------------------------------------
 
         bool HandlePDumpLoadCommand(char* args);

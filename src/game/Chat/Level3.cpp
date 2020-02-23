@@ -3482,6 +3482,65 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 	return true;
 }
 
+bool ChatHandler::HandleNpcSetLevelVarCommand(char* args)
+{
+    if (!*args)
+    {
+        PSendSysMessage("Syntax is .npc setlevelvar level (-x to +x) template (0/1)");
+        return false;
+    }
+
+    int32 level_var;
+    ExtractInt32(&args, level_var);
+
+    bool istpl;
+    ExtractOnOff(&args, istpl);
+
+    Unit* unit = getSelectedUnit();
+    if (!unit || unit->GetTypeId() != TYPEID_UNIT)
+    {
+        SendSysMessage(LANG_SELECT_CREATURE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (istpl)
+    {
+        uint32 entry = unit->GetEntry();
+        if (QueryResult* result = WorldDatabase.PQuery("SELECT entry FROM creature_template_addon WHERE entry = %u;", entry))
+        {
+            delete result;
+
+            if (WorldDatabase.PExecute("UPDATE creature_template_addon SET lvar = %i WHERE entry = %u;", level_var, entry))
+                PSendSysMessage("Creature level variation was set to %i", level_var);
+        }
+        else
+        {
+            if (WorldDatabase.PExecute("INSERT INTO creature_template_addon(entry,lvar) VALUES (%u,%i);", entry, level_var))
+                PSendSysMessage("Creature level variation was set to %i", level_var);
+        }
+    }
+    else
+    {
+        Player* player = m_session->GetPlayer();
+        uint32 guid = player->GetSelectionGuid().GetCounter();
+        if (QueryResult* result = WorldDatabase.PQuery("SELECT guid FROM creature_addon WHERE guid = ", guid))
+        {
+            delete result;
+
+            if (WorldDatabase.PExecute("UPDATE creature_addon SET lvar = %i WHERE guid = %u;", level_var, guid))
+                PSendSysMessage("Creature level variation was set to %i", level_var);
+        }
+        else
+        {
+            if (WorldDatabase.PExecute("INSERT INTO creature_addon(guid,lvar) VALUES (%u,%i);", guid, level_var))
+                PSendSysMessage("Creature level variation was set to %i", level_var);
+        }
+    }
+
+    unit->SetLevelVar(level_var);
+}
+
 bool ChatHandler::HandleNpcSetScaleCommand(char* args)
 {
     if (!*args)
@@ -3596,7 +3655,7 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     else
         PSendSysMessage(LANG_NPCINFO_CHAR, target->GetGuidStr().c_str(), faction, npcflags, Entry, displayid, nativeid);
 
-    PSendSysMessage(LANG_NPCINFO_LEVEL, target->getLevel());
+    PSendSysMessage("Level: %u (%i).", target->getLevel(), target->GetLevelVar());
     PSendSysMessage(LANG_NPCINFO_HEALTH, target->GetCreateHealth(), target->GetMaxHealth(), target->GetHealth());
     PSendSysMessage(LANG_NPCINFO_FLAGS, target->GetUInt32Value(UNIT_FIELD_FLAGS), target->GetUInt32Value(UNIT_DYNAMIC_FLAGS), target->getFaction());
     PSendSysMessage(LANG_COMMAND_RAWPAWNTIMES, defRespawnDelayStr.c_str(), curRespawnDelayStr.c_str());
