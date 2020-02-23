@@ -1340,6 +1340,12 @@ class ObjectMgr
         uint32 GetScaleSpellTimer(Creature* creature, uint32 timer, float CoeffSpellRatio) const;
         float GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const;
 		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const;
+        float GetFactorNHT(float Nmax, float Np, float f_softness) const;
+        float GetFactorNHR(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
+        float GetFactorHP(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
+        float GetFactorNDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
+        float GetFactorDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const;
+        float GetFactorAdds(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float MinAddShrinkDPS) const;
     protected:
 
         // first free id for selected id type

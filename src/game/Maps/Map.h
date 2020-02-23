@@ -131,13 +131,6 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, int> mymap;
 
 		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
-		void GetScaleRatio(float NT, float Nadds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer) const;
-		float GetFactorNHT(float Nmax, float Np, float f_softness) const;
-		float GetFactorNHR(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
-		float GetFactorHP(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
-		float GetFactorNDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
-		float GetFactorDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const;
-		float GetFactorAdds(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float MinAddShrinkDPS) const;
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
 		uint32 GetCreaturesCount(uint32 entry, bool IsAlive = false) const;
 		uint32 GetCreaturesPackSize(uint32 pack, bool IsAlive = false) const;

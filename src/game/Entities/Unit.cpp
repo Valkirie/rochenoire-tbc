@@ -858,11 +858,6 @@ bool Unit::IsInStartLocation()
 	return false;
 }
 
-void Unit::SetLevelVariation(int lvl)
-{
-	s_level_var = lvl;
-}
-
 void Unit::Suicide()
 {
     DealDamage(this, this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);

@@ -1576,18 +1576,44 @@ class Unit : public WorldObject
         void Unmount(bool from_aura = false);
 
 		// Scaling
-		bool IsInStartLocation();
-		int getLevelVariation() const { return s_level_var; };
-		void SetLevelVariation(int lvl);
+        bool IsInStartLocation();
+        int level_var = 0;
+        uint32 ilevel_avg = 5;
 
-		// Flexible Raid
-		uint32 u_nbr_players = 0;			// store the last known group size
-		float f_ratio_dps = 1;				// store the dps ratio
-		float f_nbr_adds = 1;				// store the number of adds
-		float f_nbr_fadds = 1;				// store the number of adds to keep
-		float f_ratio_damage = 1;			// store the damage ratio
-		float f_ratio_health = 1;			// store the HP ratio
-		float f_ratio_attacktime = 1;		// store the attack speed ratio
+        int GetLevelVar() const { return level_var; };
+        void SetLevelVar(int var) { level_var = var; };
+        uint32 GetItemLevel() const { return ilevel_avg; };
+        void SetItemLevel(uint32 ilevel) { ilevel_avg = ilevel; };
+
+        // Flexible Raid
+        float raid_ratio_dmg = 1.0f;
+        float raid_ratio_health = 1.0f;
+        float raid_ratio_attacktime = 1.0f;
+        float raid_ratio_dps = 1.0f;
+        int raid_number_adds = 1;
+        int raid_number_adds_keep = 1;
+        int raid_number_players = 1;
+
+        float GetRaidDmg() const { return raid_ratio_dmg; };
+        void SetRaidDmg(float value) { raid_ratio_dmg = value; };
+
+        float GetRaidHealth() const { return raid_ratio_health; };
+        void SetRaidHealth(float value) { raid_ratio_health = value; };
+
+        float GetRaidAttackTime() const { return raid_ratio_attacktime; };
+        void SetRaidAttackTime(float value) { raid_ratio_attacktime = value; };
+
+        float GetRaidDps() const { return raid_ratio_dps; };
+        void SetRaidDps(float value) { raid_ratio_dps = value; };
+
+        int GetRaidAdds() const { return raid_number_adds; };
+        void SetRaidAdds(int value) { raid_number_adds = value; };
+
+        int GetRaidAddsKeep() const { return raid_number_adds_keep; };
+        void SetRaidAddsKeep(int value) { raid_number_adds_keep = value; };
+
+        int GetRaidSize() const { return raid_number_players; };
+        void SetRaidSize(int value) { raid_number_players = value; };
 
         uint16 GetSkillMaxForLevel(Unit const* target = nullptr) const { return (target ? GetLevelForTarget(target) : getLevel()) * 5; }
 
@@ -2566,9 +2592,6 @@ class Unit : public WorldObject
         // base speeds set by model/template
         float m_baseSpeedWalk;
         float m_baseSpeedRun;
-
-		// scaling
-		int s_level_var = 0;
 
         // Protected unit guid fields getters/setters
         // Charm: temporary pet unit guid

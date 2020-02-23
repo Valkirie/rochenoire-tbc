@@ -1137,15 +1137,60 @@ bool ObjectMgr::isSafeExpansionZone(uint32 mapId, uint32 zoneId) const
 	return true;
 }
 
+float ObjectMgr::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness) const
+{
+    return 2 + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
+}
+
+float ObjectMgr::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
+{
+    float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
+    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+    return u_nbr_players - NHT - NT - NDPS;
+}
+
+float ObjectMgr::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
+{
+    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+    float left = std::max(1.0f, (float)(u_nbr_players - NHT - NT));
+    return left / (1 + f_ratio_heal_dps);
+}
+
+float ObjectMgr::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
+{
+    return GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness) / GetFactorNDPS(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness);
+}
+
+float ObjectMgr::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const
+{
+    return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
+}
+
+float ObjectMgr::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health) const
+{
+    float FinalNAdds = Nadds;
+
+    while (((GetFactorHP(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) * Nadds / FinalNAdds < f_min_red_health) && FinalNAdds > 1)
+        FinalNAdds = FinalNAdds - 1;
+
+    return FinalNAdds;
+}
+
 // TEMP, to be deleted
 float ObjectMgr::GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const
 {
-    return GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+    float RatioDps = creature->GetRaidDps();
+    float NbrAdds = creature->GetRaidAdds();
+    float NbrAddsKeep = creature->GetRaidAddsKeep();
+    return GetScaleSpellTimer(RatioDps, NbrAdds, NbrAddsKeep, CoeffSpellRatio);
 }
 
 uint32 ObjectMgr::GetScaleSpellTimer(Creature* creature, uint32 timer, float CoeffSpellRatio) const
 {
-    float Coeff = GetScaleSpellTimer(creature->f_ratio_dps, creature->f_nbr_adds, creature->f_nbr_fadds, CoeffSpellRatio);
+    float RatioDps = creature->GetRaidDps();
+    float NbrAdds = creature->GetRaidAdds();
+    float NbrAddsKeep = creature->GetRaidAddsKeep();
+    float Coeff = GetScaleSpellTimer(RatioDps, NbrAdds, NbrAddsKeep, CoeffSpellRatio);
 	return (uint32)timer / Coeff;
 }
 
@@ -1202,7 +1247,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
 	float p_level = player->getLevel();
 	float c_level = creature->getLevel();
-	int v_level = creature->getLevelVariation();
+	int v_level   = creature->GetLevelVar();
 
 	if (!isSafeExpansionZone(mapId, zoneId))
 		p_level = p_level < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) ? sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) : p_level;
@@ -1986,6 +2031,8 @@ void ObjectMgr::LoadCreatures()
         data.gameEvent          = fields[18].GetInt16();
         data.GuidPoolId         = fields[19].GetInt16();
         data.EntryPoolId        = fields[20].GetInt16();
+        data.patch_min          = fields[21].GetInt16();
+        data.patch_max          = fields[22].GetInt16();
 
         if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA))
         {
