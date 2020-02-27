@@ -730,9 +730,6 @@ float f_ratio_heal_dps = 0.2f;  // store the ratio heal vs dps (between 0.2 and 
 uint32 lastKnownGroupSize = 0;	// store the last known group size
 uint32 lastKnownPoolSize = 0;	// store the number of creatures in the raid
 uint32 lastKnownForceSize = 0;	// store the forced raid size
-uint32 u_TmpPlayer = 40;		// store the temporary number of players
-uint32 u_nbr_players = 40;		// store the current group size
-uint32 u_GroupSize = 0;			// store the last known group size
 
 float f_max_red_boss = 0.8f;	// store the maximum percentage of damage reduction (boss / trash)
 float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction (adds)
@@ -741,7 +738,7 @@ float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
 
 uint32 Map::GetFinalNAdds(float NT, float Nadds) const
 {
-	return sObjectMgr.GetFactorAdds(GetMaxPlayers(), u_nbr_players, NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
+	return sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
 }
 
 uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
@@ -755,7 +752,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
         if (packId != 0)
             continue; // skip if in a pack
 
-		if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && creature->isAlive())))
+		if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
             output++;
 	}
 	return output;
@@ -769,7 +766,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
         Creature* creature = ((Creature*)it->second);
         uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
 
-        if (packId == pack && (!IsAlive || (IsAlive && creature->isAlive())))
+        if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
             output++;
 	}
 	return output;
@@ -791,7 +788,7 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 		if (lastKnownGroupSize != u_GroupSize || lastKnownPoolSize != m_creaturesStore.size() || ForceRefresh)
 		{
             // clear the counter
-            mymap.clear();
+            m_poolsStore.clear();
 
 			if (lastKnownGroupSize != 0)
 			{
@@ -808,7 +805,7 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 			lastKnownGroupSize = u_GroupSize;
 			lastKnownPoolSize = m_creaturesStore.size();
 
-			u_nbr_players = u_TmpPlayer < GetMinPlayers() ? GetMinPlayers() : u_TmpPlayer;
+            SetCurPlayers(u_TmpPlayer < GetMinPlayers() ? GetMinPlayers() : u_TmpPlayer);
 
             for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
             {
@@ -817,7 +814,7 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				if (!creature)									// skip if no creature found
 					continue;
 
-				if (creature->GetRaidSize() == u_nbr_players)	// skip if creature is already scaled for current raid size
+				if (creature->GetRaidSize() == GetCurPlayers())	// skip if creature is already scaled for current raid size
 					continue;
 
 				CreatureInfo const* cinfo = creature->GetCreatureInfo();
@@ -834,122 +831,114 @@ void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
 				float MaxHealth				= (float)creature->GetMaxHealth();
 
-                mymap[creature->GetEntry()] = 0;
+                m_poolsStore[creature->GetEntry()] = 0;
 
-				// Creature based values
-				uint32	u_nbr_tank = 2;			// number of tanks needed for that encounter
-				uint32	u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
-				float	f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
-				float	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
-				float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
-				float	f_ratio_c0 = 1.0f;		// used to compute c1 and c2
-
-                uint32 packId       = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());	// store the creature pack entry
-
-				float factorProbaSpwan;
-				float factorTimeSpawn;
-
-				uint32 u_nbr_adds_alive = 0;		// store the number of creatures (alive)
-				uint16 u_adds_compteur = 0;			// used to split creatures pack
+                uint32 packId       = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
 				uint16 u_adds_multiplicity = 1;		// used to split creatures pack
+
+                CreatureRatio& cdata = m_creaturesRatio[cinfo->Entry];
 
 				std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
 				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
 				{
-					u_nbr_tank = f_values->nb_tank;
-					u_nbr_pack = f_values->nb_pack;
-					f_ratio_hrht = f_values->ratio_hrht;
-					f_ratio_c1 = f_values->ratio_c1;
-					f_ratio_c2 = f_values->ratio_c2;
-					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (GetMaxPlayers() - GetMinPlayers()) + (GetMaxPlayers() * f_ratio_c1 - GetMinPlayers() * f_ratio_c2) / (GetMaxPlayers() - GetMinPlayers());
+                    cdata.nbr_tank = f_values->nb_tank;
+                    cdata.nbr_pack = f_values->nb_pack;
+                    cdata.ratio_hrht = f_values->ratio_hrht;
+                    cdata.ratio_c1 = f_values->ratio_c1;
+                    cdata.ratio_c2 = f_values->ratio_c2;
+                    cdata.ratio_c0 = GetCurPlayers() * (cdata.ratio_c2 - cdata.ratio_c1) / (GetMaxPlayers() - GetMinPlayers()) + (GetMaxPlayers() * cdata.ratio_c1 - GetMinPlayers() * cdata.ratio_c2) / (GetMaxPlayers() - GetMinPlayers());
 				}
 
-                // is creature part of a pack ?
-                if (packId != 0)
+                // if we don't have computed datas for this creature OR raid size has changed
+                if (!cdata.treated || (cdata.raid_size != GetCurPlayers()))
                 {
-                    u_nbr_pack = GetCreaturesPackSize(packId);
-                    u_nbr_adds_alive = GetCreaturesPackSize(packId, true);
-                    creature->SetRaidAdds(u_nbr_pack);
+                    cdata.r_health = 1.0f * sObjectMgr.GetFactorHP(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness);
+                    cdata.r_dps = 1.0f * sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht);
+                    cdata.r_dmg = 1.0f * (1 - (1 - f_max_red_boss) * (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)) / (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetMinPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)));
+                    cdata.r_attack = 1.0f * cdata.r_dps / cdata.r_dmg;
+
+                    if (packId == 0)
+                    {
+                        cdata.nbr_adds = GetCreaturesCount(cinfo->Entry);
+                        cdata.nbr_adds_alive = GetCreaturesCount(cinfo->Entry, true);
+                        cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
+                        packId = cinfo->Entry;
+                    }
+
+                    cdata.treated = true;
                 }
-                else
+
+                creature->SetRaidHealth(cdata.r_health);
+                creature->SetRaidDps(cdata.r_dps);
+                creature->SetRaidDmg(cdata.r_dmg);
+                creature->SetRaidAttackTime(cdata.r_attack);
+
+                // same creature but in a different pack
+                if ((cdata.packid != packId && packId != 0) || (cdata.raid_size != GetCurPlayers()))
                 {
-                    packId = cinfo->Entry;
-                    creature->SetRaidAdds(GetCreaturesCount(cinfo->Entry));
-                    u_nbr_adds_alive = GetCreaturesCount(cinfo->Entry, true);
+                    cdata.nbr_pack = GetCreaturesPackSize(packId);
+                    cdata.nbr_adds = cdata.nbr_pack;
+                    cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
+                    cdata.nbr_adds_alive = GetCreaturesPackSize(packId, true);
+                    cdata.packid = packId;
                 }
-
-                // hardcoding stuff when required
-				switch (cinfo->Entry)
-				{
-				default:
-					f_min_red_health = 0.7f;
-					break;
-				}
-
-				// Computing health ratio
-                float RatioHealth = creature->GetRaidHealth();
-                RatioHealth *= sObjectMgr.GetFactorHP(GetMaxPlayers(), u_nbr_players, u_nbr_tank, f_ratio_heal_dps, f_softness);
-                creature->SetRaidHealth(RatioHealth);
-
-                // Computing number of adds to keep
-                float NbrAdds      = creature->GetRaidAdds();
-                float NbrAddsKeep  = creature->GetRaidAddsKeep();
-                NbrAddsKeep *= sObjectMgr.GetFactorAdds(GetMaxPlayers(), u_nbr_players, u_nbr_tank, f_ratio_heal_dps, f_softness, NbrAdds, f_min_red_health);
-                creature->SetRaidAdds(NbrAddsKeep);
-
-                // Computing damage per second ratio
-                float RatioDps      = creature->GetRaidDps();
-                RatioDps *= sObjectMgr.GetFactorDPS(GetMaxPlayers(), u_nbr_players, u_nbr_tank, f_ratio_heal_dps, f_softness, f_ratio_hrht);
-                creature->SetRaidDps(RatioDps);
-
-                // Computing damage ratio
-                float RatioDmg = creature->GetRaidDmg();
-                RatioDmg *= 1 - (1 - f_max_red_boss) * (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), u_nbr_players, u_nbr_tank, f_ratio_heal_dps, f_softness, f_ratio_hrht)) / (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetMinPlayers(), u_nbr_tank, f_ratio_heal_dps, f_softness, f_ratio_hrht));
-                creature->SetRaidDmg(RatioDmg);
-
-                // Computing attack time ratio
-                float RatioAttack = creature->GetRaidAttackTime();
-                RatioAttack *= RatioDps / RatioDmg;
-                creature->SetRaidAttackTime(RatioAttack);
 
                 // Computing raid size (stored for optimisation purposes)
-                creature->SetRaidSize(u_nbr_players);
+                cdata.raid_size = GetCurPlayers();
+                creature->SetRaidSize(cdata.raid_size);
+                creature->SetRaidAdds(cdata.nbr_pack);
 
-                if (u_nbr_pack > 1)
+                if (cdata.nbr_pack > 1)
 				{
-					creature->SetRaidDps(RatioDps * NbrAdds / NbrAddsKeep);
+                    creature->SetRaidAddsKeep(cdata.nbr_adds_keep);
+					creature->SetRaidDps(cdata.r_dps * cdata.nbr_pack / cdata.nbr_adds_keep);
 
-					int l_alive = floor(NbrAddsKeep / NbrAdds * u_nbr_pack);
+					int l_alive = floor(cdata.nbr_adds_keep / cdata.nbr_adds * cdata.nbr_pack);
 
-					if (mymap[packId] >= u_nbr_pack)
+					if (m_poolsStore[packId] >= cdata.nbr_pack)
+                        m_poolsStore[packId] = 0;
+
+					if (cdata.nbr_adds_alive > cdata.nbr_adds_keep)
 					{
-                        mymap[packId] = 0;
-						u_adds_compteur = 0;
+						if (m_poolsStore[packId] >= l_alive && m_poolsStore[packId] % u_adds_multiplicity == 0)
+                            if (!creature->isInCombat() || ForceRefresh)
+                            {
+                                creature->SetVisibility(VISIBILITY_OFF);
+                                creature->AI()->SetCombatMovement(true);
+                                creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
+                                creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED); // SetScale()
+                                creature->GetCombatManager().SetLeashingDisable(true);
+
+                                // creature->ForcedDespawn(0, false, true);
+                            }
 					}
 
-					if (u_nbr_adds_alive > NbrAddsKeep)
+					if (cdata.nbr_adds_alive < cdata.nbr_adds_keep)
 					{
-						if (mymap[packId] >= l_alive && u_adds_compteur % u_adds_multiplicity == 0)
-							if (!creature->isInCombat() || ForceRefresh)
-								creature->ForcedDespawn(0, false, true);
+						if (m_poolsStore[packId] <= l_alive)
+                            if (creature->isScaled() || ForceRefresh)
+                            {
+                                creature->SetVisibility(VISIBILITY_ON);
+                                creature->AI()->SetCombatMovement(false);
+                                creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
+                                creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
+                                creature->GetCombatManager().SetLeashingDisable(false);
+
+                                //creature->Respawn();
+                            }
 					}
 
-					if (u_nbr_adds_alive < NbrAddsKeep)
-					{
-						if (mymap[packId] < l_alive)
-							if ((creature->isDead() && creature->isScaled()) || ForceRefresh)
-								creature->Respawn();
-					}
-
-                    mymap[packId] += 1;
+                    m_poolsStore[packId] += 1;
 				}
 
 				// Temporary calculations
-				MaxHealth *= RatioHealth / f_ratio_c0;
-				MinMeleeDmg *= RatioDmg / f_ratio_c0;
-				MaxMeleeDmg *= RatioDmg / f_ratio_c0;
-				MeleeBaseAttackTime /= RatioAttack;
-				RangedBaseAttackTime /= RatioAttack;
+				MaxHealth *= cdata.r_health / cdata.ratio_c0;
+				MinMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
+				MaxMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
+				MeleeBaseAttackTime /= cdata.r_attack;
+				RangedBaseAttackTime /= cdata.r_attack;
 
 				// Set values
 				creature->SetMaxHealth((uint32)MaxHealth);
@@ -1227,7 +1216,16 @@ uint32 Map::GetMaxPlayers() const
 
 uint32 Map::GetMinPlayers() const
 {
-	return std::max((float)sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE), (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO)));
+    switch (GetMaxPlayers())
+    {
+        case 25: return 8;
+        default: return std::max((float)sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE), (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO)));
+    }
+}
+
+uint32 Map::GetCurPlayers() const
+{
+    return u_GroupSize == 0 ? GetPlayersCount() : u_nbr_players;
 }
 
 uint32 Map::GetMaxResetDelay() const
@@ -1940,16 +1938,6 @@ void DungeonMap::SetResetSchedule(bool on)
 
         sMapPersistentStateMgr.GetScheduler().ScheduleReset(on, resetTime, DungeonResetEvent(RESET_EVENT_NORMAL_DUNGEON, GetId(), GetInstanceId()));
     }
-}
-
-uint32 DungeonMap::GetSetPlayers() const
-{
-	return u_nbr_players > GetMinPlayers() ? u_nbr_players : GetMinPlayers();
-}
-
-uint32 DungeonMap::GetPoolSize() const
-{
-	return m_creaturesStore.size();
 }
 
 DungeonPersistentState* DungeonMap::GetPersistanceState() const

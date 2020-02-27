@@ -212,7 +212,7 @@ typedef std::unordered_map<uint32, uint32> CreaturePoolMap;
 typedef std::unordered_map<std::string, CreatureFlex> CreatureFlexMap;
 typedef std::unordered_map<std::string, SpellFlex> SpellFlexMap;
 typedef std::unordered_map<std::string, ItemLootScale> LootScaleMap;
-typedef std::unordered_map<uint32, ItemLootScale> LootScaleParenting;
+typedef std::unordered_map<uint32, ItemLootScale> LootScaleParentingMap;
 typedef std::unordered_map<uint32, NpcTextLocale> NpcTextLocaleMap;
 typedef std::unordered_map<uint32, PageTextLocale> PageTextLocaleMap;
 typedef std::unordered_map<int32, MangosStringLocale> MangosStringLocaleMap;
@@ -1007,21 +1007,21 @@ class ObjectMgr
 
 		SpellFlex const* GetSpellFlex(std::string entry) const
 		{
-			auto itr = mSpellFlexMap.find(entry);
+			SpellFlexMap::const_iterator itr = mSpellFlexMap.find(entry);
 			if (itr == mSpellFlexMap.end()) return nullptr;
 			return &itr->second;
 		}
 
 		ItemLootScale const* GetItemLootScale(std::string entry) const
 		{
-			auto itr = mLootScaleMap.find(entry);
+			LootScaleMap::const_iterator itr = mLootScaleMap.find(entry);
 			if (itr == mLootScaleMap.end()) return nullptr;
 			return &itr->second;
 		}
 
 		ItemLootScale const* GetItemLootParentingScale(uint32 entry) const
 		{
-			auto itr = mLootScaleParentingMap.find(entry);
+			LootScaleParentingMap::const_iterator itr = mLootScaleParentingMap.find(entry);
 			if (itr == mLootScaleParentingMap.end()) return nullptr;
 			return &itr->second;
 		}
@@ -1482,7 +1482,7 @@ class ObjectMgr
         CreaturePoolMap mCreaturePoolMap;
 		SpellFlexMap mSpellFlexMap;
 
-		LootScaleParenting mLootScaleParentingMap;
+		LootScaleParentingMap mLootScaleParentingMap;
         QuestLocaleMap mQuestLocaleMap;
         NpcTextLocaleMap mNpcTextLocaleMap;
         PageTextLocaleMap mPageTextLocaleMap;

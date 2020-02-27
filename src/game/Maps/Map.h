@@ -126,9 +126,6 @@ class Map : public GridRefManager<NGridType>
         static void DeleteFromWorld(Player* pl);        // player object will deleted at call
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
-        
-		// Flexible Raid
-        std::map<uint32, int> mymap;
 
 		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
@@ -205,6 +202,8 @@ class Map : public GridRefManager<NGridType>
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
         uint32 GetMaxPlayers() const;
 		uint32 GetMinPlayers() const;
+        uint32 GetCurPlayers() const;
+        void SetCurPlayers(const uint32 nbr) { u_nbr_players = nbr; };
         uint32 GetMaxResetDelay() const;
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
@@ -278,6 +277,30 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
 
+        // Flexible Raid
+        struct CreatureRatio
+        {
+            bool treated = false;
+            float ratio_c1 = 0.85f;		// difficulty coefficient when raid size is close to min size raid
+            float ratio_c2 = 1.0f;		// difficulty coefficient when raid size is close to max size raid
+            float ratio_c0 = 1.0f;		// used to compute c1 and c2
+            uint32 nbr_tank = 2;        // number of tanks needed for that encounter
+            uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
+            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+            uint32 nbr_adds;
+            uint32 nbr_adds_alive;
+            float nbr_adds_keep;
+            uint32 raid_size;
+            uint32 packid;
+            float r_health;
+            float r_dps;
+            float r_dmg;
+            float r_attack;
+        };
+
+        std::map<uint32, int> m_poolsStore;
+        typedef std::map<uint32, CreatureRatio> CreatureRatioMap;
+        CreatureRatioMap m_creaturesRatio;
         typedef std::map<uint32, Creature*> CreatureList;
         CreatureList m_creaturesStore;
 
@@ -399,6 +422,11 @@ class Map : public GridRefManager<NGridType>
         void SendObjectUpdates();
         std::set<Object*> i_objectsToClientUpdate;
 
+        // Flexible raid
+        uint32 u_TmpPlayer      = 40;       // store the temporary number of players
+        uint32 u_nbr_players    = 40;       // store the current group size
+        uint32 u_GroupSize      = 0;        // store the last known group size
+
     protected:
         MapEntry const* i_mapEntry;
         uint8 i_spawnMode;
@@ -502,10 +530,6 @@ class DungeonMap : public Map
         void SetResetSchedule(bool on);
 
         Team GetInstanceTeam() { return m_team; };
-
-		// flexible map
-		uint32 GetSetPlayers() const;
-		uint32 GetPoolSize() const;
 
         // can't be nullptr for loaded map
         DungeonPersistentState* GetPersistanceState() const;
