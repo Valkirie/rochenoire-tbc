@@ -74,6 +74,7 @@ void WaypointMovementGenerator<Creature>::InitializeWaypointPath(Creature& u, in
     i_nextMoveTime.Reset(initialDelay);
     // Start moving if possible
     StartMove(u);
+    u.GetPosition(m_resetPoint);
 }
 
 void WaypointMovementGenerator<Creature>::Finalize(Creature& creature)
@@ -84,6 +85,13 @@ void WaypointMovementGenerator<Creature>::Finalize(Creature& creature)
 
 void WaypointMovementGenerator<Creature>::Interrupt(Creature& creature)
 {
+    // be sure we are not already interrupted before saving current pos
+    if (creature.hasUnitState(UNIT_STAT_ROAMING))
+    {
+        // save the current position in case of reset
+        creature.GetPosition(m_resetPoint);
+    }
+
     creature.InterruptMoving();
     creature.clearUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE);
     creature.SetWalk(!creature.hasUnitState(UNIT_STAT_RUNNING_STATE), false);
@@ -126,6 +134,9 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
             type = EXTERNAL_WAYPOINT_MOVE;
         InformAI(creature, type, i_currentNode);
     }
+
+    // save position and orientation in case of GetResetPosition() call
+    creature.GetPosition(m_resetPoint);
 
     // Wait delay ms
     Stop(node.delay);
@@ -178,8 +189,72 @@ void WaypointMovementGenerator<Creature>::StartMove(Creature& creature)
     creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
 
     WaypointNode const& nextNode = currPoint->second;
+
+    // will contain generated path
+    PointsArray genPath;
+    genPath.reserve(20);    // little optimization
+
+    PathFinder pf(&creature);
+
+    // compute path to next node and put it in the path
+    pf.calculate(nextNode.x, nextNode.y, nextNode.z, true);
+    genPath.insert(genPath.end(), pf.getPath().begin(), pf.getPath().end());
+
+    // make sure to reset spline index as its new path
+    m_nextNodeSplineIdx = -1;
+
+    // if creature should not stop at current node reach
+    if (!nextNode.delay)
+    {
+        // we'll add path to node after this one too to make animation more smoother
+        m_nextNodeSplineIdx = genPath.size() - 1;
+        auto nodeAfterItr = currPoint;
+        ++nodeAfterItr;
+        if (nodeAfterItr == i_path->end())
+            nodeAfterItr = i_path->begin();
+
+        auto const& nodeAfter = nodeAfterItr->second;
+
+        // extend path only if next node is different than current node
+        if (nodeAfterItr != currPoint)
+        {
+            Vector3 nodeAfterCoord(nodeAfter.x, nodeAfter.y, nodeAfter.z);
+
+            // startPoint should contain current node destination that we are about to reach
+            Vector3 startPoint = genPath.back();
+
+            // we add artificially a point in the direction of next destination to avoid client making shortcut and avoiding current node destination
+            Vector3 intPoint = startPoint.lerp(nodeAfterCoord, 0.1f);
+            genPath.push_back(intPoint);
+            creature.UpdateAllowedPositionZ(intPoint.x, intPoint.y, intPoint.z);
+
+            // avoid computing path for near nodes
+            if ((nodeAfterCoord - startPoint).squaredMagnitude() > 10)
+            {
+                // compute path to next node from intermediate point and add it to generated path
+                pf.calculate(intPoint, nodeAfterCoord, true);
+                genPath.insert(genPath.end(), pf.getPath().begin() + 1, pf.getPath().end());
+            }
+            else
+            {
+                // add only node coord as we are near enough of it
+                genPath.push_back(nodeAfterCoord);
+            }
+        }
+        else
+        {
+            // db dev seem to use one wp for some specific script without delay
+            sLog.outErrorDb("WaypointMovementGenerator::StartMove()> creature %s have only one wp and without any delay. Delay forced to 5 sec!",
+                creature.GetGuidStr().c_str());
+
+            // force delay
+            Stop(5000);
+        }
+    }
+
+    // send path to client
     Movement::MoveSplineInit init(creature);
-    init.MoveTo(nextNode.x, nextNode.y, nextNode.z, true);
+    init.MovebyPath(genPath);
 
     if (nextNode.orientation != 100 && nextNode.delay != 0)
         init.SetFacing(nextNode.orientation);
@@ -225,10 +300,11 @@ bool WaypointMovementGenerator<Creature>::Update(Creature& creature, const uint3
     {
         if (creature.IsStopped())
             Stop(STOP_TIME_FOR_PLAYER);
-        else if (creature.movespline->Finalized())
+        else if (creature.movespline->Finalized() ||(m_nextNodeSplineIdx >= 0 && creature.movespline->currentPathIdx() >= m_nextNodeSplineIdx))
         {
-            OnArrived(creature);
-            StartMove(creature);
+            // we arrived to a node either by movespline finalized or node reached while creature continue to move
+            OnArrived(creature);        // fire script events
+            StartMove(creature);        // restart movement if needed
         }
     }
     return true;
@@ -250,6 +326,12 @@ bool WaypointMovementGenerator<Creature>::CanMove(int32 diff, Creature& u)
 
 bool WaypointMovementGenerator<Creature>::GetResetPosition(Creature&, float& x, float& y, float& z, float& o) const
 {
+    x = m_resetPoint.coord_x;
+    y = m_resetPoint.coord_y;
+    z = m_resetPoint.coord_z;
+    o = m_resetPoint.orientation;
+
+    return true;
     // prevent a crash at empty waypoint path.
     if (!i_path || i_path->empty())
         return false;
