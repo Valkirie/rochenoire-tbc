@@ -127,7 +127,8 @@ class Map : public GridRefManager<NGridType>
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
 
-		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
+		void UpdateFlexibleRaid(bool isRefresh = false, uint32 RefreshSize = 0);
+        void ShuffleFlexibleRaid();
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
 		uint32 GetCreaturesCount(uint32 entry, bool IsAlive = false) const;
 		uint32 GetCreaturesPackSize(uint32 pack, bool IsAlive = false) const;
@@ -281,28 +282,44 @@ class Map : public GridRefManager<NGridType>
         struct CreatureRatio
         {
             bool treated = false;
+            bool added = false;
+            bool removed = false;
+
             float ratio_c1 = 0.85f;		// difficulty coefficient when raid size is close to min size raid
             float ratio_c2 = 1.0f;		// difficulty coefficient when raid size is close to max size raid
             float ratio_c0 = 1.0f;		// used to compute c1 and c2
+            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+
             uint32 nbr_tank = 2;        // number of tanks needed for that encounter
             uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
-            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
             uint32 nbr_adds;
             uint32 nbr_adds_alive;
             float nbr_adds_keep;
+
             uint32 raid_size;
+            uint32 pool_size;
+
             uint32 packid;
+
             float r_health;
             float r_dps;
             float r_dmg;
             float r_attack;
         };
 
-        std::map<uint32, int> m_poolsStore;
-        typedef std::map<uint32, CreatureRatio> CreatureRatioMap;
+        std::map<uint32, uint32> m_poolsStore;
+        std::map<uint32, bool> m_displayStore;
+        typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
         CreatureRatioMap m_creaturesRatio;
-        typedef std::map<uint32, Creature*> CreatureList;
-        CreatureList m_creaturesStore;
+        typedef std::unordered_map<uint32, Creature*> CreatureMap;
+        CreatureMap m_creaturesStore;
+        CreatureMap m_creaturesStore_old;
+        CreatureMap m_creaturesStore_dif;
+        CreatureMap map_difference(CreatureMap c1, CreatureMap c2);
+
+        uint32 u_TmpPlayer = 40;       // store the temporary number of players
+        uint32 u_nbr_players = 40;       // store the current group size
+        uint32 u_GroupSize = 0;        // store the last known group size
 
         void AddUpdateObject(Object* obj)
         {
@@ -421,11 +438,6 @@ class Map : public GridRefManager<NGridType>
 
         void SendObjectUpdates();
         std::set<Object*> i_objectsToClientUpdate;
-
-        // Flexible raid
-        uint32 u_TmpPlayer      = 40;       // store the temporary number of players
-        uint32 u_nbr_players    = 40;       // store the current group size
-        uint32 u_GroupSize      = 0;        // store the last known group size
 
     protected:
         MapEntry const* i_mapEntry;
