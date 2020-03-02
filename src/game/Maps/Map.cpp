@@ -748,7 +748,12 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
 	{
         if (Creature* creature = ((Creature*)it->second))
         {
-            uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
+            uint32 mapId = creature->GetMap()->GetId() * 1000;
+            uint32 guid = creature->GetGUIDLow();
+            if (creature->IsTemporarySummon())
+                guid += mapId;
+
+            uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
             if (packId != 0)
                 continue; // skip if in a pack
@@ -767,7 +772,12 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
     {
         if (Creature* creature = ((Creature*)it->second))
         {
-            uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
+            uint32 mapId = creature->GetMap()->GetId() * 1000;
+            uint32 guid = creature->GetGUIDLow();
+            if (creature->IsTemporarySummon())
+                guid += mapId;
+
+            uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
             if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
                 output++;
@@ -815,6 +825,9 @@ Map::CreatureMap Map::map_difference(CreatureMap c1, CreatureMap c2)
 
 void Map::ShuffleFlexibleRaid()
 {
+    if (m_creaturesStore.size() == 0)
+        return;
+
     std::vector<CreatureMap::key_type> v(m_creaturesStore.size());
     std::transform(m_creaturesStore.begin(), m_creaturesStore.end(), v.begin(),
         [](const CreatureMap::value_type& x) {
@@ -889,7 +902,12 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
 				float MaxHealth				= (float)creature->GetMaxHealth();
-                uint32 packId               = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
+
+                uint32 mapId                = creature->GetMap()->GetId() * 1000;
+                uint32 guid                 = creature->GetGUIDLow();
+                if (creature->IsTemporarySummon()) guid += mapId;
+                uint32 packId               = sObjectMgr.GetCreaturePool(guid);
+
                 uint32 leftAlive            = 0;
                 uint32 leftMulti            = 1;
 
@@ -1013,21 +1031,23 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 Creature* creature = ((Creature*)it->second);
                 if (m_displayStore[creature->GetGUIDLow()])
                 {
-                    creature->SetVisibility(VISIBILITY_ON);
                     creature->AI()->SetCombatMovement(false);
-                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
                     creature->GetCombatManager().SetLeashingDisable(false);
-                    creature->HandleEmoteState(0);
+                    creature->RemoveAllAuras();
+                    creature->SetVisibility(VISIBILITY_ON);
                 }
                 else
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
                     creature->AI()->SetCombatMovement(true);
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
                     creature->GetCombatManager().SetLeashingDisable(true);
-                    creature->HandleEmoteState(EMOTE_ONESHOT_KNEEL);
+
+                    if (creature->IsTemporarySummon())
+                        creature->CastSpell(creature, 32839, TRIGGERED_OLD_TRIGGERED); // SPELL_BEAM_RED
+                    else
+                        creature->CastSpell(creature, 32840, TRIGGERED_OLD_TRIGGERED); // SPELL_BEAM_BLUE
                 }
             }
 		}
@@ -1894,7 +1914,9 @@ bool DungeonMap::Add(Player* player)
 
     // this will acquire the same mutex so it cannot be in the previous block
     Map::Add(player);
-    ShuffleFlexibleRaid();
+
+    if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
+        ShuffleFlexibleRaid();
 
     return true;
 }

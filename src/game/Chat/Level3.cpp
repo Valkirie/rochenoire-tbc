@@ -3466,15 +3466,20 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 	if (Creature* creature = (Creature*)unit)
 	{
 		Player* player = m_session->GetPlayer();
-        uint32 guid = player->GetSelectionGuid().GetCounter();
 
-		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = '%u'", guid))
+        uint32 mapId = player->GetMap()->GetId() * 1000;
+        uint32 guid = player->GetSelectionGuid().GetCounter();
+        if (creature->IsTemporarySummon())
+            guid += mapId;
+
+        std::string comment = std::string(unit->GetMap()->GetMapName()) + " (" + std::string(unit->GetName()) + ")";
+		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = %u", guid))
 		{
 			delete result;
-			WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u WHERE guid = '%u'", pool, guid);
+            WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u, comment = \"%s\" WHERE guid = %u", pool, comment.c_str(), guid);
 		}
 		else
-			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id) VALUES('%u','%u')", guid, pool);
+			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id,comment) VALUES(%u, %u, \"%s\")", guid, pool, comment.c_str());
 
 		PSendSysMessage("Guid %u has pack value %u", guid, pool);
         

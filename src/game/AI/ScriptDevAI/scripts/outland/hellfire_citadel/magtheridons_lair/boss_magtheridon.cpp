@@ -373,7 +373,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
     void SummonedCreatureDespawn(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_BURNING_ABYSS)
-            m_uiInfernalTimer = urand(10000, 15000);
+            m_uiInfernalTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), 1.0f);
     }
 
     void UpdateAI(const uint32 uiDiff) override
