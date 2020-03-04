@@ -305,6 +305,8 @@ class Map : public GridRefManager<NGridType>
             float r_dps;
             float r_dmg;
             float r_attack;
+
+            float m_health = 0;
         };
 
         std::map<uint32, uint32> m_poolsStore;

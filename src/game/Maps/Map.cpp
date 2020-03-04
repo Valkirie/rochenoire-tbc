@@ -758,6 +758,9 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
             if (packId != 0)
                 continue; // skip if in a pack
 
+            if (creature->IsTemporarySummon())
+                continue;
+
             if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
                 output++;
         }
@@ -801,7 +804,7 @@ Map::CreatureMap Map::map_difference(CreatureMap c1, CreatureMap c2)
                 std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
                 CreatureRatio& cdata = m_creaturesRatio[s_entry];
                 cdata.added = true;
-                ret.insert(std::make_pair(iter->first, iter->second));
+                ret.insert(std::make_pair(creature->GetEntry(), iter->second));
             }
         }
 
@@ -816,7 +819,7 @@ Map::CreatureMap Map::map_difference(CreatureMap c1, CreatureMap c2)
                 std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
                 CreatureRatio& cdata = m_creaturesRatio[s_entry];
                 cdata.removed = true;
-                ret.insert(std::make_pair(iterc1->first, iterc1->second));
+                ret.insert(std::make_pair(creature->GetEntry(), iterc1->second));
             }
         }
 
@@ -874,7 +877,9 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
         {
             isRefresh = true;
 
-            CreatureMap m_creaturesStore_dif = map_difference(m_creaturesStore, m_creaturesStore_old);
+            if(m_creaturesStore_old.size() != 0)
+                m_creaturesStore_dif = map_difference(m_creaturesStore, m_creaturesStore_old);
+
             lastKnownPoolSize = m_creaturesStore.size();
             m_creaturesStore_old = m_creaturesStore;
         }
@@ -894,28 +899,44 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
+                if (m_displayStore.find(creature->GetGUIDLow()) == m_displayStore.end())
+                    m_displayStore[creature->GetGUIDLow()] = true;
+
                 if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
                     continue;
+
+                uint32 mapId = creature->GetMap()->GetId() * 1000;
+                uint32 guid = creature->GetGUIDLow();
+                if (creature->IsTemporarySummon()) guid += mapId;
+                uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+                std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
+                CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
+                if (cdata.m_health == 0)
+                    cdata.m_health = creature->GetMaxHealth();
 
 				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
 				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
 				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
-				float MaxHealth				= (float)creature->GetMaxHealth();
-
-                uint32 mapId                = creature->GetMap()->GetId() * 1000;
-                uint32 guid                 = creature->GetGUIDLow();
-                if (creature->IsTemporarySummon()) guid += mapId;
-                uint32 packId               = sObjectMgr.GetCreaturePool(guid);
+                float MaxHealth             = (float)cdata.m_health;
 
                 uint32 leftAlive            = 0;
                 uint32 leftMulti            = 1;
 
-                std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
-                CreatureRatio& cdata = m_creaturesRatio[s_entry];
-
-                if (cdata.raid_size != GetCurPlayers() || cdata.pool_size != lastKnownPoolSize)
+                if (cdata.raid_size != GetCurPlayers())
                     cdata.treated = false;
+                else if (cdata.pool_size != lastKnownPoolSize)
+                {
+                    if (m_creaturesStore_dif.find(cinfo->Entry) != m_creaturesStore_dif.end())
+                        cdata.treated = false;
+                    else
+                    {
+                        cdata.pool_size = lastKnownPoolSize;
+                        continue;
+                    }
+                }
 
                 if (!cdata.treated)
                 {
@@ -935,7 +956,6 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     cdata.r_dmg = 1.0f * (1 - (1 - f_max_red_boss) * (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)) / (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetMinPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)));
                     cdata.r_attack = 1.0f * cdata.r_dps / cdata.r_dmg;
                     cdata.raid_size = GetCurPlayers();
-                    cdata.pool_size = lastKnownPoolSize;
 
                     // Temporary calculations
                     MaxHealth *= cdata.r_health / cdata.ratio_c0;
@@ -971,9 +991,6 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
                 if (m_poolsStore.find(cdata.packid) == m_poolsStore.end())
                     m_poolsStore[cdata.packid] = 0;
-
-                if (m_displayStore.find(creature->GetGUIDLow()) == m_displayStore.end())
-                    m_displayStore[creature->GetGUIDLow()] = true;
 
                 // Applying values
                 creature->SetMaxHealth((uint32)MaxHealth);
