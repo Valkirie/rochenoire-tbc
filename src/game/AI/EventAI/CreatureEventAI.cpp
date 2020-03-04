@@ -72,6 +72,41 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
                         if (spellInfo->Effect[i] == 0)
                             continue;
 
+                        bool damage = false;
+                        if (spellInfo->spellLevel)
+                        {
+                            if (uint32 aura = spellInfo->EffectApplyAuraName[i])
+                            {
+                                switch (aura)
+                                {
+                                case SPELL_AURA_PERIODIC_DAMAGE:
+                                case SPELL_AURA_PERIODIC_LEECH:
+                                    //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
+                                case SPELL_AURA_POWER_BURN_MANA:
+                                    damage = true;
+                                }
+                            }
+                            else if (uint32 effect = spellInfo->Effect[i])
+                            {
+                                switch (effect)
+                                {
+                                case SPELL_EFFECT_SCHOOL_DAMAGE:
+                                case SPELL_EFFECT_POWER_DRAIN:
+                                case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
+                                case SPELL_EFFECT_HEALTH_LEECH:
+                                case SPELL_EFFECT_HEAL:
+                                case SPELL_EFFECT_SUMMON:
+                                case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+                                    //   SPELL_EFFECT_WEAPON_PERCENT_DAMAGE: excluded, abs values only
+                                case SPELL_EFFECT_WEAPON_DAMAGE:
+                                case SPELL_EFFECT_POWER_BURN:
+                                case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+                                case SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE:
+                                    damage = true;
+                                }
+                            }
+                        }
+
                         float max_radius = std::min(100.0f, GetSpellRadius(sSpellRadiusStore.LookupEntry(spellInfo->EffectRadiusIndex[i])));
                         if (max_radius > current_radius)
                             current_radius = max_radius;
@@ -93,11 +128,17 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
                                 {
                                 case TARGET_ENUMERATOR_CONE:
                                 case TARGET_ENUMERATOR_AOE:
-                                    CoeffSpellRatio -= current_radius / 100.0f;
+                                    if(!damage)
+                                        CoeffSpellRatio -= current_radius / 100.0f;
+                                    else
+                                        CoeffSpellRatio += current_radius / 100.0f;
                                     break;
                                 case TARGET_ENUMERATOR_CHAIN: // more target = lower value
                                     current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
-                                    CoeffSpellRatio -= current_targets / 10.0f;
+                                    if(!damage)
+                                        CoeffSpellRatio -= current_targets / 10.0f;
+                                    else
+                                        CoeffSpellRatio += current_targets / 10.0f;
                                     break;
                                 default: break;
                                 }
@@ -111,11 +152,17 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
                                 {
                                 case TARGET_ENUMERATOR_CONE:
                                 case TARGET_ENUMERATOR_AOE:
-                                    CoeffSpellRatio -= current_radius / 100.0f;
+                                    if (!damage)
+                                        CoeffSpellRatio -= current_radius / 100.0f;
+                                    else
+                                        CoeffSpellRatio += current_radius / 100.0f;
                                     break;
                                 case TARGET_ENUMERATOR_CHAIN: // more target = lower value
                                     current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
-                                    CoeffSpellRatio -= current_targets / 10.0f;
+                                    if (!damage)
+                                        CoeffSpellRatio -= current_targets / 10.0f;
+                                    else
+                                        CoeffSpellRatio += current_targets / 10.0f;
                                     break;
                                 default: break;
                                 }
@@ -131,8 +178,8 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
                     std::string s = std::to_string(spellId) + ":" + std::to_string(mapId);
                     if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
                     {
+                        WorldDatabase.PExecuteLog("UPDATE scale_spell SET comment = \"%s\", ratio_spell = '%f' WHERE s_entry = '%u' AND m_entry = '%u';", comment.c_str(), CoeffSpellRatio, spellId, mapId);
                         CoeffSpellRatio = s_values->ratio_spell;
-                        WorldDatabase.PExecuteLog("UPDATE scale_spell SET comment = \"%s\", ratio_spell = %f WHERE s_entry = %u AND m_entry = %u;", comment.c_str(), CoeffSpellRatio, spellId, mapId);
                     }
                     else if (isHarmful)
                         WorldDatabase.PExecuteLog("INSERT IGNORE INTO scale_spell VALUES ('%u', '%u', '%f', \"%s\");", spellId, mapId, CoeffSpellRatio, comment.c_str());
