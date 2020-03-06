@@ -1593,6 +1593,7 @@ class Unit : public WorldObject
         int raid_number_adds = 1;
         int raid_number_adds_keep = 1;
         int raid_number_players = 1;
+        int raid_number_tanks = 1;
 
         float GetRaidDmg() const { return raid_ratio_dmg; };
         void SetRaidDmg(float value) { raid_ratio_dmg = value; };
@@ -1608,6 +1609,9 @@ class Unit : public WorldObject
 
         int GetRaidAdds() const { return raid_number_adds; };
         void SetRaidAdds(int value) { raid_number_adds = value; };
+
+        int GetRaidTanks() const { return raid_number_tanks; };
+        void SetRaidTanks(int value) { raid_number_tanks = value; };
 
         int GetRaidAddsKeep() const { return raid_number_adds_keep; };
         void SetRaidAddsKeep(int value) { raid_number_adds_keep = value; };
