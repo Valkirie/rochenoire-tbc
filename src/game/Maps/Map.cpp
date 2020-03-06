@@ -759,7 +759,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
                 continue; // skip if in a pack
 
             if (creature->IsTemporarySummon())
-                continue;
+                continue; // skip if is summoned
 
             if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
                 output++;
@@ -899,12 +899,6 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
-                if (m_displayStore.find(creature->GetGUIDLow()) == m_displayStore.end())
-                    m_displayStore[creature->GetGUIDLow()] = true;
-
-                if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
-                    continue;
-
                 uint32 mapId = creature->GetMap()->GetId() * 1000;
                 uint32 guid = creature->GetGUIDLow();
                 if (creature->IsTemporarySummon()) guid += mapId;
@@ -929,13 +923,12 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     cdata.treated = false;
                 else if (cdata.pool_size != lastKnownPoolSize)
                 {
+                    cdata.pool_size = lastKnownPoolSize;
+
                     if (m_creaturesStore_dif.find(cinfo->Entry) != m_creaturesStore_dif.end())
                         cdata.treated = false;
                     else
-                    {
-                        cdata.pool_size = lastKnownPoolSize;
                         continue;
-                    }
                 }
 
                 if (!cdata.treated)
@@ -1009,6 +1002,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 // Computing raid size (stored for optimisation purposes)
                 creature->SetRaidSize(cdata.raid_size);
                 creature->SetRaidAdds(cdata.nbr_pack);
+                creature->SetRaidTanks(cdata.nbr_tank);
 
                 if (cdata.nbr_pack > 1 && cdata.nbr_adds_alive != cdata.nbr_adds_keep)
 				{
@@ -1023,7 +1017,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 					if (cdata.nbr_adds_alive > cdata.nbr_adds_keep)
 					{
                         if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
-                            if (!creature->isInCombat() || (RefreshSize != 0))
+                            if ((!creature->isScaled() && !creature->isInCombat() && creature->isAlive()) || (RefreshSize != 0))
                             {
                                 m_displayStore[creature->GetGUIDLow()] = false;
                                 creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
@@ -1032,7 +1026,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 					else if (cdata.nbr_adds_alive < cdata.nbr_adds_keep)
 					{
                         if (m_poolsStore[packId] <= leftAlive)
-						    if (creature->isScaled() || (RefreshSize != 0))
+						    if ((creature->isScaled() && creature->isAlive()) || (RefreshSize != 0))
                             {
                                 m_displayStore[creature->GetGUIDLow()] = true;
                                 creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
@@ -1048,18 +1042,14 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 Creature* creature = ((Creature*)it->second);
                 if (m_displayStore[creature->GetGUIDLow()])
                 {
-                    creature->AI()->SetCombatMovement(false);
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->GetCombatManager().SetLeashingDisable(false);
                     creature->RemoveAllAuras();
                     creature->SetVisibility(VISIBILITY_ON);
                 }
                 else
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
-                    creature->AI()->SetCombatMovement(true);
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->GetCombatManager().SetLeashingDisable(true);
 
                     if (creature->IsTemporarySummon())
                         creature->CastSpell(creature, 32839, TRIGGERED_OLD_TRIGGERED); // SPELL_BEAM_RED
@@ -2407,6 +2397,24 @@ void Map::SendObjectUpdates()
             packet.clear(); // clean the string
         }
     }
+}
+
+void Map::InsertCreature(uint32 guid, Creature* cr)
+{
+    if (CreatureInfo const* cinfo = cr->GetCreatureInfo())
+    {
+        if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
+            return;
+
+        m_creaturesStore.insert(std::make_pair(guid, (Creature*)cr));
+        m_displayStore[guid] = true;
+    }
+}
+
+void Map::EraseCreature(uint32 guid)
+{
+    if (m_creaturesStore.find(guid) != m_creaturesStore.end())
+        m_creaturesStore.erase(guid);
 }
 
 uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)

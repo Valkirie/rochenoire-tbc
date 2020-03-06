@@ -333,13 +333,8 @@ class Map : public GridRefManager<NGridType>
             i_objectsToClientUpdate.erase(obj);
         }
 
-		void InsertCreature(uint32 guid, Creature* cr) {
-			m_creaturesStore.insert(std::make_pair(guid, (Creature*)cr));
-		}
-
-		void EraseCreature(uint32 guid) {
-			m_creaturesStore.erase(guid);
-		}
+        void InsertCreature(uint32 guid, Creature* cr);
+        void EraseCreature(uint32 guid);
 
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
