@@ -9455,6 +9455,9 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
                 pGameObj->AddUniqueUse(player);
                 pGameObj->SetActionTarget(player->GetSelectionGuid());
                 m_caster->AddGameObject(pGameObj);          // will removed at spell cancel
+
+                if (sWorld.getConfig(CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF))
+                    pGameObj->Use(m_caster);
             }
             break;
         }

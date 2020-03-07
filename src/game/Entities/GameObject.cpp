@@ -1657,7 +1657,8 @@ void GameObject::Use(Unit* user)
                     return;
 
                 // accept only use by player from same group as owner, excluding owner itself (unique use already added in spell effect)
-                if (player == (Player*)owner || (info->summoningRitual.castersGrouped && !player->IsInGroup(owner)))
+                bool AllowSelf = sWorld.getConfig(CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF);
+                if ((player == (Player*)owner && !AllowSelf) || (info->summoningRitual.castersGrouped && !player->IsInGroup(owner)))
                     return;
 
                 // expect owner to already be channeling, so if not...
@@ -1684,7 +1685,8 @@ void GameObject::Use(Unit* user)
                 player->CastSpell(player, info->summoningRitual.animSpell, TRIGGERED_NONE);
 
             // full amount unique participants including original summoner, need more
-            if (GetUniqueUseCount() < info->summoningRitual.reqParticipants)
+            uint32 reqParticipants = std::min(info->summoningRitual.reqParticipants, sWorld.getConfig(CONFIG_UINT32_SUMMONINGRITUAL_REQPARTICIPANTS));
+            if (GetUniqueUseCount() < reqParticipants)
                 return;
 
             if (info->summoningRitualCustom.delay)

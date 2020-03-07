@@ -606,6 +606,9 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA, "Calculate.Creature.Zone.Area.Data", false);
     setConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA, "Calculate.Gameoject.Zone.Area.Data", false);
 
+    setConfig(CONFIG_UINT32_SUMMONINGRITUAL_REQPARTICIPANTS, "SummoningRitual.ReqParticipants", 4);
+    setConfig(CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF, "SummoningRitual.AllowSelfUse", false);
+
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 
     setConfigMin(CONFIG_UINT32_MASS_MAILER_SEND_PER_TICK, "MassMailer.SendPerTick", 10, 1);
