@@ -2893,7 +2893,7 @@ void Unit::SendMeleeAttackStop(Unit* victim) const
     ((Creature*)victim)->AI().EnterEvadeMode(this);*/
 }
 
-SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spell)
+SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spell, uint32* heartbeatResistChance/* = nullptr*/)
 {
     Die<UnitCombatDieSide, UNIT_COMBAT_DIE_HIT, NUM_UNIT_COMBAT_DIE_SIDES> die;
     die.set(UNIT_COMBAT_DIE_MISS, CalculateSpellMissChance(pVictim, SPELL_SCHOOL_MASK_NORMAL, spell));
@@ -2913,6 +2913,11 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spell)
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "MeleeSpellHitResult: New ability hit die: %u [MISS:%u, RESIST:%u, DODGE:%u, PARRY:%u, DEFLECT:%u, BLOCK:%u]", spell->Id,
                      die.chance[UNIT_COMBAT_DIE_MISS], die.chance[UNIT_COMBAT_DIE_RESIST], die.chance[UNIT_COMBAT_DIE_DODGE],
                      die.chance[UNIT_COMBAT_DIE_PARRY], die.chance[UNIT_COMBAT_DIE_DEFLECT], die.chance[UNIT_COMBAT_DIE_BLOCK]);
+
+    // Memorize heartbeat resist chance if needed:
+    if (heartbeatResistChance && spell->HasAttribute(SPELL_ATTR_HEARTBEAT_RESIST_CHECK))
+        *heartbeatResistChance = (die.chance[UNIT_COMBAT_DIE_RESIST] + die.chance[UNIT_COMBAT_DIE_MISS]);
+
     const uint32 random = urand(1, 10000);
     const UnitCombatDieSide side = die.roll(random);
     if (side != UNIT_COMBAT_DIE_HIT)
@@ -2930,7 +2935,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spell)
     return SPELL_MISS_NONE;
 }
 
-SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, SpellSchoolMask schoolMask)
+SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, SpellSchoolMask schoolMask, uint32* heartbeatResistChance/* = nullptr*/)
 {
     Die<UnitCombatDieSide, UNIT_COMBAT_DIE_HIT, NUM_UNIT_COMBAT_DIE_SIDES> die;
     die.set(UNIT_COMBAT_DIE_RESIST, CalculateSpellResistChance(pVictim, schoolMask, spell));
@@ -2940,6 +2945,11 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, 
     */
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "MagicSpellHitResult: New spell hit die: %u [RESIST:%u, DEFLECT:%u]", spell->Id,
                      die.chance[UNIT_COMBAT_DIE_RESIST], die.chance[UNIT_COMBAT_DIE_DEFLECT]);
+
+    // Memorize heartbeat resist chance if needed:
+    if (heartbeatResistChance && spell->HasAttribute(SPELL_ATTR_HEARTBEAT_RESIST_CHECK))
+        *heartbeatResistChance = (die.chance[UNIT_COMBAT_DIE_RESIST] + die.chance[UNIT_COMBAT_DIE_MISS]);
+
     const uint32 random = urand(1, 10000);
     const UnitCombatDieSide side = die.roll(random);
     if (side != UNIT_COMBAT_DIE_HIT)
@@ -2953,7 +2963,7 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, 
     return SPELL_MISS_NONE;
 }
 
-SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8 effectMask, bool reflectable)
+SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8 effectMask, bool reflectable, uint32* heartbeatResistChance/* = nullptr*/)
 {
     // Dead units can't be missed, can't resist, reflect, etc
     if (!pVictim->isAlive())
@@ -3009,9 +3019,9 @@ SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8
     {
         case SPELL_DAMAGE_CLASS_MELEE:
         case SPELL_DAMAGE_CLASS_RANGED:
-            return MeleeSpellHitResult(pVictim, spell);
+            return MeleeSpellHitResult(pVictim, spell, heartbeatResistChance);
         case SPELL_DAMAGE_CLASS_MAGIC:
-            return MagicSpellHitResult(pVictim, spell, schoolMask);
+            return MagicSpellHitResult(pVictim, spell, schoolMask, heartbeatResistChance);
         case SPELL_DAMAGE_CLASS_NONE:
             // Usually never misses, but needs more research for some spells
             break;
@@ -10350,7 +10360,7 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
             CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         }
-        else
+        else if (GetTypeId() != TYPEID_PLAYER || !static_cast<Player*>(this)->GetSession()->isLogingOut())
             RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
 
         SetImmobilizedState(apply, true);
@@ -10379,20 +10389,24 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
 void Unit::SetImmobilizedState(bool apply, bool stun)
 {
     const uint32 state = (stun ? UNIT_STAT_STUNNED : UNIT_STAT_ROOT);
+    const bool logout = (GetTypeId() == TYPEID_PLAYER && static_cast<Player*>(this)->GetSession()->isLogingOut());
+
     if (apply)
     {
         addUnitState(state);
 
         if (!IsClientControlled())
             StopMoving();
-        SendMoveRoot(true);
+
+        if (!logout)
+            SendMoveRoot(true);
     }
     else
     {
         clearUnitState(state);
 
         // Prevent giving ability to move if more immobilizers are active
-        if (!IsImmobilizedState())
+        if (!IsImmobilizedState() && !logout)
             SendMoveRoot(false);
     }
 }
