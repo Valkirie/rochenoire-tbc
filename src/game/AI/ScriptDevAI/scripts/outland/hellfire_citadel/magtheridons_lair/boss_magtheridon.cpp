@@ -265,7 +265,7 @@ struct boss_magtheridonAI : public ScriptedAI
                 if (m_uiCleaveTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                        m_uiCleaveTimer = 10000;
+                        m_uiCleaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10000, SPELL_CLEAVE);
                 }
                 else
                     m_uiCleaveTimer -= uiDiff;
@@ -281,7 +281,7 @@ struct boss_magtheridonAI : public ScriptedAI
                             m_creature->CastSpell(nullptr, SPELL_QUAKE_REMOVAL, TRIGGERED_OLD_TRIGGERED);
                         }
                         DoScriptText(EMOTE_BLASTNOVA, m_creature);
-                        m_uiBlastNovaTimer = 60000;
+                        m_uiBlastNovaTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60000, SPELL_BLASTNOVA);
                     }
                 }
                 else
@@ -290,7 +290,7 @@ struct boss_magtheridonAI : public ScriptedAI
                 if (m_uiBlazeTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_BLAZE) == CAST_OK)
-                        m_uiBlazeTimer = urand(10000, 15000);
+                        m_uiBlazeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_BLAZE);
                 }
                 else
                     m_uiBlazeTimer -= uiDiff;
@@ -301,7 +301,7 @@ struct boss_magtheridonAI : public ScriptedAI
                     if (m_uiDebrisTimer < uiDiff)
                     {
                         if (DoCastSpellIfCan(m_creature, SPELL_DEBRIS_1) == CAST_OK)
-                            m_uiBlazeTimer = urand(10000, 15000);
+                            m_uiBlazeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_DEBRIS_1);
                     }
                     else
                         m_uiDebrisTimer -= uiDiff;
@@ -373,7 +373,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
     void SummonedCreatureDespawn(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_BURNING_ABYSS)
-            m_uiInfernalTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), 1.0f);
+            m_uiInfernalTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_BURNING_ABYSSAL);
     }
 
     void UpdateAI(const uint32 uiDiff) override
@@ -396,7 +396,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
         if (m_uiShadowBoltVolleyTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_BOLT_VOLLEY) == CAST_OK)
-                m_uiShadowBoltVolleyTimer = urand(10000, 20000);
+                m_uiShadowBoltVolleyTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_SHADOW_BOLT_VOLLEY);
         }
         else
             m_uiShadowBoltVolleyTimer -= uiDiff;
@@ -406,7 +406,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
             if (Unit* pTarget = DoSelectLowestHpFriendly(30.0f))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_DARK_MENDING) == CAST_OK)
-                    m_uiDarkMendingTimer = urand(10000, 20000);
+                    m_uiDarkMendingTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_DARK_MENDING);
             }
         }
         else
@@ -417,7 +417,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_FEAR) == CAST_OK)
-                    m_uiFearTimer = urand(25000, 40000);
+                    m_uiFearTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 40000), SPELL_FEAR);
             }
         }
         else
@@ -518,7 +518,7 @@ struct mob_abyssalAI : public ScriptedAI
         if (m_uiFireBlastTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIRE_BLAST) == CAST_OK)
-                m_uiFireBlastTimer = urand(5000, 15000);
+                m_uiFireBlastTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 15000), SPELL_FIRE_BLAST);
         }
         else
             m_uiFireBlastTimer -= uiDiff;
