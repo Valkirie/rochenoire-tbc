@@ -1176,15 +1176,6 @@ float ObjectMgr::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT,
     return FinalNAdds;
 }
 
-// TEMP, to be deleted
-float ObjectMgr::GetScaleSpellTimer(Creature* creature, float CoeffSpellRatio) const
-{
-    float RatioDps = creature->GetRaidDps();
-    float NbrAdds = creature->GetRaidAdds();
-    float NbrAddsKeep = creature->GetRaidAddsKeep();
-    return GetScaleSpellTimer(RatioDps, NbrAdds, NbrAddsKeep, CoeffSpellRatio);
-}
-
 float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
 {
     float CoeffSpellRatio = 1.0f;
