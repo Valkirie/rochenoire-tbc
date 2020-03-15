@@ -148,12 +148,13 @@ class Channel
         std::string GetName() const { return m_name; }
         uint32 GetChannelId() const { return m_channelId; }
         bool IsConstant() const { return m_channelId != 0; }
+        bool IsStatic() const { return m_static; }
         bool IsAnnounce() const { return m_announce; }
         bool IsLFG() const { return (GetFlags() & CHANNEL_FLAG_LFG) != 0; }
         std::string GetPassword() const { return m_password; }
         void SetPassword(const std::string& npassword) { m_password = npassword; }
         void SetAnnounce(bool nannounce) { m_announce = nannounce; }
-        uint32 GetNumPlayers() const { return m_players.size(); }
+        size_t GetNumPlayers() const { return m_players.size(); }
         uint8 GetFlags() const { return m_flags; }
         bool HasFlag(uint8 flag) const { return (m_flags & flag) != 0; }
 
@@ -165,7 +166,6 @@ class Channel
         void UnBan(Player* player, const char* targetName);
         void Password(Player* player, const char* password);
         void SetMode(Player* player, const char* targetName, bool moderator, bool set);
-        void SetOwner(ObjectGuid guid, bool exclaim = true);
         void SetOwner(Player* player, const char* targetName);
         void SendWhoOwner(Player* player) const;
         void SetModerator(Player* player, const char* targetName) { SetMode(player, targetName, true, true); }
@@ -182,6 +182,9 @@ class Channel
         void JoinNotify(ObjectGuid guid);                   // invisible notify
         void LeaveNotify(ObjectGuid guid);                  // invisible notify
 
+        // Make a custom channel acquire global-like properties
+        bool SetStatic(bool state, bool command = false);
+
     private:
         // initial packet data (notify type and channel name)
         void MakeNotifyPacket(WorldPacket& data, uint8 notify_type) const;
@@ -197,7 +200,7 @@ class Channel
         void MakeOwnerChanged(WorldPacket& data, ObjectGuid guid) const;                        //? 0x08
         void MakePlayerNotFound(WorldPacket& data, const std::string& name) const;              //+ 0x09
         void MakeNotOwner(WorldPacket& data) const;                                             //? 0x0A
-        void MakeChannelOwner(WorldPacket& data) const;                                         //? 0x0B
+        void MakeChannelOwner(WorldPacket& data, ObjectGuid guid) const;                        //? 0x0B
         void MakeModeChange(WorldPacket& data, ObjectGuid guid, uint8 oldflags) const;          //+ 0x0C
         void MakeAnnouncementsOn(WorldPacket& data, ObjectGuid guid) const;                     //+ 0x0D
         void MakeAnnouncementsOff(WorldPacket& data, ObjectGuid guid) const;                    //+ 0x0E
@@ -223,8 +226,9 @@ class Channel
         void MakeVoiceOn(WorldPacket& data, ObjectGuid guid) const;                             //+ 0x22
         void MakeVoiceOff(WorldPacket& data, ObjectGuid guid) const;                            //+ 0x23
 
-        void SendToAll(WorldPacket const& data, ObjectGuid guid = ObjectGuid()) const;
-        void SendToOne(WorldPacket const& data, ObjectGuid who) const;
+        void SendToOne(WorldPacket const& data, ObjectGuid receiver) const;
+        void SendToAll(WorldPacket const& data) const;
+        void SendMessage(WorldPacket const& data, ObjectGuid sender) const;
 
         bool IsOn(ObjectGuid who) const { return m_players.find(who) != m_players.end(); }
         bool IsBanned(ObjectGuid guid) const { return m_banned.find(guid) != m_banned.end(); }
@@ -237,6 +241,8 @@ class Channel
 
             return p_itr->second.flags;
         }
+
+        ObjectGuid SelectNewOwner() const;
 
         void SetModerator(ObjectGuid guid, bool set)
         {
@@ -264,9 +270,12 @@ class Channel
             }
         }
 
+        void SetOwner(ObjectGuid guid, bool exclaim = true);
+
     private:
         bool        m_announce;
         bool        m_moderate;
+        bool        m_static;
         std::string m_name;
         std::string m_password;
         uint8       m_flags;
