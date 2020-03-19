@@ -1977,6 +1977,26 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     return WorldObject::SummonCreature(TempSpawnSettings(this, id, x, y, z, ang, spwtype, despwtime, asActiveObject, setRun, pathId, faction, modelId, spawnCounting, forcedOnTop), GetMap());
 }
 
+Creature* WorldObject::SummonTrigger(float x, float y, float z, float ang, uint32 duration, uint32 faction, uint32 level)
+{
+    TempSpawnType spwtype = (duration == 0) ? TEMPSPAWN_DEAD_DESPAWN : TEMPSPAWN_TIMED_DESPAWN;
+    Creature* summon = SummonCreature(WORLD_TRIGGER, x, y, z, ang, spwtype, duration);
+    if (!summon)
+        return NULL;
+
+    summon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+
+    if (faction != 0)
+        summon->setFaction(faction);
+
+    if (level != 0)
+        summon->SetLevel(level);
+
+    summon->SetName(GetName());
+
+    return summon;
+}
+
 // how much space should be left in front of/ behind a mob that already uses a space
 #define OCCUPY_POS_DEPTH_FACTOR                          1.8f
 

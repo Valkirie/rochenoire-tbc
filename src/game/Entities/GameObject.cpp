@@ -1232,6 +1232,56 @@ void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false *
         SetGoState(GO_STATE_READY);
 }
 
+void GameObject::CastSpell(Unit* target, uint32 spellId, bool triggered /* = true*/)
+{
+    CastSpell(target, spellId, triggered ? TRIGGERED_FULL_MASK : TRIGGERED_NONE);
+}
+
+void GameObject::CastSpell(Unit* target, uint32 spellId, TriggerCastFlags triggered)
+{
+    SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+    if (!spellInfo)
+        return;
+
+    bool self = false;
+
+    for (uint8 j = 0; j < 3; ++j)
+        if (spellInfo->EffectImplicitTargetA[j] == TARGET_UNIT_CASTER)
+            self = true;
+
+    if (self)
+    {
+        if (target)
+            target->CastSpell(target, spellInfo, triggered);
+        return;
+    }
+
+    //summon world trigger
+    Creature* trigger = SummonTrigger(GetPositionX(), GetPositionY(), GetPositionZ(), 0, GetSpellCastTime(spellInfo, nullptr) + 100);
+    if (!trigger)
+        return;
+
+    // remove immunity flags, to allow spell to target anything
+    trigger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+
+    if (Unit* owner = GetOwner())
+    {
+        trigger->setFaction(owner->getFaction());
+        if (owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP))
+            trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
+        // needed for GO casts for proper target validation checks
+        trigger->SetOwnerGuid(owner->GetObjectGuid());
+        trigger->CastSpell(target ? target : trigger, spellInfo, triggered, nullptr, nullptr, owner->GetObjectGuid());
+    }
+    else
+    {
+        trigger->setFaction(IsPositiveSpell(spellInfo->Id) ? 35 : 14);
+        // Set owner guid for target if no owner available - needed by trigger auras
+        // - trigger gets despawned and there's no caster avalible (see AuraEffect::TriggerSpell())
+        trigger->CastSpell(target ? target : trigger, spellInfo, triggered, nullptr, nullptr, target ? target->GetObjectGuid() : GetObjectGuid());
+    }
+}
+
 void GameObject::Use(Unit* user)
 {
     // user must be provided
@@ -1341,8 +1391,8 @@ void GameObject::Use(Unit* user)
 
             // FIXME: when GO casting will be implemented trap must cast spell to target
             if (goInfo->trap.spellId)
-                if (caster->CastSpell(user, goInfo->trap.spellId, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetObjectGuid()) != SPELL_CAST_OK)
-                    return;
+                CastSpell(user, goInfo->trap.spellId, TRIGGERED_OLD_TRIGGERED);
+
             // use template cooldown if provided
             m_cooldownTime = time(nullptr) + (goInfo->trap.cooldown ? goInfo->trap.cooldown : uint32(4));
 
