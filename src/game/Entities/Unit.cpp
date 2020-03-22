@@ -10379,6 +10379,9 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID, bool lo
             }
         }
 
+        if (logout)
+            return true;
+
         ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
 
         return true;
