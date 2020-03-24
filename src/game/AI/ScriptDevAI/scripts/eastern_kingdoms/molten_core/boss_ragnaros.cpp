@@ -80,7 +80,7 @@ struct boss_ragnarosAI : public CombatAI
     {
         AddCustomAction(RAGNAROS_ENTER_COMBAT, true, [&]() { HandleEnterCombat(); });
         AddCombatAction(RAGNAROS_PHASE_TRANSITION, uint32(3 * MINUTE * IN_MILLISECONDS));
-        AddCombatAction(RAGNAROS_WRATH_OF_RAGNAROS, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 0.2f));
+        AddCombatAction(RAGNAROS_WRATH_OF_RAGNAROS, 30000u);
         AddCombatAction(RAGNAROS_MIGHT_OF_RAGNAROS, 11000u);
         AddCombatAction(RAGNAROS_MAGMA_BLAST, 2000u);
         AddCombatAction(RAGNAROS_LAVA_BURST, uint32(20 * IN_MILLISECONDS));
@@ -273,7 +273,7 @@ struct boss_ragnarosAI : public CombatAI
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 m_phase = PHASE_EMERGED;
                 ResetCombatAction(RAGNAROS_PHASE_TRANSITION, 3 * MINUTE * IN_MILLISECONDS);
-                ResetCombatAction(RAGNAROS_WRATH_OF_RAGNAROS, sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, 0.2f));
+                ResetCombatAction(RAGNAROS_WRATH_OF_RAGNAROS, 20000);
                 ResetCombatAction(RAGNAROS_MIGHT_OF_RAGNAROS, urand(11000, 30000));
                 ResetCombatAction(RAGNAROS_MAGMA_BLAST, 3000);
                 ResetCombatAction(RAGNAROS_LAVA_BURST, urand(5000, 25000));
@@ -297,7 +297,7 @@ struct boss_ragnarosAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_WRATH_OF_RAGNAROS) == CAST_OK)
                 {
                     DoScriptText(SAY_WRATH, m_creature);
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 25000u, 0.2f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 25000u, SPELL_WRATH_OF_RAGNAROS));
                 }
                 break;
             }
@@ -308,7 +308,7 @@ struct boss_ragnarosAI : public CombatAI
                     if (DoCastSpellIfCan(target, SPELL_MIGHT_OF_RAGNAROS) == CAST_OK)
                     {
                         DoScriptText(SAY_HAMMER, m_creature);
-                        ResetCombatAction(action, urand(11000, 30000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(11000, 30000), SPELL_MIGHT_OF_RAGNAROS));
                     }
                 }
                 break;
@@ -339,13 +339,13 @@ struct boss_ragnarosAI : public CombatAI
                         }
                     }
                 }
-                ResetCombatAction(action, timer);
+                ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, timer, SPELL_MAGMA_BLAST));
                 break;
             }
             case RAGNAROS_LAVA_BURST:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_LAVA_BURST) == CAST_OK)
-                    ResetCombatAction(action, urand(5000, 25000)); // Upper value is guess work based on videos. It could be up to 45 secs
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 25000), SPELL_LAVA_BURST)); // Upper value is guess work based on videos. It could be up to 45 secs
                 break;
             }
         }

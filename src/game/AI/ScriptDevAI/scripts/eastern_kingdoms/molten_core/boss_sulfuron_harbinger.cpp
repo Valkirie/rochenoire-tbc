@@ -54,8 +54,8 @@ struct boss_sulfuronAI : public CombatAI
     {
         AddCombatAction(SULFURON_DEMORALIZING_SHOUT, 15000u);
         AddCombatAction(SULFURON_INSPIRE, 3000u);
-        AddCombatAction(SULFURON_HAND_OF_RAGNAROS, sObjectMgr.GetScaleSpellTimer(m_creature, 6000u, 0.25f));
-        AddCombatAction(SULFURON_FLAME_SPEAR, sObjectMgr.GetScaleSpellTimer(m_creature, 2000u, 0.35f));
+        AddCombatAction(SULFURON_HAND_OF_RAGNAROS, 6000u);
+        AddCombatAction(SULFURON_FLAME_SPEAR, 2000u);
         Reset();
     }
 
@@ -86,7 +86,7 @@ struct boss_sulfuronAI : public CombatAI
             case SULFURON_DEMORALIZING_SHOUT:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_DEMORALIZING_SHOUT) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_DEMORALIZING_SHOUT));
                 break;
             }
 
@@ -105,20 +105,20 @@ struct boss_sulfuronAI : public CombatAI
                     target = m_creature;
 
                 if (DoCastSpellIfCan(target, SPELL_INSPIRE) == CAST_OK)
-                    ResetCombatAction(action, 10000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10000, SPELL_INSPIRE));
                 break;
             }
             case SULFURON_HAND_OF_RAGNAROS:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_HAND_OF_RAGNAROS) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), 0.25f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), SPELL_HAND_OF_RAGNAROS));
                 break;
             }
             case SULFURON_FLAME_SPEAR:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SHADOWWORD_PAIN, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_FLAMESPEAR) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 16000), 0.35f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 16000), SPELL_FLAMESPEAR));
                 break;
             }
         }
@@ -138,10 +138,10 @@ struct mob_flamewaker_priestAI : public CombatAI
 {
     mob_flamewaker_priestAI(Creature* creature) : CombatAI(creature, FLAMEWAKER_PRIEST_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(FLAMEWAKER_PRIEST_DARK_STRIKE, sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, 0.35f));
+        AddCombatAction(FLAMEWAKER_PRIEST_DARK_STRIKE, 10000u);
         AddCombatAction(FLAMEWAKER_PRIEST_DARK_MENDING, 15000, 30000);
-        AddCombatAction(FLAMEWAKER_PRIEST_SHADOW_WORD_PAIN, sObjectMgr.GetScaleSpellTimer(m_creature, 2000u, 0.2f));
-        AddCombatAction(FLAMEWAKER_PRIEST_IMMOLATE, sObjectMgr.GetScaleSpellTimer(m_creature, 8000u, 0.2f));
+        AddCombatAction(FLAMEWAKER_PRIEST_SHADOW_WORD_PAIN, 2000u);
+        AddCombatAction(FLAMEWAKER_PRIEST_IMMOLATE, 8000u);
     }
 
     ScriptedInstance* m_instance;
@@ -153,28 +153,28 @@ struct mob_flamewaker_priestAI : public CombatAI
             case FLAMEWAKER_PRIEST_DARK_STRIKE:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DARK_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 18000), 0.35f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 18000), SPELL_DARK_STRIKE));
                 break;
             }
             case FLAMEWAKER_PRIEST_DARK_MENDING:
             {
                 if (Unit* target = DoSelectLowestHpFriendly(60.0f, 1))
                     if (DoCastSpellIfCan(target, SPELL_HEAL) == CAST_OK)
-                        ResetCombatAction(action, urand(15000, 20000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_HEAL));
                 break;
             }
             case FLAMEWAKER_PRIEST_SHADOW_WORD_PAIN:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SHADOWWORD_PAIN, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_SHADOWWORD_PAIN) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(18000, 26000), 0.2f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(18000, 26000), SPELL_SHADOWWORD_PAIN));
                 break;
             }
             case FLAMEWAKER_PRIEST_IMMOLATE:
             {
-                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SHADOWWORD_PAIN, SELECT_FLAG_PLAYER))
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_IMMOLATE, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_IMMOLATE) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), 0.2f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_IMMOLATE));
                 break;
             }
         }

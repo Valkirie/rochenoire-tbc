@@ -46,10 +46,10 @@ struct boss_gehennasAI : public CombatAI
 {
     boss_gehennasAI(Creature* creature) : CombatAI(creature, GEHENNAS_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(GEHENNAS_GEHENNAS_CURSE, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS), 0.1f));
-        AddCombatAction(GEHENNAS_RAIN_OF_FIRE, sObjectMgr.GetScaleSpellTimer(m_creature, urand(6 * IN_MILLISECONDS, 12 * IN_MILLISECONDS), 0.1f));
-        AddCombatAction(GEHENNAS_SHADOW_BOLT_RANDOM, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 1.0f));
-        AddCombatAction(GEHENNAS_SHADOW_BOLT_TARGET, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 1.0f));
+        AddCombatAction(GEHENNAS_GEHENNAS_CURSE, urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS));
+        AddCombatAction(GEHENNAS_RAIN_OF_FIRE, urand(6 * IN_MILLISECONDS, 12 * IN_MILLISECONDS));
+        AddCombatAction(GEHENNAS_SHADOW_BOLT_RANDOM, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS));
+        AddCombatAction(GEHENNAS_SHADOW_BOLT_TARGET, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS));
         Reset();
     }
 
@@ -80,27 +80,27 @@ struct boss_gehennasAI : public CombatAI
             case GEHENNAS_GEHENNAS_CURSE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_GEHENNAS_CURSE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25 * IN_MILLISECONDS, 30 * IN_MILLISECONDS), 0.1f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25 * IN_MILLISECONDS, 30 * IN_MILLISECONDS), SPELL_GEHENNAS_CURSE));
                 break;
             }
             case GEHENNAS_RAIN_OF_FIRE:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_RAIN_OF_FIRE, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_RAIN_OF_FIRE) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(6 * IN_MILLISECONDS, 12 * IN_MILLISECONDS), 0.1f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(6 * IN_MILLISECONDS, 12 * IN_MILLISECONDS), SPELL_RAIN_OF_FIRE));
                 break;
             }
             case GEHENNAS_SHADOW_BOLT_RANDOM:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SHADOW_BOLT_RANDOM, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_SHADOW_BOLT_RANDOM) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 1.0f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_SHADOW_BOLT_RANDOM));
                 break;
             }
             case GEHENNAS_SHADOW_BOLT_TARGET:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_BOLT_TARGET) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_SHADOW_BOLT_TARGET));
                 break;
             }
         }

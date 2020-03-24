@@ -235,7 +235,7 @@ void instance_molten_core::SpawnMajordomo(Unit* summoner, bool initialSummon, ui
     // If Majordomo encounter isn't done, summon at encounter place, else near Ragnaros
     if (Creature* pMajordomo = summoner->SummonCreature(m_aMajordomoLocations[summonPos].m_uiEntry, m_aMajordomoLocations[summonPos].m_fX, m_aMajordomoLocations[summonPos].m_fY, m_aMajordomoLocations[summonPos].m_fZ, m_aMajordomoLocations[summonPos].m_fO, TEMPSPAWN_MANUAL_DESPAWN, 2 * HOUR * IN_MILLISECONDS))
     {
-        m_aBosspawnLocsHealer_nbr = m_aBosspawnLocsElite_nbr = pMajordomo->GetMap()->GetFinalNAdds(1, MAX_MAJORDOMO_ADDS / 2);
+        m_aBosspawnLocsHealer_nbr = m_aBosspawnLocsElite_nbr = MAX_MAJORDOMO_ADDS / 2; // pMajordomo->GetMap()->GetFinalNAdds(1, MAX_MAJORDOMO_ADDS / 2);
 
         if (summonPos)                                      // Majordomo encounter already done, set faction
         {

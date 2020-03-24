@@ -50,8 +50,8 @@ struct boss_baron_geddonAI : public CombatAI
     {
         AddTimerlessCombatAction(GEDDON_ARMAGEDDON, true);
         AddCombatAction(GEDDON_INFERNO, 45000u);
-        AddCombatAction(GEDDON_IGNITE_MANA, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 0.35f));
-        AddCombatAction(GEDDON_LIVING_BOMB, sObjectMgr.GetScaleSpellTimer(m_creature, 35000u, 0.35f));
+        AddCombatAction(GEDDON_IGNITE_MANA, 30000u);
+        AddCombatAction(GEDDON_LIVING_BOMB, 35000u);
         Reset();
     }
 
@@ -95,20 +95,20 @@ struct boss_baron_geddonAI : public CombatAI
             case GEDDON_INFERNO:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_INFERNO) == CAST_OK)
-                    ResetCombatAction(action, 45000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000, SPELL_INFERNO));
                 break;
             }
             case GEDDON_IGNITE_MANA:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_IGNITE_MANA) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, 0.35f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_IGNITE_MANA));
                 break;
             }
             case GEDDON_LIVING_BOMB:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LIVING_BOMB, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_LIVING_BOMB) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 35000, 0.35f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 35000, SPELL_LIVING_BOMB));
                 break;
             }
         }

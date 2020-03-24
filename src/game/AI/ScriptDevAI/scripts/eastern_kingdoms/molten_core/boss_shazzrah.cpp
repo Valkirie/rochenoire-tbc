@@ -47,8 +47,8 @@ struct boss_shazzrahAI : public CombatAI
 {
     boss_shazzrahAI(Creature* creature) : CombatAI(creature, SHAZZRAH_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(SHAZZRAH_ARCANE_EXPLOSION, sObjectMgr.GetScaleSpellTimer(m_creature, 6000u, 0.35f));
-        AddCombatAction(SHAZZRAH_SHAZZRAH_CURSE, sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, 0.3f));
+        AddCombatAction(SHAZZRAH_ARCANE_EXPLOSION, 6000u);
+        AddCombatAction(SHAZZRAH_SHAZZRAH_CURSE, 10000u);
         AddCombatAction(SHAZZRAH_COUNTERSPELL, 15000u);
         AddCombatAction(SHAZZRAH_MAGIC_GROUNDING, 24000u);
         AddCombatAction(SHAZZRAH_GATE_OF_SHAZZRAH, 30000u);
@@ -91,32 +91,32 @@ struct boss_shazzrahAI : public CombatAI
             case SHAZZRAH_ARCANE_EXPLOSION:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_EXPLOSION) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 9000), 0.35f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 9000), SPELL_ARCANE_EXPLOSION));
                 break;
             }
             case SHAZZRAH_SHAZZRAH_CURSE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SHAZZRAH_CURSE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, SPELL_SHAZZRAH_CURSE));
                 break;
             }
             case SHAZZRAH_COUNTERSPELL:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_COUNTERSPELL) == CAST_OK)
-                    ResetCombatAction(action, urand(16000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(16000, 20000), SPELL_COUNTERSPELL));
                 break;
             }
             case SHAZZRAH_MAGIC_GROUNDING:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_MAGIC_GROUNDING) == CAST_OK)
-                    ResetCombatAction(action, 35000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 35000u, SPELL_MAGIC_GROUNDING));
                 break;
             }
             case SHAZZRAH_GATE_OF_SHAZZRAH:
             {
                 // Teleporting him to a random target and casting Arcane Explosion after that.
                 if (DoCastSpellIfCan(nullptr, SPELL_GATE_OF_SHAZZRAH) == CAST_OK)
-                    ResetCombatAction(action, 45000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, SPELL_MAGIC_GROUNDING));
                 break;
             }
         }

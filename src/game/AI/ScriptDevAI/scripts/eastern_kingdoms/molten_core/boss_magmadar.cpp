@@ -51,10 +51,10 @@ struct boss_magmadarAI : public CombatAI
 {
     boss_magmadarAI(Creature* creature) : CombatAI(creature, MAGMADAR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(MAGMADAR_FRENZY, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 1.0f));
-        AddCombatAction(MAGMADAR_PANIC, sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000,10000), 0.0f));
-        AddCombatAction(MAGMADAR_LAVABOMB, sObjectMgr.GetScaleSpellTimer(m_creature, 12000u, 0.0f));
-        AddCombatAction(MAGMADAR_LAVABOMB_MANA, sObjectMgr.GetScaleSpellTimer(m_creature, 18000u, 0.0f));
+        AddCombatAction(MAGMADAR_FRENZY, 30000u);
+        AddCombatAction(MAGMADAR_PANIC, urand(7000,10000));
+        AddCombatAction(MAGMADAR_LAVABOMB, 12000u);
+        AddCombatAction(MAGMADAR_LAVABOMB_MANA, 18000u);
         Reset();
     }
 
@@ -93,28 +93,28 @@ struct boss_magmadarAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK)
                 {
                     DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_FRENZY));
                 }
                 break;
             }
             case MAGMADAR_PANIC:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_PANIC) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(16000, 21000), 0.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(16000, 21000), SPELL_PANIC));
                 break;
             }
             case MAGMADAR_LAVABOMB:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB, SELECT_FLAG_POWER_NOT_MANA))
                     if (DoCastSpellIfCan(target, SPELL_LAVABOMB) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), 0.0f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), SPELL_LAVABOMB));
                 break;
             }
             case MAGMADAR_LAVABOMB_MANA:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LAVABOMB_MANA, SELECT_FLAG_POWER_MANA))
                     if (DoCastSpellIfCan(target, SPELL_LAVABOMB_MANA) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), 0.0f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), SPELL_LAVABOMB_MANA));
                 break;
             }
         }

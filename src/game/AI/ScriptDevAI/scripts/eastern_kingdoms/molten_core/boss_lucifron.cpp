@@ -44,9 +44,9 @@ struct boss_lucifronAI : public CombatAI
 {
     boss_lucifronAI(Creature* creature) : CombatAI(creature, LUCIFRON_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(LUCIFRON_IMPENDING_DOOM, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS), 1.0f));
-        AddCombatAction(LUCIFRON_LUCIFRONS_CURSE, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS), 0.0f));
-        AddCombatAction(LUCIFRON_SHADOWSHOCK, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 0.0f));
+        AddCombatAction(LUCIFRON_IMPENDING_DOOM, urand(5 * IN_MILLISECONDS, 10 * IN_MILLISECONDS));
+        AddCombatAction(LUCIFRON_LUCIFRONS_CURSE, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS));
+        AddCombatAction(LUCIFRON_SHADOWSHOCK, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS));
         Reset();
     }
 
@@ -77,19 +77,19 @@ struct boss_lucifronAI : public CombatAI
             case LUCIFRON_IMPENDING_DOOM:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_IMPENDINGDOOM) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS), 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS), SPELL_IMPENDINGDOOM));
                 break;
             }
             case LUCIFRON_LUCIFRONS_CURSE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_LUCIFRONCURSE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS), 0.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS), SPELL_LUCIFRONCURSE));
                 break;
             }
             case LUCIFRON_SHADOWSHOCK:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWSHOCK) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 0.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_SHADOWSHOCK));
                 break;
             }
         }
