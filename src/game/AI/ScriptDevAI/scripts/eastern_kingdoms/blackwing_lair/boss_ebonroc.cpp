@@ -46,10 +46,10 @@ struct boss_ebonrocAI : public CombatAI
 {
     boss_ebonrocAI(Creature* creature) : CombatAI(creature, EBONROC_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(EBONROC_SHADOW_OF_EBONROC, sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, 0.8f));
-        AddCombatAction(EBONROC_SHADOW_FLAME, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(18 * IN_MILLISECONDS), 0.3f));
-        AddCombatAction(EBONROC_WING_BUFFET, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(30 * IN_MILLISECONDS), 0.3f));
-        AddCombatAction(EBONROC_THRASH, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(6 * IN_MILLISECONDS), 0.3f));
+        AddCombatAction(EBONROC_SHADOW_OF_EBONROC, 45000u);
+        AddCombatAction(EBONROC_SHADOW_FLAME, uint32(18 * IN_MILLISECONDS));
+        AddCombatAction(EBONROC_WING_BUFFET, uint32(30 * IN_MILLISECONDS));
+        AddCombatAction(EBONROC_THRASH, uint32(6 * IN_MILLISECONDS));
     }
 
     ScriptedInstance* m_instance;
@@ -85,25 +85,25 @@ struct boss_ebonrocAI : public CombatAI
             case EBONROC_SHADOW_OF_EBONROC:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_OF_EBONROC) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), SPELL_SHADOW_OF_EBONROC));
                 break;
             }
             case EBONROC_SHADOW_FLAME:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SHADOW_FLAME) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), 0.8f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), SPELL_SHADOW_FLAME));
                 break;
             }
             case EBONROC_WING_BUFFET:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WING_BUFFET) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), SPELL_WING_BUFFET));
                 break;
             }
             case EBONROC_THRASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_THRASH));
                 break;
             }
         }

@@ -81,11 +81,11 @@ struct boss_vaelastraszAI : public CombatAI
     boss_vaelastraszAI(Creature* creature) : CombatAI(creature, VAEL_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
         AddTimerlessCombatAction(VAEL_LOW_HP_YELL, true);
-        AddCombatAction(VAEL_BURNING_ADRENALINE_TANK, sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, 1.0f));
-        AddCombatAction(VAEL_BURNING_ADRENALINE_TARGET, sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, 1.0f));
-        AddCombatAction(VAEL_FLAME_BREATH, sObjectMgr.GetScaleSpellTimer(m_creature, 11000u, 1.0f));
-        AddCombatAction(VAEL_FIRE_NOVA, sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, 0.35f));
-        AddCombatAction(VAEL_CLEAVE, sObjectMgr.GetScaleSpellTimer(m_creature, 8000u, 1.0f));
+        AddCombatAction(VAEL_BURNING_ADRENALINE_TANK, 45000u);
+        AddCombatAction(VAEL_BURNING_ADRENALINE_TARGET, 15000u);
+        AddCombatAction(VAEL_FLAME_BREATH, 11000u);
+        AddCombatAction(VAEL_FIRE_NOVA, 5000u);
+        AddCombatAction(VAEL_CLEAVE, 8000u);
         AddCombatAction(VAEL_TAIL_SWEEP, 20000u);
         AddCustomAction(VAEL_INTRO, true, [&]() { HandleIntro(); });
         AddCustomAction(VAEL_SPEECH, true, [&]() { HandleSpeech(); });
@@ -287,38 +287,38 @@ struct boss_vaelastraszAI : public CombatAI
             case VAEL_BURNING_ADRENALINE_TANK:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BURNING_ADRENALINE_TANK) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000, 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000, SPELL_BURNING_ADRENALINE_TANK));
                 break;
             }
             case VAEL_BURNING_ADRENALINE_TARGET:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_BURNING_ADRENALINE, SELECT_FLAG_PLAYER | SELECT_FLAG_POWER_MANA))
                     if (DoCastSpellIfCan(target, SPELL_BURNING_ADRENALINE) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, 1.0f));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_BURNING_ADRENALINE));
                 break;
             }
             case VAEL_FLAME_BREATH:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), SPELL_FLAME_BREATH));
                 break;
             }
             case VAEL_FIRE_NOVA:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_FIRE_NOVA) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, 0.35f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_FIRE_NOVA));
                 break;
             }
             case VAEL_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, 1.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_CLEAVE));
                 break;
             }
             case VAEL_TAIL_SWEEP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_TAIL_SWEEP) == CAST_OK)
-                    ResetCombatAction(action, 20000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000, SPELL_TAIL_SWEEP));
                 break;
             }
         }

@@ -48,10 +48,10 @@ struct boss_flamegorAI : public CombatAI
 {
     boss_flamegorAI(Creature* creature) : CombatAI(creature, FLAMEGOR_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(FLAMEGOR_FRENZY, sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, 0.2f));
-        AddCombatAction(FLAMEGOR_SHADOW_FLAME, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(18 * IN_MILLISECONDS), 0.8f));
-        AddCombatAction(FLAMEGOR_WING_BUFFET, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(30 * IN_MILLISECONDS), 0.3f));
-        AddCombatAction(FLAMEGOR_THRASH, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(6 * IN_MILLISECONDS), 0.3f));
+        AddCombatAction(FLAMEGOR_FRENZY, 10000u);
+        AddCombatAction(FLAMEGOR_SHADOW_FLAME, uint32(18 * IN_MILLISECONDS));
+        AddCombatAction(FLAMEGOR_WING_BUFFET, uint32(30 * IN_MILLISECONDS));
+        AddCombatAction(FLAMEGOR_THRASH, uint32(6 * IN_MILLISECONDS));
     }
 
     ScriptedInstance* m_instance;
@@ -89,26 +89,26 @@ struct boss_flamegorAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK)
                 {
                     DoScriptText(EMOTE_GENERIC_FRENZY, m_creature);
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS), 0.2f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS), SPELL_FRENZY));
                 }
                 break;
             }
             case FLAMEGOR_SHADOW_FLAME:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SHADOW_FLAME) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), 0.8f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), SPELL_SHADOW_FLAME));
                 break;
             }
             case FLAMEGOR_WING_BUFFET:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WING_BUFFET) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), SPELL_WING_BUFFET));
                 break;
             }
             case FLAMEGOR_THRASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_THRASH));
                 break;
             }
         }

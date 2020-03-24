@@ -46,10 +46,10 @@ struct boss_firemawAI : public CombatAI
 {
     boss_firemawAI(Creature* creature) : CombatAI(creature, FIREMAW_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        AddCombatAction(FIREMAW_SHADOW_FLAME, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(18 * IN_MILLISECONDS), 0.8f));
-        AddCombatAction(FIREMAW_WING_BUFFET, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(30 * IN_MILLISECONDS), 0.3f));
-        AddCombatAction(FIREMAW_FLAME_BUFFET, sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, 0.3f));
-        AddCombatAction(FIREMAW_THRASH, sObjectMgr.GetScaleSpellTimer(m_creature, uint32(6 * IN_MILLISECONDS), 0.3f));
+        AddCombatAction(FIREMAW_SHADOW_FLAME, uint32(18 * IN_MILLISECONDS));
+        AddCombatAction(FIREMAW_WING_BUFFET, uint32(30 * IN_MILLISECONDS));
+        AddCombatAction(FIREMAW_FLAME_BUFFET, 5000u);
+        AddCombatAction(FIREMAW_THRASH, uint32(6 * IN_MILLISECONDS));
     }
 
     ScriptedInstance* m_instance;
@@ -85,25 +85,25 @@ struct boss_firemawAI : public CombatAI
             case FIREMAW_SHADOW_FLAME:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SHADOW_FLAME) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), 0.8f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 18 * IN_MILLISECONDS), SPELL_SHADOW_FLAME));
                 break;
             }
             case FIREMAW_WING_BUFFET:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WING_BUFFET) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30 * IN_MILLISECONDS, 35 * IN_MILLISECONDS), SPELL_WING_BUFFET));
                 break;
             }
             case FIREMAW_FLAME_BUFFET:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_FLAME_BUFFET) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_FLAME_BUFFET));
                 break;
             }
             case FIREMAW_THRASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 6 * IN_MILLISECONDS), SPELL_THRASH));
                 break;
             }
         }

@@ -49,10 +49,10 @@ struct boss_broodlordAI : public CombatAI
 {
     boss_broodlordAI(Creature* creature) : CombatAI(creature, BROODLORD_ACTION_MAX), m_instance(static_cast<instance_blackwing_lair*>(creature->GetInstanceData()))
     {
-        AddCombatAction(BROODLORD_CLEAVE, sObjectMgr.GetScaleSpellTimer(m_creature, 8000u, 0.4f));
+        AddCombatAction(BROODLORD_CLEAVE, 8000u);
         AddCombatAction(BROODLORD_KNOCK_AWAY, 12000u);
-        AddCombatAction(BROODLORD_BLAST_WAVE, sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, 0.2f));
-        AddCombatAction(BROODLORD_MORTAL_STRIKE, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, 0.3f));
+        AddCombatAction(BROODLORD_BLAST_WAVE, 20000u);
+        AddCombatAction(BROODLORD_MORTAL_STRIKE, 30000u);
         Reset();
     }
 
@@ -85,25 +85,25 @@ struct boss_broodlordAI : public CombatAI
             case BROODLORD_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 7000, 0.4f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 7000, SPELL_CLEAVE));
                 break;
             }
             case BROODLORD_KNOCK_AWAY:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 30000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_KNOCK_AWAY));
                 break;
             }
             case BROODLORD_BLAST_WAVE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_BLAST_WAVE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 16000), 0.2f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 16000), SPELL_BLAST_WAVE));
                 break;
             }
             case BROODLORD_MORTAL_STRIKE:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, (25000, 35000), 0.3f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, (25000, 35000), SPELL_MORTAL_STRIKE));
                 break;
             }
         }

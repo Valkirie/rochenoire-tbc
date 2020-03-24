@@ -58,10 +58,10 @@ struct boss_razorgoreAI : public CombatAI
 {
     boss_razorgoreAI(Creature* creature) : CombatAI(creature, RAZORGORE_ACTION_MAX), m_instance(static_cast<instance_blackwing_lair*>(creature->GetInstanceData()))
     {
-        AddCombatAction(RAZORGORE_CONFLAGRATION, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), 0.2f));
-        AddCombatAction(RAZORGORE_FIREBALL_VOLLEY, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), 0.0f));
+        AddCombatAction(RAZORGORE_CONFLAGRATION, urand(10000, 15000));
+        AddCombatAction(RAZORGORE_FIREBALL_VOLLEY, urand(15000, 20000));
         AddCombatAction(RAZORGORE_WAR_STOMP, 30000u);
-        AddCombatAction(RAZORGORE_CLEAVE, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), 0.8f));
+        AddCombatAction(RAZORGORE_CLEAVE, urand(4000, 8000));
         SetDeathPrevention(true);
         m_creature->SetWalk(false);
         if (m_instance)
@@ -117,25 +117,25 @@ struct boss_razorgoreAI : public CombatAI
             case RAZORGORE_CONFLAGRATION:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CONFLAGRATION) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), 0.2f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_CONFLAGRATION));
                 break;
             }
             case RAZORGORE_FIREBALL_VOLLEY:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_FIREBALL_VOLLEY) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), 0.0f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_FIREBALL_VOLLEY));
                 break;
             }
             case RAZORGORE_WAR_STOMP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WARSTOMP) == CAST_OK)
-                    ResetCombatAction(action, 30000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_WARSTOMP));
                 break;
             }
             case RAZORGORE_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), 0.8f));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), SPELL_CLEAVE));
                 break;
             }
         }
