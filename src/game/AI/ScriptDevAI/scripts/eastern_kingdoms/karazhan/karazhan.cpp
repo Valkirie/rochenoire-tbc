@@ -46,6 +46,8 @@ instance_karazhan::instance_karazhan(Map* pMap) : ScriptedInstance(pMap),
     m_uiChessEndingTimer(0),
     m_uiAllianceStalkerCount(0),
     m_uiHordeStalkerCount(0),
+    m_sBasementMobs(0),
+    m_sBasementMobsCount(0),
     m_bFriendlyGame(false),
     m_bBasementBossReady(false)
 {
@@ -332,7 +334,11 @@ void instance_karazhan::SetData64(uint32 uiData, uint64 uiGuid)
 
         // only allow the event to progress when all mobs are spawned
         if (m_sBasementMobsSet.size() >= MIN_BASEMENT_MOBS)
+        {
             m_bBasementBossReady = true;
+            m_sBasementMobsCount = m_sBasementMobsSet.size();
+            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+        }
     }
 }
 
@@ -412,6 +418,9 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
         case NPC_SHADOWBEAST:
         case NPC_COLDMIST_STALKER:
         case NPC_COLDMIST_WIDOW:
+            // update the amount of creature each time one is killed
+            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+
             // avoid exploiting the event
             if (!m_bBasementBossReady)
                 break;
@@ -421,7 +430,7 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
                 m_sBasementMobsSet.erase(pCreature->GetObjectGuid());
 
                 // spawn boss when empty
-                if (m_sBasementMobsSet.empty())
+                if (m_sBasementMobsSet.empty() || (m_sBasementMobsCount - m_sBasementMobsSet.size() >= m_sBasementMobs))
                 {
                     uint8 uiIndex = urand(0, 2);
                     m_bBasementBossReady = false;

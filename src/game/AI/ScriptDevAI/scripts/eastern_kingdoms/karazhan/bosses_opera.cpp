@@ -148,8 +148,8 @@ struct boss_dorotheeAI : public ScriptedAI
     {
         switch (id)
         {
-            case DOROTHEE_ACTION_FRIGHTENEDSCREAM: return urand(18000, 30000);
-            case DOROTHEE_ACTION_WATERBOLT: return 2400;
+            case DOROTHEE_ACTION_FRIGHTENEDSCREAM: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(18000, 30000), SPELL_FRIGHTENEDSCREAM);
+            case DOROTHEE_ACTION_WATERBOLT: return sObjectMgr.GetScaleSpellTimer(m_creature, 2400, SPELL_WATERBOLT);
             default: return 0;
         }
     }
@@ -344,7 +344,7 @@ struct boss_strawmanAI : public ScriptedAI
         if (m_uiBrainBashTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BRAIN_BASH) == CAST_OK)
-                m_uiBrainBashTimer = 15000;
+                m_uiBrainBashTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_BRAIN_BASH);
         }
         else
             m_uiBrainBashTimer -= uiDiff;
@@ -354,7 +354,7 @@ struct boss_strawmanAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_BRAIN_WIPE) == CAST_OK)
-                    m_uiBrainWipeTimer = 20000;
+                    m_uiBrainWipeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 20000, SPELL_BRAIN_WIPE);
             }
         }
         else
@@ -430,7 +430,7 @@ struct boss_tinheadAI : public ScriptedAI
         if (m_uiCleaveTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = 5000;
+                m_uiCleaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_CLEAVE);
         }
         else
             m_uiCleaveTimer -= uiDiff;
@@ -440,7 +440,7 @@ struct boss_tinheadAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_RUST) == CAST_OK)
             {
                 DoScriptText(EMOTE_RUST, m_creature);
-                m_uiRustTimer = 6000;
+                m_uiRustTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 6000, SPELL_RUST);
             }
         }
         else
@@ -518,7 +518,7 @@ struct boss_roarAI : public ScriptedAI
         if (m_uiMangleTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MANGLE) == CAST_OK)
-                m_uiMangleTimer = urand(5000, 8000);
+                m_uiMangleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 8000), SPELL_MANGLE);
         }
         else
             m_uiMangleTimer -= uiDiff;
@@ -526,7 +526,7 @@ struct boss_roarAI : public ScriptedAI
         if (m_uiShredTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHRED) == CAST_OK)
-                m_uiShredTimer = urand(10000, 15000);
+                m_uiShredTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_SHRED);
         }
         else
             m_uiShredTimer -= uiDiff;
@@ -534,7 +534,7 @@ struct boss_roarAI : public ScriptedAI
         if (m_uiScreamTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_FRIGHTENED_SCREAM) == CAST_OK)
-                m_uiScreamTimer = urand(20000, 30000);
+                m_uiScreamTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 30000), SPELL_FRIGHTENED_SCREAM);
         }
         else
             m_uiScreamTimer -= uiDiff;
@@ -638,7 +638,7 @@ struct boss_croneAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_CHAIN_LIGHTNING) == CAST_OK)
-                    m_uiChainLightningTimer = 15000;
+                    m_uiChainLightningTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_CHAIN_LIGHTNING);
             }
         }
         else
@@ -848,7 +848,7 @@ struct boss_bigbadwolfAI : public ScriptedAI
         if (m_uiFearTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_TERRIFYING_HOWL) == CAST_OK)
-                m_uiFearTimer = 24000;
+                m_uiFearTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 24000, SPELL_TERRIFYING_HOWL);
         }
         else
             m_uiFearTimer -= uiDiff;
@@ -856,7 +856,7 @@ struct boss_bigbadwolfAI : public ScriptedAI
         if (m_uiSwipeTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_WIDE_SWIPE) == CAST_OK)
-                m_uiSwipeTimer = urand(25000, 30000);
+                m_uiSwipeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 30000), SPELL_WIDE_SWIPE);
         }
         else
             m_uiSwipeTimer -= uiDiff;
@@ -1109,7 +1109,7 @@ struct boss_julianneAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_BLINDING_PASSION) == CAST_OK)
-                    m_uiBlindingPassionTimer = urand(30000, 45000);
+                    m_uiBlindingPassionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_BLINDING_PASSION);
             }
         }
         else
@@ -1118,7 +1118,7 @@ struct boss_julianneAI : public ScriptedAI
         if (m_uiDevotionTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_DEVOTION) == CAST_OK)
-                m_uiDevotionTimer = urand(15000, 45000);
+                m_uiDevotionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 45000), SPELL_DEVOTION);
         }
         else
             m_uiDevotionTimer -= uiDiff;
@@ -1128,7 +1128,7 @@ struct boss_julianneAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_POWERFUL_ATTRACTION) == CAST_OK)
-                    m_uiPowerfulAttractionTimer = urand(5000, 30000);
+                    m_uiPowerfulAttractionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 30000), SPELL_POWERFUL_ATTRACTION);
             }
         }
         else
@@ -1139,7 +1139,7 @@ struct boss_julianneAI : public ScriptedAI
             if (Unit* pTarget = DoSelectLowestHpFriendly(30.0f))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_ETERNAL_AFFECTION) == CAST_OK)
-                    m_uiEternalAffectionTimer = urand(45000, 60000);
+                    m_uiEternalAffectionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(45000, 60000), SPELL_ETERNAL_AFFECTION);
             }
         }
         else
@@ -1352,7 +1352,7 @@ struct boss_romuloAI : public ScriptedAI
         if (m_uiBackwardLungeTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BACKWARD_LUNGE) == CAST_OK)
-                m_uiBackwardLungeTimer = urand(15000, 30000);
+                m_uiBackwardLungeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_BACKWARD_LUNGE);
         }
         else
             m_uiBackwardLungeTimer -= uiDiff;
@@ -1360,7 +1360,7 @@ struct boss_romuloAI : public ScriptedAI
         if (m_uiDaringTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_DARING) == CAST_OK)
-                m_uiDaringTimer = urand(20000, 40000);
+                m_uiDaringTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 40000), SPELL_DARING);
         }
         else
             m_uiDaringTimer -= uiDiff;
@@ -1368,7 +1368,7 @@ struct boss_romuloAI : public ScriptedAI
         if (m_uiDeadlySwatheTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DEADLY_SWATHE) == CAST_OK)
-                m_uiDeadlySwatheTimer = urand(15000, 25000);
+                m_uiDeadlySwatheTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_DEADLY_SWATHE);
         }
         else
             m_uiDeadlySwatheTimer -= uiDiff;
@@ -1376,7 +1376,7 @@ struct boss_romuloAI : public ScriptedAI
         if (m_uiPoisonThrustTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON_THRUST) == CAST_OK)
-                m_uiPoisonThrustTimer = urand(10000, 20000);
+                m_uiPoisonThrustTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_POISON_THRUST);
         }
         else
             m_uiPoisonThrustTimer -= uiDiff;

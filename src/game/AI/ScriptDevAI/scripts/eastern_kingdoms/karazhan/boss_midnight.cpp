@@ -284,8 +284,8 @@ struct boss_attumenAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case ATTUMEN_ACTION_CLEAVE: return urand(10000, 16000);
-            case ATTUMEN_ACTION_CURSE: return 30000;
+        case ATTUMEN_ACTION_CLEAVE: return urand(10000, 16000);
+        case ATTUMEN_ACTION_CURSE: return 30000;
             case ATTUMEN_ACTION_YELL: return urand(30000, 60000);
             case ATTUMEN_ACTION_KNOCKDOWN: return urand(6000, 9000);
             case ATTUMEN_ACTION_CHARGE: return 20000;
@@ -297,11 +297,11 @@ struct boss_attumenAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case ATTUMEN_ACTION_CLEAVE: return urand(22000, 30000);
-            case ATTUMEN_ACTION_CURSE: return 30000;
+            case ATTUMEN_ACTION_CLEAVE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(22000, 30000), SPELL_SHADOWCLEAVE);
+            case ATTUMEN_ACTION_CURSE: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_INTANGIBLE_PRESENCE);
             case ATTUMEN_ACTION_YELL: return urand(30000, 60000);
-            case ATTUMEN_ACTION_KNOCKDOWN: return urand(22000, 30000);
-            case ATTUMEN_ACTION_CHARGE: return urand(12000, 20000);
+            case ATTUMEN_ACTION_KNOCKDOWN: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(22000, 30000), SPELL_KNOCKDOWN);
+            case ATTUMEN_ACTION_CHARGE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 20000), SPELL_CHARGE);
             default: return 0; // never occurs but for compiler
         }
     }

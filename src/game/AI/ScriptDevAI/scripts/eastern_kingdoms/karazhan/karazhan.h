@@ -252,6 +252,9 @@ class instance_karazhan : public ScriptedInstance
         uint8 m_uiAllianceStalkerCount;
         uint8 m_uiHordeStalkerCount;
 
+        uint32 m_sBasementMobs;
+        uint32 m_sBasementMobsCount;
+
         bool m_bFriendlyGame;
         bool m_bBasementBossReady;
         bool m_uiVictoryTimersPhase[8];

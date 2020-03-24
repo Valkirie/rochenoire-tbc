@@ -129,9 +129,9 @@ struct boss_moroesAI : public ScriptedAI, public CombatActions
     {
         switch (action)
         {
-            case MOROES_ACTION_VANISH: return 42000;
-            case MOROES_ACTION_BLIND: return urand(30000, 35000);
-            case MOROES_ACTION_GOUGE: return urand(30000, 35000);
+            case MOROES_ACTION_VANISH: return sObjectMgr.GetScaleSpellTimer(m_creature, 42000, SPELL_VANISH);
+            case MOROES_ACTION_BLIND: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 35000), SPELL_BLIND);
+            case MOROES_ACTION_GOUGE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 35000), SPELL_GOUGE);
             default: return 0; // never occurs but for compiler
         }
     }
