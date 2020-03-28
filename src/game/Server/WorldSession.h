@@ -657,7 +657,7 @@ class WorldSession
         void HandlePushQuestToParty(WorldPacket& recvPacket);
         void HandleQuestPushResult(WorldPacket& recvPacket);
 
-        bool processChatmessageFurtherAfterSecurityChecks(std::string&, uint32);
+        bool CheckChatMessage(std::string&, bool addon = false);
         void SendPlayerNotFoundNotice(const std::string& name) const;
         void SendWrongFactionNotice() const;
         void SendChatRestrictedNotice(ChatRestrictionType restriction) const;
@@ -670,6 +670,7 @@ class WorldSession
         void HandleResurrectResponseOpcode(WorldPacket& recvPacket);
         void HandleSummonResponseOpcode(WorldPacket& recv_data);
 
+        bool CheckChatChannelNameAndPassword(std::string& name, std::string& pass);
         void HandleJoinChannelOpcode(WorldPacket& recvPacket);
         void HandleLeaveChannelOpcode(WorldPacket& recvPacket);
         void HandleChannelListOpcode(WorldPacket& recvPacket);
