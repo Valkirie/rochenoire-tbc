@@ -81,12 +81,6 @@ enum PartyResult
     ERR_INVITE_RESTRICTED               = 13,
 };
 
-enum LfgMode
-{
-    LFG_MODE                = 0,
-    LFM_MODE                = 1,
-};
-
 enum LfgType
 {
     LFG_TYPE_NONE           = 0,
@@ -207,7 +201,6 @@ class WorldSession
         void SendNotification(const char* format, ...) const ATTR_PRINTF(2, 3);
         void SendNotification(int32 string_id, ...) const;
         void SendPetNameInvalid(uint32 error, const std::string& name, DeclinedName* declinedName) const;
-        void SendLfgResult(LfgType type, uint32 entry, LfgMode mode);
         void SendPartyResult(PartyOperation operation, const std::string& member, PartyResult res) const;
         void SendAreaTriggerMessage(const char* Text, ...) const ATTR_PRINTF(2, 3);
         void SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg = 0) const;
@@ -347,6 +340,9 @@ class WorldSession
         // TRUE values set by client sending CMSG_LFG_SET_AUTOJOIN and CMSG_LFM_CLEAR_AUTOFILL before player login
         bool LookingForGroup_auto_join;
         bool LookingForGroup_auto_add;
+        void SendLFGListQueryResponse(LfgType type, uint32 entry);
+        void SendLFGUpdateLFG();
+        void SendLFGUpdateLFM();
 
         static void BuildPartyMemberStatsChangedPacket(Player* player, WorldPacket& data);
 
@@ -396,7 +392,6 @@ class WorldSession
         // new
         void HandleMoveUnRootAck(WorldPacket& recvPacket);
         void HandleMoveRootAck(WorldPacket& recvPacket);
-        void HandleLookingForGroup(WorldPacket& recvPacket);
 
         // new inspect
         void HandleInspectOpcode(WorldPacket& recvPacket);
@@ -738,7 +733,6 @@ class WorldSession
         void HandleMinimapPingOpcode(WorldPacket& recv_data);
         void HandleRandomRollOpcode(WorldPacket& recv_data);
         void HandleFarSightOpcode(WorldPacket& recv_data);
-        void HandleSetLfgOpcode(WorldPacket& recv_data);
         void HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data);
         void HandleMoveSetCanFlyAckOpcode(WorldPacket& recv_data);
         void HandleLfgSetAutoJoinOpcode(WorldPacket& recv_data);
@@ -746,9 +740,11 @@ class WorldSession
         void HandleLfmSetAutoFillOpcode(WorldPacket& recv_data);
         void HandleLfmClearAutoFillOpcode(WorldPacket& recv_data);
         void HandleLfgClearOpcode(WorldPacket& recv_data);
+        void HandleSetLfgOpcode(WorldPacket& recv_data);
         void HandleLfmClearOpcode(WorldPacket& recv_data);
         void HandleSetLfmOpcode(WorldPacket& recv_data);
         void HandleSetLfgCommentOpcode(WorldPacket& recv_data);
+        void HandleLFGListQuery(WorldPacket& recvPacket);
         void HandleSetTitleOpcode(WorldPacket& recv_data);
         void HandleRealmSplitOpcode(WorldPacket& recv_data);
         void HandleTimeSyncResp(WorldPacket& recv_data);
