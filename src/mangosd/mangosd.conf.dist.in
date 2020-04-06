@@ -363,6 +363,8 @@ Rate.Weight.Item.Legendary = 1.0
 Rate.Weight.Item.Artifact = 1.0
 Calculate.Creature.Zone.Area.Data = 0
 Calculate.Gameoject.Zone.Area.Data = 0
+SummoningRitual.ReqParticipants = 1
+SummoningRitual.AllowSelfUse = 1
 
 ###################################################################################################################
 # SERVER LOGGING
