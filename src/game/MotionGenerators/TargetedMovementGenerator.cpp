@@ -409,6 +409,19 @@ void ChaseMovementGenerator::FanOut(Unit& owner)
 
 bool ChaseMovementGenerator::DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath, bool target)
 {
+    if (!owner.movespline->Finalized())
+    {
+        auto loc = owner.movespline->ComputePosition();
+
+        if (owner.movespline->isFacing())
+        {
+            float angle = atan2((loc.y - owner.GetPositionY()), (loc.x - owner.GetPositionX()));
+            loc.orientation = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
+        }
+
+        owner.Relocate(loc.x, loc.y, loc.z, loc.orientation);
+    }
+
     if (!this->i_path)
         this->i_path = new PathFinder(&owner);
 
@@ -564,18 +577,20 @@ float FollowMovementGenerator::GetSpeed(Unit& owner) const
     // Followers sync with master's speed when not in combat
     speed = i_target->GetSpeedInMotion();
 
+    // Catchup boost is not allowed, stop here:
+    if (!IsBoostAllowed(owner))
+        return speed;
+
     // Catch-up speed boost if allowed:
-    // * When following PC units: boost up to max hardcoded speed
-    // * When following NPC units: try to boost up to own run speed
-    if (i_target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && IsBoostAllowed(owner))
+    // * When following client-controlled units: boost up to max hardcoded speed
+    // * When following server-controlled units: try to boost up to own run speed
+    if (i_target->IsClientControlled())
     {
         const float bonus = (i_target->GetDistance(owner.GetPositionX(), owner.GetPositionY(), owner.GetPositionZ(), DIST_CALC_NONE) / speed);
-        speed = std::max(owner.GetSpeed(MOVE_WALK), std::min((speed + bonus), 40.0f));
+        return std::max(owner.GetSpeed(MOVE_WALK), std::min((speed + bonus), 40.0f));
     }
-    else if (IsBoostAllowed(owner))
-        speed = std::max(speed, owner.GetSpeed(MOVE_RUN));
 
-    return speed;
+    return std::max(speed, owner.GetSpeed(MOVE_RUN));
 }
 
 bool FollowMovementGenerator::IsBoostAllowed(Unit& owner) const
