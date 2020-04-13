@@ -577,20 +577,18 @@ float FollowMovementGenerator::GetSpeed(Unit& owner) const
     // Followers sync with master's speed when not in combat
     speed = i_target->GetSpeedInMotion();
 
-    // Catchup boost is not allowed, stop here:
-    if (!IsBoostAllowed(owner))
-        return speed;
-
     // Catch-up speed boost if allowed:
-    // * When following client-controlled units: boost up to max hardcoded speed
-    // * When following server-controlled units: try to boost up to own run speed
-    if (i_target->IsClientControlled())
+    // * When following PC units: boost up to max hardcoded speed
+    // * When following NPC units: try to boost up to own run speed
+    if (i_target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && IsBoostAllowed(owner))
     {
         const float bonus = (i_target->GetDistance(owner.GetPositionX(), owner.GetPositionY(), owner.GetPositionZ(), DIST_CALC_NONE) / speed);
-        return std::max(owner.GetSpeed(MOVE_WALK), std::min((speed + bonus), 40.0f));
+        speed = std::max(owner.GetSpeed(MOVE_WALK), std::min((speed + bonus), 40.0f));
     }
+    else if (IsBoostAllowed(owner))
+        speed = std::max(speed, owner.GetSpeed(MOVE_RUN));
 
-    return std::max(speed, owner.GetSpeed(MOVE_RUN));
+    return speed;
 }
 
 bool FollowMovementGenerator::IsBoostAllowed(Unit& owner) const
@@ -727,22 +725,22 @@ bool FollowMovementGenerator::Move(Unit& owner, float x, float y, float z)
 
     if (stuck)
     {
+        float o;
+        _getOrientation(owner, o);
         _getLocation(owner, x, y, z, false);
-        path.resize(2);
-        path[1] = {x, y, z};
+        owner.NearTeleportTo(x, y, z, o);
+        return false;
     }
-
-    const float speed = (stuck ? FLT_EPSILON : GetSpeed(owner));
 
     _addUnitStateMove(owner);
 
     Movement::MoveSplineInit init(owner);
     init.MovebyPath(path);
     init.SetWalk(EnableWalking());
-    init.SetVelocity(speed);
+    init.SetVelocity(GetSpeed(owner));
     init.Launch();
 
-    return !stuck;
+    return true;
 }
 
 bool FollowMovementGenerator::_getOrientation(Unit& owner, float& o) const
