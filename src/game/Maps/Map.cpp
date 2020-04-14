@@ -761,7 +761,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
             if (creature->IsTemporarySummon())
                 continue; // skip if is summoned
 
-            if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
+            if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->IsAlive())))
                 output++;
         }
 	}
@@ -782,7 +782,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
 
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-            if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->isAlive())))
+            if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->IsAlive())))
                 output++;
         }
 	}
@@ -1017,7 +1017,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 					if (cdata.nbr_adds_alive > cdata.nbr_adds_keep)
 					{
                         if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
-                            if ((!creature->isScaled() && !creature->isInCombat() && creature->isAlive()) || (RefreshSize != 0))
+                            if ((!creature->isScaled() && !creature->IsInCombat() && creature->IsAlive()) || (RefreshSize != 0))
                             {
                                 m_displayStore[creature->GetGUIDLow()] = false;
                                 creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
@@ -1026,7 +1026,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 					else if (cdata.nbr_adds_alive < cdata.nbr_adds_keep)
 					{
                         if (m_poolsStore[packId] <= leftAlive)
-						    if ((creature->isScaled() && creature->isAlive()) || (RefreshSize != 0))
+						    if ((creature->isScaled() && creature->IsAlive()) || (RefreshSize != 0))
                             {
                                 m_displayStore[creature->GetGUIDLow()] = true;
                                 creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
