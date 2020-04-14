@@ -462,7 +462,7 @@ void Pet::SavePetToDB(PetSaveMode mode, Player* owner)
         if (mode == PET_SAVE_AS_CURRENT)
         {
             // pet is dead so it doesn't have to be shown at character login
-            if (!isAlive())
+            if (!IsAlive())
                 mode = PET_SAVE_NOT_IN_SLOT;
         }
         else
@@ -637,7 +637,7 @@ Player* Pet::GetSpellModOwner() const
 void Pet::SetDeathState(DeathState s)                       // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
 {
     Creature::SetDeathState(s);
-    if (getDeathState() == CORPSE)
+    if (GetDeathState() == CORPSE)
     {
         // remove summoned pet (no corpse)
         if (getPetType() == SUMMON_PET)
@@ -657,7 +657,7 @@ void Pet::SetDeathState(DeathState s)                       // overwrite virtual
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         }
     }
-    else if (getDeathState() == ALIVE)
+    else if (GetDeathState() == ALIVE)
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         CastPetAuras(true);
@@ -727,7 +727,7 @@ void Pet::RegenerateAll(uint32 update_diff)
     // regenerate focus
     if (m_regenTimer <= update_diff)
     {
-        if (!isInCombat())
+        if (!IsInCombat())
             RegenerateHealth();
 
         RegeneratePower(4.f);
@@ -763,7 +763,7 @@ void Pet::LooseHappiness()
     if (curValue <= 0)
         return;
     int32 addvalue = (140 >> GetLoyaltyLevel()) * 125;      // value is 70/35/17/8/4 (per min) * 1000 / 8 (timer 7.5 secs)
-    if (isInCombat())                                       // we know in combat happiness fades faster, multiplier guess
+    if (IsInCombat())                                       // we know in combat happiness fades faster, multiplier guess
         addvalue = int32(addvalue * 1.5);
     ModifyPower(POWER_HAPPINESS, -addvalue);
 }
@@ -1026,7 +1026,7 @@ void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= nullptr*/)
     if (!owner)
         owner = GetOwner();
 
-    if (isInCombat())
+    if (IsInCombat())
         CombatStop(true);
 
     if (owner)
@@ -1111,7 +1111,7 @@ void Pet::GivePetXP(uint32 xp)
     if (xp < 1)
         return;
 
-    if (!isAlive())
+    if (!IsAlive())
         return;
 
     uint32 level = getLevel();
@@ -2595,7 +2595,7 @@ void Pet::CastOwnerTalentAuras()
         RemoveAurasDueToSpell(34459);
         RemoveAurasDueToSpell(34460);
 
-        if (isAlive())
+        if (IsAlive())
         {
             if (pOwner->HasSpell(34455)) // Ferocious Inspiration Rank 1
                 CastSpell(this, 34457, TRIGGERED_OLD_TRIGGERED); // Ferocious Inspiration 1%

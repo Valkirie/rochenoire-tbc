@@ -37,7 +37,7 @@ void CombatAI::ExecuteActions()
 
 void CombatAI::UpdateAI(const uint32 diff)
 {
-    UpdateTimers(diff, m_creature->isInCombat());
+    UpdateTimers(diff, m_creature->IsInCombat());
 
     if (!m_creature->SelectHostileTarget())
         return;
@@ -77,7 +77,7 @@ void RangedCombatAI::SetRangedMode(bool state, float distance, RangeModeType typ
     m_rangedModeSetting = type;
     m_meleeEnabled = !state;
 
-    if (m_creature->isInCombat())
+    if (m_creature->IsInCombat())
         SetCurrentRangedMode(state);
     else
     {
@@ -93,8 +93,8 @@ void RangedCombatAI::SetCurrentRangedMode(bool state)
         m_currentRangedMode = true;
         m_meleeEnabled = false;
         m_attackDistance = m_chaseDistance;
-        m_creature->MeleeAttackStop(m_creature->getVictim());
-        DoStartMovement(m_creature->getVictim());
+        m_creature->MeleeAttackStop(m_creature->GetVictim());
+        DoStartMovement(m_creature->GetVictim());
     }
     else
     {
@@ -104,8 +104,8 @@ void RangedCombatAI::SetCurrentRangedMode(bool state)
         m_currentRangedMode = false;
         m_meleeEnabled = true;
         m_attackDistance = 0.f;
-        m_creature->MeleeAttackStart(m_creature->getVictim());
-        DoStartMovement(m_creature->getVictim());
+        m_creature->MeleeAttackStart(m_creature->GetVictim());
+        DoStartMovement(m_creature->GetVictim());
     }
 }
 
@@ -116,7 +116,7 @@ enum EAIPoints
 
 void RangedCombatAI::DistanceYourself()
 {
-    Unit* victim = m_creature->getVictim();
+    Unit* victim = m_creature->GetVictim();
     if (!victim->CanReachWithMeleeAttack(m_creature))
         return;
 
@@ -142,7 +142,7 @@ void RangedCombatAI::DistancingEnded()
 
 void RangedCombatAI::JustStoppedMovementOfTarget(SpellEntry const* spellInfo, Unit* victim)
 {
-    if (m_creature->getVictim() != victim)
+    if (m_creature->GetVictim() != victim)
         return;
     if (m_distanceSpells.find(spellInfo->Id) != m_distanceSpells.end())
         DistanceYourself();
@@ -182,16 +182,16 @@ CanCastResult RangedCombatAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uin
 
 void RangedCombatAI::UpdateAI(const uint32 diff)
 {
-    UpdateTimers(diff, m_creature->isInCombat());
+    UpdateTimers(diff, m_creature->IsInCombat());
 
     if (!m_creature->SelectHostileTarget())
         return;
 
     ExecuteActions();
 
-    if (m_rangedMode && m_creature->getVictim() && CanExecuteCombatAction())
+    if (m_rangedMode && m_creature->GetVictim() && CanExecuteCombatAction())
     {
-        if (m_currentRangedMode && m_rangedModeSetting == TYPE_PROXIMITY && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+        if (m_currentRangedMode && m_rangedModeSetting == TYPE_PROXIMITY && m_creature->CanReachWithMeleeAttack(m_creature->GetVictim()))
             SetCurrentRangedMode(false);
     }
 

@@ -152,7 +152,7 @@ struct mob_flamewaker_priestAI : public CombatAI
         {
             case FLAMEWAKER_PRIEST_DARK_STRIKE:
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DARK_STRIKE) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DARK_STRIKE) == CAST_OK)
                     ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 18000), SPELL_DARK_STRIKE));
                 break;
             }

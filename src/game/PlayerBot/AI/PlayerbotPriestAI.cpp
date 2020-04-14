@@ -299,7 +299,7 @@ CombatManeuverReturns PlayerbotPriestAI::DoNextCombatManeuverPVE(Unit* pTarget)
 
         // No one needs to be healed: do small damage instead
         // If target is elite and not handled by MT: do nothing
-        if (m_ai->IsElite(pTarget) && mainTank && mainTank->getVictim() != pTarget)
+        if (m_ai->IsElite(pTarget) && mainTank && mainTank->GetVictim() != pTarget)
             return RETURN_NO_ACTION_OK;
 
         // Cast Shadow Word:Pain on current target and keep its up (if mana >= 40% or target HP < 15%)
@@ -512,7 +512,7 @@ void PlayerbotPriestAI::DoNonCombatActions()
     if (!m_ai)   return;
     if (!m_bot)  return;
 
-    if (!m_bot->isAlive() || m_bot->IsInDuel()) return;
+    if (!m_bot->IsAlive() || m_bot->IsInDuel()) return;
 
     uint32 spec = m_bot->GetSpec();
 

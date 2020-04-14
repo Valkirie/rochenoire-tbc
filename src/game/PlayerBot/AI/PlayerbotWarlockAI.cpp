@@ -180,7 +180,7 @@ CombatManeuverReturns PlayerbotWarlockAI::DoNextCombatManeuverPVE(Unit* pTarget)
     if (!m_ai)  return RETURN_NO_ACTION_ERROR;
     if (!m_bot) return RETURN_NO_ACTION_ERROR;
 
-    //Unit* pVictim = pTarget->getVictim();
+    //Unit* pVictim = pTarget->GetVictim();
     bool meleeReach = m_bot->CanReachWithMeleeAttack(pTarget);
     Pet* pet = m_bot->GetPet();
     uint32 spec = m_bot->GetSpec();
@@ -447,7 +447,7 @@ bool PlayerbotWarlockAI::CheckCurse(Unit* pTarget)
             for (Group::member_citerator itr = groupSlot.begin(); itr != groupSlot.end(); itr++)
             {
                 Player* groupMember = sObjectMgr.GetPlayer(itr->guid);
-                if (!groupMember || !groupMember->isAlive())
+                if (!groupMember || !groupMember->IsAlive())
                     continue;
                 switch (groupMember->getClass())
                 {

@@ -169,8 +169,8 @@ struct boss_nightbaneAI : public CombatAI
     {
         m_skeletons.push_back(summoned->GetObjectGuid());
 
-        if (m_creature->getVictim())
-            summoned->AI()->AttackStart(m_creature->getVictim());
+        if (m_creature->GetVictim())
+            summoned->AI()->AttackStart(m_creature->GetVictim());
     }
 
     void SummonedCreatureJustDied(Creature* summoned) override
@@ -363,7 +363,7 @@ struct boss_nightbaneAI : public CombatAI
             }
             case NIGHTBANE_CLEAVE:
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
                     ResetCombatAction(action, urand(6000, 12000));
                 break;
             }
@@ -396,7 +396,7 @@ struct boss_nightbaneAI : public CombatAI
             case NIGHTBANE_FIREBALL_BARRAGE:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_FARTHEST_AWAY, 0, SPELL_FIREBALL_BARRAGE, SELECT_FLAG_PLAYER))
-                    if (target->IsWithinDist(m_creature, 60.f) || m_creature->CastSpell(m_creature->getVictim(), SPELL_FIREBALL_BARRAGE, TRIGGERED_NONE) == SPELL_CAST_OK)
+                    if (target->IsWithinDist(m_creature, 60.f) || m_creature->CastSpell(m_creature->GetVictim(), SPELL_FIREBALL_BARRAGE, TRIGGERED_NONE) == SPELL_CAST_OK)
                         ResetCombatAction(action, urand(3000, 6000)); // if farthest target is 40+ yd away
                 break;
             }
@@ -415,7 +415,7 @@ bool ProcessEventId_event_spell_summon_nightbane(uint32 /*eventId*/, Object* sou
         if (instance->GetData(TYPE_NIGHTBANE) == NOT_STARTED || instance->GetData(TYPE_NIGHTBANE) == FAIL)
         {
             Creature* nightbane = instance->GetSingleCreatureFromStorage(NPC_NIGHTBANE);
-            if (nightbane && nightbane->isAlive())
+            if (nightbane && nightbane->IsAlive())
             {
                 DoScriptText(EMOTE_AWAKEN, ((Player*)source));
                 instance->SetData(TYPE_NIGHTBANE, IN_PROGRESS);

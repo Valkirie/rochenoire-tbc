@@ -125,7 +125,7 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
             {
                 if (Creature* pMedivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
                 {
-                    if (pMedivh->isAlive())
+                    if (pMedivh->IsAlive())
                     {
                         DoScriptText(SAY_MEDIVH_ENTER, pMedivh);
 
@@ -185,7 +185,7 @@ void instance_dark_portal::SetData(uint32 uiType, uint32 uiData)
                 {
                     if (Creature* medivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
                     {
-                        if (medivh->isAlive())
+                        if (medivh->IsAlive())
                             medivh->Suicide();
                     }
                 }
@@ -547,7 +547,7 @@ bool instance_dark_portal::CheckConditionCriteriaMeet(Player const* pPlayer, uin
 
             if (Creature* pMedivh = GetSingleCreatureFromStorage(NPC_MEDIVH))
             {
-                if (pMedivh->isAlive())
+                if (pMedivh->IsAlive())
                     return true;
                 else
                     return false;
@@ -572,7 +572,7 @@ bool AreaTrigger_at_dark_portal(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     if (pAt->id == AREATRIGGER_MEDIVH || pAt->id == AREATRIGGER_ENTER)
     {
-        if (pPlayer->isGameMaster() || pPlayer->isDead())
+        if (pPlayer->isGameMaster() || pPlayer->IsDead())
             return false;
 
         if (instance_dark_portal* pInstance = (instance_dark_portal*)pPlayer->GetInstanceData())

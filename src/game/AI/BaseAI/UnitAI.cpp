@@ -59,13 +59,13 @@ void UnitAI::MoveInLineOfSight(Unit* who)
         if (m_unit->GetDistanceZ(who) > (IsRangedUnit() ? CREATURE_Z_ATTACK_RANGE_RANGED : CREATURE_Z_ATTACK_RANGE_MELEE))
             return;
 
-    if (m_unit->getVictim() && !m_unit->GetMap()->IsDungeon())
+    if (m_unit->GetVictim() && !m_unit->GetMap()->IsDungeon())
         return;
 
     if (m_unit->IsNeutralToAll())
         return;
 
-    if (who->GetObjectGuid().IsCreature() && who->isInCombat())
+    if (who->GetObjectGuid().IsCreature() && who->IsInCombat())
         CheckForHelp(who, m_unit, 10.0);
 
     if (!HasReactState(REACT_AGGRESSIVE)) // mobs who are aggressive can still assist
@@ -92,7 +92,7 @@ void UnitAI::EnterEvadeMode()
     m_unit->CombatStopWithPets(true);
 
     // only alive creatures that are not on transport can return to home position
-    if (GetReactState() != REACT_PASSIVE && m_unit->isAlive() && !m_unit->IsBoarded())
+    if (GetReactState() != REACT_PASSIVE && m_unit->IsAlive() && !m_unit->IsBoarded())
     {
         if (!m_unit->IsImmobilizedState()) // if still rooted after aura removal - permarooted
             m_unit->GetMotionMaster()->MoveTargetedHome();
@@ -105,7 +105,7 @@ void UnitAI::EnterEvadeMode()
 
 void UnitAI::AttackedBy(Unit* attacker)
 {
-    if (!m_unit->isInCombat() && !m_unit->getVictim())
+    if (!m_unit->IsInCombat() && !m_unit->GetVictim())
         AttackStart(attacker);
 }
 
@@ -250,12 +250,12 @@ void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
     else
         m_unit->addUnitState(UNIT_STAT_NO_COMBAT_MOVEMENT);
 
-    if (stopOrStartMovement && m_unit->getVictim())     // Only change current movement while in combat
+    if (stopOrStartMovement && m_unit->GetVictim())     // Only change current movement while in combat
     {
         if (!m_unit->IsCrowdControlled())
         {
             if (enable)
-                DoStartMovement(m_unit->getVictim());
+                DoStartMovement(m_unit->GetVictim());
             else if (m_unit->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
                 m_unit->StopMoving();
         }
@@ -334,8 +334,8 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
     }
     else
     {
-        if (m_unit->getVictim() && !GetCombatScriptStatus())
-            m_unit->SetTarget(m_unit->getVictim());
+        if (m_unit->GetVictim() && !GetCombatScriptStatus())
+            m_unit->SetTarget(m_unit->GetVictim());
         else
             m_unit->SetTarget(nullptr);
     }
@@ -391,8 +391,8 @@ void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* t
     }
     else
     {
-        if (m_unit->getVictim() && !GetCombatScriptStatus())
-            m_unit->SetTarget(m_unit->getVictim());
+        if (m_unit->GetVictim() && !GetCombatScriptStatus())
+            m_unit->SetTarget(m_unit->GetVictim());
         else
             m_unit->SetTarget(nullptr);
     }
@@ -405,7 +405,7 @@ void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
     if (!victim)
         return;
 
-    if (me->isInCombat())
+    if (me->IsInCombat())
         return;
 
     // pulling happens once panic/retreating ends
@@ -438,7 +438,7 @@ void UnitAI::DetectOrAttack(Unit* who)
     if (!m_unit->IsWithinLOSInMap(who))
         return;
 
-    if (!m_unit->getVictim() && !m_unit->isInCombat())
+    if (!m_unit->GetVictim() && !m_unit->IsInCombat())
     {
         if (CanTriggerStealthAlert(who, attackRadius))
         {
@@ -502,7 +502,7 @@ class AiDelayEventAround : public BasicEvent
                     // Special case for type 0 (call-assistance)
                     if (m_eventType == AI_EVENT_CALL_ASSISTANCE)
                     {
-                        if (pReceiver->isInCombat() || !pInvoker)
+                        if (pReceiver->IsInCombat() || !pInvoker)
                             continue;
                         if (pReceiver->CanAssist(&m_owner) && pReceiver->CanAttackOnSight(pInvoker))
                         {
@@ -611,15 +611,15 @@ void UnitAI::SetMeleeEnabled(bool state)
         return;
 
     m_meleeEnabled = state;
-    if (m_unit->isInCombat())
+    if (m_unit->IsInCombat())
     {
         if (m_meleeEnabled)
         {
-            if (m_unit->getVictim())
-                m_unit->MeleeAttackStart(m_unit->getVictim());
+            if (m_unit->GetVictim())
+                m_unit->MeleeAttackStart(m_unit->GetVictim());
         }
         else
-            m_unit->MeleeAttackStop(m_unit->getVictim());
+            m_unit->MeleeAttackStop(m_unit->GetVictim());
     }
 }
 
@@ -640,14 +640,14 @@ void UnitAI::TimedFleeingEnded()
         return; // prevent stack overflow by cyclic calls - TODO: remove once Motion Master is human again
     SetAIOrder(ORDER_NONE);
     SetCombatScriptStatus(false);
-    if (!m_unit->isAlive())
+    if (!m_unit->IsAlive())
         return;
-    DoStartMovement(m_unit->getVictim());
+    DoStartMovement(m_unit->GetVictim());
 }
 
 bool UnitAI::DoFlee()
 {
-    Unit* victim = m_unit->getVictim();
+    Unit* victim = m_unit->GetVictim();
     if (!victim)
         return false;
 

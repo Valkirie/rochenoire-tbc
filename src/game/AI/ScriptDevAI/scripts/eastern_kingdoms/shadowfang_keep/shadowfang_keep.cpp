@@ -216,7 +216,7 @@ struct mob_arugal_voidwalkerAI : public ScriptedAI
         m_bWPDone = true;
 
         Creature* pLeader = m_creature->GetMap()->GetCreature(m_leaderGuid);
-        if (pLeader && pLeader->isAlive())
+        if (pLeader && pLeader->IsAlive())
         {
             m_creature->GetMotionMaster()->MoveFollow(pLeader, 1.0f, M_PI / 2 * m_uiPosition);
         }
@@ -228,7 +228,7 @@ struct mob_arugal_voidwalkerAI : public ScriptedAI
             GetCreatureListWithEntryInGrid(lVoidwalkerList, m_creature, NPC_VOIDWALKER, 50.0f);
             for (auto& itr : lVoidwalkerList)
             {
-                if (itr->isAlive())
+                if (itr->IsAlive())
                 {
                     if (mob_arugal_voidwalkerAI* pVoidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(itr->AI()))
                     {
@@ -270,7 +270,7 @@ struct mob_arugal_voidwalkerAI : public ScriptedAI
             m_bWPDone = false;
         }
 
-        if (!m_creature->isInCombat())
+        if (!m_creature->IsInCombat())
             return;
 
         if (m_uiDarkOffering < uiDiff)
@@ -284,7 +284,7 @@ struct mob_arugal_voidwalkerAI : public ScriptedAI
             m_uiDarkOffering -= uiDiff;
 
         // Check if we have a current target
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -351,7 +351,7 @@ struct mob_arugal_voidwalkerAI : public ScriptedAI
         GetCreatureListWithEntryInGrid(lVoidwalkerList, m_creature, NPC_VOIDWALKER, 50.0f);
         for (auto& itr : lVoidwalkerList)
         {
-            if (itr->isAlive())
+            if (itr->IsAlive())
                 if (mob_arugal_voidwalkerAI* pVoidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(itr->AI()))
                     pVoidwalkerAI->ReceiveWaypoint(m_uiCurrentPoint, m_bReverse);
         }
@@ -529,7 +529,7 @@ struct boss_arugalAI : public ScriptedAI
         }
 
         // Check if we have a current target
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (GetManaPercent() < 6.0f && !m_bAttacking)
@@ -569,7 +569,7 @@ struct boss_arugalAI : public ScriptedAI
         {
             if (GetVictimDistance() < 5.0f)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_THUNDERSHOCK);
+                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THUNDERSHOCK);
                 m_uiThundershockTimer = urand(30200, 38500);
             }
         }
@@ -580,7 +580,7 @@ struct boss_arugalAI : public ScriptedAI
         {
             if (!m_bAttacking)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_VOID_BOLT);
+                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_VOID_BOLT);
                 m_uiVoidboltTimer = urand(2900, 4800);
             }
         }
@@ -656,12 +656,12 @@ struct boss_arugalAI : public ScriptedAI
 
     inline float GetVictimDistance() const
     {
-        return (m_creature->getVictim() ? m_creature->GetDistance(m_creature->getVictim(), false) : 999.9f);
+        return (m_creature->GetVictim() ? m_creature->GetDistance(m_creature->GetVictim(), false) : 999.9f);
     }
 
     void StopAttacking()
     {
-        if (Unit* victim = m_creature->getVictim())
+        if (Unit* victim = m_creature->GetVictim())
             m_creature->SendMeleeAttackStop(victim);
 
         if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
@@ -674,13 +674,13 @@ struct boss_arugalAI : public ScriptedAI
 
     void StartAttacking()
     {
-        if (Unit* victim = m_creature->getVictim())
+        if (Unit* victim = m_creature->GetVictim())
             m_creature->SendMeleeAttackStart(victim);
 
         if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
         {
             m_creature->GetMotionMaster()->Clear(false);
-            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), 0.0f, 0.0f);
+            m_creature->GetMotionMaster()->MoveChase(m_creature->GetVictim(), 0.0f, 0.0f);
         }
     }
 };
@@ -854,7 +854,7 @@ struct npc_deathstalker_vincentAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (m_creature->isInCombat() && m_creature->getFaction() == FACTION_FRIENDLY)
+        if (m_creature->IsInCombat() && m_creature->getFaction() == FACTION_FRIENDLY)
             EnterEvadeMode();
 
         ScriptedAI::UpdateAI(uiDiff);

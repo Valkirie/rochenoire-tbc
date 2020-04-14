@@ -115,7 +115,7 @@ struct npc_dirty_larryAI : public ScriptedAI
         {
             if (Creature* pCreepjack = m_creature->GetMap()->GetCreature(m_creepjackGuid))
             {
-                if (!pCreepjack->GetCombatManager().IsInEvadeMode() && pCreepjack->isAlive())
+                if (!pCreepjack->GetCombatManager().IsInEvadeMode() && pCreepjack->IsAlive())
                     pCreepjack->AI()->EnterEvadeMode();
 
                 pCreepjack->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -123,7 +123,7 @@ struct npc_dirty_larryAI : public ScriptedAI
 
             if (Creature* pMalone = m_creature->GetMap()->GetCreature(m_maloneGuid))
             {
-                if (!pMalone->GetCombatManager().IsInEvadeMode() && pMalone->isAlive())
+                if (!pMalone->GetCombatManager().IsInEvadeMode() && pMalone->IsAlive())
                     pMalone->AI()->EnterEvadeMode();
 
                 pMalone->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -164,22 +164,22 @@ struct npc_dirty_larryAI : public ScriptedAI
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
                 SetReactState(REACT_AGGRESSIVE);
 
-                if (pPlayer->isAlive())
+                if (pPlayer->IsAlive())
                 {
-                    if (!m_creature->isInCombat())
+                    if (!m_creature->IsInCombat())
                         AttackStart(pPlayer);
 
                     if (Creature* pMalone = m_creature->GetMap()->GetCreature(m_maloneGuid))
                     {
                         pMalone->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
-                        if (!pMalone->isInCombat())
+                        if (!pMalone->IsInCombat())
                             pMalone->AI()->AttackStart(pPlayer);
                     }
 
                     if (Creature* pCreepjack = m_creature->GetMap()->GetCreature(m_creepjackGuid))
                     {
                         pCreepjack->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
-                        if (!pCreepjack->isInCombat())
+                        if (!pCreepjack->IsInCombat())
                             pCreepjack->AI()->AttackStart(pPlayer);
                     }
                 }
@@ -200,7 +200,7 @@ struct npc_dirty_larryAI : public ScriptedAI
 
     void AttackedBy(Unit* pAttacker) override
     {
-        if (m_creature->getVictim())
+        if (m_creature->GetVictim())
             return;
 
         if (!bActiveAttack)
@@ -228,14 +228,14 @@ struct npc_dirty_larryAI : public ScriptedAI
 
             if (Creature* pCreepjack = m_creature->GetMap()->GetCreature(m_creepjackGuid))
             {
-                if (!pCreepjack->GetCombatManager().IsInEvadeMode() && pCreepjack->isAlive())
+                if (!pCreepjack->GetCombatManager().IsInEvadeMode() && pCreepjack->IsAlive())
                     pCreepjack->AI()->EnterEvadeMode();
 
                 pCreepjack->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
             }
             if (Creature* pMalone = m_creature->GetMap()->GetCreature(m_maloneGuid))
             {
-                if (!pMalone->GetCombatManager().IsInEvadeMode() && pMalone->isAlive())
+                if (!pMalone->GetCombatManager().IsInEvadeMode() && pMalone->IsAlive())
                     pMalone->AI()->EnterEvadeMode();
 
                 pMalone->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -255,7 +255,7 @@ struct npc_dirty_larryAI : public ScriptedAI
                 m_uiSayTimer -= diff;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -621,12 +621,12 @@ struct npc_salsalabimAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_uiMagneticPullTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MAGNETIC_PULL);
+            DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MAGNETIC_PULL);
             m_uiMagneticPullTimer = 15000;
         }
         else

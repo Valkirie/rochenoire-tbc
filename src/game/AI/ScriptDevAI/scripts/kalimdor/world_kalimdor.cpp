@@ -195,7 +195,7 @@ struct world_map_kalimdor : public ScriptedMap
             {
                 if (Creature * magrami = instance->GetCreature(guid))
                 {
-                    if (magrami->isAlive()) // dont despawn corpses with loot
+                    if (magrami->IsAlive()) // dont despawn corpses with loot
                     {
                         magrami->CastSpell(nullptr, SPELL_SPIRIT_SPAWN_OUT, TRIGGERED_OLD_TRIGGERED);
                         magrami->ForcedDespawn(1000);
@@ -251,7 +251,7 @@ struct world_map_kalimdor : public ScriptedMap
                 if (Creature* pOmen = GetSingleCreatureFromStorage(NPC_OMEN))
                 {
                     // Return is Omen is in fight
-                    if (pOmen->isInCombat())
+                    if (pOmen->IsInCombat())
                         return;
                     pOmen->ForcedDespawn();
                 }

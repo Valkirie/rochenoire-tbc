@@ -156,7 +156,7 @@ struct npc_air_force_botsAI : public ScriptedAI
     {
         Creature* pCreature = m_creature->GetMap()->GetCreature(m_spawnedGuid);
 
-        if (pCreature && pCreature->isAlive())
+        if (pCreature && pCreature->IsAlive())
             return pCreature;
 
         return nullptr;
@@ -202,7 +202,7 @@ struct npc_air_force_botsAI : public ScriptedAI
 
                         if (pMarkAura->GetAuraDuration() < AURA_DURATION_TIME_LEFT)
                         {
-                            if (!pLastSpawnedGuard->getVictim())
+                            if (!pLastSpawnedGuard->GetVictim())
                                 pLastSpawnedGuard->AI()->AttackStart(pWho);
                         }
                     }
@@ -232,7 +232,7 @@ struct npc_air_force_botsAI : public ScriptedAI
                     // ROOFTOP only triggers if the player is on the ground
                     if (!pPlayerTarget->IsFlying())
                     {
-                        if (!pLastSpawnedGuard->getVictim())
+                        if (!pLastSpawnedGuard->GetVictim())
                             pLastSpawnedGuard->AI()->AttackStart(pWho);
                     }
                     break;
@@ -302,7 +302,7 @@ struct npc_chicken_cluckAI : public ScriptedAI
                 m_uiResetFlagTimer -= uiDiff;
         }
 
-        if (m_creature->SelectHostileTarget() && m_creature->getVictim())
+        if (m_creature->SelectHostileTarget() && m_creature->GetVictim())
             DoMeleeAttackIfReady();
     }
 };
@@ -525,7 +525,7 @@ struct npc_injured_patientAI : public ScriptedAI
 
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
-        if (pCaster->GetTypeId() == TYPEID_PLAYER && m_creature->isAlive() && pSpell->Id == 20804)
+        if (pCaster->GetTypeId() == TYPEID_PLAYER && m_creature->IsAlive() && pSpell->Id == 20804)
         {
             // make not selectable
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -579,12 +579,12 @@ struct npc_injured_patientAI : public ScriptedAI
 
         // lower HP on every world tick makes it a useful counter, not officlone though
         uint32 uiHPLose = uint32(0.03f * uiDiff);
-        if (m_creature->isAlive() && m_creature->GetHealth() > 1 + uiHPLose)
+        if (m_creature->IsAlive() && m_creature->GetHealth() > 1 + uiHPLose)
         {
             m_creature->SetHealth(m_creature->GetHealth() - uiHPLose);
         }
 
-        if (m_creature->isAlive() && m_creature->GetHealth() <= 1 + uiHPLose)
+        if (m_creature->IsAlive() && m_creature->GetHealth() <= 1 + uiHPLose)
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -731,7 +731,7 @@ void npc_doctorAI::UpdateAI(const uint32 uiDiff)
 
             for (GuidList::const_iterator itr = m_lPatientGuids.begin(); itr != m_lPatientGuids.end(); ++itr)
                 if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
-                    if (pSummoned->isAlive())
+                    if (pSummoned->IsAlive())
                         totalAlive++;
 
             uint32 totalToSpawn = 0;
@@ -878,7 +878,7 @@ struct npc_garments_of_questsAI : public npc_escortAI
         if (pSpell->Id == SPELL_LESSER_HEAL_R2 || pSpell->Id == SPELL_FORTITUDE_R1)
         {
             // not while in combat
-            if (m_creature->isInCombat())
+            if (m_creature->IsInCombat())
                 return;
 
             // nothing to be done now
@@ -987,7 +987,7 @@ struct npc_garments_of_questsAI : public npc_escortAI
 
     void UpdateEscortAI(const uint32 uiDiff) override
     {
-        if (m_bCanRun && !m_creature->isInCombat())
+        if (m_bCanRun && !m_creature->IsInCombat())
         {
             if (m_uiRunAwayTimer <= uiDiff)
             {
@@ -1013,7 +1013,7 @@ struct npc_garments_of_questsAI : public npc_escortAI
                 m_uiRunAwayTimer -= uiDiff;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -1042,12 +1042,12 @@ struct npc_guardianAI : public ScriptedAI
 
     void UpdateAI(const uint32 /*diff*/) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_creature->isAttackReady())
         {
-            m_creature->CastSpell(m_creature->getVictim(), SPELL_DEATHTOUCH, TRIGGERED_OLD_TRIGGERED);
+            m_creature->CastSpell(m_creature->GetVictim(), SPELL_DEATHTOUCH, TRIGGERED_OLD_TRIGGERED);
             m_creature->resetAttackTimer();
         }
     }
@@ -1388,7 +1388,7 @@ struct npc_burster_wormAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         // animation delay
@@ -1414,7 +1414,7 @@ struct npc_burster_wormAI : public ScriptedAI
                     Submerge();
                     m_uiPhase = PHASE_CHASE;
                     SetCombatMovement(true);
-                    m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                    m_creature->GetMotionMaster()->MoveChase(m_creature->GetVictim());
                     m_uiChaseTimer = 0;
                 }
                 else
@@ -1425,22 +1425,22 @@ struct npc_burster_wormAI : public ScriptedAI
             }
 
             // If we are within range melee the target
-            if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+            if (m_creature->CanReachWithMeleeAttack(m_creature->GetVictim()))
                 DoMeleeAttackIfReady();
             else if (!m_creature->IsNonMeleeSpellCasted(false))
             {
                 switch (m_creature->GetEntry())
                 {
                     case NPC_FULGORGE:
-                        DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON_SPIT);
+                        DoCastSpellIfCan(m_creature->GetVictim(), SPELL_POISON_SPIT);
                     case NPC_SAND_WORM:
-                        DoCastSpellIfCan(m_creature->getVictim(), SPELL_WORM_BLAST);
+                        DoCastSpellIfCan(m_creature->GetVictim(), SPELL_WORM_BLAST);
                     default:
-                        DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON);
+                        DoCastSpellIfCan(m_creature->GetVictim(), SPELL_POISON);
                 }
 
                 // if target not in range, submerge and chase
-                if (!m_creature->IsInRange(m_creature->getVictim(), 0, 50.0f))
+                if (!m_creature->IsInRange(m_creature->GetVictim(), 0, 50.0f))
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_SANDWORM_SUBMERGE_VISUAL, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                         m_uiChaseTimer = 1500;
@@ -1452,7 +1452,7 @@ struct npc_burster_wormAI : public ScriptedAI
             {
                 if (m_uiBoreTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BORE) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BORE) == CAST_OK)
                         m_uiBoreTimer = 45000;
                 }
                 else
@@ -1486,7 +1486,7 @@ struct npc_burster_wormAI : public ScriptedAI
         // chase target
         else if (m_uiPhase == PHASE_CHASE)
         {
-            if (m_creature->IsInRange(m_creature->getVictim(), 0, 5.0f))
+            if (m_creature->IsInRange(m_creature->GetVictim(), 0, 5.0f))
             {
                 //m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -1609,7 +1609,7 @@ struct npc_the_cleanerAI : public ScriptedAI
         else
             m_uiDespawnTimer -= uiDiff;
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -1662,7 +1662,7 @@ struct npc_shaman_fire_elementalAI : public ScriptedAI
 
     void UpdateAI(const uint32 diff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         for (uint32 i = 0; i < ELEMENTAL_ACTION_MAX; ++i)
@@ -1698,7 +1698,7 @@ struct npc_shaman_fire_elementalAI : public ScriptedAI
         }
         else if (m_actionReadyStatus[ELEMENTAL_ACTION_FIRE_BLAST])
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIRE_BLAST) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FIRE_BLAST) == CAST_OK)
             {
                 m_actionTimers[ELEMENTAL_ACTION_FIRE_BLAST] = 15000;
                 m_actionReadyStatus[ELEMENTAL_ACTION_FIRE_BLAST] = false;
@@ -1729,7 +1729,7 @@ struct npc_shaman_earth_elementalAI : public ScriptedAI
 
     void UpdateAI(const uint32 diff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_angeredEarthTimer <= diff)
@@ -1782,7 +1782,7 @@ struct npc_snakesAI : public ScriptedAI
 
     void UpdateAI(const uint32 diff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_spellTimer <= diff)
@@ -1790,7 +1790,7 @@ struct npc_snakesAI : public ScriptedAI
             if (urand(0, 2) == 0)
             {
                 uint32 spellId = urand(0, 1) ? SPELL_MIND_NUMBING_POISON : SPELL_CRIPPLING_POISON;
-                DoCastSpellIfCan(m_creature->getVictim(), spellId);
+                DoCastSpellIfCan(m_creature->GetVictim(), spellId);
             }
             m_spellTimer = 3000;
         }
@@ -1862,19 +1862,19 @@ struct npc_nether_rayAI : public CombatAI
         switch (action)
         {
             case RAY_ACTION_DRAIN_MANA:
-                if (!m_creature->getVictim() || !m_creature->getVictim()->HasMana())
+                if (!m_creature->GetVictim() || !m_creature->GetVictim()->HasMana())
                     return;
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_DRAIN_MANA);
+                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DRAIN_MANA);
                 return;
             case RAY_ACTION_TAIL_STING:
-                if (!m_creature->getVictim() || m_creature->getVictim()->HasMana())
+                if (!m_creature->GetVictim() || m_creature->GetVictim()->HasMana())
                     return;
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_TAIL_STING);
+                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TAIL_STING);
                 return;
             case RAY_ACTION_NETHER_SHOCK:
-                if (!m_creature->getVictim())
+                if (!m_creature->GetVictim())
                     return;
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_NETHER_SHOCK);
+                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_NETHER_SHOCK);
                 return;
         }
     }
@@ -2157,7 +2157,7 @@ struct mob_phoenix_tkAI : public ScriptedAI
 
     void DoRebirth()
     {
-        if (m_creature->isAlive())
+        if (m_creature->IsAlive())
         {
             // Remove fake death if the egg despawns after 15 secs
             m_creature->RemoveAurasDueToSpell(m_emberBlastSpellId);
@@ -2175,7 +2175,7 @@ struct mob_phoenix_tkAI : public ScriptedAI
             m_creature->CastSpell(nullptr, SPELL_FULL_HEAL, TRIGGERED_OLD_TRIGGERED);
             SetCombatMovement(true);
             SetMeleeEnabled(true);
-            DoStartMovement(m_creature->getVictim());
+            DoStartMovement(m_creature->GetVictim());
             SetCombatScriptStatus(false);
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 
@@ -2226,7 +2226,7 @@ struct mob_phoenix_tkAI : public ScriptedAI
                 m_phoenixRebirthTimer -= diff;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();

@@ -150,7 +150,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
             m_creature->SetLootRecipient(nullptr);
             m_creature->CombatStop(false);
 
-            if (m_creature->isAlive())
+            if (m_creature->IsAlive())
                 m_creature->GetMotionMaster()->MovementExpired(true);
 
             Reset();
@@ -426,7 +426,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
         else
             m_uiPotionTimer -= uiDiff;
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_uiSleepTimer < uiDiff)

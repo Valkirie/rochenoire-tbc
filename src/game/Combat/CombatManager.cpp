@@ -43,7 +43,7 @@ CombatManager::CombatManager(Unit* owner) : m_owner(owner), m_evadeTimer(0), m_e
 
 void CombatManager::Update(const uint32 diff)
 {
-    if (m_owner->isInCombat())
+    if (m_owner->IsInCombat())
     {
         if (m_evadeTimer)
         {
@@ -71,7 +71,7 @@ void CombatManager::Update(const uint32 diff)
                 if (!check)
                 {
                     Unit* master = m_owner->GetMaster();
-                    if (!master || !master->isAlive()) // if charmer alive, he will evade this charm
+                    if (!master || !master->IsAlive()) // if charmer alive, he will evade this charm
                         check = true;
                 }
                 if (check)

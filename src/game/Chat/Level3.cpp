@@ -3072,7 +3072,7 @@ bool ChatHandler::HandleDieCommand(char* args)
     ExtractOptUInt32(&args, param, 0);
     if (param != 0)
     {
-        if (target->isAlive())
+        if (target->IsAlive())
         {
             DamageEffectType damageType = DIRECT_DAMAGE;
             uint32 absorb = 0;
@@ -3083,7 +3083,7 @@ bool ChatHandler::HandleDieCommand(char* args)
     }
     else
     {
-        if (target->isAlive())
+        if (target->IsAlive())
         {
             Unit::DealDamage(player, target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
         }
@@ -3107,7 +3107,7 @@ bool ChatHandler::HandleDamageCommand(char* args)
         return false;
     }
 
-    if (!target->isAlive())
+    if (!target->IsAlive())
         return true;
 
     int32 damage_int;
@@ -5466,7 +5466,7 @@ bool ChatHandler::HandleRespawnCommand(char* /*args*/)
             return false;
         }
 
-        if (target->isDead())
+        if (target->IsDead())
             ((Creature*)target)->Respawn();
         return true;
     }
@@ -5899,7 +5899,7 @@ bool ChatHandler::HandleCastTargetCommand(char* args)
         return false;
     }
 
-    if (!caster->getVictim())
+    if (!caster->GetVictim())
     {
         SendSysMessage(LANG_SELECTED_TARGET_NOT_HAVE_VICTIM);
         SetSentErrorMessage(true);
@@ -5917,7 +5917,7 @@ bool ChatHandler::HandleCastTargetCommand(char* args)
 
     caster->SetFacingToObject(m_session->GetPlayer());
 
-    caster->CastSpell(caster->getVictim(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    caster->CastSpell(caster->GetVictim(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
 
     return true;
 }
