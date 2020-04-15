@@ -126,26 +126,26 @@ struct boss_moamAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_ERUPTION) == CAST_OK)
                 {
                     DoScriptText(EMOTE_MANA_FULL, m_creature);
-                    ResetCombatAction(action, 5000); // small CD to prevent AI spam
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_ARCANE_ERUPTION)); // small CD to prevent AI spam
                 }
                 break;
             }
             case MOAM_TRAMPLE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TRAMPLE) == CAST_OK)
-                    ResetCombatAction(action, 15000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_TRAMPLE));
                 break;
             }
             case MOAM_MANA_DRAIN:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_DRAIN_MANA) == CAST_OK)
-                    ResetCombatAction(action, 6000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 6000, SPELL_DRAIN_MANA));
                 break;
             }
             case MOAM_MANA_FIENDS:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_MANAFIENDS) == CAST_OK)
-                    ResetCombatAction(action, 90000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 90000, SPELL_SUMMON_MANAFIENDS));
                 break;
             }
             case MOAM_ENERGIZE:
@@ -153,8 +153,8 @@ struct boss_moamAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_ENERGIZE) == CAST_OK)
                 {
                     DoScriptText(EMOTE_ENERGIZING, m_creature);
-                    ResetTimer(MOAM_CANCEL_ENERGIZE, 90000);
-                    ResetCombatAction(action, 180000);
+                    ResetTimer(MOAM_CANCEL_ENERGIZE, sObjectMgr.GetScaleSpellTimer(m_creature, 90000, SPELL_ENERGIZE));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 180000, SPELL_ENERGIZE));
                 }
                 break;
             }

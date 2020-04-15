@@ -267,26 +267,26 @@ struct boss_ossirianAI : public CombatAI
                         case 1: DoScriptText(SAY_SUPREME_2, m_creature); break;
                         case 2: DoScriptText(SAY_SUPREME_3, m_creature); break;
                     }
-                    ResetCombatAction(action, 45000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000, SPELL_SUPREME));
                 }
                 break;
             }
             case OSSIRIAN_CYCLONE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CYCLONE) == CAST_OK)
-                    ResetCombatAction(action, 20000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000, SPELL_CYCLONE));
                 break;
             }
             case OSSIRIAN_STOMP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_STOMP) == CAST_OK)
-                    ResetCombatAction(action, 30000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_STOMP));
                 break;
             }
             case OSSIRIAN_CURSE_OF_TONGUES:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CURSE_OF_TONGUES) == CAST_OK)
-                    ResetCombatAction(action, urand(20000, 30000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 30000), SPELL_CURSE_OF_TONGUES));
                 break;
             }
             case OSSIRIAN_SPEEDUP:

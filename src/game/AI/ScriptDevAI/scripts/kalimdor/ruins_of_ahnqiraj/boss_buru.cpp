@@ -200,19 +200,19 @@ struct boss_buruAI : public CombatAI
             case BURU_DISMEMBER:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DISMEMBER) == CAST_OK)
-                    ResetCombatAction(action, 5000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_DISMEMBER));
                 break;
             }
             case BURU_CREEPING_PLAGUE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CREEPING_PLAGUE) == CAST_OK)
-                    ResetCombatAction(action, 6000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 6000, SPELL_CREEPING_PLAGUE));
                 break;
             }
             case BURU_GATHERING_SPEED:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_GATHERING_SPEED) == CAST_OK)
-                    ResetCombatAction(action, 9000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 9000, SPELL_GATHERING_SPEED));
                 break;
             }
             case BURU_FULL_SPEED:

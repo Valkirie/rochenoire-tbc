@@ -249,19 +249,19 @@ struct npc_general_andorovAI : public CombatAI, private DialogueHelper
             case ANDOROV_COMMAND_AURA:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_AURA_OF_COMMAND) == CAST_OK)
-                    ResetCombatAction(action, urand(30000, 45000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_AURA_OF_COMMAND));
                 break;
             }
             case ANDOROV_BASH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BASH) == CAST_OK)
-                    ResetCombatAction(action, urand(12000, 15000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), SPELL_BASH));
                 break;
             }
             case ANDOROV_STRIKE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, urand(4000, 6000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 6000), SPELL_STRIKE));
                 break;
             }
         }
@@ -361,13 +361,13 @@ struct npc_kaldorei_eliteAI : public CombatAI
             case KALDOREI_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, urand(5000, 7000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 7000), SPELL_CLEAVE));
                 break;
             }
             case KALDOREI_STRIKE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, urand(9000, 13000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(9000, 13000), SPELL_MORTAL_STRIKE));
                 break;
             }
         }

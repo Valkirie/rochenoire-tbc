@@ -97,25 +97,25 @@ struct boss_kurinnaxxAI : public CombatAI
             case KURINNAXX_MORTAL_WOUND:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTAL_WOUND) == CAST_OK)
-                    ResetCombatAction(action, urand(8000, 10000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 10000), SPELL_MORTAL_WOUND));
                 break;
             }
             case KURINNAXX_SAND_TRAP:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SANDTRAP) == CAST_OK)
-                    ResetCombatAction(action, urand(10000, 15000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_SANDTRAP));
                 break;
             }
             case KURINNAXX_THRASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, urand(12000, 17000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 17000), SPELL_THRASH));
                 break;
             }
             case KURINNAXX_WIDE_SLASH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_WIDE_SLASH) == CAST_OK)
-                    ResetCombatAction(action, urand(12000, 15000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 15000), SPELL_WIDE_SLASH));
                 break;
             }
         }

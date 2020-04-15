@@ -249,7 +249,7 @@ struct boss_ayamissAI : public CombatAI
                 if (DoCastSpellIfCan(target, SPELL_PARALYZE) == CAST_OK)
                 {
                     m_paralyzeTarget = target->GetObjectGuid();
-                    ResetCombatAction(action, 15000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_PARALYZE));
 
                     // Summon a larva
                     uint32 spellId = urand(0, 1) ? SPELL_SUMMON_LARVA_1 : SPELL_SUMMON_LARVA_2;
@@ -260,20 +260,20 @@ struct boss_ayamissAI : public CombatAI
             case AYAMISS_STINGER_SPRAY:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_STINGER_SPRAY) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_STINGER_SPRAY));
                 break;
             }
             case AYAMISS_POISON_STINGER:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, SPELL_POISON_STINGER, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_POISON_STINGER) == CAST_OK)
-                        ResetCombatAction(action, m_phase == PHASE_AIR ? urand(2000, 3000) : urand(6000, 12000));
+                        ResetCombatAction(action, m_phase == PHASE_AIR ? sObjectMgr.GetScaleSpellTimer(m_creature, urand(2000, 3000), SPELL_POISON_STINGER) : sObjectMgr.GetScaleSpellTimer(m_creature, urand(6000, 12000), SPELL_POISON_STINGER));
                 break;
             }
             case AYAMISS_SUMMON_SWARMER:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_SWARMER) == CAST_OK)
-                    ResetCombatAction(action, 5000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_SUMMON_SWARMER));
                 break;
             }
             case AYAMISS_SWARMER_ATTACK:
@@ -293,13 +293,13 @@ struct boss_ayamissAI : public CombatAI
             case AYAMISS_LASH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_LASH) == CAST_OK)
-                    ResetCombatAction(action, urand(8000, 15000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 15000), SPELL_LASH));
                 break;
             }
             case AYAMISS_THRASH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, urand(5000, 7000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 7000), SPELL_THRASH));
                 break;
             }
         }
