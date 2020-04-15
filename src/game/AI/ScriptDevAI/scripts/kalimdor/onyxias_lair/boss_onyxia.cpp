@@ -306,6 +306,7 @@ struct boss_onyxiaAI : public CombatAI
     // Onyxian Whelps summoning during phase 2
     void SummonWhelps()
     {
+        m_uiWhelpsPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), m_uiWhelpsPerWave);
         if (m_uiSummonCount >= m_uiWhelpsPerWave)
         {
             ResetTimer(ONYXIA_SUMMON_WHELPS, 90 * IN_MILLISECONDS - m_uiWhelpsPerWave * (m_HasSummonedFirstWave ? 3000 : 1750));
@@ -456,37 +457,37 @@ struct boss_onyxiaAI : public CombatAI
             case ONYXIA_BELLOWING_ROAR:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_BELLOWINGROAR) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 45000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 45000), SPELL_BELLOWINGROAR));
                 break;
             }
             case ONYXIA_FLAME_BREATH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FLAMEBREATH) == CAST_OK)
-                    ResetCombatAction(action, urand(10000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_FLAMEBREATH));
                 break;
             }
             case ONYXIA_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, urand(5000, 10000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 10000), SPELL_CLEAVE));
                 break;
             }
             case ONYXIA_TAIL_SWEEP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_TAILSWEEP) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_TAILSWEEP));
                 break;
             }
             case ONYXIA_WING_BUFFET:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WINGBUFFET) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 30000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_WINGBUFFET));
                 break;
             }
             case ONYXIA_KNOCK_AWAY:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
-                    ResetCombatAction(action, urand(25000, 40000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 40000), SPELL_KNOCK_AWAY));
                 break;
             }
             case ONYXIA_FIREBALL:
@@ -495,7 +496,7 @@ struct boss_onyxiaAI : public CombatAI
                 {
                     if (DoCastSpellIfCan(target, SPELL_FIREBALL) == CAST_OK)
                     {
-                        ResetCombatAction(action, urand(3000, 5000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(3000, 5000), SPELL_FIREBALL));
                         m_fireballVictim = target->GetObjectGuid();
                     }
                 }
