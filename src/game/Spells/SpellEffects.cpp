@@ -1125,8 +1125,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 21108:                                 // Summon Sons of Flame
                 {
                     // Trigger the eight summoning spells for the adds in Ragnaros encounter
-                    for (const uint32 spell : {21110, 21111, 21112, 21113, 21114, 21115, 21116, 21117})
-                    m_caster->CastSpell(m_caster, spell, TRIGGERED_OLD_TRIGGERED, nullptr);
+                    const uint32 spell_list[8] = { 21110, 21111, 21112, 21113, 21114, 21115, 21116, 21117 };
+                    
+                    uint32 m_uiAddCount = m_caster->GetMap()->GetFinalNAdds(m_caster->GetRaidTanks(), 8);
+                    for (int s = 0; s < m_uiAddCount; ++s)
+                        m_caster->CastSpell(m_caster, spell_list[s], TRIGGERED_OLD_TRIGGERED, nullptr);
+
+                    /*for (const uint32 spell : {21110, 21111, 21112, 21113, 21114, 21115, 21116, 21117})
+                    m_caster->CastSpell(m_caster, spell, TRIGGERED_OLD_TRIGGERED, nullptr);*/
                     return;
                 }
                 case 21147:                                 // Arcane Vacuum

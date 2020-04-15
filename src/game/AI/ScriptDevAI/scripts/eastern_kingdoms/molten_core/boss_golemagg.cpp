@@ -116,13 +116,13 @@ struct boss_golemaggAI : public CombatAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_PYROBLAST, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_PYROBLAST) == CAST_OK)
-                        ResetCombatAction(action, 7 * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 7 * IN_MILLISECONDS, SPELL_PYROBLAST));
                 break;
             }
             case GOLEMAGG_EARTHQUAKE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_EARTHQUAKE) == CAST_OK)
-                    ResetCombatAction(action, 3 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 3 * IN_MILLISECONDS, SPELL_EARTHQUAKE));
                 break;
             }
         }
@@ -176,7 +176,7 @@ struct mob_core_ragerAI : public CombatAI
             case CORE_RAGER_MANGLE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MANGLE) == CAST_OK)
-                    ResetCombatAction(action, 10 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10 * IN_MILLISECONDS, SPELL_MANGLE));
                 break;
             }
         }

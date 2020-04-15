@@ -60,7 +60,7 @@ enum
     GO_CIRCLE_SULFURON          = 178187,
 
     MAX_MOLTEN_RUNES            = 7,
-    MAX_MAJORDOMO_ADDS          = 8,
+    MAX_MAJORDOMO_ADDS          = 4, // Instead of 8, because we splitted in two packs
     FACTION_MAJORDOMO_FRIENDLY  = 1080,
     SAY_MAJORDOMO_SPAWN         = -1409004,
 };

@@ -242,7 +242,7 @@ struct boss_majordomoAI : public CombatAI
             }
 
             // If 4 adds (half of them) are dead, make all remaining healers immune to polymorph via aura
-            if (m_addsKilled >= m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_MAJORDOMO_ADDS) / 2)
+            if (m_addsKilled >= m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_MAJORDOMO_ADDS))
                 DoCastSpellIfCan(nullptr, SPELL_IMMUNE_POLY);
 
             // Buff the remaining adds
@@ -375,7 +375,7 @@ struct boss_majordomoAI : public CombatAI
             case MAJORDOMO_REFLECTION_SHIELD:
             {
                 if (DoCastSpellIfCan(nullptr, (urand(0, 1) ? SPELL_DAMAGE_REFLECTION : SPELL_MAGIC_REFLECTION)) == CAST_OK)
-                    ResetCombatAction(action, 30000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_DAMAGE_REFLECTION));
                 break;
             }
             case MAJORDOMO_TELEPORT_RANDOM:
@@ -383,7 +383,7 @@ struct boss_majordomoAI : public CombatAI
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TELEPORT_TARGET) == CAST_OK)
                 {
                     DoCastSpellIfCan(nullptr, SPELL_HATE_TO_ZERO);
-                    ResetCombatAction(action, urand(25000, 30000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 30000), SPELL_HATE_TO_ZERO));
                 }
                 break;
             }
@@ -394,7 +394,7 @@ struct boss_majordomoAI : public CombatAI
                     if (DoCastSpellIfCan(target, SPELL_TELEPORT_RANDOM) == CAST_OK)
                     {
                         DoCastSpellIfCan(nullptr, SPELL_HATE_TO_ZERO);
-                        ResetCombatAction(action, urand(25000, 30000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 30000), SPELL_TELEPORT_RANDOM));
                     }
                 }
                 break;
@@ -402,7 +402,7 @@ struct boss_majordomoAI : public CombatAI
             case MAJORDOMO_AEGIS:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_AEGIS, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT) == CAST_OK)
-                    ResetCombatAction(action, urand(25000, 30000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 30000), SPELL_AEGIS));
                 break;
             }
         }

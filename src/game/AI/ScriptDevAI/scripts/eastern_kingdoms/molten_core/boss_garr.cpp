@@ -99,13 +99,13 @@ struct boss_garrAI : public CombatAI
             case GARR_ANTI_MAGIC_PULSE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_ANTIMAGICPULSE) == CAST_OK)
-                    ResetCombatAction(action, urand(15 * IN_MILLISECONDS, 20 * IN_MILLISECONDS));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15 * IN_MILLISECONDS, 20 * IN_MILLISECONDS), SPELL_ANTIMAGICPULSE));
                 break;
             }
             case GARR_MAGMA_SHACKLES:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_MAGMASHACKLES) == CAST_OK)
-                    ResetCombatAction(action, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10 * IN_MILLISECONDS, 15 * IN_MILLISECONDS), SPELL_MAGMASHACKLES));
                 break;
             }
             case GARR_MASSIVE_ERUPTION:
@@ -113,7 +113,7 @@ struct boss_garrAI : public CombatAI
                 if (DoCastSpellIfCan(m_creature, SPELL_ERUPTION_TRIGGER) == CAST_OK)
                 {
                     DoScriptText(EMOTE_MASSIVE_ERUPTION, m_creature);
-                    ResetCombatAction(action, 20 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20 * IN_MILLISECONDS, SPELL_ERUPTION_TRIGGER));
                 }
                 break;
             }
