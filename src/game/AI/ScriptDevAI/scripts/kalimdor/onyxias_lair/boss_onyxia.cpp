@@ -306,10 +306,10 @@ struct boss_onyxiaAI : public CombatAI
     // Onyxian Whelps summoning during phase 2
     void SummonWhelps()
     {
-        m_uiWhelpsPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), m_uiWhelpsPerWave);
-        if (m_uiSummonCount >= m_uiWhelpsPerWave)
+        uint8 WhelpsPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), m_uiWhelpsPerWave);
+        if (m_uiSummonCount >= WhelpsPerWave)
         {
-            ResetTimer(ONYXIA_SUMMON_WHELPS, 90 * IN_MILLISECONDS - m_uiWhelpsPerWave * (m_HasSummonedFirstWave ? 3000 : 1750));
+            ResetTimer(ONYXIA_SUMMON_WHELPS, 90 * IN_MILLISECONDS - WhelpsPerWave * (m_HasSummonedFirstWave ? 3000 : 1750));
             m_HasSummonedFirstWave = true;
             m_uiWhelpsPerWave = urand(4, 10);
             m_uiSummonCount = 0;
