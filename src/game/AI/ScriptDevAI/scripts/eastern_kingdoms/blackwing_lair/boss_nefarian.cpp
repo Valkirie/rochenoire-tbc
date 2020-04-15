@@ -238,31 +238,31 @@ struct boss_nefarianAI : public CombatAI
             case NEFARIAN_SHADOW_FLAME:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SHADOWFLAME) == CAST_OK)
-                    ResetCombatAction(action, 12000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 12000, SPELL_SHADOWFLAME));
                 break;
             }
             case NEFARIAN_BELLOWING_ROAR:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_BELLOWING_ROAR) == CAST_OK)
-                    ResetCombatAction(action, 30000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_BELLOWING_ROAR));
                 break;
             }
             case NEFARIAN_VEIL_OF_SHADOW:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_VEIL_OF_SHADOW) == CAST_OK)
-                    ResetCombatAction(action, 15000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_VEIL_OF_SHADOW));
                 break;
             }
             case NEFARIAN_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, 7000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 7000, SPELL_CLEAVE));
                 break;
             }
             case NEFARIAN_TAIL_LASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_TAIL_LASH) == CAST_OK)
-                    ResetCombatAction(action, 10000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10000, SPELL_TAIL_LASH));
                 break;
             }
             case NEFARIAN_CLASS_CALL:
@@ -287,7 +287,7 @@ struct boss_nefarianAI : public CombatAI
                     if (DoCastSpellIfCan(nullptr, spellId) == CAST_OK)
                     {
                         DoScriptText(textId, m_creature);
-                        ResetCombatAction(action, urand(35000, 40000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 40000), spellId));
                     }
                 }
                 break;

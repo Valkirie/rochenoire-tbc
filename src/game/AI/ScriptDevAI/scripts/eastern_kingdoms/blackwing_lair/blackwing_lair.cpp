@@ -410,7 +410,10 @@ void instance_blackwing_lair::OnCreatureDeath(Creature* pCreature)
         case NPC_CHROMATIC_DRAKONID:
             m_uiDeadDrakonidsCount++;
             // If the requiered amount of drakonids are killed, start phase 2
-            if (m_uiDeadDrakonidsCount >= MAX_DRAKONID_SUMMONS && GetData(TYPE_NEFARIAN) == IN_PROGRESS)
+            Creature* pChromatic = GetSingleCreatureFromStorage(NPC_CHROMATIC_DRAKONID);
+            uint8 DRAKONID_SUMMONS = pChromatic ? pChromatic->GetMap()->GetFinalNAdds(pChromatic->GetRaidTanks(), MAX_DRAKONID_SUMMONS) : MAX_DRAKONID_SUMMONS;
+
+            if (m_uiDeadDrakonidsCount >= DRAKONID_SUMMONS && GetData(TYPE_NEFARIAN) == IN_PROGRESS)
                 SetData(TYPE_NEFARIAN, SPECIAL);
             break;
     }
@@ -561,8 +564,15 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
         // Randomize generators
         std::random_shuffle(m_vGeneratorGuids.begin(), m_vGeneratorGuids.end());
 
+        // Pick Razorgore
+        Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE);
+
+        uint8 EGGS_DEFENDERS     = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetRaidTanks(), MAX_EGGS_DEFENDERS) : MAX_EGGS_DEFENDERS;
+        uint8 DRAWGONSPAWN       = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetRaidTanks(), MAX_DRAGONSPAWN) : MAX_DRAGONSPAWN;
+        uint8 BLACKWING_DEFENDER = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetRaidTanks(), MAX_BLACKWING_DEFENDER) : MAX_BLACKWING_DEFENDER;
+
         // Spawn the defenders
-        for (uint8 i = 0; i < MAX_EGGS_DEFENDERS; ++i)
+        for (uint8 i = 0; i < EGGS_DEFENDERS; ++i)
         {
             Creature* pGenerator = instance->GetCreature(m_vGeneratorGuids[i]);
             if (!pGenerator)
@@ -573,16 +583,16 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
             // If one of the cap is reached, only the remaining type of NPC is spawned until the second cap is also reached
 
             uint32 uiSpellId = 0;                                                   // Hold the spell summoning the NPC defender for that generator
-            uint8 uiMaxRange = (m_uiDragonspawnCount < MAX_DRAGONSPAWN ? 3 : 1);    // If all dragonspawns are already spawned, don't roll for them below
+            uint8 uiMaxRange = (m_uiDragonspawnCount < DRAWGONSPAWN ? 3 : 1);    // If all dragonspawns are already spawned, don't roll for them below
 
             switch (urand(0, uiMaxRange))
             {
                 case 0:
-                    if (m_uiBlackwingDefCount < MAX_BLACKWING_DEFENDER)
+                    if (m_uiBlackwingDefCount < BLACKWING_DEFENDER)
                         uiSpellId = SPELL_SUMMON_LEGIONNAIRE;
                     break;
                 case 1:
-                    if (m_uiBlackwingDefCount < MAX_BLACKWING_DEFENDER)
+                    if (m_uiBlackwingDefCount < BLACKWING_DEFENDER)
                         uiSpellId = SPELL_SUMMON_MAGE;
                     break;
                 case 2:

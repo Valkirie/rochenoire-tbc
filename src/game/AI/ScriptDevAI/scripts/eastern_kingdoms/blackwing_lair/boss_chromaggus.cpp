@@ -111,26 +111,26 @@ struct boss_chromaggusAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_ELEMENTAL_SHIELD_BWL) == CAST_OK)
                 {
                     DoScriptText(EMOTE_SHIMMER, m_creature);
-                    ResetCombatAction(action, 45000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 45000, SPELL_ELEMENTAL_SHIELD_BWL));
                 }
                 break;
             }
             case CHROMAGGUS_BREATH_LEFT:
             {
                 if (DoCastSpellIfCan(nullptr, m_breathLeftSpell) == CAST_OK)
-                    ResetCombatAction(action, 60000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 60000, m_breathLeftSpell));
                 break;
             }
             case CHROMAGGUS_BREATH_RIGHT:
             {
                 if (DoCastSpellIfCan(nullptr, m_breathRightSpell) == CAST_OK)
-                    ResetCombatAction(action, 60000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 60000, m_breathRightSpell));
                 break;
             }
             case CHROMAGGUS_BROOD_AFFLICTION:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_BROOD_AFFLICTION) == CAST_OK)
-                    ResetCombatAction(action, 7 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 7 * IN_MILLISECONDS, SPELL_BROOD_AFFLICTION));
                 break;
             }
             case CHROMAGGUS_FRENZY:
@@ -138,7 +138,7 @@ struct boss_chromaggusAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK)
                 {
                     DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-                    ResetCombatAction(action, 15 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 15 * IN_MILLISECONDS, SPELL_FRENZY));
                 }
                 break;
             }
