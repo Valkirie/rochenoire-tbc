@@ -284,7 +284,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                 if (m_uiMortalCleaveTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTAL_CLEAVE) == CAST_OK)
-                        m_uiMortalCleaveTimer = urand(15000, 20000);
+                        m_uiMortalCleaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_MORTAL_CLEAVE);
                 }
                 else
                     m_uiMortalCleaveTimer -= uiDiff;
@@ -294,7 +294,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     {
                         if (DoCastSpellIfCan(pTarget, SPELL_SILENCE) == CAST_OK)
-                            m_uiSilenceTimer = urand(20000, 25000);
+                            m_uiSilenceTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 25000), SPELL_SILENCE);
                     }
                 }
                 else
@@ -310,7 +310,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                         {
                             DoResetThreat();
                             AttackStart(pTarget);
-                            m_uiChargeTimer = urand(15000, 22000);
+                            m_uiChargeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 22000), SPELL_CHARGE);
                         }
                     }
                 }
@@ -320,7 +320,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                 if (m_uiFrenzyTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_FRENZY) == CAST_OK)
-                        m_uiFrenzyTimer = 30000;
+                        m_uiFrenzyTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_FRENZY);
                 }
                 else
                     m_uiFrenzyTimer -= uiDiff;
@@ -328,7 +328,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                 if (m_uiForcePunchTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_FORCE_PUNCH) == CAST_OK)
-                        m_uiForcePunchTimer = urand(16000, 21000);
+                        m_uiForcePunchTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(16000, 21000), SPELL_FORCE_PUNCH);
                 }
                 else
                     m_uiForcePunchTimer -= uiDiff;
@@ -336,7 +336,7 @@ struct boss_thekalAI : public boss_thekalBaseAI
                 if (m_uiSummonTigersTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_TIGERS) == CAST_OK)
-                        m_uiSummonTigersTimer = 50000;
+                        m_uiSummonTigersTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 50000, SPELL_SUMMON_TIGERS);
                 }
                 else
                     m_uiSummonTigersTimer -= uiDiff;
@@ -448,7 +448,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
                         dispelTarget = m_creature;
 
                     if (dispelTarget && (DoCastSpellIfCan(dispelTarget, SPELL_DISPEL_MAGIC) == CAST_OK))
-                        m_uiDispelTimer = urand(15000, 20000);
+                        m_uiDispelTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_DISPEL_MAGIC);
                 }
                 else
                     m_uiDispelTimer -= uiDiff;
@@ -457,7 +457,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
                 if (m_uiLightningShieldTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_LIGHTNING_SHIELD) == CAST_OK)
-                        m_uiLightningShieldTimer = 61000;
+                        m_uiLightningShieldTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 61000, SPELL_LIGHTNING_SHIELD);
                 }
                 else
                     m_uiLightningShieldTimer -= uiDiff;
@@ -484,7 +484,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
                         }
                     }
 
-                    m_uiGreatHealTimer = urand(15000, 20000);
+                    m_uiGreatHealTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_GREAT_HEAL);
                 }
                 else
                     m_uiGreatHealTimer -= uiDiff;
@@ -493,7 +493,7 @@ struct mob_zealot_lorkhanAI : public boss_thekalBaseAI
                 if (m_uiDisarmTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DISARM) == CAST_OK)
-                        m_uiDisarmTimer = urand(15000, 25000);
+                        m_uiDisarmTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_DISARM);
                 }
                 else
                     m_uiDisarmTimer -= uiDiff;
@@ -588,7 +588,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
                 if (m_uiSinisterStrikeTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SINISTER_STRIKE) == CAST_OK)
-                        m_uiSinisterStrikeTimer = urand(8000, 16000);
+                        m_uiSinisterStrikeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 16000), SPELL_SINISTER_STRIKE);
                 }
                 else
                     m_uiSinisterStrikeTimer -= uiDiff;
@@ -601,7 +601,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
                         if (m_creature->getThreatManager().getThreat(m_creature->GetVictim()))
                             m_creature->getThreatManager().modifyThreatPercent(m_creature->GetVictim(), -100);
 
-                        m_uiGougeTimer = urand(17000, 27000);
+                        m_uiGougeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(17000, 27000), SPELL_GOUGE);
                     }
                 }
                 else
@@ -611,7 +611,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
                 if (m_uiKickTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_KICK) == CAST_OK)
-                        m_uiKickTimer = urand(15000, 25000);
+                        m_uiKickTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_KICK);
                 }
                 else
                     m_uiKickTimer -= uiDiff;
@@ -620,7 +620,7 @@ struct mob_zealot_zathAI : public boss_thekalBaseAI
                 if (m_uiBlindTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BLIND) == CAST_OK)
-                        m_uiBlindTimer = urand(10000, 20000);
+                        m_uiBlindTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_BLIND);
                 }
                 else
                     m_uiBlindTimer -= uiDiff;

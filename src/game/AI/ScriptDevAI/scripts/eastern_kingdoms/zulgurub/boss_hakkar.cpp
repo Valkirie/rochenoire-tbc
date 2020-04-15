@@ -108,7 +108,7 @@ struct boss_hakkarAI : public ScriptedAI
         if (m_uiBloodSiphonTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BLOOD_SIPHON) == CAST_OK)
-                m_uiBloodSiphonTimer = 90000;
+                m_uiBloodSiphonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 90000, SPELL_BLOOD_SIPHON);
         }
         else
             m_uiBloodSiphonTimer -= uiDiff;
@@ -119,7 +119,7 @@ struct boss_hakkarAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_CORRUPTED_BLOOD) == CAST_OK)
-                    m_uiCorruptedBloodTimer = urand(30000, 45000);
+                    m_uiCorruptedBloodTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_CORRUPTED_BLOOD);
             }
         }
         else
@@ -135,6 +135,8 @@ struct boss_hakkarAI : public ScriptedAI
             }
             else // Solo case, check again later
                 m_uiCauseInsanityTimer = urand(35000, 43000);
+
+            m_uiCauseInsanityTimer = sObjectMgr.GetScaleSpellTimer(m_creature, m_uiCauseInsanityTimer, SPELL_CAUSE_INSANITY);
         }
         else
             m_uiCauseInsanityTimer -= uiDiff;
@@ -149,6 +151,8 @@ struct boss_hakkarAI : public ScriptedAI
             }
             else // solo attempt, try again later
                 m_uiWillOfHakkarTimer = 25000;
+
+            m_uiWillOfHakkarTimer = sObjectMgr.GetScaleSpellTimer(m_creature, m_uiWillOfHakkarTimer, SPELL_WILL_OF_HAKKAR);
         }
         else
             m_uiWillOfHakkarTimer -= uiDiff;
@@ -156,7 +160,7 @@ struct boss_hakkarAI : public ScriptedAI
         if (m_uiEnrageTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
-                m_uiEnrageTimer = 10 * MINUTE * IN_MILLISECONDS;
+                m_uiEnrageTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10 * MINUTE * IN_MILLISECONDS, SPELL_ENRAGE);
         }
         else
             m_uiEnrageTimer -= uiDiff;

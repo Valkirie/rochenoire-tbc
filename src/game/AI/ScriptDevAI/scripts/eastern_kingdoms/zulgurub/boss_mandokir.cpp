@@ -285,7 +285,7 @@ struct boss_mandokirAI : public ScriptedAI
             if (m_uiCleaveTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                    m_uiCleaveTimer = 7000;
+                    m_uiCleaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 7000, SPELL_CLEAVE);
             }
             else
                 m_uiCleaveTimer -= uiDiff;
@@ -294,7 +294,7 @@ struct boss_mandokirAI : public ScriptedAI
             if (m_uiWhirlwindTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_WHIRLWIND) == CAST_OK)
-                    m_uiWhirlwindTimer = 18000;
+                    m_uiWhirlwindTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 18000, SPELL_WHIRLWIND);
             }
             else
                 m_uiWhirlwindTimer -= uiDiff;
@@ -316,7 +316,7 @@ struct boss_mandokirAI : public ScriptedAI
                 if (uiTargetInRangeCount > 3)
                     DoCastSpellIfCan(m_creature, SPELL_FEAR);
 
-                m_uiFearTimer = 4000;
+                m_uiFearTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 4000, SPELL_FEAR);
             }
             else
                 m_uiFearTimer -= uiDiff;
@@ -327,7 +327,7 @@ struct boss_mandokirAI : public ScriptedAI
                 if (m_uiMortalStrikeTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
-                        m_uiMortalStrikeTimer = 15000;
+                        m_uiMortalStrikeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_MORTAL_STRIKE);
                 }
                 else
                     m_uiMortalStrikeTimer -= uiDiff;
@@ -371,7 +371,7 @@ struct mob_ohganAI : public ScriptedAI
         if (m_uiSunderArmorTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SUNDERARMOR) == CAST_OK)
-                m_uiSunderArmorTimer = urand(10000, 15000);
+                m_uiSunderArmorTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_SUNDERARMOR);
         }
         else
             m_uiSunderArmorTimer -= uiDiff;
