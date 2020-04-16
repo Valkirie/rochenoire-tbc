@@ -111,13 +111,13 @@ struct boss_sarturaAI : public CombatAI
             case SARTURA_WHIRLWIND:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WHIRLWIND) == CAST_OK)
-                    ResetCombatAction(action, urand(20, 25) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20, 25) * IN_MILLISECONDS, SPELL_WHIRLWIND));
                 break;
             }
             case SARTURA_SUNDERING_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SUNDERING_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, urand(2, 5) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2, 5) * IN_MILLISECONDS, SPELL_SUNDERING_CLEAVE));
                 break;
             }
             case SARTURA_BERSERK:
