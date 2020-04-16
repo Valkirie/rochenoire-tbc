@@ -147,7 +147,17 @@ struct boss_silithidRoyaltyAI : public CombatAI
 
     void DoSpecialAbility()
     {
-        DoCastSpellIfCan(nullptr, m_deathAbility);
+        switch (m_deathAbility)
+        {
+        case SPELL_SUMMON_BROOD:
+            // Note: normally handled by SPELL_SUMMON_BROOD (summon 9 adds)
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 9); ++i)
+                m_creature->SummonCreature(NPC_YAUJ_BROOD, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+            break;
+        default:
+            DoCastSpellIfCan(nullptr, m_deathAbility);
+            break;
+        }
     }
 
     void MovementInform(uint32 motionType, uint32 pointId)
@@ -234,19 +244,19 @@ struct boss_kriAI : public boss_silithidRoyaltyAI
             case KRI_CLEAVE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                    ResetCombatAction(action, urand(5, 12) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5, 12) * IN_MILLISECONDS, SPELL_CLEAVE));
                 break;
             }
             case KRI_TOXIC_VOLLEY:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_TOXIC_VOLLEY) == CAST_OK)
-                    ResetCombatAction(action, urand(15, 25) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15, 25) * IN_MILLISECONDS, SPELL_TOXIC_VOLLEY));
                 break;
             }
             case KRI_THRASH:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, urand(2, 6) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2, 6) * IN_MILLISECONDS, SPELL_THRASH));
                 break;
             }
         }
@@ -290,19 +300,19 @@ struct boss_vemAI : public boss_silithidRoyaltyAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_CHARGE, SELECT_FLAG_NOT_IN_MELEE_RANGE | SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_CHARGE) == CAST_OK)
-                        ResetCombatAction(action, urand(8, 16) * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8, 16) * IN_MILLISECONDS, SPELL_CHARGE));
                 break;
             }
             case VEM_KNOCK_AWAY:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
-                    ResetCombatAction(action, urand(10, 20) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 20) * IN_MILLISECONDS, SPELL_KNOCK_AWAY));
                 break;
             }
             case VEM_KNOCK_DOWN:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_KNOCKDOWN) == CAST_OK)
-                    ResetCombatAction(action, urand(15, 20) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15, 20) * IN_MILLISECONDS, SPELL_KNOCKDOWN));
                 break;
             }
         }
@@ -359,7 +369,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
             {
                 if (m_creature->GetHealthPercent() < 100.0f)
                     if (DoCastSpellIfCan(m_creature, SPELL_HEAL) == CAST_OK)
-                        ResetCombatAction(action, urand(10, 30) * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 30) * IN_MILLISECONDS, SPELL_HEAL));
                 break;
             }
             case YAUJ_FEAR:
@@ -367,14 +377,14 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
                 if (DoCastSpellIfCan(nullptr, SPELL_FEAR) == CAST_OK)
                 {
                     DoResetThreat();
-                    ResetCombatAction(action, 20 * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20 * IN_MILLISECONDS, SPELL_FEAR));
                 }
                 break;
             }
             case YAUJ_RAVAGE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_RAVAGE) == CAST_OK)
-                    ResetCombatAction(action, urand(10, 15) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 15) * IN_MILLISECONDS, SPELL_RAVAGE));
                 break;
             }
             case YAUJ_DISPEL:
@@ -382,7 +392,7 @@ struct boss_yaujAI : public boss_silithidRoyaltyAI
                 CreatureList targets = DoFindFriendlyCC(50.0f);
                 if (Creature* target = targets.empty() ? nullptr : *(targets.begin()))
                     if (DoCastSpellIfCan(target, SPELL_DISPEL) == CAST_OK)
-                        ResetCombatAction(action, urand(10000, 15000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_DISPEL));
                 break;
             }
         }
