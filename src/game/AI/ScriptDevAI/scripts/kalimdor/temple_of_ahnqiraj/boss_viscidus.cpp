@@ -324,19 +324,19 @@ struct boss_viscidusAI : public CombatAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_SUMMON_TOXIC_SLIME) == CAST_OK)
-                        ResetCombatAction(action, 30000);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_SUMMON_TOXIC_SLIME));
                 break;
             }
             case VISCIDUS_POISON_SHOCK:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_POISON_SHOCK) == CAST_OK)
-                    ResetCombatAction(action, urand(7000, 12000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000, 12000), SPELL_POISON_SHOCK));
                 break;
             }
             case VISCIDUS_POISON_BOLT_VOLLEY:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_POISONBOLT_VOLLEY) == CAST_OK)
-                    ResetCombatAction(action, urand(10000, 15000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_POISONBOLT_VOLLEY));
                 break;
             }
         }
