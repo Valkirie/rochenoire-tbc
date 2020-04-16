@@ -272,7 +272,7 @@ struct boss_skeramAI : public CombatAI
                 if (meleePlayerList.size() >= m_maxMeleeAllowed)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION) == CAST_OK)
-                        ResetCombatAction(action, urand(8, 18) * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8, 18) * IN_MILLISECONDS, SPELL_ARCANE_EXPLOSION));
                 }
                 else // Recheck in 1 second
                     ResetCombatAction(action, 1 * IN_MILLISECONDS);
@@ -282,7 +282,7 @@ struct boss_skeramAI : public CombatAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_NEAREST_BY, 1, SPELL_TRUE_FULFILLMENT, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_TRUE_FULFILLMENT) == CAST_OK)
-                        ResetCombatAction(action, urand(20, 30) * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(20, 30) * IN_MILLISECONDS, SPELL_TRUE_FULFILLMENT));
                 break;
             }
             case SKERAM_BLINK:
@@ -308,7 +308,7 @@ struct boss_skeramAI : public CombatAI
                     ++m_rangeCheckState;
                     if (m_rangeCheckState > 1)
                         if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_EARTH_SHOCK) == CAST_OK)
-                            timer = 2500;
+                            timer = sObjectMgr.GetScaleSpellTimer(m_creature, 2500, SPELL_EARTH_SHOCK);
                 }
                 ResetCombatAction(action, timer);
                 break;
