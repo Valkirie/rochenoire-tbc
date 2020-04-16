@@ -122,13 +122,15 @@ struct boss_fankrissAI : public CombatAI
             case FANKRISS_MORTAL_WOUND:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTAL_WOUND) == CAST_OK)
-                    ResetCombatAction(action, urand(7000, 14000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000, 14000), SPELL_MORTAL_WOUND));
                 break;
             }
             case FANKRISS_SUMMON_WORM:
             {
-                if (DoCastSpellIfCan(nullptr, aSummonWormSpells[urand(0, 2)]) == CAST_OK)
-                    ResetCombatAction(action, urand(15000, 40000));
+                uint8 uiSummonWormIndex = urand(0, 2);
+                uint32 spellId = aSummonWormSpells[uiSummonWormIndex];
+                if (DoCastSpellIfCan(nullptr, spellId) == CAST_OK)
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 40000), spellId));
                 break;
             }
             case FANKRISS_ENTANGLE:
@@ -136,10 +138,11 @@ struct boss_fankrissAI : public CombatAI
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_PLAYER))
                 {
                     uint8 uiEntangleIndex = urand(0, 2);
-                    if (DoCastSpellIfCan(target, aEntangleSpells[uiEntangleIndex]) == CAST_OK)
+                    uint32 spellId = aEntangleSpells[uiEntangleIndex];
+                    if (DoCastSpellIfCan(target, spellId) == CAST_OK)
                     {
                         m_EntangleTargetGuid = target->GetObjectGuid();
-                        ResetCombatAction(action, urand(15000, 20000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), spellId));
                     }
                 }
                 break;
