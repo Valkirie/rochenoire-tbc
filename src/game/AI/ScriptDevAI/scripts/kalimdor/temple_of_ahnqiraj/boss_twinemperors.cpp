@@ -173,7 +173,7 @@ struct boss_twin_emperorsAI : public CombatAI
             case EMPEROR_BUG_ABILITY:
             {
                 if (DoHandleBugAbility())
-                    ResetCombatAction(action, urand(10000, 17000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 17000), SPELL_EXPLODE_BUG));
                 break;
             }
         }
@@ -254,14 +254,14 @@ struct boss_veknilashAI : public boss_twin_emperorsAI
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_UPPERCUT, SELECT_FLAG_IN_MELEE_RANGE))
                 {
                     if (DoCastSpellIfCan(target, SPELL_UPPERCUT) == CAST_OK)
-                        ResetCombatAction(action, urand(15000, 30000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_UPPERCUT));
                 }
                 break;
             }
             case VEKNILASH_UNBALANCING_STRIKE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_UNBALANCING_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, urand(8000, 20000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 20000), SPELL_UNBALANCING_STRIKE));
                 break;
             }
             default:
@@ -374,21 +374,21 @@ struct boss_veklorAI : public boss_twin_emperorsAI
             case VEKLOR_SHADOWBOLT:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SHADOW_BOLT) == CAST_OK)
-                    ResetCombatAction(action, 2000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 2000, SPELL_SHADOW_BOLT));
                 break;
             }
             case VEKLOR_BLIZZARD:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_BLIZZARD, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_BLIZZARD) == CAST_OK)
-                        ResetCombatAction(action, urand(15000, 30000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_BLIZZARD));
                 break;
             }
             case VEKLOR_ARCANE_BURST:
             {
                 if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, SPELL_ARCANE_BURST, SELECT_FLAG_PLAYER | SELECT_FLAG_USE_EFFECT_RADIUS))
                     if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_BURST) == CAST_OK)
-                        ResetCombatAction(action, 5000);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_ARCANE_BURST));
                 break;
             }
             case VEKLOR_TELEPORT:
