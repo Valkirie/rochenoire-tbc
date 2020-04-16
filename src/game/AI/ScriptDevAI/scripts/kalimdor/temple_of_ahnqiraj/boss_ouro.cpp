@@ -189,7 +189,12 @@ struct boss_ouroAI : public CombatAI
         {
             SetCombatScriptStatus(true);
             SetMeleeEnabled(false);
-            DoCastSpellIfCan(nullptr, SPELL_SUMMON_OURO_MOUNDS, CAST_TRIGGERED);
+
+            // Note: normally handled by SPELL_SUMMON_OURO_MOUNDS (summon 5 adds)
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 5); ++i)
+                m_creature->SummonCreature(NPC_DIRT_MOUND, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+
+            // DoCastSpellIfCan(nullptr, SPELL_SUMMON_OURO_MOUNDS, CAST_TRIGGERED);
             DoCastSpellIfCan(nullptr, SPELL_SUMMON_TRIGGER, CAST_TRIGGERED);
 
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -261,13 +266,13 @@ struct boss_ouroAI : public CombatAI
             case OURO_SAND_BLAST:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SANDBLAST) == CAST_OK)
-                    ResetCombatAction(action, 25000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 25000, SPELL_SANDBLAST));
                 break;
             }
             case OURO_SWEEP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_SWEEP) == CAST_OK)
-                    ResetCombatAction(action, 20000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000, SPELL_SWEEP));
                 break;
             }
             case OURO_BOULDER:
@@ -281,7 +286,7 @@ struct boss_ouroAI : public CombatAI
                     if (m_rangeCheckState > 1)
                         if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_BOULDER, SELECT_FLAG_PLAYER))
                             if (DoCastSpellIfCan(target, SPELL_BOULDER) == CAST_OK)
-                                timer = 2500;
+                                timer = sObjectMgr.GetScaleSpellTimer(m_creature, 2500, SPELL_BOULDER);
                 }
                 ResetCombatAction(action, timer);
                 break;
