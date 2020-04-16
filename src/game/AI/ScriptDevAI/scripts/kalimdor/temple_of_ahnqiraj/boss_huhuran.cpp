@@ -105,27 +105,27 @@ struct boss_huhuranAI : public CombatAI
                 if (DoCastSpellIfCan(nullptr, SPELL_FRENZY) == CAST_OK)
                 {
                     DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-                    ResetCombatAction(action, urand(10, 20) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 20) * IN_MILLISECONDS, SPELL_FRENZY));
                 }
                 break;
             }
             case HUHURAN_SPIT:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ACID_SPIT) == CAST_OK)
-                    ResetCombatAction(action, urand(5, 10) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5, 10) * IN_MILLISECONDS, SPELL_ACID_SPIT));
                 break;
             }
             case HUHURAN_NOXIOUS_POISON:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_NOXIOUS_POISON, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_NOXIOUS_POISON) == CAST_OK)
-                        ResetCombatAction(action, urand(12, 24) * IN_MILLISECONDS);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12, 24) * IN_MILLISECONDS, SPELL_NOXIOUS_POISON));
                 break;
             }
             case HUHURAN_WYVERN:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_WYVERN_STING) == CAST_OK)
-                    ResetCombatAction(action, urand(25, 35) * IN_MILLISECONDS);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(25, 35) * IN_MILLISECONDS, SPELL_WYVERN_STING));
                 break;
             }
         }
