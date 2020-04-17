@@ -4672,6 +4672,16 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
                 amount = damage > 0 ? damage : 1; // old code
                 break;
         }
+
+        switch (m_spellInfo->Id)
+        {
+            case 23974:                    // summons 07 frenzied bloodseeker bat
+            case 25789:                    // summons 09 yauj brood
+            case 26058:                    // summons 05 dirt mound
+            case 28864:                    // summons 10 corpse scarab
+                amount = m_caster->GetMap()->GetFinalNAdds(m_caster->GetRaidTanks(), damage);
+                break;
+        }
     }
 
     // Expected Level
