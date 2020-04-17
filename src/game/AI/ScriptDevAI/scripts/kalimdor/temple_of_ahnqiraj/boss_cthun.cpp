@@ -248,7 +248,7 @@ struct boss_eye_of_cthunAI : public Scripted_NoMovementAI
                         if (DoCastSpellIfCan(pTarget, SPELL_EYE_BEAM) == CAST_OK)
                         {
                             m_creature->SetTarget(pTarget);
-                            m_uiBeamTimer = 3000;
+                            m_uiBeamTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3000, SPELL_EYE_BEAM);
                         }
                     }
                 }
@@ -300,7 +300,7 @@ struct boss_eye_of_cthunAI : public Scripted_NoMovementAI
             {
                 // Spawn claw tentacle on the random target on both phases
                 m_creature->SummonCreature(NPC_CLAW_TENTACLE, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
-                m_uiClawTentacleTimer = urand(7000, 13000);
+                m_uiClawTentacleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000, 13000));
             }
         }
         else
@@ -313,7 +313,7 @@ struct boss_eye_of_cthunAI : public Scripted_NoMovementAI
 
             // Spawn 8 Eye Tentacles
             float fX, fY, fZ;
-            for (uint8 i = 0; i < MAX_EYE_TENTACLES; ++i)
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_EYE_TENTACLES); ++i)
             {
                 m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
                 m_creature->SummonCreature(NPC_EYE_TENTACLE, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -459,7 +459,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
             // Handle the stomach tentacles kill
             case NPC_FLESH_TENTACLE:
                 ++m_uiFleshTentaclesKilled;
-                if (m_uiFleshTentaclesKilled == MAX_FLESH_TENTACLES)
+                if (m_uiFleshTentaclesKilled == m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_FLESH_TENTACLES))
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_CTHUN_VULNERABLE, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                     {
@@ -478,7 +478,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
         m_uiFleshTentaclesKilled = 0;
 
         // Spawn 2 flesh tentacles
-        for (uint8 i = 0; i < MAX_FLESH_TENTACLES; ++i)
+        for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_FLESH_TENTACLES); ++i)
             m_creature->SummonCreature(NPC_FLESH_TENTACLE, afCthunLocations[i][0], afCthunLocations[i][1], afCthunLocations[i][2], afCthunLocations[i][3], TEMPSPAWN_DEAD_DESPAWN, 0);
     }
 
@@ -570,7 +570,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
                         m_stomachEnterTargetGuid = pTarget->GetObjectGuid();
 
                         m_uiStomachEnterTimer  = 3800;
-                        m_uiMouthTentacleTimer = urand(13000, 15000);
+                        m_uiMouthTentacleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(13000, 15000), SPELL_MOUTH_TENTACLE);
                     }
                 }
                 else
@@ -620,7 +620,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_IN_LOS))
                 m_creature->SummonCreature(NPC_GIANT_CLAW_TENTACLE, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 
-            m_uiGiantClawTentacleTimer = 60000;
+            m_uiGiantClawTentacleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60000);
         }
         else
             m_uiGiantClawTentacleTimer -= uiDiff;
@@ -631,7 +631,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_IN_LOS))
                 m_creature->SummonCreature(NPC_GIANT_EYE_TENTACLE, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 
-            m_uiGiantEyeTentacleTimer = 60000;
+            m_uiGiantEyeTentacleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60000);
         }
         else
             m_uiGiantEyeTentacleTimer -= uiDiff;
@@ -642,7 +642,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
 
             // Spawn 8 Eye Tentacles every 30 seconds
             float fX, fY, fZ;
-            for (uint8 i = 0; i < MAX_EYE_TENTACLES; ++i)
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_EYE_TENTACLES); ++i)
             {
                 m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
                 m_creature->SummonCreature(NPC_EYE_TENTACLE, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
@@ -662,7 +662,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
                 if (Player* pPlayer = m_creature->GetMap()->GetPlayer(*itr))
                     pPlayer->CastSpell(pPlayer, SPELL_DIGESTIVE_ACID, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
             }
-            m_uiDigestiveAcidTimer = 4000;
+            m_uiDigestiveAcidTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 4000, SPELL_DIGESTIVE_ACID);
         }
         else
             m_uiDigestiveAcidTimer -= uiDiff;
@@ -723,7 +723,7 @@ struct npc_giant_claw_tentacleAI : public Scripted_NoMovementAI
                 }
             }
             else
-                m_uiDistCheckTimer = 5000;
+                m_uiDistCheckTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 5000);
         }
         else
             m_uiDistCheckTimer -= uiDiff;
@@ -731,7 +731,7 @@ struct npc_giant_claw_tentacleAI : public Scripted_NoMovementAI
         if (m_uiThrashTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THRASH) == CAST_OK)
-                m_uiThrashTimer = 10000;
+                m_uiThrashTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10000, SPELL_THRASH);
         }
         else
             m_uiThrashTimer -= uiDiff;
@@ -739,7 +739,7 @@ struct npc_giant_claw_tentacleAI : public Scripted_NoMovementAI
         if (m_uiHamstringTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_HAMSTRING) == CAST_OK)
-                m_uiHamstringTimer = 10000;
+                m_uiHamstringTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10000, SPELL_HAMSTRING);
         }
         else
             m_uiHamstringTimer -= uiDiff;
