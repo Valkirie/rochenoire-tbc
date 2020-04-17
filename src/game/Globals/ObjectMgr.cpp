@@ -1298,7 +1298,7 @@ float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
         CoeffSpellRatio = std::min(1.0f, CoeffSpellRatio);
     }
 
-    return CoeffSpellRatio;
+    return std::max(0.0f, CoeffSpellRatio);
 }
 
 uint32 ObjectMgr::GetScaleSpellTimer(Creature* creature, uint32 timer, uint32 spellid) const
