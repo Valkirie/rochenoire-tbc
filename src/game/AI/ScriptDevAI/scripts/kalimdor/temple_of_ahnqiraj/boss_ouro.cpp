@@ -191,9 +191,12 @@ struct boss_ouroAI : public CombatAI
             SetMeleeEnabled(false);
 
             // Note: normally handled by SPELL_SUMMON_OURO_MOUNDS (summon 5 adds)
+            float fX, fY, fZ;
             for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 5); ++i)
+            {
+                m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
                 m_creature->SummonCreature(NPC_DIRT_MOUND, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
-
+            }
             // DoCastSpellIfCan(nullptr, SPELL_SUMMON_OURO_MOUNDS, CAST_TRIGGERED);
             DoCastSpellIfCan(nullptr, SPELL_SUMMON_TRIGGER, CAST_TRIGGERED);
 
