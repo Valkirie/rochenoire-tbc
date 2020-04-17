@@ -2401,9 +2401,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (!m_caster->CanAssistSpell(unitTarget, m_spellInfo))
                 break;
 
-            if (targetingData.chainTargetCount[effIndex] <= 1)
-                tempUnitList.push_back(unitTarget);
-            else
+            tempUnitList.push_back(unitTarget);
+
+            if (targetingData.chainTargetCount[effIndex] > 1)
             {
                 float max_range = targetingData.chainTargetCount[effIndex] * CHAIN_SPELL_JUMP_RADIUS;
                 Group* group = nullptr;
@@ -2442,7 +2442,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
 
                     }
                 }
-             
+
                 UnitList tempAoeList;
                 MaNGOS::AnyFriendlyOrGroupMemberUnitInUnitRangeCheck u_check(m_caster, group, m_spellInfo, max_range);
                 MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyOrGroupMemberUnitInUnitRangeCheck> searcher(tempAoeList, u_check);
@@ -7101,7 +7101,7 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex effIndex,
                 if (!prev->IsWithinDist(*next, m_jumpRadius))
                     break;
 
-                if (!prev->IsWithinLOSInMap(*next))
+                if (!prev->IsWithinLOSInMap(*next, true))
                 {
                     ++next;
                     continue;
@@ -7141,12 +7141,6 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex effIndex,
                 if (!prev->IsWithinLOSInMap(*next, true))
                 {
                     ++next;
-                    continue;
-                }
-
-                if ((*next)->GetHealth() == (*next)->GetMaxHealth())
-                {
-                    next = filterUnitList.erase(next);
                     continue;
                 }
 
