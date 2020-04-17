@@ -149,15 +149,15 @@ struct boss_silithidRoyaltyAI : public CombatAI
     {
         switch (m_deathAbility)
         {
-        case SPELL_SUMMON_BROOD:
-            // Note: normally handled by SPELL_SUMMON_BROOD (summon 9 adds)
+            /* Note: normally handled by SPELL_SUMMON_BROOD (summon 9 adds)
+            case SPELL_SUMMON_BROOD:
             float fX, fY, fZ;
             for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 9); ++i)
             {
                 m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
-                m_creature->SummonCreature(NPC_YAUJ_BROOD, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+                m_creature->SummonCreature(NPC_YAUJ_BROOD, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
             }
-            break;
+            break;*/
         default:
             DoCastSpellIfCan(nullptr, m_deathAbility);
             break;

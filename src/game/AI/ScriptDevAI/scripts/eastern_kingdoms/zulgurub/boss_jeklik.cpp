@@ -232,7 +232,7 @@ struct boss_jeklikAI : public ScriptedAI
 
             if (m_uiSpawnBatsTimer < uiDiff)
             {
-                // Note: normally handled by SPELL_SUMMON_FRENZIED_BATS (summon 7 adds)
+                /* Note: normally handled by SPELL_SUMMON_FRENZIED_BATS (summon 7 adds)
                 for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 7); ++i)
                 {
                     if (Unit* pTarget = GetClosestCreatureWithEntry(m_creature, NPC_BAT_TRIGGER, DEFAULT_VISIBILITY_INSTANCE))
@@ -240,13 +240,13 @@ struct boss_jeklikAI : public ScriptedAI
                 }
                 DoScriptText(SAY_SHRIEK, m_creature);
 
-                m_uiSpawnBatsTimer = 60000;
+                m_uiSpawnBatsTimer = 60000; */
 
-                /* if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_FRENZIED_BATS) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_FRENZIED_BATS) == CAST_OK)
                 {
                     DoScriptText(SAY_SHRIEK, m_creature);
                     m_uiSpawnBatsTimer = 60000;
-                }*/
+                }
             }
             else
                 m_uiSpawnBatsTimer -= uiDiff;
