@@ -1401,6 +1401,9 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                         return ai->GetScriptData();
                     else
                         return 1; // for testing purposes
+                case 26052:                                 // Poison Bolt Volley (spell hits only the 15 closest targets)
+                    if (Unit* m_creature = static_cast<Unit*>(caster))
+                        return m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), spellInfo->MaxAffectedTargets);
                 default: break;
             }
             break;
