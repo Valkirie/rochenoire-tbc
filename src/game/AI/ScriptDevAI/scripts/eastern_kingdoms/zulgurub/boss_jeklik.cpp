@@ -235,7 +235,7 @@ struct boss_jeklikAI : public ScriptedAI
                 // Note: normally handled by SPELL_SUMMON_FRENZIED_BATS (summon 7 adds)
                 for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 7); ++i)
                 {
-                    if (Unit* pTarget = GetClosestCreatureWithEntry(m_creature, NPC_BAT_TRIGGER, DEFAULT_VISIBILITY_DISTANCE))
+                    if (Unit* pTarget = GetClosestCreatureWithEntry(m_creature, NPC_BAT_TRIGGER, DEFAULT_VISIBILITY_INSTANCE))
                         m_creature->SummonCreature(NPC_FRENZIED_BAT, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ() + 15.0f, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
                 }
                 DoScriptText(SAY_SHRIEK, m_creature);
