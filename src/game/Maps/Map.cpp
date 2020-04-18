@@ -789,43 +789,6 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
 	return output;
 }
 
-Map::CreatureMap Map::map_difference(CreatureMap c1, CreatureMap c2)
-{
-    CreatureMap ret;
-
-    CreatureMap::const_iterator iter = c2.begin();
-    CreatureMap::const_iterator end = c2.end();
-    for (; iter != end; ++iter)
-        if (c1.find(iter->first) == c1.end())
-        {
-            if (Creature* creature = ((Creature*)iter->second))
-            {
-                uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
-                std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
-                CreatureRatio& cdata = m_creaturesRatio[s_entry];
-                cdata.added = true;
-                ret.insert(std::make_pair(creature->GetEntry(), iter->second));
-            }
-        }
-
-    CreatureMap::const_iterator iterc1 = c1.begin();
-    CreatureMap::const_iterator endc1 = c1.end();
-    for (; iterc1 != endc1; ++iterc1)
-        if (c2.find(iterc1->first) == c2.end())
-        {
-            if (Creature* creature = ((Creature*)iterc1->second))
-            {
-                uint32 packId = sObjectMgr.GetCreaturePool(creature->GetGUIDLow());
-                std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
-                CreatureRatio& cdata = m_creaturesRatio[s_entry];
-                cdata.removed = true;
-                ret.insert(std::make_pair(creature->GetEntry(), iterc1->second));
-            }
-        }
-
-    return ret;
-}
-
 void Map::ShuffleFlexibleRaid()
 {
     if (m_creaturesStore.size() == 0)
@@ -876,12 +839,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
         else if (lastKnownPoolSize != m_creaturesStore.size())
         {
             isRefresh = true;
-
-            if(m_creaturesStore_old.size() != 0)
-                m_creaturesStore_dif = map_difference(m_creaturesStore, m_creaturesStore_old);
-
             lastKnownPoolSize = m_creaturesStore.size();
-            m_creaturesStore_old = m_creaturesStore;
         }
 
 		if (isRefresh)
@@ -893,14 +851,18 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
             for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
             {
-                Creature* creature = ((Creature*)it->second);
+                uint32 guid = it->first;
+                Creature* creature = it->second;
+
+                if (!creature->IsInWorld())
+                    continue;
+
 				CreatureInfo const* cinfo = creature->GetCreatureInfo();
 
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
                 uint32 mapId = creature->GetMap()->GetId() * 1000;
-                uint32 guid = creature->GetGUIDLow();
                 if (creature->IsTemporarySummon()) guid += mapId;
                 uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
@@ -925,7 +887,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 {
                     cdata.pool_size = lastKnownPoolSize;
 
-                    if (m_creaturesStore_dif.find(cinfo->Entry) != m_creaturesStore_dif.end())
+                    if (m_creaturesStore_buffer.find(cinfo->Entry) != m_creaturesStore_buffer.end())
                         cdata.treated = false;
                     else
                         continue;
@@ -1037,9 +999,17 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 				}
 			}
 
+            // clear the buffer
+            m_creaturesStore_buffer.clear();
+
             for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
             {
-                Creature* creature = ((Creature*)it->second);
+                Creature* creature = it->second;
+
+                if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
+                    if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
+                        continue;
+
                 if (m_displayStore[creature->GetGUIDLow()])
                 {
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
@@ -2416,16 +2386,30 @@ void Map::InsertCreature(uint32 guid, Creature* cr)
 {
     if (CreatureInfo const* cinfo = cr->GetCreatureInfo())
     {
-        if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
-            return;
+        uint32 packId = sObjectMgr.GetCreaturePool(guid);
+        std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
+        CreatureRatio& cdata = m_creaturesRatio[s_entry];
+        cdata.added = true;
 
-        m_creaturesStore.insert(std::make_pair(guid, (Creature*)cr));
-        m_displayStore[guid] = true;
+        m_creaturesStore_buffer.insert(std::make_pair(cinfo->Entry, cr));
     }
+
+    m_creaturesStore.insert(std::make_pair(guid, cr));
+    m_displayStore[guid] = true;
 }
 
-void Map::EraseCreature(uint32 guid)
+void Map::EraseCreature(uint32 guid, Creature* cr)
 {
+    if (CreatureInfo const* cinfo = cr->GetCreatureInfo())
+    {
+        uint32 packId = sObjectMgr.GetCreaturePool(guid);
+        std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
+        CreatureRatio& cdata = m_creaturesRatio[s_entry];
+        cdata.removed = true;
+
+        m_creaturesStore_buffer.insert(std::make_pair(cinfo->Entry, cr));
+    }
+
     if (m_creaturesStore.find(guid) != m_creaturesStore.end())
         m_creaturesStore.erase(guid);
 }

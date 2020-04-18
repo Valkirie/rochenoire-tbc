@@ -315,9 +315,7 @@ class Map : public GridRefManager<NGridType>
         CreatureRatioMap m_creaturesRatio;
         typedef std::unordered_map<uint32, Creature*> CreatureMap;
         CreatureMap m_creaturesStore;
-        CreatureMap m_creaturesStore_old;
-        CreatureMap m_creaturesStore_dif;
-        CreatureMap map_difference(CreatureMap c1, CreatureMap c2);
+        CreatureMap m_creaturesStore_buffer;
 
         uint32 u_TmpPlayer = 40;       // store the temporary number of players
         uint32 u_nbr_players = 40;       // store the current group size
@@ -334,7 +332,7 @@ class Map : public GridRefManager<NGridType>
         }
 
         void InsertCreature(uint32 guid, Creature* cr);
-        void EraseCreature(uint32 guid);
+        void EraseCreature(uint32 guid, Creature* cr);
 
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);

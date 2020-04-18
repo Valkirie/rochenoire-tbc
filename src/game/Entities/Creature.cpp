@@ -215,7 +215,7 @@ void Creature::RemoveFromWorld()
 		if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 		{
 			if (GetMap() && GetMap()->IsRaid() && IsInWorld())
-				GetMap()->EraseCreature(GetGUIDLow());
+				GetMap()->EraseCreature(GetGUIDLow(), (Creature*)this);
 
 			GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);
 		}
