@@ -104,7 +104,7 @@ struct boss_faerlinaAI : public ScriptedAI
             if (m_creature->HasAura(SPELL_ENRAGE))
             {
                 m_creature->RemoveAurasDueToSpell(SPELL_ENRAGE);
-                m_enrageTimer = 60 * IN_MILLISECONDS;             // Delay next enrage by 60 sec if Faerlina was already enraged
+                m_enrageTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60 * IN_MILLISECONDS, SPELL_ENRAGE);             // Delay next enrage by 60 sec if Faerlina was already enraged
             }
         }
     }
@@ -118,7 +118,7 @@ struct boss_faerlinaAI : public ScriptedAI
         if (m_poisonBoltVolleyTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_POISONBOLT_VOLLEY) == CAST_OK)
-                m_poisonBoltVolleyTimer = 11 * IN_MILLISECONDS;
+                m_poisonBoltVolleyTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 11 * IN_MILLISECONDS, SPELL_POISONBOLT_VOLLEY);
         }
         else
             m_poisonBoltVolleyTimer -= diff;
@@ -129,7 +129,7 @@ struct boss_faerlinaAI : public ScriptedAI
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(target, SPELL_RAIN_OF_FIRE) == CAST_OK)
-                    m_rainOfFireTimer = 16 * IN_MILLISECONDS;
+                    m_rainOfFireTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 16 * IN_MILLISECONDS, SPELL_RAIN_OF_FIRE);
             }
         }
         else
@@ -146,7 +146,7 @@ struct boss_faerlinaAI : public ScriptedAI
                     case 1: DoScriptText(SAY_ENRAGE_2, m_creature); break;
                     case 2: DoScriptText(SAY_ENRAGE_3, m_creature); break;
                 }
-                m_enrageTimer = 60 * IN_MILLISECONDS;
+                m_enrageTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60 * IN_MILLISECONDS, SPELL_ENRAGE);
             }
         }
         else
