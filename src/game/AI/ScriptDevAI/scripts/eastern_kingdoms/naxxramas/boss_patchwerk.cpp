@@ -106,7 +106,7 @@ struct boss_patchwerkAI : public ScriptedAI
         if (m_hatefulStrikeTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_HATEFULSTRIKE_PRIMER) == CAST_OK)
-                m_hatefulStrikeTimer = 1.2 * IN_MILLISECONDS;
+                m_hatefulStrikeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 1.2 * IN_MILLISECONDS, SPELL_HATEFULSTRIKE_PRIMER);
         }
         else
             m_hatefulStrikeTimer -= diff;
@@ -144,7 +144,7 @@ struct boss_patchwerkAI : public ScriptedAI
             if (m_slimeboltTimer < diff)
             {
                 DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SLIMEBOLT);
-                m_slimeboltTimer = 1 * IN_MILLISECONDS;
+                m_slimeboltTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 1 * IN_MILLISECONDS, SPELL_SLIMEBOLT);
             }
             else
                 m_slimeboltTimer -= diff;
