@@ -46,6 +46,7 @@ enum
     SPELL_SPAWN_CORPSE_SCARABS  = 28961,                    // Trigger 28864 Summon 10 Corpse Scarabs from dead Crypt Guard
 //  SPELL_DELAY_SUMMON_SCARABS1 = 28992,                    // Probably used to prevent two dead Crypt Guards to explode in a short time
 //  SPELL_DELAY_SUMMON_SCARABS2 = 28994,                    // Probably used to prevent two dead Crypt Guards to explode in a short time by triggering same spell cooldown than 28961
+    NPC_CRYPT_GUARD             = 16573,
 };
 
 static const DialogueEntry introDialogue[] =
@@ -161,7 +162,7 @@ struct boss_anubrekhanAI : public ScriptedAI
                     DoCastSpellIfCan(target, SPELL_IMPALE);
             }
 
-            m_impaleTimer = urand(12, 18) * IN_MILLISECONDS;
+            m_impaleTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(12, 18) * IN_MILLISECONDS, SPELL_IMPALE);
         }
         else
             m_impaleTimer -= diff;
@@ -172,9 +173,9 @@ struct boss_anubrekhanAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_LOCUSTSWARM) == CAST_OK)
             {
                 // Summon a crypt guard
-                m_summonTimer = 3 * IN_MILLISECONDS;
-                m_locustSwarmTimer = 90 * IN_MILLISECONDS;
-                m_impaleTimer += 23 * IN_MILLISECONDS;    // Delay next Impale by Locust Swarm duration (20 sec) + casting time (3 sec), this prevent Impale to be always cast right after Locust Swarm ends
+                m_summonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3 * IN_MILLISECONDS, SPELL_LOCUSTSWARM);
+                m_locustSwarmTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 90 * IN_MILLISECONDS, SPELL_LOCUSTSWARM);
+                m_impaleTimer += sObjectMgr.GetScaleSpellTimer(m_creature, 23 * IN_MILLISECONDS, SPELL_LOCUSTSWARM);    // Delay next Impale by Locust Swarm duration (20 sec) + casting time (3 sec), this prevent Impale to be always cast right after Locust Swarm ends
             }
         }
         else
@@ -197,8 +198,27 @@ struct boss_anubrekhanAI : public ScriptedAI
         {
             if (m_corpseScarabsTimer <= diff)
             {
+                /* Note: normally handled by SPELL_SPAWN_CORPSE_SCARABS (summon 10 adds)
+                std::list<Creature*> creatureList;
+                GetCreatureListWithEntryInGrid(creatureList, m_creature, NPC_CRYPT_GUARD, DEFAULT_VISIBILITY_DISTANCE);
+
+                for (std::list<Creature*>::iterator it = creatureList.begin(); it != creatureList.end(); ++it)
+                {
+                    Creature* creature = (*it);
+
+                    if (!creature || !creature->IsDead())
+                        continue;
+
+                    float fX, fY, fZ;
+                    for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 10); ++i)
+                    {
+                        creature->GetNearPoint(creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
+                        creature->SummonCreature(NPC_CORPSE_SCARAB, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+                    }
+                } */
+
                 if (DoCastSpellIfCan(nullptr, SPELL_SPAWN_CORPSE_SCARABS) == CAST_OK)
-                    m_corpseScarabsTimer = urand(65, 105) * IN_MILLISECONDS;
+                    m_corpseScarabsTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(65, 105) * IN_MILLISECONDS);
             }
             else
                 m_corpseScarabsTimer -= diff;
