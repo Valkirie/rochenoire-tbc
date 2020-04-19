@@ -278,7 +278,7 @@ struct boss_gothikAI : public ScriptedAI
                     if (DoCastSpellIfCan(m_creature, teleportSpellId) == CAST_OK)
                     {
                         m_teleportTimer = urand(30, 45) * IN_MILLISECONDS; // Teleports between 30 seconds and 45 seconds.
-                        m_shadowboltTimer = 2 * IN_MILLISECONDS;
+                        m_shadowboltTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 2 * IN_MILLISECONDS, SPELL_SHADOWBOLT);
                         ++m_teleportCount;
                     }
                 }
