@@ -206,10 +206,11 @@ struct boss_maexxnaAI : public ScriptedAI
             std::vector<Unit*> targets;
             m_creature->SelectAttackingTargets(targets, ATTACKING_TARGET_ALL_SUITABLE, 0, nullptr, SELECT_FLAG_PLAYER | SELECT_FLAG_SKIP_TANK, m_webWrapParams);
 
-            if (targets.size() > MAX_PLAYERS_WEB_WRAP)
+            uint8 PLAYERS_WEB_WRAP = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_PLAYERS_WEB_WRAP);
+            if (targets.size() > PLAYERS_WEB_WRAP)
             {
                 std::random_shuffle(targets.begin(), targets.end());
-                targets.resize(MAX_PLAYERS_WEB_WRAP);
+                targets.resize(PLAYERS_WEB_WRAP);
             }
 
             if (!targets.empty())
@@ -217,7 +218,7 @@ struct boss_maexxnaAI : public ScriptedAI
                 // Check we have enough summoning NPCs spawned in regards of player targets
                 if (m_summoningTriggers.size() < targets.size())
                 {
-                    script_error_log("Error in script Naxxramas::boss_maexxna: less summoning NPCs (entry %u) than expected targets (%u) for Web Wrap ability. Check your DB", NPC_INVISIBLE_MAN, MAX_PLAYERS_WEB_WRAP);
+                    script_error_log("Error in script Naxxramas::boss_maexxna: less summoning NPCs (entry %u) than expected targets (%u) for Web Wrap ability. Check your DB", NPC_INVISIBLE_MAN, PLAYERS_WEB_WRAP);
                     return;
                 }
 
@@ -248,7 +249,7 @@ struct boss_maexxnaAI : public ScriptedAI
         if (m_poisonShockTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_POISONSHOCK) == CAST_OK)
-                m_poisonShockTimer = urand(10, 20) * IN_MILLISECONDS;
+                m_poisonShockTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 20) * IN_MILLISECONDS, SPELL_POISONSHOCK);
         }
         else
             m_poisonShockTimer -= diff;
@@ -257,7 +258,7 @@ struct boss_maexxnaAI : public ScriptedAI
         if (m_necroticPoisonTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_NECROTICPOISON) == CAST_OK)
-                m_necroticPoisonTimer = urand(20, 30) * IN_MILLISECONDS;
+                m_necroticPoisonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20, 30) * IN_MILLISECONDS, SPELL_NECROTICPOISON);
         }
         else
             m_necroticPoisonTimer -= diff;
