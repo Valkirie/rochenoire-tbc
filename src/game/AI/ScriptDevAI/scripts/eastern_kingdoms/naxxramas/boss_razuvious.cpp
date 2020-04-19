@@ -135,7 +135,7 @@ struct boss_razuviousAI : public ScriptedAI
         if (m_unbalancingStrikeTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_UNBALANCING_STRIKE) == CAST_OK)
-                m_unbalancingStrikeTimer = 30 * IN_MILLISECONDS;
+                m_unbalancingStrikeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 30 * IN_MILLISECONDS, SPELL_UNBALANCING_STRIKE);
         }
         else
             m_unbalancingStrikeTimer -= diff;
@@ -144,7 +144,7 @@ struct boss_razuviousAI : public ScriptedAI
         if (m_disruptingShoutTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_DISRUPTING_SHOUT) == CAST_OK)
-                m_disruptingShoutTimer = 25 * IN_MILLISECONDS;
+                m_disruptingShoutTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 25 * IN_MILLISECONDS, SPELL_DISRUPTING_SHOUT);
         }
         else
             m_disruptingShoutTimer -= diff;
