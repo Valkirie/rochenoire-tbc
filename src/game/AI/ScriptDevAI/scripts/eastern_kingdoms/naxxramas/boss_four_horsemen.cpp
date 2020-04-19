@@ -170,7 +170,7 @@ struct boss_horsmenAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, markSpellList[m_horsmenIndex]) == CAST_OK)
             {
                 m_markCounter++;
-                m_markTimer = 12 * IN_MILLISECONDS;
+                m_markTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 12 * IN_MILLISECONDS, markSpellList[m_horsmenIndex]);
             }
         }
         else

@@ -8,6 +8,7 @@
 enum
 {
     MAX_ENCOUNTER               = 16,
+    MAX_HORSEMEN                = 4,
 
     // A few instance-script related texts
     SAY_THADDIUS_GREET          = -1533029,
