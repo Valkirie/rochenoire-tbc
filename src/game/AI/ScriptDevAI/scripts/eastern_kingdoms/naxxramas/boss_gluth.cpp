@@ -90,6 +90,7 @@ struct boss_gluthAI : public ScriptedAI
         DoCastSpellIfCan(m_creature, SPELL_CALL_ALL_ZOMBIE_CHOW, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);   // Aura periodically calling all NPCs 16360
 
         // Add zombies summoning aura to the three triggers
+        m_summoningTriggers.clear();
         GetCreatureListWithEntryInGrid(m_summoningTriggers, m_creature, NPC_WORLD_TRIGGER, 100.0f);
         for (auto& trigger : m_summoningTriggers)
             trigger->CastSpell(trigger, SPELL_SUMMON_ZOMBIE_CHOW, TRIGGERED_OLD_TRIGGERED);
@@ -127,7 +128,7 @@ struct boss_gluthAI : public ScriptedAI
         if (m_mortalWoundTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MORTALWOUND) == CAST_OK)
-                m_mortalWoundTimer = 10 * IN_MILLISECONDS;
+                m_mortalWoundTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10 * IN_MILLISECONDS, SPELL_MORTALWOUND);
         }
         else
             m_mortalWoundTimer -= diff;
@@ -136,7 +137,7 @@ struct boss_gluthAI : public ScriptedAI
         if (m_decimateTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_DECIMATE, CAST_TRIGGERED) == CAST_OK)
-                m_decimateTimer = urand(100, 110) * IN_MILLISECONDS;
+                m_decimateTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(100, 110) * IN_MILLISECONDS, SPELL_DECIMATE);
         }
         else
             m_decimateTimer -= diff;
@@ -147,7 +148,7 @@ struct boss_gluthAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
             {
                 DoScriptText(EMOTE_BOSS_GENERIC_ENRAGED, m_creature);
-                m_enrageTimer = urand(10, 12) * IN_MILLISECONDS;
+                m_enrageTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 12) * IN_MILLISECONDS, SPELL_ENRAGE);
             }
         }
         else
@@ -157,7 +158,7 @@ struct boss_gluthAI : public ScriptedAI
         if (m_roarTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_TERRIFYING_ROAR) == CAST_OK)
-                m_roarTimer = 20 * IN_MILLISECONDS;
+                m_roarTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 20 * IN_MILLISECONDS, SPELL_TERRIFYING_ROAR);
         }
         else
             m_roarTimer -= diff;
@@ -166,7 +167,7 @@ struct boss_gluthAI : public ScriptedAI
         if (m_berserkTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
-                m_berserkTimer = 5 * MINUTE * IN_MILLISECONDS;
+                m_berserkTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 5 * MINUTE * IN_MILLISECONDS, SPELL_BERSERK);
         }
         else
             m_berserkTimer -= diff;
