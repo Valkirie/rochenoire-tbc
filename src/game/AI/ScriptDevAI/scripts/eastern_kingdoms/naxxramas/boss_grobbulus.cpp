@@ -111,7 +111,7 @@ struct boss_grobbulusAI : public ScriptedAI
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_SLIME_STREAM) == CAST_OK)
                     // Give some time, to re-reach Grobbulus
-                    m_slimeStreamTimer = 3 * IN_MILLISECONDS;
+                    m_slimeStreamTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3 * IN_MILLISECONDS, SPELL_SLIME_STREAM);
             }
         }
         else
@@ -138,7 +138,7 @@ struct boss_grobbulusAI : public ScriptedAI
         if (m_slimeSprayTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SLIME_SPRAY) == CAST_OK)
-                m_slimeSprayTimer = urand(20, 30) * IN_MILLISECONDS;
+                m_slimeSprayTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20, 30) * IN_MILLISECONDS, SPELL_SLIME_SPRAY);
         }
         else
             m_slimeSprayTimer -= diff;
@@ -152,9 +152,9 @@ struct boss_grobbulusAI : public ScriptedAI
                 {
                     // Mutagen Injection is used more often when below 30% HP
                     if (m_creature->GetHealthPercent() > 30.0f)
-                        m_injectionTimer = urand(7, 13) * IN_MILLISECONDS;
+                        m_injectionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(7, 13) * IN_MILLISECONDS, SPELL_MUTATING_INJECTION);
                     else
-                        m_injectionTimer = urand(3, 7) * IN_MILLISECONDS;
+                        m_injectionTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(3, 7) * IN_MILLISECONDS, SPELL_MUTATING_INJECTION);
                 }
             }
         }
@@ -165,7 +165,7 @@ struct boss_grobbulusAI : public ScriptedAI
         if (m_poisonCloudTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_POISON_CLOUD) == CAST_OK)
-                m_poisonCloudTimer = 15 * IN_MILLISECONDS;
+                m_poisonCloudTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15 * IN_MILLISECONDS, SPELL_POISON_CLOUD);
         }
         else
             m_poisonCloudTimer -= diff;
