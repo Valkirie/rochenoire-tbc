@@ -807,6 +807,12 @@ void Map::ShuffleFlexibleRaid()
     }
 }
 
+enum Visual
+{
+    SPELL_CHANNEL_VISUAL_RED = 32839,
+    SPELL_CHANNEL_VISUAL_BLUE = 32840,
+};
+
 void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 {
 	if (RefreshSize != 0)
@@ -1013,7 +1019,13 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 if (m_displayStore[creature->GetGUIDLow()])
                 {
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->RemoveAllAuras();
+
+                    if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
+                        creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
+
+                    if (creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
+                        creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_BLUE);
+
                     creature->SetVisibility(VISIBILITY_ON);
                 }
                 else
@@ -1022,9 +1034,9 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
                     if (creature->IsTemporarySummon())
-                        creature->CastSpell(creature, 32839, TRIGGERED_OLD_TRIGGERED); // SPELL_BEAM_RED
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
                     else
-                        creature->CastSpell(creature, 32840, TRIGGERED_OLD_TRIGGERED); // SPELL_BEAM_BLUE
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
                 }
             }
 		}
