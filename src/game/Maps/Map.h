@@ -331,6 +331,7 @@ class Map : public GridRefManager<NGridType>
             i_objectsToClientUpdate.erase(obj);
         }
 
+        void UpdateCreature(uint32 guid, Creature* cr, bool erased = false);
         void InsertCreature(uint32 guid, Creature* cr);
         void EraseCreature(uint32 guid, Creature* cr);
 

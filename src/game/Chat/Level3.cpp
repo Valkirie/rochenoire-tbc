@@ -3548,6 +3548,7 @@ bool ChatHandler::HandleNpcSetLevelVarCommand(char* args)
     }
 
     unit->SetLevelVar(level_var);
+    return true;
 }
 
 bool ChatHandler::HandleNpcSetScaleCommand(char* args)
@@ -3696,14 +3697,20 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
 
     if (target->GetMap()->IsRaid())
     {
-        uint32          packId = sObjectMgr.GetCreaturePool(target->GetGUIDLow());
+        uint32 m_entry = target->GetMap()->GetId();
+        uint32 mapId = m_entry * 1000;
+
+        uint32 guid = target->GetGUIDLow();
+
+        if (target->IsTemporarySummon())
+            guid += mapId;
+
+        uint32          packId = sObjectMgr.GetCreaturePool(guid);
         uint32          u_nbr_tank = 2;			// number of tanks needed for that encounter
         uint32          u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
         float           f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
         float       	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
         float	        f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
-
-        uint32 m_entry = target->GetMap()->GetId();
 
         std::string s = std::to_string(Entry) + ":" + std::to_string(m_entry);
         if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))

@@ -748,11 +748,8 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
 	{
         if (Creature* creature = ((Creature*)it->second))
         {
-            uint32 mapId = creature->GetMap()->GetId() * 1000;
             uint32 guid = creature->GetGUIDLow();
-            if (creature->IsTemporarySummon())
-                guid += mapId;
-
+            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
             if (packId != 0)
@@ -775,11 +772,8 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
     {
         if (Creature* creature = ((Creature*)it->second))
         {
-            uint32 mapId = creature->GetMap()->GetId() * 1000;
             uint32 guid = creature->GetGUIDLow();
-            if (creature->IsTemporarySummon())
-                guid += mapId;
-
+            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
             if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->IsAlive())))
@@ -807,7 +801,7 @@ void Map::ShuffleFlexibleRaid()
     }
 }
 
-enum Visual
+enum FlexibleRaid
 {
     SPELL_CHANNEL_VISUAL_RED = 32839,
     SPELL_CHANNEL_VISUAL_BLUE = 32840,
@@ -868,8 +862,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
-                uint32 mapId = creature->GetMap()->GetId() * 1000;
-                if (creature->IsTemporarySummon()) guid += mapId;
+                if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
                 uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
                 std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
@@ -901,7 +894,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
                 if (!cdata.treated)
                 {
-                    std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
+                    std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(GetId());
                     if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
                     {
                         cdata.nbr_tank = f_values->nb_tank;
@@ -1034,9 +1027,11 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
                     if (creature->IsTemporarySummon())
-                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
+                        if (!creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
+                            creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
                     else
-                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
+                        if (!creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
+                            creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
                 }
             }
 		}
@@ -2394,33 +2389,33 @@ void Map::SendObjectUpdates()
     }
 }
 
-void Map::InsertCreature(uint32 guid, Creature* cr)
+void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
 {
-    if (CreatureInfo const* cinfo = cr->GetCreatureInfo())
-    {
-        uint32 packId = sObjectMgr.GetCreaturePool(guid);
-        std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
-        CreatureRatio& cdata = m_creaturesRatio[s_entry];
+    uint32 mapId = GetId() * 1000;
+    if (cr->IsTemporarySummon()) guid += mapId;
+    uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+    std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
+    CreatureRatio& cdata = m_creaturesRatio[s_entry];
+    if (erased)
+        cdata.removed = true;
+    else
         cdata.added = true;
 
-        m_creaturesStore_buffer.insert(std::make_pair(cinfo->Entry, cr));
-    }
+    m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
+}
 
-    m_creaturesStore.insert(std::make_pair(guid, cr));
-    m_displayStore[guid] = true;
+void Map::InsertCreature(uint32 guid, Creature* cr)
+{
+    UpdateCreature(guid, cr, false);
+
+    if (m_creaturesStore.find(guid) == m_creaturesStore.end())
+        m_creaturesStore.insert(std::make_pair(guid, cr));
 }
 
 void Map::EraseCreature(uint32 guid, Creature* cr)
 {
-    if (CreatureInfo const* cinfo = cr->GetCreatureInfo())
-    {
-        uint32 packId = sObjectMgr.GetCreaturePool(guid);
-        std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
-        CreatureRatio& cdata = m_creaturesRatio[s_entry];
-        cdata.removed = true;
-
-        m_creaturesStore_buffer.insert(std::make_pair(cinfo->Entry, cr));
-    }
+    UpdateCreature(guid, cr, true);
 
     if (m_creaturesStore.find(guid) != m_creaturesStore.end())
         m_creaturesStore.erase(guid);
