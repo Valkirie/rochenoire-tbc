@@ -356,7 +356,7 @@ struct boss_kelthuzadAI : public ScriptedAI
         for (auto& trigger : m_summoningTriggers)
         {
             // "How many NPCs per type" is stored in a vector: {npc_entry:number_of_npcs}
-            for (uint8 i = 0; i < count; ++i)
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), count); ++i)
             {
                 m_creature->GetRandomPoint(trigger->GetPositionX(), trigger->GetPositionY(), trigger->GetPositionZ(), 12.0f, newX, newY, newZ);
                 if (Creature* summoned = m_creature->SummonCreature(entry, newX, newY, newZ, 0.0f, TEMPSPAWN_CORPSE_DESPAWN, 5 * MINUTE * IN_MILLISECONDS))
@@ -420,7 +420,7 @@ struct boss_kelthuzadAI : public ScriptedAI
         if (m_frostBoltTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FROST_BOLT) == CAST_OK)
-                m_frostBoltTimer = urand(5, 25) * IN_MILLISECONDS;
+                m_frostBoltTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(5, 25) * IN_MILLISECONDS, SPELL_FROST_BOLT);
         }
         else
             m_frostBoltTimer -= diff;
@@ -430,7 +430,7 @@ struct boss_kelthuzadAI : public ScriptedAI
         {
             if (urand(0, 2) > 1)
                 DoCastSpellIfCan(m_creature, SPELL_FROST_BOLT_NOVA);
-            m_frostBoltNovaTimer = 20 * IN_MILLISECONDS;
+            m_frostBoltNovaTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 20 * IN_MILLISECONDS, SPELL_FROST_BOLT_NOVA);
         }
         else
             m_frostBoltNovaTimer -= diff;
@@ -441,7 +441,7 @@ struct boss_kelthuzadAI : public ScriptedAI
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_MANA_DETONATION, SELECT_FLAG_PLAYER | SELECT_FLAG_POWER_MANA))
             {
                 if (DoCastSpellIfCan(target, SPELL_MANA_DETONATION) == CAST_OK)
-                    m_manaDetonationTimer = urand(27, 40) * IN_MILLISECONDS;
+                    m_manaDetonationTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(27, 40) * IN_MILLISECONDS, SPELL_MANA_DETONATION);
             }
         }
         else
@@ -453,7 +453,7 @@ struct boss_kelthuzadAI : public ScriptedAI
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(target, SPELL_SHADOW_FISSURE) == CAST_OK)
-                    m_shadowFissureTimer = urand(15, 25) * IN_MILLISECONDS;
+                    m_shadowFissureTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15, 25) * IN_MILLISECONDS, SPELL_SHADOW_FISSURE);
             }
         }
         else
@@ -465,7 +465,7 @@ struct boss_kelthuzadAI : public ScriptedAI
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(target, SPELL_FROST_BLAST) == CAST_OK)
-                    m_frostBlastTimer = urand(40, 60) * IN_MILLISECONDS;
+                    m_frostBlastTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(40, 60) * IN_MILLISECONDS, SPELL_FROST_BLAST);
             }
         }
         else
@@ -475,7 +475,7 @@ struct boss_kelthuzadAI : public ScriptedAI
         if (m_chainsTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CHAINS_OF_KELTHUZAD) == CAST_OK)
-                m_chainsTimer = urand(60, 220) * IN_MILLISECONDS;
+                m_chainsTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(60, 220) * IN_MILLISECONDS, SPELL_CHAINS_OF_KELTHUZAD);
         }
         else
             m_chainsTimer -= diff;
@@ -662,11 +662,12 @@ struct ChainsKelThuzad : public SpellScript
         caster->SelectAttackingTargets(targets, ATTACKING_TARGET_ALL_SUITABLE, 0, nullptr, SELECT_FLAG_PLAYER | SELECT_FLAG_SKIP_TANK, chainsParams);
 
         // Prevent the mind control to happen if all remaining players would be targeted
-        if (targets.size() <= MAX_CONTROLLED_TARGETS)
+        uint8 CONTROLLED_TARGETS = caster->GetMap()->GetFinalNAdds(caster->GetRaidTanks(), MAX_CONTROLLED_TARGETS);
+        if (targets.size() <= CONTROLLED_TARGETS)
             return;
 
         std::random_shuffle(targets.begin(), targets.end());
-        targets.resize(MAX_CONTROLLED_TARGETS);
+        targets.resize(CONTROLLED_TARGETS);
 
         DoScriptText(urand(0, 1) ? SAY_CHAIN1 : SAY_CHAIN2, caster);
 
