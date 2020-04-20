@@ -1896,6 +1896,36 @@ void Aura::TriggerSpell()
         // Spell exist but require custom code
         switch (auraId)
         {
+            case 28007:                                      // Summon Trainee              Every 20 secs
+            case 28009:                                      // Summon Knight               Every 25 secs
+            case 28011:                                      // Summon Mounted Knight       Every 30 secs
+            case 28216:                                      // Summon Zombie Chow          Every 06 secs
+            case 28453:                                      // Summon Guardian of Icecrown Every 10 secs
+            // Soldier of the Frozen Waste
+            case 29410:                                      // Every 5 secs
+            case 29391:                                      // Every 4 secs
+            case 28425:                                      // Every 3 secs
+            case 29392:                                      // Every 2 secs
+            case 29409:                                      // Every 1 secs
+            // Unstoppable Abomination
+            case 28426:                                      // Every 30 secs
+            case 29393:                                      // Every 25 secs
+            case 29394:                                      // Every 20 secs
+            case 29398:                                      // Every 15 secs
+            case 29411:                                      // Every 10 secs
+            // Soul Weaver
+            case 29399:                                      // Every 40 secs
+            case 29400:                                      // Every 35 secs
+            case 28427:                                      // Every 30 secs
+            case 29401:                                      // Every 20 secs
+            case 29412:                                      // Every 15 secs
+            {
+                if (target->GetTypeId() != TYPEID_UNIT)
+                    return;
+
+                m_periodicTimer = sObjectMgr.GetScaleSpellTimer(((Creature*)target), m_modifier.periodictime);
+            }
+            break;
             case 9347:                                      // Mortal Strike
             {
                 if (target->GetTypeId() != TYPEID_UNIT)
