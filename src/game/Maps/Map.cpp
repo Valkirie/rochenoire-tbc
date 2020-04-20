@@ -980,7 +980,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
                             if ((!creature->isScaled() && !creature->IsInCombat() && creature->IsAlive()) || (RefreshSize != 0))
                             {
-                                m_displayStore[creature->GetGUIDLow()] = false;
+                                m_displayStore[guid] = false;
                                 creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
                             }
 					}
@@ -989,7 +989,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         if (m_poolsStore[packId] <= leftAlive)
 						    if ((creature->isScaled() && creature->IsAlive()) || (RefreshSize != 0))
                             {
-                                m_displayStore[creature->GetGUIDLow()] = true;
+                                m_displayStore[guid] = true;
                                 creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
                             }
 					}
@@ -1009,7 +1009,10 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
                         continue;
 
-                if (m_displayStore[creature->GetGUIDLow()])
+                uint32 guid = creature->GetGUIDLow();
+                if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+
+                if (m_displayStore[guid])
                 {
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
@@ -1027,11 +1030,15 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
                     if (creature->IsTemporarySummon())
+                    {
                         if (!creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
                             creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
+                    }
                     else
+                    {
                         if (!creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
                             creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
+                    }
                 }
             }
 		}
@@ -2397,10 +2404,17 @@ void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
 
     std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
     CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
     if (erased)
+    {
         cdata.removed = true;
+        m_displayStore[guid] = false;
+    }
     else
+    {
         cdata.added = true;
+        m_displayStore[guid] = true;
+    }
 
     m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
 }
