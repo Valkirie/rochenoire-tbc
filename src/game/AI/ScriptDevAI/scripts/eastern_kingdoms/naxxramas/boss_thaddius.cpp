@@ -170,7 +170,7 @@ struct boss_thaddiusAI : public ScriptedAI
         if (m_berserkTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BESERK) == CAST_OK)                  // allow combat movement?
-                m_berserkTimer = 10 * MINUTE * IN_MILLISECONDS;
+                m_berserkTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10 * MINUTE * IN_MILLISECONDS, SPELL_BESERK);
         }
         else
             m_berserkTimer -= diff;
@@ -181,7 +181,7 @@ struct boss_thaddiusAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_POLARITY_SHIFT, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
             {
                 DoScriptText(SAY_ELECT, m_creature);
-                m_polarityShiftTimer = 30 * IN_MILLISECONDS;
+                m_polarityShiftTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 30 * IN_MILLISECONDS, SPELL_POLARITY_SHIFT);
             }
         }
         else
@@ -192,7 +192,7 @@ struct boss_thaddiusAI : public ScriptedAI
         {
             Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
             if (target && DoCastSpellIfCan(target, SPELL_CHAIN_LIGHTNING) == CAST_OK)
-                m_chainLightningTimer = 15 * IN_MILLISECONDS;
+                m_chainLightningTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15 * IN_MILLISECONDS, SPELL_CHAIN_LIGHTNING);
         }
         else
             m_chainLightningTimer -= diff;
@@ -204,7 +204,7 @@ struct boss_thaddiusAI : public ScriptedAI
             if (m_ballLightningTimer < diff)
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BALL_LIGHTNING) == CAST_OK)
-                    m_ballLightningTimer = 3 * IN_MILLISECONDS;
+                    m_ballLightningTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3 * IN_MILLISECONDS, SPELL_BALL_LIGHTNING);
             }
             else
                 m_ballLightningTimer -= diff;
@@ -432,7 +432,7 @@ struct boss_thaddiusAddsAI : public ScriptedAI
         if (m_warStompTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_WARSTOMP) == CAST_OK)
-                m_warStompTimer = urand(8 * IN_MILLISECONDS, 10 * IN_MILLISECONDS);
+                m_warStompTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(8 * IN_MILLISECONDS, 10 * IN_MILLISECONDS), SPELL_WARSTOMP);
         }
         else
             m_warStompTimer -= diff;
@@ -514,7 +514,7 @@ struct boss_stalaggAI : public boss_thaddiusAddsAI
         if (m_powerSurgeTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_POWERSURGE) == CAST_OK)
-                m_powerSurgeTimer = urand(10, 15) * IN_MILLISECONDS;
+                m_powerSurgeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 15) * IN_MILLISECONDS, SPELL_POWERSURGE);
         }
         else
             m_powerSurgeTimer -= diff;
@@ -585,7 +585,7 @@ struct boss_feugenAI : public boss_thaddiusAddsAI
         if (m_staticFieldTimer < diff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_STATIC_FIELD) == CAST_OK)
-                m_staticFieldTimer = urand(10, 15) * IN_MILLISECONDS;
+                m_staticFieldTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 15) * IN_MILLISECONDS, SPELL_STATIC_FIELD);
         }
         else
             m_staticFieldTimer -= diff;
