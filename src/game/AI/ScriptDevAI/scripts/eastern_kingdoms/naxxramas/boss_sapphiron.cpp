@@ -46,7 +46,7 @@ enum
     SPELL_ICEBOLT               = 28522,
     SPELL_ICEBOLT_IMMUNITY      = 31800,
     SPELL_ICEBLOCK_SUMMON       = 28535,
-    SPELL_FROST_BREATH_DUMMY    = 30101,
+    SPELL_FROST_BREATH_DUMMY    = 30101,            // Visual only
     SPELL_FROST_BREATH          = 28524,            // Triggers spells 29318 (Frost Breath) and 30132 (Despawn Ice Block)
     SPELL_DESPAWN_ICEBLOCK_GO   = 28523,
     SPELL_SUMMON_WING_BUFFET    = 29329,
@@ -170,7 +170,7 @@ struct boss_sapphironAI : public ScriptedAI
                 if (m_cleaveTimer < diff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CLEAVE) == CAST_OK)
-                        m_cleaveTimer = urand(5, 10) * IN_MILLISECONDS;
+                        m_cleaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(5, 10) * IN_MILLISECONDS, SPELL_CLEAVE);
                 }
                 else
                     m_cleaveTimer -= diff;
@@ -178,7 +178,7 @@ struct boss_sapphironAI : public ScriptedAI
                 if (m_tailSweepTimer < diff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_TAIL_SWEEP) == CAST_OK)
-                        m_tailSweepTimer = urand(7, 10) * IN_MILLISECONDS;
+                        m_tailSweepTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(7, 10) * IN_MILLISECONDS, SPELL_TAIL_SWEEP);
                 }
                 else
                     m_tailSweepTimer -= diff;
@@ -186,7 +186,7 @@ struct boss_sapphironAI : public ScriptedAI
                 if (m_lifeDrainTimer < diff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_LIFE_DRAIN) == CAST_OK)
-                        m_lifeDrainTimer = 24 * IN_MILLISECONDS;
+                        m_lifeDrainTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 24 * IN_MILLISECONDS, SPELL_LIFE_DRAIN);
                 }
                 else
                     m_lifeDrainTimer -= diff;
@@ -194,7 +194,7 @@ struct boss_sapphironAI : public ScriptedAI
                 if (m_blizzardTimer < diff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_BLIZZARD_INIT) == CAST_OK)
-                        m_blizzardTimer = urand(10, 30) * IN_MILLISECONDS;
+                        m_blizzardTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 30) * IN_MILLISECONDS);
                 }
                 else
                     m_blizzardTimer -= diff;
@@ -233,7 +233,7 @@ struct boss_sapphironAI : public ScriptedAI
                             DoCastSpellIfCan(m_creature, SPELL_FROST_BREATH_DUMMY, CAST_TRIGGERED);
                             DoScriptText(EMOTE_BREATH, m_creature);
                             m_phase = PHASE_AIR_BREATH;
-                            m_frostBreathTimer = 4 * IN_MILLISECONDS;
+                            m_frostBreathTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 4 * IN_MILLISECONDS, SPELL_FROST_BREATH);
                             m_landTimer = 11 * IN_MILLISECONDS;
                         }
                     }
@@ -247,7 +247,7 @@ struct boss_sapphironAI : public ScriptedAI
                         if (DoCastSpellIfCan(m_creature, SPELL_ICEBOLT_INIT) == CAST_OK)
                         {
                             ++m_iceboltCount;
-                            m_iceboltTimer = 3 * IN_MILLISECONDS;
+                            m_iceboltTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3 * IN_MILLISECONDS, SPELL_ICEBOLT);
                         }
                     }
                     else
@@ -297,7 +297,7 @@ struct boss_sapphironAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_BESERK) == CAST_OK)
             {
                 DoScriptText(EMOTE_GENERIC_ENRAGED, m_creature);
-                m_berserkTimer = 300 * IN_MILLISECONDS;
+                m_berserkTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 300 * IN_MILLISECONDS, SPELL_BESERK);
             }
         }
         else
