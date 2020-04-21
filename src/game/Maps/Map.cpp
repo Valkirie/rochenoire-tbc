@@ -871,11 +871,15 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 if (cdata.m_health == 0)
                     cdata.m_health = creature->GetMaxHealth();
 
+                if (cdata.m_power == 0)
+                    cdata.m_power = creature->GetMaxPower(creature->HasMana() ? POWER_MANA : POWER_ENERGY);
+
 				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
 				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
 				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
                 float MaxHealth             = (float)cdata.m_health;
+                float MaxPower              = (float)cdata.m_power;
 
                 uint32 leftAlive            = 0;
                 uint32 leftMulti            = 1;
@@ -913,6 +917,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
                     // Temporary calculations
                     MaxHealth *= cdata.r_health / cdata.ratio_c0;
+                    MaxPower *= cdata.r_health / cdata.ratio_c0;
                     MinMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
                     MaxMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
                     MeleeBaseAttackTime /= cdata.r_attack;
@@ -948,6 +953,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
                 // Applying values
                 creature->SetMaxHealth((uint32)MaxHealth);
+                creature->SetMaxPower(creature->HasMana() ? POWER_MANA : POWER_ENERGY, (uint32)MaxPower);
                 creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, MinMeleeDmg);
                 creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, MaxMeleeDmg);
                 creature->SetAttackTime(BASE_ATTACK, (uint32)MeleeBaseAttackTime);
