@@ -3472,7 +3472,14 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
         if (creature->IsTemporarySummon())
             guid += mapId;
 
-        std::string comment = std::string(unit->GetMap()->GetMapName()) + " (" + std::string(unit->GetName()) + ")";
+        uint32 zone_id, area_id;
+        player->GetZoneAndAreaId(zone_id, area_id);
+
+        AreaTableEntry const* zoneEntry = GetAreaEntryByAreaID(zone_id);
+        AreaTableEntry const* areaEntry = GetAreaEntryByAreaID(area_id);
+
+        std::string zonename = zoneEntry ? zoneEntry->area_name[GetSessionDbcLocale()] : "<unknown>";
+        std::string comment = std::string(unit->GetMap()->GetMapName()) + " - " + zonename + " (" + std::string(unit->GetName()) + ")";
 		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = %u", guid))
 		{
 			delete result;
@@ -6160,6 +6167,41 @@ bool ChatHandler::HandleInstanceRescaleCommand(char* args)
         PSendSysMessage(LANG_FLEXIBLE_RAID_FORCED, target_map->GetMapName(), value);
         return true;
     }
+}
+
+bool ChatHandler::HandleInstanceListPacksCommand(char* args)
+{
+    float radius = VISIBILITY_DISTANCE_SMALL;
+    ExtractFloat(&args, radius);
+
+    CreatureList creatureList;
+    MaNGOS::AnyUnitInObjectRangeCheck go_check(m_session->GetPlayer(), radius);
+    MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> go_search(creatureList, go_check);
+    // Get Creatures
+    Cell::VisitAllObjects(m_session->GetPlayer(), go_search, radius);
+
+    if (!creatureList.empty())
+    {
+        for (auto& itr : creatureList)
+        {
+            uint32 packId = sObjectMgr.GetCreaturePool(itr->GetGUIDLow());
+            std::ostringstream output;
+
+            if (packId != 0)
+            {
+                output << packId;
+                itr->MonsterSay(output.str().c_str(), LANG_UNIVERSAL);
+            }
+            else
+            {
+                output << "!";
+                itr->MonsterYell(output.str().c_str(), LANG_UNIVERSAL);
+            }
+        }
+        return true;
+    }
+
+    return false;
 }
 
 /// Display the list of GMs

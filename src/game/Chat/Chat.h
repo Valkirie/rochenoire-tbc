@@ -354,6 +354,7 @@ class ChatHandler
         bool HandleInstanceStatsCommand(char* args);
         bool HandleInstanceSaveDataCommand(char* args);
         bool HandleInstanceRescaleCommand(char* args);
+        bool HandleInstanceListPacksCommand(char* args);
 
         bool HandleLearnCommand(char* args);
         bool HandleLearnAllCommand(char* args);

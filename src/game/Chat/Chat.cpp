@@ -369,6 +369,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "stats",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleInstanceStatsCommand,       "", nullptr },
         { "savedata",       SEC_ADMINISTRATOR,  false, &ChatHandler::HandleInstanceSaveDataCommand,    "", nullptr },
         { "rescale",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleInstanceRescaleCommand,     "", nullptr },
+        { "listpacks",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleInstanceListPacksCommand,   "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
