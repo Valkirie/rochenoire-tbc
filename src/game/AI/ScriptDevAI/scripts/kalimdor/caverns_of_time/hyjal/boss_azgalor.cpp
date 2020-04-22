@@ -96,11 +96,11 @@ struct boss_azgalorAI : public ScriptedAI
     {
         switch (action)
         {
-            case AZGALOR_ACTION_CLEAVE: return urand(8000, 16000);
-            case AZGALOR_RAIN_OF_FIRE: return 15000;
-            case AZGALOR_HOWL_OF_AZGALOR: return urand(18000, 20000);
-            case AZGALOR_DOOM: return urand(45000, 55000);
-            case AZGALOR_ENRAGE: return 300000;
+            case AZGALOR_ACTION_CLEAVE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 16000), SPELL_CLEAVE);
+            case AZGALOR_RAIN_OF_FIRE: return sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, SPELL_RAIN_OF_FIRE);
+            case AZGALOR_HOWL_OF_AZGALOR: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(18000, 20000), SPELL_HOWL_OF_AZGALOR);
+            case AZGALOR_DOOM: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(45000, 55000), SPELL_DOOM);
+            case AZGALOR_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 300000u, SPELL_ENRAGE);
             default: return 0; // never occurs but for compiler
         }
     }
