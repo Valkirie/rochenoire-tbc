@@ -179,13 +179,13 @@ struct boss_archimondeAI : public ScriptedAI
     {
         switch (action)
         {
-            case ARCHIMONDE_ACTION_HAND_OF_DEATH: return 1000;
-            case ARCHIMONDE_ACTION_GRIP_OF_THE_LEGION: return urand(5000, 25000);
-            case ARCHIMONDE_ACTION_AIR_BURST: return 30000;
-            case ARCHIMONDE_ACTION_FEAR: return urand(42000, 50000);
-            case ARCHIMONDE_ACTION_DOOMFIRE: return urand(10000, 15000);
-            case ARCHIMONDE_ACTION_FINGER_OF_DEATH_COOLUP: return 10000;
-            case ARCHIMONDE_ACTION_SOUL_CHARGE: return 10000;
+            case ARCHIMONDE_ACTION_HAND_OF_DEATH: return sObjectMgr.GetScaleSpellTimer(m_creature, 1000u, SPELL_HAND_OF_DEATH);
+            case ARCHIMONDE_ACTION_GRIP_OF_THE_LEGION: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 25000), SPELL_GRIP_OF_THE_LEGION);
+            case ARCHIMONDE_ACTION_AIR_BURST: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_AIR_BURST);
+            case ARCHIMONDE_ACTION_FEAR: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(42000, 50000), SPELL_FEAR);
+            case ARCHIMONDE_ACTION_DOOMFIRE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_DOOMFIRE_STRIKE);
+            case ARCHIMONDE_ACTION_FINGER_OF_DEATH_COOLUP: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_FINGER_OF_DEATH_COOLUP);
+            case ARCHIMONDE_ACTION_SOUL_CHARGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_SOUL_CHARGE_GREEN);
             default: return 0; // never occurs but for compiler
         }
     }
