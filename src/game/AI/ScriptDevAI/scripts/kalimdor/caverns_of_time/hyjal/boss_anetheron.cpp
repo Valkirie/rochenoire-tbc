@@ -115,10 +115,10 @@ struct boss_anetheronAI : public ScriptedAI, public CombatActions
     {
         switch (action)
         {
-            case ANETHERON_ACTION_CARRION_SWARM: return urand(10000, 15000);
-            case ANETHERON_ACTION_SLEEP: return urand(35000, 48000);
-            case ANETHERON_ACTION_INFERNO: return urand(50000, 55000);
-            case ANETHERON_ACTION_ENRAGE: return 300000;
+            case ANETHERON_ACTION_CARRION_SWARM: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_CARRION_SWARM);
+            case ANETHERON_ACTION_SLEEP: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 48000), SPELL_SLEEP);
+            case ANETHERON_ACTION_INFERNO: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(50000, 55000), SPELL_INFERNO);
+            case ANETHERON_ACTION_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 300000u, SPELL_ENRAGE);
             default: return 0; // never occurs but for compiler
         }
     }
