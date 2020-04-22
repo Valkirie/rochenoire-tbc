@@ -87,11 +87,11 @@ struct boss_kazrogalAI : public ScriptedAI
     {
         switch (action)
         {
-            case KAZROGAL_ACTION_MALEVOLENT_CLEAVE: return urand(6000, 21000);
-            case KAZROGAL_ACTION_WAR_STOMP: return urand(15000, 30000);
-            case KAZROGAL_ACTION_CRIPPLE: return urand(12000, 20000);
+            case KAZROGAL_ACTION_MALEVOLENT_CLEAVE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(6000, 21000), SPELL_MALEVOLENT_CLEAVE);
+            case KAZROGAL_ACTION_WAR_STOMP: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_WAR_STOMP);
+            case KAZROGAL_ACTION_CRIPPLE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 20000), SPELL_CRIPPLE);
             case KAZROGAL_ACTION_MARK_OF_KAZROGAL: 
-                return 45000 - std::min(m_markOfKazrogalCounter, uint32(8)) * 5000; // reduce each use by 5000 until 5000
+                return sObjectMgr.GetScaleSpellTimer(m_creature, 45000 - std::min(m_markOfKazrogalCounter, uint32(8)) * 5000, SPELL_MARK_OF_KAZROGAL); // reduce each use by 5000 until 5000
             default: return 0; // never occurs but for compiler
         }
     }
