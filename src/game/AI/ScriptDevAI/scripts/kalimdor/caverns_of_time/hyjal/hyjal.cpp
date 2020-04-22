@@ -1270,13 +1270,29 @@ void instance_mount_hyjal::SpawnNextInvasionWave()
 
 void instance_mount_hyjal::SpawnWave(uint32 index, bool setTimer)
 {
-    uint32 newSpawns = m_hyjalWavesData[index].waveMobs.size();
-    newSpawns += GetInfernalsPerWave(index);
     Creature* spawner;
     spawner = GetSingleCreatureFromStorage(index > 17 ? NPC_THRALL : NPC_JAINA);
+
+    // Let's count how many actual creatures we have here
+    std::vector<HyjalWaveMob> waveMobs;
+    for (uint8 i = 0; i < m_hyjalWavesData[index].waveMobs.size(); ++i)
+    {
+        HyjalWaveMob& mob = m_hyjalWavesData[index].waveMobs[i];
+
+        if (CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(mob.mobEntry))
+            if (cinfo->CreatureType < CREATURE_TYPE_CRITTER)
+                waveMobs.push_back(mob);
+    }
+
+    // Resize based on raid size
+    uint32 newSpawns = waveMobs.size();
+    newSpawns += GetInfernalsPerWave(index);
+    newSpawns = spawner->GetMap()->GetFinalNAdds(spawner->GetRaidTanks(), newSpawns);
+    uint8 CONCURRENT_SPAWNS = spawner->GetMap()->GetFinalNAdds(spawner->GetRaidTanks(), MAX_CONCURRENT_SPAWNS);
+
     if (!setTimer)
     {
-        if (m_hyjalEnemyCount + newSpawns >= MAX_CONCURRENT_SPAWNS)
+        if (m_hyjalEnemyCount + newSpawns >= CONCURRENT_SPAWNS)
         {
             if (UnitAI* ai = spawner->AI())
                 ai->SendAIEvent(AI_EVENT_CUSTOM_C, spawner, spawner);
@@ -1299,8 +1315,12 @@ void instance_mount_hyjal::SpawnWave(uint32 index, bool setTimer)
             break;
     }
     DoUpdateWorldState(WORLD_STATE_MOUNT_HYJAL_ENEMYCOUNT, m_hyjalEnemyCount + newSpawns);
-    for (HyjalWaveMob& mob : m_hyjalWavesData[index].waveMobs)
+
+    // Resize based on raid size
+    uint8 waveSize = spawner->GetMap()->GetFinalNAdds(spawner->GetRaidTanks(), waveMobs.size());
+    for (uint8 i = 0; i < waveSize; ++i)
     {
+        HyjalWaveMob& mob = waveMobs[i];
         Creature* waveSpawn = spawner->SummonCreature(mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_DEAD_DESPAWN, 0, true, GetRunningPerWaveMobEntry(mob.mobEntry), GetRandomWavePath(mob.path));
         if (index == 0) // The very first wave should never grant XP, loot or reputation. ToDo: According to a wowhead comment there should be a cooldown period after you've killed one boss after which the first wave of the next boss also won't grant any XP, loot or reputation
         {
@@ -1343,6 +1363,9 @@ void instance_mount_hyjal::SpawnInvasionInfernals(uint32 index)
 
 void instance_mount_hyjal::SpawnInfernals(uint32 count)
 {
+    if (Creature* infernalRelay = instance->GetCreature(m_infernalRelays[0]))
+        infernalRelay->GetMap()->GetFinalNAdds(infernalRelay->GetRaidTanks(), count);
+
     uint32 triggerCount = m_infernalRelays.size();
     m_infernalIndices.resize(count);
     // make sure each is used at least once if bigger than trigger count
@@ -1403,8 +1426,23 @@ void instance_mount_hyjal::SpawnInvasionWave(uint32 index, bool setTimer)
 
     if (Creature* spawner = GetSingleCreatureFromStorage(NPC_HYJAL_DESPAWN_TRIGGER))
     {
-        for (HyjalWaveMob& mob : m_invasionWavesData[index].waveMobs)
+        // Let's count how many actual creatures we have here
+        std::vector<HyjalWaveMob> waveMobs;
+        for (uint8 i = 0; i < m_invasionWavesData[index].waveMobs.size(); ++i)
         {
+            HyjalWaveMob& mob = m_invasionWavesData[index].waveMobs[i];
+
+            if (CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(mob.mobEntry))
+                if (cinfo->CreatureType < CREATURE_TYPE_CRITTER)
+                    waveMobs.push_back(mob);
+        }
+
+        // Resize based on raid size
+        uint8 waveSize = spawner->GetMap()->GetFinalNAdds(spawner->GetRaidTanks(), waveMobs.size());
+        for (uint8 i = 0; i < waveSize; ++i)
+        {
+            HyjalWaveMob& mob = waveMobs[i];
+
             if (index < 7)
             {
                 Creature* waveSpawn = spawner->SummonCreature(mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_DEAD_DESPAWN, 0, true, true, GetRandomWavePath(mob.path));
