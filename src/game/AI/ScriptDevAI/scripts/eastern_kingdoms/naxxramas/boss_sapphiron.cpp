@@ -234,7 +234,7 @@ struct boss_sapphironAI : public ScriptedAI
                             DoScriptText(EMOTE_BREATH, m_creature);
                             m_phase = PHASE_AIR_BREATH;
                             m_frostBreathTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 4 * IN_MILLISECONDS, SPELL_FROST_BREATH);
-                            m_landTimer = 11 * IN_MILLISECONDS;
+                            m_landTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 11 * IN_MILLISECONDS, SPELL_FROST_BREATH);
                         }
                     }
                     else
