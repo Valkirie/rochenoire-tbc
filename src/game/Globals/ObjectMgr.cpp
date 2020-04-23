@@ -980,10 +980,12 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 
 	if (!target1 || !target2)
 		return false;
-	if (target1->IsPlayer() && target2->IsPlayer())
-		return false;
-	if (target1->IsCreature() && target2->IsCreature())
-		return false;
+
+    if (target1->IsCreature() && target2->IsCreature())
+        return false;
+
+    bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
+    bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
 
 	Creature* creature;
 	Player* player;
@@ -998,10 +1000,9 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 		player = (Player *)target1;
 		creature = (Creature *)target2;
 	}
+    else if (target1->IsPlayer() && target2->IsPlayer())
+        return (IsBattleGround || IsForcePVP);
 	else
-		return false;
-
-	if (!player || !creature)
 		return false;
 
 	if (player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
@@ -1018,7 +1019,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (((Unit*)creature)->IsInStartLocation())
 		return false;
 
-	if (creature->IsFriend(player))
+	if (creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
 		return false;
 
 	// Check creatures flags_extra for disable block
@@ -1030,41 +1031,29 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 		if (creature->IsCivilian())
 			return false;
 
-		if (CreatureInfo const* cInfo = creature->GetCreatureInfo())
-		{
-			/* if (cInfo->flags_extra & CREATURE_FLAG_EXTRA_NO_AGGRO)
-				return false; */
-
-			if (cInfo->ExtraFlags & CREATURE_EXTRA_FLAG_GUARD)
-				return false;
-		}
-
-		if (creature->GetCreatureType() == CREATURE_TYPE_CRITTER && !creature->IsEnemy(player))
+		if (creature->GetCreatureType() >= CREATURE_TYPE_CRITTER)
 			return false;
 
 		if (creature->IsWorldBoss() && !creature->GetMap()->IsDungeon())
 			return false;
 	}
 
-	Map* map = creature->GetMap();
-
-	if (map && map->IsDungeon())
+	if (Map* map = creature->GetMap())
 	{
 		if (map->IsRaid())
 		{
-			InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(map->GetId());
-			if (!instance)
-				return false;
+            if (InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(map->GetId()))
+            {
+                if (player->getLevel() > instance->levelMax)
+                    return sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE);
 
-			if (player->getLevel() > instance->levelMax && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE))
-				return false;
-
-			if (player->getLevel() < instance->levelMin && !sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE))
-				return false;
+                if (player->getLevel() < instance->levelMin)
+                    return sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE);
+            }
 		}
 
-		if (!sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS))
-			return false;
+		if (map->IsDungeon())
+			return sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS);
 	}
 
 	return true;
@@ -1317,23 +1306,14 @@ float ObjectMgr::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAd
 
 uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 {
-	if (!owner)
-		return 1; // Extra protection...
-	if (!target)
+	if (!owner || !target)
 		return owner->getLevel();
 
 	Unit* target1 = (Unit *)owner->GetBeneficiary();
 	Unit* target2 = (Unit *)target->GetBeneficiary();
 
-	if (!target1 || !target2)
-		return target->getLevel();
-
-	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
-	bool IsDungeon = target1->GetMap() ? target1->GetMap()->IsDungeon() : false;
-
-	if (target1->IsCreature() && target2->IsCreature())
-		return target->getLevel();
+    if (!IsScalable(target1, target2))
+        return target->getLevel();
 
 	Creature* creature;
 	Player* player;
@@ -1348,15 +1328,12 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 		player = (Player *)target1;
 		creature = (Creature *)target2;
 	}
-	else if (target2->IsPlayer() && target1->IsPlayer() && (IsBattleGround || IsForcePVP))
+	else if (target2->IsPlayer() && target1->IsPlayer())
 	{
 		return target2->getLevel() > target1->getLevel() ? target2->getLevel() : target1->getLevel();
 	}
 	else
 		return target->getLevel();
-
-	if (!IsScalable(target1, target2))
-		return creature->getLevel();
 
 	uint32 mapId = player->GetMap() ? player->GetMap()->GetId() : 0;
 	uint32 zoneId = player->GetTerrain() ? player->GetZoneId() : 0;
@@ -1373,18 +1350,6 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
     if (target1->IsCreature())
         level += v_level;
 
-	/* if (!IsDungeon)
-	{
-		// var vars
-		float inc_lvl = 1.55f;    //De combien de level en moyenne doit-on augmenter les levels 
-		float red_lvl = 4.51f;    //De combien de level en moyenne doit-on réduire les levels (uniquement pour levelmax ,ce nombre est reduit pour le leveling)
-
-		float s_coeff = 0.4f / (1.0f + std::exp(-0.5f*((p_level)-(sWorld.GetCurrentMaxLevel() - 0.5f)))) + 0.08f;
-		float s_eps = std::log(inc_lvl / red_lvl);
-
-		level += round((inc_lvl + red_lvl) / (1.0f + std::exp(-s_coeff * (c_level - p_level) + s_eps)) - red_lvl);
-	} */
-
 	if (level > sWorld.GetCurrentMaxLevel())
 		level = sWorld.GetCurrentMaxLevel();
 
@@ -1393,23 +1358,19 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
 int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
 {
-	if (!owner)
-		return 0; // Extra protection...
-	if (!target)
+	if (!owner || !target)
 		return 0;
+
+    int diff = owner->GetLevelForTarget(target) - target->GetLevelForTarget(owner);
 
 	Unit* target1 = (Unit *)owner->GetBeneficiary();
 	Unit* target2 = (Unit *)target->GetBeneficiary();
 
-	if (!target1 || !target2)
-		return 0;
-
-	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
+    if (!IsScalable(target1, target2))
+        return diff;
 
 	Creature* creature;
 	Player* player;
-	int diff = owner->GetLevelForTarget(target) - target->GetLevelForTarget(owner);
 
 	if (target1->IsCreature() && target2->IsPlayer())
 	{
@@ -1424,12 +1385,7 @@ int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
 	else
 		return diff;
 
-	if (!IsScalable(target1, target2))
-		return diff;
-
-	diff = (int)getLevelScaled(owner, target) - player->getLevel();
-
-	return diff;
+	return (int)(getLevelScaled(owner, target) - player->getLevel());
 }
 
 uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
@@ -1437,24 +1393,13 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	if (oldarmor == 0)
 		return oldarmor;
 
+    if (!owner || !target)
+        return oldarmor;
+
 	uint32 armor = oldarmor;
 
 	Unit* target1 = (Unit *)owner->GetBeneficiary();
 	Unit* target2 = (Unit *)target->GetBeneficiary();
-
-	if (!target1 || !target2)
-		return oldarmor;
-	if (target1->IsPlayer() && target2->IsPlayer())
-		return oldarmor;
-
-
-	// Mind Controlled creatures should not have scaled armor
-	if (owner->IsCreature() && target->IsCreature())
-		if (owner->HasCharmer() || target->HasCharmer())
-			return oldarmor;
-
-	if (target1->IsCreature() && target2->IsCreature())
-		return oldarmor;
 
 	if (!IsScalable(target1, target2))
 		return oldarmor;
@@ -1523,20 +1468,8 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 	Unit* target1 = (Unit *)owner->GetBeneficiary();
 	Unit* target2 = (Unit *)target->GetBeneficiary();
 
-	if (!target1 || !target2)
-		return damage;
-
-	bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-	bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
-
-	// Mind Controlled creatures should not have scaled damage dealt/received
-	if (owner->IsCreature() && target->IsCreature())
-		if (owner->HasCharmer() || target->HasCharmer())
-			return damage;
-
-	// Do not scale creature's pet damage <-> creature's pet damage
-	if (target1->IsCreature() && target2->IsCreature())
-		return damage;
+    if (!IsScalable(target1, target2))
+        return damage;
 
 	Creature* creature;
 	Player* player;
@@ -1557,7 +1490,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 		creature = (Creature *)target2;
 		pAggro = 1; // PvE : Player is the attacker
 	}
-	else if (target2->IsPlayer() && target1->IsPlayer() && (IsBattleGround || IsForcePVP))
+	else if (target2->IsPlayer() && target1->IsPlayer())
 	{
 		player = (Player *)target1;
 		player2 = (Player *)target2;
@@ -1565,9 +1498,6 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 		isPvP = true;
 	}
 	else
-		return damage;
-
-	if (!isPvP && !IsScalable(target1, target2))
 		return damage;
 
 	int32 target_level = isPvP ? player2->getLevel() : getLevelScaled(creature, player);

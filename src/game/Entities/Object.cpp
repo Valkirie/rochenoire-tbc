@@ -2800,12 +2800,11 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (!uTarget->IsPlayer() && !uCaster->IsPlayer())
             return value;
 
-        if (!spellProto)
+        if (!sObjectMgr.IsScalable(uTarget, uCaster))
             return value;
 
         bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
         bool IsBattleGround = uTarget->GetMap() ? uTarget->GetMap()->IsBattleGround() : false;
-        bool canScale = false;
         bool canKeep = false;
 
         if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
@@ -2822,16 +2821,16 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (canKeep)
         {
             if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-                canScale = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
+                canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
             else
-                canScale = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
+                canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
         }
 
-        if (!canScale)
+        if (!canKeep)
             return value;
 
-        if (spell && canScale)
-            spell->isScaled = true;
+        if (spell)
+            spell->isScaled = canKeep;
 
         /* Check for lower rank of same spell if config is set to auto downrank
         if (sWorld.getConfig(CONFIG_BOOL_AUTO_DOWNRANK) && caster_level > target_level)
