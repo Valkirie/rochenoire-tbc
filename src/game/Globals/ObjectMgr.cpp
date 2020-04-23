@@ -975,32 +975,29 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (!owner || !target)
 		return false;
 
-	Unit* target1 = (Unit *)owner->GetBeneficiary();
-	Unit* target2 = (Unit *)target->GetBeneficiary();
+	owner = owner->GetBeneficiary();
+	target = target->GetBeneficiary();
 
-	if (!target1 || !target2)
-		return false;
-
-    if (target1->IsCreature() && target2->IsCreature())
+    if (owner->IsCreature() && target->IsCreature())
         return false;
 
     bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-    bool IsBattleGround = target1->GetMap() ? target1->GetMap()->IsBattleGround() : false;
+    bool IsBattleGround = owner->GetMap() ? owner->GetMap()->IsBattleGround() : false;
 
 	Creature* creature;
 	Player* player;
 
-	if (target1->IsCreature() && target2->IsPlayer())
+	if (owner->IsCreature() && target->IsPlayer())
 	{
-		creature = (Creature *)target1;
-		player = (Player *)target2;
+		creature = (Creature *)owner;
+		player = (Player *)target;
 	}
-	else if (target2->IsCreature() && target1->IsPlayer())
+	else if (target->IsCreature() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		creature = (Creature *)target2;
+		player = (Player *)owner;
+		creature = (Creature *)target;
 	}
-    else if (target1->IsPlayer() && target2->IsPlayer())
+    else if (owner->IsPlayer() && target->IsPlayer())
         return (IsBattleGround || IsForcePVP);
 	else
 		return false;
@@ -1016,7 +1013,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (!isSafeExpansionZone(mapId, zoneId) && player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL))
 		return false;
 
-	if (((Unit*)creature)->IsInStartLocation())
+	if (creature->IsInStartLocation())
 		return false;
 
 	if (creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
@@ -1309,28 +1306,28 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	if (!owner || !target)
 		return owner->getLevel();
 
-	Unit* target1 = (Unit *)owner->GetBeneficiary();
-	Unit* target2 = (Unit *)target->GetBeneficiary();
+    owner = owner->GetBeneficiary();
+    target = target->GetBeneficiary();
 
-    if (!IsScalable(target1, target2))
+    if (!IsScalable(owner, target))
         return target->getLevel();
 
 	Creature* creature;
 	Player* player;
 
-	if (target1->IsCreature() && target2->IsPlayer())
+	if (owner->IsCreature() && target->IsPlayer())
 	{
-		creature = (Creature *)target1;
-		player = (Player *)target2;
+		creature = (Creature *)owner;
+		player = (Player *)target;
 	}
-	else if (target2->IsCreature() && target1->IsPlayer())
+	else if (target->IsCreature() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		creature = (Creature *)target2;
+		player = (Player *)owner;
+		creature = (Creature *)target;
 	}
-	else if (target2->IsPlayer() && target1->IsPlayer())
+	else if (target->IsPlayer() && owner->IsPlayer())
 	{
-		return target2->getLevel() > target1->getLevel() ? target2->getLevel() : target1->getLevel();
+		return target->getLevel() > owner->getLevel() ? target->getLevel() : owner->getLevel();
 	}
 	else
 		return target->getLevel();
@@ -1347,7 +1344,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
     uint32 level = p_level;
     
-    if (target1->IsCreature())
+    if (owner->IsCreature())
         level += v_level;
 
 	if (level > sWorld.GetCurrentMaxLevel())
@@ -1363,24 +1360,24 @@ int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
 
     int diff = owner->GetLevelForTarget(target) - target->GetLevelForTarget(owner);
 
-	Unit* target1 = (Unit *)owner->GetBeneficiary();
-	Unit* target2 = (Unit *)target->GetBeneficiary();
+    owner = owner->GetBeneficiary();
+    target = target->GetBeneficiary();
 
-    if (!IsScalable(target1, target2))
+    if (!IsScalable(owner, target))
         return diff;
 
 	Creature* creature;
 	Player* player;
 
-	if (target1->IsCreature() && target2->IsPlayer())
+	if (owner->IsCreature() && target->IsPlayer())
 	{
-		creature = (Creature *)target1;
-		player = (Player *)target2;
+		creature = (Creature *)owner;
+		player = (Player *)target;
 	}
-	else if (target2->IsCreature() && target1->IsPlayer())
+	else if (target->IsCreature() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		creature = (Creature *)target2;
+		player = (Player *)owner;
+		creature = (Creature *)target;
 	}
 	else
 		return diff;
@@ -1398,10 +1395,10 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 
 	uint32 armor = oldarmor;
 
-	Unit* target1 = (Unit *)owner->GetBeneficiary();
-	Unit* target2 = (Unit *)target->GetBeneficiary();
+    owner = owner->GetBeneficiary();
+    target = target->GetBeneficiary();
 
-	if (!IsScalable(target1, target2))
+	if (!IsScalable(owner, target))
 		return oldarmor;
 
 	Creature* creature;
@@ -1409,16 +1406,16 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 
 	int pAggro = 0;
 
-	if (target1->IsCreature() && target2->IsPlayer())
+	if (owner->IsCreature() && target->IsPlayer())
 	{
-		creature = (Creature *)target1;
-		player = (Player *)target2;
+		creature = (Creature *)owner;
+		player = (Player *)target;
 		pAggro = 2; // Creature is the attacker
 	}
-	else if (target2->IsCreature() && target1->IsPlayer())
+	else if (target->IsCreature() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		creature = (Creature *)target2;
+		player = (Player *)owner;
+		creature = (Creature *)target;
 		pAggro = 1; // Player is the attacker
 	}
 	else
@@ -1465,10 +1462,10 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 
 	float damage = olddamage;
 
-	Unit* target1 = (Unit *)owner->GetBeneficiary();
-	Unit* target2 = (Unit *)target->GetBeneficiary();
+    owner = owner->GetBeneficiary();
+    target = target->GetBeneficiary();
 
-    if (!IsScalable(target1, target2))
+    if (!IsScalable(owner, target))
         return damage;
 
 	Creature* creature;
@@ -1478,22 +1475,22 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 	int pAggro = 0;
 	bool isPvP = false;
 
-	if (target1->IsCreature() && target2->IsPlayer())
+	if (owner->IsCreature() && target->IsPlayer())
 	{
-		creature = (Creature *)target1;
-		player = (Player *)target2;
+		creature = (Creature *)owner;
+		player = (Player *)target;
 		pAggro = 2; // PvE : Creature is the attacker
 	}
-	else if (target2->IsCreature() && target1->IsPlayer())
+	else if (target->IsCreature() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		creature = (Creature *)target2;
+		player = (Player *)owner;
+		creature = (Creature *)target;
 		pAggro = 1; // PvE : Player is the attacker
 	}
-	else if (target2->IsPlayer() && target1->IsPlayer())
+	else if (target->IsPlayer() && owner->IsPlayer())
 	{
-		player = (Player *)target1;
-		player2 = (Player *)target2;
+		player = (Player *)owner;
+		player2 = (Player *)target;
 		pAggro = 3; // PvP : Not important ?
 		isPvP = true;
 	}
