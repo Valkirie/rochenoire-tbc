@@ -4021,7 +4021,6 @@ float Unit::CalculateSpellMissChance(const Unit* victim, SpellSchoolMask schoolM
     const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
     int32 difference = int32(victim->GetLevelForTarget(this) - GetLevelForTarget(victim));
 	difference = sObjectMgr.getLevelDiff((Unit*)this, (Unit*)victim);
-
     // Level difference factor: 1% per level
     uint8 factor = 1;
     // NPCs and players gain additional bonus to incoming spell hit chance reduction based on positive level difference
@@ -9619,18 +9618,13 @@ void Unit::SetAttackDamageSchool(WeaponAttackType attType, SpellSchools school)
 
 uint32 Unit::GetLevelForTarget(Unit const* target) const
 {
-    if(IsCreature() && !((Creature*)this)->IsWorldBoss())
-        return sObjectMgr.getLevelScaled(((Unit*)this), ((Unit*)target));
+    Unit* owner = ((Unit*)this);
+    Unit* victim = ((Unit*)target);
 
-    uint32 level = target ? target->getLevel() : getLevel();
-    if (((Creature*)target)->IsWorldBoss())
-        level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
-
-	if (level < 1)
-		return 1;
-	if (level > 255)
-		return 255;
-	return level;
+    if (sObjectMgr.IsScalable(owner, victim))
+        return sObjectMgr.getLevelScaled(owner, victim);
+    else
+        return sObjectMgr.getLevelScaled(victim, owner);
 }
 
 void Unit::SetLevel(uint32 lvl)
