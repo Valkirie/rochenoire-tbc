@@ -9622,7 +9622,10 @@ uint32 Unit::GetLevelForTarget(Unit const* target) const
     if(IsCreature() && !((Creature*)this)->IsWorldBoss())
         return sObjectMgr.getLevelScaled(((Unit*)this), ((Unit*)target));
 
-	uint32 level = target ? target->getLevel() + sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : getLevel();
+    uint32 level = target ? target->getLevel() : getLevel();
+    if (((Creature*)target)->IsWorldBoss())
+        level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+
 	if (level < 1)
 		return 1;
 	if (level > 255)
