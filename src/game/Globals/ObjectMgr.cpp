@@ -1028,7 +1028,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 		if (creature->IsCivilian())
 			return false;
 
-		if (creature->GetCreatureType() >= CREATURE_TYPE_CRITTER)
+		if (creature->GetCreatureType() == CREATURE_TYPE_CRITTER)
 			return false;
 
 		/* if (creature->IsWorldBoss() && !creature->GetMap()->IsDungeon())
@@ -1303,11 +1303,11 @@ float ObjectMgr::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAd
 
 uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 {
-	if (!owner || !target)
-		return owner->getLevel();
+    owner = owner ? owner->GetBeneficiary() : owner;
+    target = target ? target->GetBeneficiary() : target;
 
-    owner = owner->GetBeneficiary();
-    target = target->GetBeneficiary();
+    if (!owner || !target)
+		return owner ? owner->getLevel() : target ? target->getLevel() : 0;
 
     if (!IsScalable(owner, target))
         return target->getLevel();
@@ -1354,13 +1354,13 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
 int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
 {
-	if (!owner || !target)
+    owner = owner ? owner->GetBeneficiary() : owner;
+    target = target ? target->GetBeneficiary() : target;
+
+    if (!owner || !target)
 		return 0;
 
     int32 diff = target->GetLevelForTarget(owner) - owner->GetLevelForTarget(target);
-
-    owner = owner->GetBeneficiary();
-    target = target->GetBeneficiary();
 
     if (!IsScalable(owner, target))
         return diff;
@@ -1389,13 +1389,13 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	if (oldarmor == 0)
 		return oldarmor;
 
+    owner = owner ? owner->GetBeneficiary() : owner;
+    target = target ? target->GetBeneficiary() : target;
+
     if (!owner || !target)
         return oldarmor;
 
 	uint32 armor = oldarmor;
-
-    owner = owner->GetBeneficiary();
-    target = target->GetBeneficiary();
 
 	if (!IsScalable(owner, target))
 		return oldarmor;
@@ -1459,10 +1459,13 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 	if (isScaled)
 		return olddamage;
 
-	float damage = olddamage;
+    owner = owner ? owner->GetBeneficiary() : owner;
+    target = target ? target->GetBeneficiary() : target;
 
-    owner = owner->GetBeneficiary();
-    target = target->GetBeneficiary();
+    if (!owner || !target)
+        return olddamage;
+
+	float damage = olddamage;
 
     if (!IsScalable(owner, target))
         return damage;

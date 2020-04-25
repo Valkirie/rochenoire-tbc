@@ -9624,7 +9624,7 @@ uint32 Unit::GetLevelForTarget(Unit const* target) const
     if (sObjectMgr.IsScalable(owner, victim))
         return sObjectMgr.getLevelScaled(owner, victim);
     else
-        return sObjectMgr.getLevelScaled(victim, owner);
+        return sObjectMgr.getLevelScaled(nullptr, owner); // force owner
 }
 
 void Unit::SetLevel(uint32 lvl)
