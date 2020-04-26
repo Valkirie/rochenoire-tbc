@@ -805,6 +805,10 @@ enum FlexibleRaid
 {
     SPELL_CHANNEL_VISUAL_RED = 32839,
     SPELL_CHANNEL_VISUAL_BLUE = 32840,
+
+    DISPLAY_DEFAULT = 0,
+    DISPLAY_INVISIBLE = 1,
+    DISPLAY_VISIBLE = 2
 };
 
 void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
@@ -986,7 +990,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
                             if ((!creature->isScaled() && !creature->IsInCombat() && creature->IsAlive()) || (RefreshSize != 0))
                             {
-                                m_displayStore[guid] = false;
+                                m_displayStore[guid] = DISPLAY_INVISIBLE;
                                 creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
                             }
 					}
@@ -995,7 +999,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         if (m_poolsStore[packId] <= leftAlive)
 						    if ((creature->isScaled() && creature->IsAlive()) || (RefreshSize != 0))
                             {
-                                m_displayStore[guid] = true;
+                                m_displayStore[guid] = DISPLAY_VISIBLE;
                                 creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
                             }
 					}
@@ -1012,15 +1016,16 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 Creature* creature = it->second;
 
                 if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
-                    if (cinfo->CreatureType >= CREATURE_TYPE_CRITTER)
+                    if (cinfo->CreatureType == CREATURE_TYPE_CRITTER)
                         continue;
 
                 uint32 guid = creature->GetGUIDLow();
                 if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
 
-                if (m_displayStore[guid])
+                uint8 displayStatus = m_displayStore[guid];
+                if (displayStatus == DISPLAY_VISIBLE)
                 {
-                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
                     if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
                         creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
@@ -1030,10 +1035,10 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
 
                     creature->SetVisibility(VISIBILITY_ON);
                 }
-                else
+                else if (displayStatus == DISPLAY_INVISIBLE)
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
                     if (creature->IsTemporarySummon())
                     {
@@ -1045,6 +1050,10 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         if (!creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
                             creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
                     }
+                }
+                else
+                {
+                    // do nothing
                 }
             }
 		}
@@ -1912,8 +1921,8 @@ bool DungeonMap::Add(Player* player)
     // this will acquire the same mutex so it cannot be in the previous block
     Map::Add(player);
 
-    if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
-        ShuffleFlexibleRaid();
+    //if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
+        //ShuffleFlexibleRaid();
 
     return true;
 }
@@ -2414,12 +2423,12 @@ void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
     if (erased)
     {
         cdata.removed = true;
-        m_displayStore[guid] = false;
+        //m_displayStore[guid] = false;
     }
     else
     {
         cdata.added = true;
-        m_displayStore[guid] = true;
+        //m_displayStore[guid] = true;
     }
 
     m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));

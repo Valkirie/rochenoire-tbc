@@ -311,7 +311,7 @@ class Map : public GridRefManager<NGridType>
         };
 
         std::map<uint32, uint32> m_poolsStore;
-        std::map<uint32, bool> m_displayStore;
+        std::map<uint32, uint8> m_displayStore;
         typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
         CreatureRatioMap m_creaturesRatio;
         typedef std::unordered_map<uint32, Creature*> CreatureMap;
