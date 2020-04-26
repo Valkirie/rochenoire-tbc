@@ -151,10 +151,10 @@ struct boss_supremusAI : public ScriptedAI, CombatActions
         {
             case SUPREMUS_ACTION_PHASE_SWITCH: return 60000;
             case SUPREMUS_ACTION_BERSERK: return 0;
-            case SUPREMUS_ACTION_MOLTEN_PUNCH: return urand(15000, 20000);
-            case SUPREMUS_ACTION_VOLCANIC_ERUPTION: return urand(3000, 6000);
+            case SUPREMUS_ACTION_MOLTEN_PUNCH: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_MOLTEN_PUNCH);
+            case SUPREMUS_ACTION_VOLCANIC_ERUPTION: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(3000, 6000), SPELL_VOLCANIC_ERUPTION);
             case SUPREMUS_ACTION_SWITCH_TARGET: return 11000;
-            case SUPREMUS_ACTION_HATEFUL_STRIKE: return 1200;
+            case SUPREMUS_ACTION_HATEFUL_STRIKE: return sObjectMgr.GetScaleSpellTimer(m_creature, 1200u, SPELL_HATEFUL_STRIKE);
             default: return 0;
         }
     }
