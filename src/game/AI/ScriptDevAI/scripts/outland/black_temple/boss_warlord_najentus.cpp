@@ -41,6 +41,7 @@ enum
 
     SPELL_CRASHINGWAVE              = 40100,
     SPELL_NEEDLE_SPINE_TARGETING    = 39992,                // Casts 39835 on targets
+    SPELL_NEEDLE_SPIN               = 39835,
     SPELL_TIDAL_BURST               = 39878,
     SPELL_TIDAL_SHIELD              = 39872,                // Triggers burst on dispel
     SPELL_IMPALING_SPINE            = 39837,
@@ -110,9 +111,9 @@ struct boss_najentusAI : public ScriptedAI, CombatActions
     {
         switch (id)
         {
-            case NAJENTUS_ACTION_TIDAL_SHIELD: return 60000;
-            case NAJENTUS_ACTION_IMPALING_SPINE: return 20000;
-            case NAJENTUS_ACTION_NEEDLE_SPINE: return 3000;
+            case NAJENTUS_ACTION_TIDAL_SHIELD: return sObjectMgr.GetScaleSpellTimer(m_creature, 60000u, SPELL_TIDAL_SHIELD);
+            case NAJENTUS_ACTION_IMPALING_SPINE: return sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, SPELL_IMPALING_SPINE);
+            case NAJENTUS_ACTION_NEEDLE_SPINE: return sObjectMgr.GetScaleSpellTimer(m_creature, 3000u, SPELL_NEEDLE_SPIN);
             default: return 0;
         }
     }
