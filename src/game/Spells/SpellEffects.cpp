@@ -2430,7 +2430,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 41499:                                 // Empyreal Balance
                 {
-                    unitTarget->SetMaxHealth(m_caster->GetMaxHealth() / 4);
+                    uint32 targets = unitTarget->GetMap()->GetFinalNAdds(unitTarget->GetRaidTanks(), 4);
+                    unitTarget->SetMaxHealth(m_caster->GetMaxHealth() / targets);
                     return;
                 }
                 case 42287:                                 // Salvage Wreckage
@@ -3796,7 +3797,8 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
-    Aura* aur = CreateAura(m_spellInfo, eff_idx, &damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
+    int32 original_damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, !isScaled); // inverted owner and target
+    Aura* aur = CreateAura(m_spellInfo, eff_idx, &original_damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
 
@@ -4088,7 +4090,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     if (m_caster->IsAlive())
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
-
+        heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, !isScaled); // inverted owner and target
         m_caster->DealHeal(m_caster, heal, m_spellInfo);
     }
 }
@@ -4680,6 +4682,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
             case 26058:                    // summons 05 dirt mound
             case 28864:                    // summons 10 corpse scarab
             case 29434:                    // summons 10 spiderling
+            case 41915:                    // summons 02 parasitic shadowfiends
                 amount = m_caster->GetMap()->GetFinalNAdds(m_caster->GetRaidTanks(), damage);
                 break;
         }
