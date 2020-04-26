@@ -177,7 +177,7 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Playe
         QuestMenuItem const& qItem = mQuestMenu.GetItem(iI);
         uint32 questID = qItem.m_qId;
         Quest const* pQuest = sObjectMgr.GetQuestTemplate(questID);
-		uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+        uint32 pQuest_slevel = pPlayer ? pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel()) : pQuest->GetQuestLevel();
 
         data << uint32(questID);
         data << uint32(qItem.m_qIcon);
