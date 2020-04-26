@@ -2425,7 +2425,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
 
                     // Equilize the health of all targets based on the corresponding health percent
-                    unitTarget->SetHealth(m_caster->GetHealth() / 4);
+                    uint32 targets = unitTarget->GetMap()->GetFinalNAdds(unitTarget->GetRaidTanks(), 4);
+                    unitTarget->SetHealth(m_caster->GetHealth() / targets);
                     return;
                 }
                 case 41499:                                 // Empyreal Balance

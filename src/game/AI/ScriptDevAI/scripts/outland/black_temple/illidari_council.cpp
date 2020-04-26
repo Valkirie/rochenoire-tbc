@@ -427,7 +427,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_JUDGMENT) == CAST_OK)
                 {
                     DisableCombatAction(action);
-                    ResetCombatAction(GATHIOS_ACTION_SEAL, urand(2000, 7000));
+                    ResetCombatAction(GATHIOS_ACTION_SEAL, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2000, 7000), SPELL_JUDGMENT));
                 }
                 return;
             }
@@ -436,35 +436,37 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
                 if (DoCastSpellIfCan(nullptr, m_seal ? SPELL_SEAL_OF_COMMAND : SPELL_SEAL_OF_BLOOD) == CAST_OK)
                 {
                     DisableCombatAction(action);
-                    ResetCombatAction(GATHIOS_ACTION_JUDGEMENT, urand(12000, 18000));
+                    ResetCombatAction(GATHIOS_ACTION_JUDGEMENT, sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 18000), m_seal ? SPELL_SEAL_OF_COMMAND : SPELL_SEAL_OF_BLOOD));
                     m_seal = !m_seal;
                 }
                 return;
             }
             case GATHIOS_ACTION_AURA:
             {
-                if (DoCastSpellIfCan(nullptr, urand(0, 1) ? SPELL_DEVOTION_AURA : SPELL_CHROMATIC_AURA) == CAST_OK)
-                    ResetCombatAction(action, 90000);
+                uint32 spellId = urand(0, 1) ? SPELL_DEVOTION_AURA : SPELL_CHROMATIC_AURA;
+                if (DoCastSpellIfCan(nullptr, spellId) == CAST_OK)
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 90000u, spellId));
                 return;
             }
             case GATHIOS_ACTION_BLESSING:
             {
+                uint32 spellId = urand(0, 1) ? SPELL_BLESS_SPELLWARD : SPELL_BLESS_PROTECTION;
                 if (Unit* target = DoSelectCouncilMember())
-                    if (DoCastSpellIfCan(target, urand(0, 1) ? SPELL_BLESS_SPELLWARD : SPELL_BLESS_PROTECTION) == CAST_OK)
-                        ResetCombatAction(action, urand(30000, 38000));
+                    if (DoCastSpellIfCan(target, spellId) == CAST_OK)
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 38000), spellId));
                 return;
             }
             case GATHIOS_ACTION_CONSECRATION:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CONSECRATION) == CAST_OK)
-                    ResetCombatAction(action, urand(30000, 35000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 35000), SPELL_CONSECRATION));
                 return;
             }
             case GATHIOS_ACTION_HAMMER_OF_JUSTICE:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_HAMMER_OF_JUSTICE, SELECT_FLAG_PLAYER | SELECT_FLAG_NOT_IN_MELEE_RANGE))
                     if (DoCastSpellIfCan(target, SPELL_HAMMER_OF_JUSTICE) == CAST_OK)
-                        ResetCombatAction(action, 20000);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, SPELL_HAMMER_OF_JUSTICE));
                 return;
             }
         }
@@ -519,33 +521,33 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_BLIZZARD) == CAST_OK)
-                        ResetCombatAction(action, urand(5000, 15000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 15000), SPELL_BLIZZARD));
                 return;
             }
             case ZEREVOR_ACTION_FLAMESTRIKE:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_FLAMESTRIKE) == CAST_OK)
-                        ResetCombatAction(action, urand(5000, 15000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 15000), SPELL_FLAMESTRIKE));
                 return;
             }
             case ZEREVOR_ACTION_ARCANE_BOLT:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ARCANE_BOLT) == CAST_OK)
-                    ResetCombatAction(action, 3000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 3000u, SPELL_ARCANE_BOLT));
                 return;
             }
             case ZEREVOR_ACTION_DAMPEN_MAGIC:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_DAMPEN_MAGIC) == CAST_OK)
-                    ResetCombatAction(action, 110000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 110000u, SPELL_DAMPEN_MAGIC));
                 return;
             }
             case ZEREVOR_ACTION_ARCANE_EXPLOSION:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_ARCANE_EXPLOSION, SELECT_FLAG_PLAYER | SELECT_FLAG_USE_EFFECT_RADIUS))
                     if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_EXPLOSION) == CAST_OK)
-                        ResetCombatAction(action, urand(5000, 15000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 15000), SPELL_ARCANE_EXPLOSION));
                 return;
             }
         }
@@ -607,26 +609,26 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
             case MALANDE_ACTION_CIRCLE_OF_HEALING:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CIRCLE_OF_HEALING) == CAST_OK)
-                    ResetCombatAction(action, 20000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 20000, SPELL_CIRCLE_OF_HEALING));
                 return;
             }
             case MALANDE_ACTION_DIVINE_WRATH:
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(pTarget, SPELL_DIVINE_WRATH) == CAST_OK)
-                        ResetCombatAction(action, urand(5000, 10000));
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 10000), SPELL_DIVINE_WRATH));
                 return;
             }
             case MALANDE_ACTION_REFLECTIVE_SHIELD:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_REFLECTIVE_SHIELD) == CAST_OK)
-                    ResetCombatAction(action, urand(36000, 42000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(36000, 42000), SPELL_REFLECTIVE_SHIELD));
                 return;
             }
             case MALANDE_ACTION_EMPOWERED_SMITE:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_EMPOWERED_SMITE) == CAST_OK)
-                    ResetCombatAction(action, urand(2000, 3000));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(2000, 3000), SPELL_EMPOWERED_SMITE));
                 return;
             }
         }
