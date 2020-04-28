@@ -214,15 +214,15 @@ uint32 Quest::XPValue(Player* pPlayer) const
     return 0;
 }
 
-int32 Quest::GetRewOrReqMoney(Player *p) const
+int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 {
 	int32 sRewOrReqMoney = RewOrReqMoney;
-	if (p && p->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+	if (pPlayer && pPlayer->hasAdequateLevel(GetZoneOrSort()))
 	{
 		/* if (RewOrReqMoney <= 0)
 			return RewOrReqMoney; */
 
-		int32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
+		int32 pQuest_slevel = pPlayer->getLevel() + (GetQuestLevel() - GetMinLevel());
 
 		int32 expected_RewOrReqMoney = int32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
 		double difference_RewOrReqMoney = double((double)RewOrReqMoney / (double)expected_RewOrReqMoney);
@@ -233,11 +233,11 @@ int32 Quest::GetRewOrReqMoney(Player *p) const
 	return sRewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
 }
 
-uint32 Quest::GetRewMoneyMaxLevel(Player *p) const
+uint32 Quest::GetRewMoneyMaxLevel(Player *pPlayer) const
 {
-	if (p && p->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+    if (pPlayer && pPlayer->hasAdequateLevel(GetZoneOrSort()))
 	{
-		uint32 pQuest_slevel = p->getLevel() + (GetQuestLevel() - GetMinLevel());
+		uint32 pQuest_slevel = pPlayer->getLevel() + (GetQuestLevel() - GetMinLevel());
 
 		uint32 expected_RewMoneyMaxLevel = uint32(0.0212 * pow(QuestLevel, 3) - 0.3874 * pow(QuestLevel, 2) + 32.809 * (QuestLevel));
 		float difference_RewMoneyMaxLevel = float((float)RewMoneyMaxLevel / (float)expected_RewMoneyMaxLevel);

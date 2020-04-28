@@ -589,9 +589,6 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_FOGOFWAR_HEALTH, "Visibility.FogOfWar.Health", 0);
     setConfig(CONFIG_UINT32_FOGOFWAR_STATS, "Visibility.FogOfWar.Stats", 0);
 
-	setConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL, "Rochenoire.Scaling.MinLevel.Player", 10);
-	setConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL, "Rochenoire.Scaling.MinLevel.Creature", 1);
-	setConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL, "Rochenoire.Scaling.MinLevel.Expansion", 40);
 	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", true);
 	setConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE, "Rochenoire.Scaling.Raids.Upscale", true);
 	setConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE, "Rochenoire.Scaling.Raids.Downscale", false);
@@ -1242,6 +1239,9 @@ void World::SetInitialWorldSettings()
 
 	sLog.outString("Loading Spell Flex Details...");
 	sObjectMgr.LoadFlexibleSpells();
+
+    sLog.outString("Load Zone Flex Details...");
+    sObjectMgr.LoadZoneScale();
 
     sLog.outString("Loading ReservedNames...");
     sObjectMgr.LoadReservedPlayersNames();

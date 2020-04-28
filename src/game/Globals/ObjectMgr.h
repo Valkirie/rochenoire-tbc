@@ -205,11 +205,22 @@ class FindGOData
         float i_spawnedDist;
 };
 
+struct ZoneFlex
+{
+    std::string AreaName;
+    uint32 AreaID;
+    uint32 MapID;
+    uint32 ParentWorldMapID;
+    uint32 LevelRangeMin;
+    uint32 LevelRangeMax;
+};
+
 typedef std::unordered_map<uint32, CreatureLocale> CreatureLocaleMap;
 typedef std::unordered_map<uint32, GameObjectLocale> GameObjectLocaleMap;
 typedef std::unordered_map<uint32, ItemLocale> ItemLocaleMap;
 typedef std::unordered_map<uint32, QuestLocale> QuestLocaleMap;
 typedef std::unordered_map<uint32, uint32> CreaturePoolMap;
+typedef std::unordered_map<uint32, ZoneFlex> ZoneFlexMap;
 typedef std::unordered_map<std::string, CreatureFlex> CreatureFlexMap;
 typedef std::unordered_map<std::string, SpellFlex> SpellFlexMap;
 typedef std::unordered_map<std::string, ItemLootScale> LootScaleMap;
@@ -706,6 +717,7 @@ class ObjectMgr
 		void LoadCreaturesScale();
         void LoadCreaturesPools();
 		void LoadFlexibleSpells();
+        void LoadZoneScale();
         void LoadQuestLocales();
         void LoadGossipTextLocales();
         void LoadQuestgiverGreeting();
@@ -924,6 +936,13 @@ class ObjectMgr
 			if (itr == mSpellFlexMap.end()) return nullptr;
 			return &itr->second;
 		}
+
+        ZoneFlex const* GetZoneFlex(uint32 AreaID) const
+        {
+            ZoneFlexMap::const_iterator itr = mZoneFlexMap.find(AreaID);
+            if (itr == mZoneFlexMap.end()) return nullptr;
+            return &itr->second;
+        }
 
 		ItemLootScale const* GetItemLootScale(std::string entry) const
 		{
@@ -1248,8 +1267,6 @@ class ObjectMgr
 		bool isEffectRestricted(uint32 Effect) const;
 		bool isEffectSafe(uint32 Effect) const;
 
-		bool isSafeExpansionZone(uint32 mapId, uint32 zoneId) const;
-
 		int sign(int x) const { return (x > 0) - (x < 0); };
 
         float GetSpellCoeffRatio(uint32 spellid) const;
@@ -1399,6 +1416,7 @@ class ObjectMgr
 	   	CreatureFlexMap mCreatureFlexMap;
         CreaturePoolMap mCreaturePoolMap;
 		SpellFlexMap mSpellFlexMap;
+        ZoneFlexMap mZoneFlexMap;
 
 		LootScaleParentingMap mLootScaleParentingMap;
         QuestLocaleMap mQuestLocaleMap;

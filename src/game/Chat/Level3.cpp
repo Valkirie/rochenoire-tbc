@@ -859,6 +859,14 @@ bool ChatHandler::HandleReloadSpellFlexCommand(char* /*args*/)
 	return true;
 }
 
+bool ChatHandler::HandleReloadZoneFlexCommand(char* /*args*/)
+{
+    sLog.outString("Re-Loading Zone Scaling Details ... ");
+    sObjectMgr.LoadZoneScale();
+    SendSysMessage("DB table `scale_zone` reloaded.");
+    return true;
+}
+
 bool ChatHandler::HandleReloadBattleEventCommand(char* /*args*/)
 {
     sLog.outString("Re-Loading BattleGround Eventindexes...");

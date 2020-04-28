@@ -533,6 +533,7 @@ class ChatHandler
         bool HandleReloadItemRequiredTragetCommand(char* args);
 		bool HandleReloadCreatureFlexCommand(char* args);
 		bool HandleReloadSpellFlexCommand(char* args);
+        bool HandleReloadZoneFlexCommand(char* args);
 		bool HandleReloadLootScaleCommand(char* args);
         bool HandleReloadLocalesCreatureCommand(char* args);
         bool HandleReloadLocalesGameobjectCommand(char* args);

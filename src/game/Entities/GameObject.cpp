@@ -1791,7 +1791,7 @@ void GameObject::Use(Unit* user)
 
             // required lvl checks!
             uint8 level = player->getLevel();
-			if (level < info->meetingstone.minLevel && level < sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
+			if (!player->hasAdequateLevel(info->meetingstone.areaID))
 				return;
 			/*
 			if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)

@@ -1002,19 +1002,8 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	else
 		return false;
 
-	if (player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
-		return false;
-
-	if (creature->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_CREATURE_MINLEVEL))
-		return false;
-
-	uint32 mapId = player->GetMap() ? player->GetMap()->GetId() : 0;
-	uint32 zoneId = player->GetTerrain() ? player->GetZoneId() : 0;
-	if (!isSafeExpansionZone(mapId, zoneId) && player->getLevel() < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL))
-		return false;
-
-	if (creature->IsInStartLocation())
-		return false;
+    if (!player->hasAdequateLevel())
+        return false;
 
 	if (creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
 		return false;
@@ -1098,28 +1087,6 @@ bool ObjectMgr::isEffectRestricted(uint32 Effect) const
 
 bool ObjectMgr::isEffectSafe(uint32 Effect) const
 {
-	return true;
-}
-
-bool ObjectMgr::isSafeExpansionZone(uint32 mapId, uint32 zoneId) const
-{
-	MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
-	if (mapEntry && mapEntry->addon != 0)
-	{
-		if(mapId == 530) // Outland
-		{
-			switch (zoneId)
-			{
-				case 3525: //Bloodmyst Isle
-				case 3524: //Azuremyst Isle
-				case 3557: //Exodar
-				case 3430: //Eversong Woods
-				case 3487: //Silvermoon
-					return true;
-			}
-		}
-		return false;
-	}
 	return true;
 }
 
@@ -1332,24 +1299,16 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	else
 		return target->getLevel();
 
-	uint32 mapId = player->GetMap() ? player->GetMap()->GetId() : 0;
-	uint32 zoneId = player->GetTerrain() ? player->GetZoneId() : 0;
-
-	float p_level = player->getLevel();
+	uint32 p_level = player->getLevel();
 	int v_level   = creature->GetLevelVar();
 
-	if (!isSafeExpansionZone(mapId, zoneId))
-		p_level = p_level < sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) ? sWorld.getConfig(CONFIG_UINT32_SCALE_EXPANSION_MINLEVEL) : p_level;
-
-    uint32 level = p_level;
-    
     if (owner->IsCreature())
-        level += creature->IsWorldBoss() ? sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : v_level;
+        p_level += creature->IsWorldBoss() ? sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : v_level;
 
-	if (level > sWorld.GetCurrentMaxLevel())
-		level = sWorld.GetCurrentMaxLevel();
+	if (p_level > sWorld.GetCurrentMaxLevel())
+        p_level = sWorld.GetCurrentMaxLevel();
 
-	return level;
+	return p_level;
 }
 
 int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
@@ -2569,15 +2528,53 @@ uint32 ObjectMgr::GetPlayerAccountIdByPlayerName(const std::string& name) const
 
 void ObjectMgr::LoadFlexibleSpells()
 {
-	mSpellFlexMap.clear();
-	QueryResult *result = WorldDatabase.Query("SELECT * FROM scale_spell");
+    mSpellFlexMap.clear();
+    QueryResult* result = WorldDatabase.Query("SELECT * FROM scale_spell");
+
+    if (!result)
+    {
+        BarGoLink bar(1);
+        bar.step();
+        sLog.outString();
+        sLog.outString(">> Loaded 0 Spell scaling details. DB table `scale_spell` is empty.");
+        return;
+    }
+
+    BarGoLink bar(result->GetRowCount());
+
+    do
+    {
+        Field* fields = result->Fetch();
+        bar.step();
+
+        uint32 s_entry = fields[0].GetUInt32();
+        uint32 m_entry = fields[1].GetUInt32();
+        float ratio_spell = fields[2].GetFloat();
+
+        std::string s = std::to_string(s_entry) + ":" + std::to_string(m_entry);
+        SpellFlex& data = mSpellFlexMap[s];
+        data.s_entry = s_entry;
+        data.m_entry = m_entry;
+        data.ratio_spell = ratio_spell;
+
+    } while (result->NextRow());
+
+    delete result;
+    sLog.outString();
+    sLog.outString(">> Loaded %lu Spell scaling details", (unsigned long)mSpellFlexMap.size());
+}
+
+void ObjectMgr::LoadZoneScale()
+{
+	mZoneFlexMap.clear();
+	QueryResult *result = WorldDatabase.Query("SELECT * FROM scale_zone");
 
 	if (!result)
 	{
 		BarGoLink bar(1);
 		bar.step();
 		sLog.outString();
-		sLog.outString(">> Loaded 0 Spell scaling details. DB table `scale_spell` is empty.");
+		sLog.outString(">> Loaded 0 Zone scaling details. DB table `scale_zone` is empty.");
 		return;
 	}
 
@@ -2588,21 +2585,26 @@ void ObjectMgr::LoadFlexibleSpells()
 		Field *fields = result->Fetch();
 		bar.step();
 
-		uint32 s_entry = fields[0].GetUInt32();
-		uint32 m_entry = fields[1].GetUInt32();
-		float ratio_spell = fields[2].GetFloat();
+        std::string AreaName = fields[0].GetString();
+        uint32 MapID = fields[1].GetUInt32();
+        uint32 AreaID = fields[2].GetUInt32();
+        uint32 ParentWorldMapID = fields[3].GetUInt32();
+        uint32 LevelRangeMin = fields[4].GetUInt32();
+        uint32 LevelRangeMax = fields[5].GetUInt32();
 
-		std::string s = std::to_string(s_entry) + ":" + std::to_string(m_entry);
-		SpellFlex& data = mSpellFlexMap[s];
-		data.s_entry = s_entry;
-		data.m_entry = m_entry;
-		data.ratio_spell = ratio_spell;
+        ZoneFlex& data = mZoneFlexMap[AreaID];
+        data.AreaName = AreaName;
+        data.MapID = MapID;
+        data.AreaID = AreaID;
+        data.ParentWorldMapID = ParentWorldMapID;
+        data.LevelRangeMin = LevelRangeMin;
+        data.LevelRangeMax = LevelRangeMax;
 
 	} while (result->NextRow());
 
 	delete result;
 	sLog.outString();
-	sLog.outString(">> Loaded %lu Spell scaling details", (unsigned long)mSpellFlexMap.size());
+	sLog.outString(">> Loaded %lu Zone scaling details", (unsigned long)mZoneFlexMap.size());
 }
 
 void ObjectMgr::LoadCreaturesScale()

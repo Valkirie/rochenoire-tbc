@@ -2808,11 +2808,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         bool canKeep = false;
 
         if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
-        {
-            // if caster level is superior to min. scaling level
-            if (uCaster->getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
-                canKeep = true;
-        }
+            canKeep = uCaster->hasAdequateLevel();
         else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
             canKeep = true;
         else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells

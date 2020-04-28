@@ -790,75 +790,6 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         *absorb += (originalDamage - damage);
 }
 
-bool Unit::IsInStartLocation()
-{
-	Map* map = GetMap();
-
-	if (!map)
-		return false;
-
-	uint32 zone = GetZoneId();
-	uint32 map_id = map->GetId();
-	uint32 area = GetAreaId();
-
-	if (!zone)
-		return false;
-	if (!area)
-		return false;
-
-	if (map_id == 0)
-	{
-		if (zone == 12)
-		{
-			if (area == 9 || area == 24 || area == 34 || area == 59) // Human
-				return true;
-		}
-		else if (zone == 1)
-		{
-			if (area == 800 || area == 132) // Dwarf, Gnome
-				return true;
-		}
-		else if (zone == 85)
-		{
-			if (area == 154 || area == 2117) // Undead
-				return true;
-		}
-	}
-	else if (map_id == 1)
-	{
-		if (zone == 141)
-		{
-			if (area == 257 || area == 188) // Elf
-				return true;
-		}
-		else if (zone == 14)
-		{
-			if (area == 363 || area == 365 || area == 638 || area == 639 || area == 640) // Orc, Troll
-				return true;
-		}
-		else if (zone == 215)
-		{
-			if (area == 220 || area == 221 || area == 358 || area == 637) // Tauren
-				return true;
-		}
-	}
-	else if (map_id == 530)
-	{
-		if (zone == 3524) //Azuremyst Isle
-		{
-			if (area == 3526 || area == 3527 || area == 3560 || area == 3528 || area == 3529 || area == 3559 || area == 3530) // Draenei
-				return true;
-		}
-		else if (zone == 3430)
-		{
-			if (area == 3431 || area == 3485 || area == 3532 || area == 3665 || area == 3531) // BloodElf
-				return true;
-		}
-	}
-
-	return false;
-}
-
 void Unit::Suicide()
 {
     DealDamage(this, this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
@@ -9634,6 +9565,20 @@ void Unit::SetLevel(uint32 lvl)
     // group update
     if ((GetTypeId() == TYPEID_PLAYER) && ((Player*)this)->GetGroup())
         ((Player*)this)->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_LEVEL);
+}
+
+bool Unit::hasAdequateLevel(uint32 AreaID) const
+{
+    uint32 Id = AreaID != 0 ? AreaID : GetTerrain() ? GetZoneId() : 0;
+
+    if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(Id))
+    {
+        uint32 pLevel = getLevel();
+        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
+            return false;
+    }
+
+    return true;
 }
 
 void Unit::SetHealth(uint32 val)

@@ -2678,34 +2678,6 @@ void Player::GiveLevel(uint32 level)
     if (MailLevelReward const* mailReward = sObjectMgr.GetMailLevelReward(level, getRaceMask()))
         MailDraft(mailReward->mailTemplateId).SendMailTo(this, MailSender(MAIL_CREATURE, mailReward->senderEntry));
 
-	// Send a note to players when they reach scaling level
-	if (level == sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL))
-	{
-		uint32 NPC_SENDER = 0;
-		uint32 LANG_PROGRESS = 0;
-		uint32 SUBJECT_PROGRESS = 0;
-
-		switch (TeamForRace(getRace()))
-		{
-			case ALLIANCE:
-				NPC_SENDER = 1748;
-				SUBJECT_PROGRESS = LANG_PROGRESS_SUBJECT_A2;
-				LANG_PROGRESS = LANG_PROGRESS_CONGRATS_A2;
-				break;
-			case HORDE:
-				NPC_SENDER = 4949;
-				SUBJECT_PROGRESS = LANG_PROGRESS_SUBJECT_H2;
-				LANG_PROGRESS = LANG_PROGRESS_CONGRATS_H2;
-				break;
-		}
-
-		std::string letterText = this->GetSession()->GetMangosString(LANG_PROGRESS);
-		std::string letterSubject = this->GetSession()->GetMangosString(SUBJECT_PROGRESS);
-
-		MailDraft(letterSubject.c_str(), letterText.c_str())
-			.SendMailTo(this, MailSender(MAIL_CREATURE, NPC_SENDER));
-	}
-
     // resend quests status directly
     SendQuestGiverStatusMultiple();
 }
@@ -13273,9 +13245,7 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
 		return
 		(
 			(pQuest->IsSpecificQuest() && getLevel() + highLevelDiff >= pQuest->GetMinLevel()) ||
-			(!pQuest->IsSpecificQuest() && !pUnit->IsInStartLocation() && getLevel() >= sWorld.getConfig(CONFIG_UINT32_SCALE_PLAYER_MINLEVEL)) ||
-			(!pQuest->IsSpecificQuest() && !pUnit->IsInStartLocation() && getLevel() - pQuest->GetMinLevel() <= highLevelDiff) ||
-			(!pQuest->IsSpecificQuest() && pUnit->IsInStartLocation() && getLevel() - pQuest->GetMinLevel() <= highLevelDiff)
+			(!pQuest->IsSpecificQuest() && hasAdequateLevel(pQuest->GetZoneOrSort()))
 		);
     /*{
         int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
