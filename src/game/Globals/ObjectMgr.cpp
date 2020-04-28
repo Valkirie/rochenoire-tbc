@@ -1019,27 +1019,6 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 
 		if (creature->GetCreatureType() == CREATURE_TYPE_CRITTER)
 			return false;
-
-		/* if (creature->IsWorldBoss() && !creature->GetMap()->IsDungeon())
-			return false; */
-	}
-
-	if (Map* map = creature->GetMap())
-	{
-		if (map->IsRaid())
-		{
-            if (InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(map->GetId()))
-            {
-                if (player->getLevel() > instance->levelMax)
-                    return sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE);
-
-                if (player->getLevel() < instance->levelMin)
-                    return sWorld.getConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE);
-            }
-		}
-
-		if (map->IsDungeon())
-			return sWorld.getConfig(CONFIG_BOOL_SCALE_DUNGEONS);
 	}
 
 	return true;

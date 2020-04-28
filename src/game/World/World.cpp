@@ -589,9 +589,6 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_FOGOFWAR_HEALTH, "Visibility.FogOfWar.Health", 0);
     setConfig(CONFIG_UINT32_FOGOFWAR_STATS, "Visibility.FogOfWar.Stats", 0);
 
-	setConfig(CONFIG_BOOL_SCALE_DUNGEONS, "Rochenoire.Scaling.Dungeons.Enabled", true);
-	setConfig(CONFIG_BOOL_SCALE_RAIDS_UPSCALE, "Rochenoire.Scaling.Raids.Upscale", true);
-	setConfig(CONFIG_BOOL_SCALE_RAIDS_DOWNSCALE, "Rochenoire.Scaling.Raids.Downscale", false);
 	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", false);
 	setConfig(CONFIG_BOOL_SMART_LOOT, "Rochenoire.SmartLoot.Enabled", true);
     setConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT, "Rochenoire.SmartLoot.Amount", 4);
