@@ -38,6 +38,13 @@ void WorldSession::HandleAttackSwingOpcode(WorldPacket& recv_data)
 
     Unit* pEnemy = _player->GetMap()->GetUnit(guid);
 
+    if (!pEnemy)
+    {
+        // stop attack state at client
+        SendAttackStop(nullptr);
+        return;
+    }
+
     if (!_player->CanAttackNow(pEnemy))
     {
         // stop attack state at client
