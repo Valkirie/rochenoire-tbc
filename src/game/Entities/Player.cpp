@@ -13905,7 +13905,8 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
-	if (qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel())
+	if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
+        (!qInfo->IsSpecificQuest() && !hasAdequateLevel(qInfo->GetZoneOrSort())))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
