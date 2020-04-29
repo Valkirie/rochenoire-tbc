@@ -641,8 +641,6 @@ void AreaAura::Update(uint32 diff)
                 // flag for selection is need apply aura to current iteration target
                 bool apply = true;
 
-				uint32 target_level = sObjectMgr.getLevelScaled(caster, target);
-
 				/* PARTY AURAS should not be downscaled on target level
 				switch (m_areaAuraType)
 				{
@@ -660,7 +658,7 @@ void AreaAura::Update(uint32 diff)
                 if (GetCasterGuid() == target->GetObjectGuid()) // if caster is same as target then no need to change rank of the spell
                     actualSpellInfo = GetSpellProto();
                 else
-                    actualSpellInfo = sSpellMgr.SelectAuraRankForLevel(GetSpellProto(), target_level); // use spell id according level of the target
+                    actualSpellInfo = sSpellMgr.SelectAuraRankForLevel(GetSpellProto(), target->GetLevelForTarget(caster)); // use spell id according level of the target
                 if (!actualSpellInfo)
                     continue;
 
@@ -6974,7 +6972,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                         break;
                     default:
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(spellProto)) * bonus->direct_damage;
-						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit, false);
+						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit);
                         break;
                 }
             }
@@ -7940,7 +7938,7 @@ void Aura::HandleManaShield(bool apply, bool Real)
                         // Mana Shield
                         // +50% from +spd bonus
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
-						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit, false);
+						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit);
                         break;
                     }
                     break;
@@ -8712,15 +8710,12 @@ void SpellAuraHolder::Update(uint32 diff)
         {
             if (Unit* caster = GetCaster())
             {
-				Unit* target = GetTarget();
-				uint32 caster_level = sObjectMgr.getLevelScaled(caster, target);
-
-                // This should not be used for health funnel (already processed in PeriodicTick()).
+				// This should not be used for health funnel (already processed in PeriodicTick()).
                 // TODO:: is the fallowing code can be removed?
                 if (GetSpellProto()->SpellVisual != 163)
                 {
                     Powers powertype = Powers(GetSpellProto()->powerType);
-                    int32 manaPerSecond = GetSpellProto()->manaPerSecond + GetSpellProto()->manaPerSecondPerLevel * caster_level;
+                    int32 manaPerSecond = GetSpellProto()->manaPerSecond + GetSpellProto()->manaPerSecondPerLevel * caster->GetLevelForTarget(GetTarget());
                     m_timeCla = 1 * IN_MILLISECONDS;
 
                     if (manaPerSecond)

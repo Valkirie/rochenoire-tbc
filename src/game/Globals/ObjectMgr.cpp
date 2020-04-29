@@ -1336,8 +1336,8 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	else
 		return oldarmor;
 
-	int32 scaled_level = getLevelScaled(creature, player);
-	int32 creature_level = creature->getLevel();
+	int32 scaled_level = creature->GetLevelForTarget(player);
+	int32 origin_level = creature->getLevel();
 
 	if (pAggro == 1)
 	{
@@ -1355,7 +1355,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 			CreatureInfo const* cinfo = creature->GetCreatureInfo();
 			if (cinfo && cinfo->UnitClass != 0)
 			{
-				if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(creature_level, cinfo->UnitClass, cinfo->Expansion))
+				if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(origin_level, cinfo->UnitClass, cinfo->Expansion))
 					ratio_armor = armor / (cCLSS->BaseArmor * cinfo->ArmorMultiplier);
 
 				if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(scaled_level, cinfo->UnitClass, cinfo->Expansion))
@@ -1369,7 +1369,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 
 float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool isScaled) const
 {
-	if (olddamage == 0)
+	if (olddamage <= 1)
 		return olddamage;
 
 	if (isScaled)
@@ -1415,25 +1415,22 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 	else
 		return damage;
 
-	int32 target_level = isPvP ? player2->getLevel() : getLevelScaled(creature, player);
-	int32 owner_level = isPvP ? player->getLevel() : creature->getLevel();
+    int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
+	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
 
 	if (pAggro == 1)
 	{
 		uint32 max_health = (float)creature->GetMaxHealth();
-		uint32 expected_health = 1;
-		float difference_health = 1;
 		float scaled_health = 1;
 
 		if (max_health <= 1)
 			return olddamage;
 
-		// proper algorithm
 		if (creature->GetTypeId() == TYPEID_UNIT)
 		{
 			if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
 			{
-				CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(target_level, cinfo->UnitClass, cinfo->Expansion);
+				CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(scaled_level, cinfo->UnitClass, cinfo->Expansion);
 				if (cCLSS && cinfo->UnitClass != 0)
 					scaled_health = cCLSS->BaseHealth * cinfo->HealthMultiplier;
 			}
@@ -1464,8 +1461,8 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 			if (i == 6 || i == 10)
 				continue;
 
-			sObjectMgr.GetPlayerClassLevelInfo(i, target_level, &target_classInfo);
-			sObjectMgr.GetPlayerClassLevelInfo(i, owner_level, &owner_classInfo);
+			sObjectMgr.GetPlayerClassLevelInfo(i, scaled_level, &target_classInfo);
+			sObjectMgr.GetPlayerClassLevelInfo(i, origin_level, &owner_classInfo);
 
 			targetBaseHealth += target_classInfo.basehealth;
 			ownerBaseHealth += owner_classInfo.basehealth;

@@ -5543,9 +5543,6 @@ void Player::UpdateCombatSkills(Unit* pVictim, WeaponAttackType attType, bool de
     uint32 greylevel = MaNGOS::XP::GetGrayLevel(plevel);
     uint32 moblevel = pVictim->GetLevelForTarget(this);
 
-	if (sObjectMgr.IsScalable(((Unit*)this), pVictim))
-		moblevel = sObjectMgr.getLevelScaled(((Unit*)this), pVictim);
-
     if (moblevel < greylevel)
         moblevel = greylevel;
 
@@ -6603,12 +6600,9 @@ void Player::RewardReputation(Creature* victim, float rate)
     if (!Rep)
         return;
 
-	/* If Creature is scalable, we use it's level */
-	uint32 victim_level = sObjectMgr.getLevelScaled(this, victim);
-
     if (Rep->repfaction1 && (!Rep->team_dependent || GetTeam() == ALLIANCE))
     {
-        int32 donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue1, 0, Rep->repfaction1, victim_level);
+        int32 donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue1, 0, Rep->repfaction1, victim->GetLevelForTarget(this));
         donerep1 = int32(donerep1 * rate);
         FactionEntry const* factionEntry1 = sFactionStore.LookupEntry<FactionEntry>(Rep->repfaction1);
         uint32 current_reputation_rank1 = GetReputationMgr().GetRank(factionEntry1);
@@ -20605,11 +20599,8 @@ uint32 Player::GetResurrectionSpellId() const
 // Used in triggers for check "Only to targets that grant experience or honor" req
 bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
-    uint32 v_level = pVictim->getLevel();
+    uint32 v_level = pVictim->GetLevelForTarget(this);
     uint32 k_grey  = MaNGOS::XP::GetGrayLevel(getLevel());
-
-	/* If Creature is scalable, we use it's level */
-	v_level = sObjectMgr.getLevelScaled(((Unit*)this), pVictim);
 
     // Victim level less gray level
     if (v_level <= k_grey)

@@ -502,12 +502,9 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                     *data << uint32(m_floatValues[index]);
                 }
 
-				// Hide real level. Send player level instead.
-				else if (index == UNIT_FIELD_LEVEL && sObjectMgr.IsScalable(creature, target) && creature->IsAlive())
+				else if (index == UNIT_FIELD_LEVEL)
 				{
-					//creature->PMonsterSay("Level %u instead of %u", target->getLevel(), creature->getLevel());
-					uint32 player_level = sObjectMgr.getLevelScaled(creature, target);
-					*data << uint32(player_level);
+					*data << uint32(creature->GetLevelForTarget(target));
                 }
                 else if (index == UNIT_FIELD_HEALTH || index == UNIT_FIELD_MAXHEALTH)
                 {

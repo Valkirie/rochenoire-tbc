@@ -4402,8 +4402,6 @@ SpellCastResult Spell::CheckCast(bool strict)
     Unit* target = m_targets.getUnitTarget();
     if (target)
     {
-		uint32 target_level = sObjectMgr.getLevelScaled(m_caster, target);
-
         // TARGET_UNIT_SCRIPT_NEAR_CASTER fills unit target per client requirement but should not be checked against common things
         // TODO: Find a nicer and more efficient way to check for this
         if (!IsSpellWithScriptUnitTarget(m_spellInfo))
@@ -4455,7 +4453,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     // this case can be triggered if rank not found (too low-level target for first rank)
                     if (!m_CastItem && !m_IsTriggeredSpell)
                         // spell expected to be auto-downranking in cast handle, so must be same
-                        if (m_spellInfo != sSpellMgr.SelectAuraRankForLevel(m_spellInfo, target_level))
+                        if (m_spellInfo != sSpellMgr.SelectAuraRankForLevel(m_spellInfo, target->GetLevelForTarget(m_caster)))
                             return SPELL_FAILED_LOWLEVEL;
 
                     // Do not allow these spells to target creatures not tapped by us (Banish, Polymorph, many quest spells)
@@ -4537,7 +4535,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                 }
             }
 
-            if (m_spellInfo->MaxTargetLevel && target_level > m_spellInfo->MaxTargetLevel)
+            if (m_spellInfo->MaxTargetLevel && target->GetLevelForTarget(m_caster) > m_spellInfo->MaxTargetLevel)
                 return SPELL_FAILED_HIGHLEVEL;
         }
     }
@@ -4653,8 +4651,7 @@ SpellCastResult Spell::CheckCast(bool strict)
             return castResult;
     }
 
-	uint32 target_level = sObjectMgr.getLevelScaled(m_caster, m_targets.getUnitTarget());
-    for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+	for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
         // for effects of spells that have only one target
         switch (m_spellInfo->Effect[i])
@@ -5137,7 +5134,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
                     if (instance->levelMin > target->getLevel())
                         return SPELL_FAILED_LOWLEVEL;
-                    if (instance->levelMax && instance->levelMax < target_level)
+                    if (instance->levelMax && instance->levelMax < target->GetLevelForTarget(m_caster)) // m_targets.getUnitTarget() ?
                         return SPELL_FAILED_HIGHLEVEL;
 
                     Difficulty difficulty = m_caster->GetMap()->GetDifficulty();
@@ -5201,8 +5198,6 @@ SpellCastResult Spell::CheckCast(bool strict)
         // Possible Unit-target for the spell
         Unit* expectedTarget = GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex(i));
 
-		uint32 target_level = sObjectMgr.getLevelScaled(m_caster, expectedTarget);
-
         switch (m_spellInfo->EffectApplyAuraName[i])
         {
             case SPELL_AURA_MOD_POSSESS:
@@ -5224,7 +5219,7 @@ SpellCastResult Spell::CheckCast(bool strict)
 					if (expectedTarget->HasCharmer())
 						return SPELL_FAILED_CHARMED;
 
-					if (int32(target_level) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
+					if (int32(expectedTarget->GetLevelForTarget(m_caster)) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
 						return SPELL_FAILED_HIGHLEVEL;
 				}
                 break;
@@ -5248,7 +5243,7 @@ SpellCastResult Spell::CheckCast(bool strict)
 					if (expectedTarget->HasCharmer())
 						return SPELL_FAILED_CHARMED;
 
-					if (int32(target_level) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
+					if (int32(expectedTarget->GetLevelForTarget(m_caster)) > CalculateDamage(SpellEffectIndex(i), expectedTarget))
 						return SPELL_FAILED_HIGHLEVEL;
 				}
                 break;
