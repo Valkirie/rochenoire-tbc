@@ -134,9 +134,7 @@ namespace MaNGOS
             if (target->IsTotem() || target->IsPet() || target->IsNoXp() || target->IsCritter())
                 return 0;
 
-			/* If Creature is scalable, we use it's level */
-			uint32 target_level = sObjectMgr.getLevelScaled((Unit*)unit, target);
-            uint32 xp_gain = BaseGain(unit->getLevel(), target_level, GetContentLevelsForMapAndZone(unit->GetMapId(), unit->GetZoneId()));
+            uint32 xp_gain = BaseGain(unit->getLevel(), target->GetLevelForTarget(unit), GetContentLevelsForMapAndZone(unit->GetMapId(), unit->GetZoneId()));
             if (xp_gain == 0)
                 return 0;
 
@@ -167,7 +165,7 @@ namespace MaNGOS
 			case 3:
 			case 4:
 			case 5:
-				return (float)count * xp_group;
+				return 1 + ((float)count * xp_group);
 			}
 		}
     }
