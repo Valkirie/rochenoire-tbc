@@ -872,6 +872,7 @@ struct CleanDamage
         damage(_damage), attackType(_attackType), hitOutCome(_hitOutCome) {}
 
     uint32 damage; // only used for rage generation
+    bool isScaled;
     WeaponAttackType attackType;
     MeleeHitOutcome hitOutCome;
 };
@@ -1643,7 +1644,7 @@ class Unit : public WorldObject
         static uint32 DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss, Spell* spell = nullptr, bool isScaled = false);
         int32 DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical = false, bool isScaled = false);
         static void Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEntry const* spellProto, bool durabilityLoss, bool duel_hasEnded);
-        static void HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool duel_hasEnded);
+        static void HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool duel_hasEnded, bool isScaled = false);
         void InterruptOrDelaySpell(Unit* pVictim, DamageEffectType damagetype);
 
         void PetOwnerKilledUnit(Unit* pVictim);

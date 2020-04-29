@@ -3377,9 +3377,9 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     // found spelldamage coefficients of 0.381% per 0.1 speed and 15.244 per 4.0 speed
                     // but own calculation say 0.385 gives at most one point difference to published values
 					int32 DoneTotal = m_caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(m_spellInfo));
-					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal, false);
+					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal);
 					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
-					TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal, false); // inverted owner and target
+					TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal); // inverted owner and target
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.
@@ -3798,7 +3798,8 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
-    int32 original_damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, !isScaled); // inverted owner and target
+    bool invertedScaled = !isScaled;
+    int32 original_damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, invertedScaled); // inverted owner and target
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &original_damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
@@ -4091,7 +4092,8 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     if (m_caster->IsAlive())
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
-        heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, !isScaled); // inverted owner and target
+        bool invertedScaled = !isScaled;
+        heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, invertedScaled); // inverted owner and target
         m_caster->DealHeal(m_caster, heal, m_spellInfo);
     }
 }

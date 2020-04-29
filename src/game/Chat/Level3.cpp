@@ -3085,15 +3085,15 @@ bool ChatHandler::HandleDieCommand(char* args)
             DamageEffectType damageType = DIRECT_DAMAGE;
             uint32 absorb = 0;
             uint32 damage = target->GetHealth();
-            Unit::DealDamageMods(player, target, damage, &absorb, damageType);
-            Unit::DealDamage(player, target, damage, nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+            Unit::DealDamageMods(player, target, damage, &absorb, damageType, nullptr, true);
+            Unit::DealDamage(player, target, damage, nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false, nullptr, true);
         }
     }
     else
     {
         if (target->IsAlive())
         {
-            Unit::DealDamage(player, target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+            Unit::DealDamage(player, target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false, nullptr, true);
         }
     }
 

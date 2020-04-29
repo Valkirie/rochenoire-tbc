@@ -1367,7 +1367,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	return armor;
 }
 
-float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool isScaled) const
+float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled) const
 {
 	if (olddamage <= 1)
 		return olddamage;
@@ -1479,6 +1479,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool is
 		damage = damage_scaled;
 	}
 
+    isScaled = true;
 	return ceil(damage);
 }
 

@@ -802,7 +802,8 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
 
 	if (cleanDamage)
 	{
-		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, isScaled);
+        bool cleanDamageScaled = isScaled;
+		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled);
 		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
 	}
 
@@ -902,7 +903,7 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
     if (health <= damage)
         Kill(dealer, victim, damagetype, spellProto, durabilityLoss, duel_hasEnded);
     else                                                    // if (health <= damage)
-        HandleDamageDealt(dealer, victim, damage, cleanDamage, damagetype, damageSchoolMask, spellProto, duel_hasEnded);
+        HandleDamageDealt(dealer, victim, damage, cleanDamage, damagetype, damageSchoolMask, spellProto, duel_hasEnded, isScaled);
 
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageEnd returned %d damage", damage);
 
@@ -1086,7 +1087,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     victim->CombatStop();
 }
 
-void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool duel_hasEnded)
+void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool duel_hasEnded, bool isScaled)
 {
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageAlive");
 
@@ -1098,7 +1099,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
             !spellProto->HasAttribute(SPELL_ATTR_EX_NO_THREAT))) && dealer->CanEnterCombat() && victim->CanEnterCombat())
         {
             float threat = damage * sSpellMgr.GetSpellThreatMultiplier(spellProto);
-            victim->AddThreat(dealer, threat, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
+            victim->AddThreat(dealer, threat, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto, isScaled);
             if (damagetype != DOT) // DOTs dont put in combat but still cause threat
             {
                 dealer->SetInCombatWith(victim);
@@ -2364,8 +2365,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
                 break;
         }
 
-		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
+		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
 
 		// currentAbsorb - damage can be absorbed by shield
 		// If need absorb less damage
@@ -2426,7 +2427,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 		int32 currentAbsorb;
 		int32 s_currentAbsorb;
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
 		if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 		{
 			currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -2482,7 +2483,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 			int32 currentAbsorb;
 			int32 s_currentAbsorb;
-			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
+			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
 			if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 			{
 				currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -3951,7 +3952,6 @@ float Unit::CalculateSpellMissChance(const Unit* victim, SpellSchoolMask schoolM
     // Level difference: positive adds to miss chance, negative substracts
     const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
     int32 difference = int32(victim->GetLevelForTarget(this) - GetLevelForTarget(victim));
-	difference = sObjectMgr.getLevelDiff((Unit*)this, (Unit*)victim);
     // Level difference factor: 1% per level
     uint8 factor = 1;
     // NPCs and players gain additional bonus to incoming spell hit chance reduction based on positive level difference
@@ -7261,7 +7261,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, ui
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, false);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     float tmpDamage = (int32(pdamage) + DoneTotal * int32(stack)) * DoneTotalMod;
     // apply spellmod to Done damage (flat and pct)
@@ -7333,7 +7333,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     if (caster)
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        TakenTotal = sObjectMgr.ScaleDamage(caster, caster, TakenTotal, false); // inverted owner and target
+        TakenTotal = sObjectMgr.ScaleDamage(caster, caster, TakenTotal); // inverted owner and target
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7472,7 +7472,7 @@ uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellEntry const* spellProto, i
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, false);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     // use float as more appropriate for negative values and percent applying
     float heal = (healamount + DoneTotal * int32(stack)) * DoneTotalMod;
@@ -7548,7 +7548,7 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-	TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal, false); // inverted owner and target
+	TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal); // inverted owner and target
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -7877,7 +7877,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     {
         // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
         DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneFlat, APbonus, damagetype, true);
-		DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, false);
+		DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
     }
     // weapon damage based spells
     else if (isWeaponDamageBasedSpell && (APbonus || DoneFlat))
@@ -8023,7 +8023,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-	TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat, false); // inverted owner and target
+	TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat); // inverted owner and target
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
