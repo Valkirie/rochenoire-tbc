@@ -262,33 +262,6 @@ MaxWhoListReturns = 49
 #        Default: 15 (2.4)
 #                 0  (1.2)
 #
-#    Rochenoire.Scaling.MinLevel.Player
-#        Minimum player level for the content scaling to enable
-#        Default: 10
-#
-#    Rochenoire.Scaling.MinLevel.Creature
-#        Minimum creature level for the scaling to enable
-#        Default: 1
-#
-#    Rochenoire.Scaling.MinLevel.Expansion
-#        Minimum player level for the expansion content scaling to enable
-#        Default: 60
-#
-#    Rochenoire.Scaling.Dungeons.Enabled
-#        Enable/Disable dungeons level scaling
-#        Default: 1 (enable)
-#                 0 (disable)
-#
-#    Rochenoire.Scaling.Raids.Upscale
-#        Enable/Disable raids level upscaling
-#        Default: 1 (enable)
-#                 0 (disable)
-#
-#    Rochenoire.Scaling.Raids.Downscaled
-#        Enable/Disable raids level downscaling
-#        Default: 0 (disable)
-#                 1 (enable)
-#
 #    Rochenoire.Scaling.PvP.Enabled
 #        Enable/Disable PvP level downscaling
 #        Default: 0 (disable)
@@ -341,12 +314,6 @@ MaxWhoListReturns = 49
 ###################################################################################################################
 
 WowPatch = 15
-Rochenoire.Scaling.MinLevel.Player = 10
-Rochenoire.Scaling.MinLevel.Creature = 1
-Rochenoire.Scaling.MinLevel.Expansion = 60
-Rochenoire.Scaling.Dungeons.Enabled = 1
-Rochenoire.Scaling.Raids.Upscale = 1
-Rochenoire.Scaling.Raids.Downscale = 0
 Rochenoire.Scaling.PvP.Enabled = 0
 Rochenoire.Rate.Drop.Item.Group = 0.5
 Rochenoire.Rate.XP.Group = 0.5
