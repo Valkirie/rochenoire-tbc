@@ -9567,7 +9567,7 @@ void Unit::SetLevel(uint32 lvl)
         ((Player*)this)->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_LEVEL);
 }
 
-bool Unit::hasAdequateLevel(uint32 AreaID) const
+bool Unit::hasZoneLevel(uint32 AreaID) const
 {
     uint32 Id = AreaID != 0 ? AreaID : GetTerrain() ? GetZoneId() : 0;
 

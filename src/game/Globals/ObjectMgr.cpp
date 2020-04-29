@@ -1002,9 +1002,6 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	else
 		return false;
 
-    if (!player->hasAdequateLevel())
-        return false;
-
 	if (creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
 		return false;
 
@@ -1282,44 +1279,25 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	int v_level   = creature->GetLevelVar();
 
     if (owner->IsCreature())
+    {
+        if (!player->hasZoneLevel())
+        {
+            uint32 AreaID = player->GetTerrain() ? player->GetZoneId() : 0;
+            if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(AreaID))
+            {
+                uint32 LevelRangeMin = thisZone->LevelRangeMin;
+                uint32 LevelRangeMax = thisZone->LevelRangeMax;
+                p_level = player->getLevel() > LevelRangeMax ? LevelRangeMax : LevelRangeMin;
+            }
+        }
+
         p_level += creature->IsWorldBoss() ? sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : v_level;
+    }
 
 	if (p_level > sWorld.GetCurrentMaxLevel())
         p_level = sWorld.GetCurrentMaxLevel();
 
 	return p_level;
-}
-
-int32 ObjectMgr::getLevelDiff(Unit *owner, Unit *target) const
-{
-    owner = owner ? owner->GetBeneficiary() : owner;
-    target = target ? target->GetBeneficiary() : target;
-
-    if (!owner || !target)
-		return 0;
-
-    int32 diff = target->GetLevelForTarget(owner) - owner->GetLevelForTarget(target);
-
-    if (!IsScalable(owner, target))
-        return diff;
-
-	Creature* creature;
-	Player* player;
-
-	if (owner->IsCreature() && target->IsPlayer())
-	{
-		creature = (Creature *)owner;
-		player = (Player *)target;
-	}
-	else if (target->IsCreature() && owner->IsPlayer())
-	{
-		player = (Player *)owner;
-		creature = (Creature *)target;
-	}
-	else
-		return diff;
-
-	return (int32)(getLevelScaled(target, owner) - player->getLevel());
 }
 
 uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const

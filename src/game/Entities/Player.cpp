@@ -13245,7 +13245,7 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
 		return
 		(
 			(pQuest->IsSpecificQuest() && getLevel() + highLevelDiff >= pQuest->GetMinLevel()) ||
-			(!pQuest->IsSpecificQuest() && hasAdequateLevel(pQuest->GetZoneOrSort()))
+			(!pQuest->IsSpecificQuest() && hasZoneLevel(pQuest->GetZoneOrSort()))
 		);
     /*{
         int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
@@ -13906,7 +13906,7 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
 	if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
-        (!qInfo->IsSpecificQuest() && !hasAdequateLevel(qInfo->GetZoneOrSort())))
+        (!qInfo->IsSpecificQuest() && !hasZoneLevel(qInfo->GetZoneOrSort())))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);

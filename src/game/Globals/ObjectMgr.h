@@ -1258,7 +1258,6 @@ class ObjectMgr
 		float ScaleDamage(Unit *owner, Unit *target, float damage, bool isScaled = false) const;
 		uint32 ScaleArmor(Unit *owner, Unit *target, uint32 armor) const;
 		uint32 getLevelScaled(Unit *owner, Unit *target) const;
-		int32 getLevelDiff(Unit *owner, Unit *target) const;
 		float ScaleGold(uint32 in_level, uint32 out_level, uint32 gold, bool min = true) const;
 		bool IsScalable(Unit *owner, Unit *target) const;
 

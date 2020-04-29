@@ -217,7 +217,7 @@ uint32 Quest::XPValue(Player* pPlayer) const
 int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 {
 	int32 sRewOrReqMoney = RewOrReqMoney;
-	if (pPlayer && pPlayer->hasAdequateLevel(GetZoneOrSort()))
+	if (pPlayer && pPlayer->hasZoneLevel(GetZoneOrSort()))
 	{
 		/* if (RewOrReqMoney <= 0)
 			return RewOrReqMoney; */
@@ -235,7 +235,7 @@ int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 
 uint32 Quest::GetRewMoneyMaxLevel(Player *pPlayer) const
 {
-    if (pPlayer && pPlayer->hasAdequateLevel(GetZoneOrSort()))
+    if (pPlayer && pPlayer->hasZoneLevel(GetZoneOrSort()))
 	{
 		uint32 pQuest_slevel = pPlayer->getLevel() + (GetQuestLevel() - GetMinLevel());
 

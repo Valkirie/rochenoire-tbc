@@ -2808,7 +2808,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         bool canKeep = false;
 
         if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
-            canKeep = uCaster->hasAdequateLevel();
+            canKeep = uCaster->hasZoneLevel();
         else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
             canKeep = true;
         else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells

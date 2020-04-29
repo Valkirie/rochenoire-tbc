@@ -1791,7 +1791,7 @@ void GameObject::Use(Unit* user)
 
             // required lvl checks!
             uint8 level = player->getLevel();
-			if (!player->hasAdequateLevel(info->meetingstone.areaID))
+			if (!player->hasZoneLevel(info->meetingstone.areaID))
 				return;
 			/*
 			if (level < info->meetingstone.minLevel || level > info->meetingstone.maxLevel)
