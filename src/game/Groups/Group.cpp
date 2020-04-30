@@ -509,7 +509,7 @@ static void GetDataForXPAtKill_helper(Player* player, Unit const* victim, uint32
         member_with_max_level = player;
 
     uint32 gray_level = MaNGOS::XP::GetGrayLevel(player->getLevel());
-    if (victim->getLevel() > gray_level && (!not_gray_member_with_max_level
+    if (victim->GetLevelForTarget(player) > gray_level && (!not_gray_member_with_max_level
                                             || not_gray_member_with_max_level->getLevel() < player->getLevel()))
         not_gray_member_with_max_level = player;
 }
@@ -1429,7 +1429,7 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
 			pGroupGuy->RewardReputation(creatureVictim, is_dungeon ? 1.0f : 1.0f / count);
 
             // XP updated only for alive group member
-			if (pGroupGuy->IsAlive() && not_gray_member_with_max_level)// && pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
+			if (pGroupGuy->IsAlive() && not_gray_member_with_max_level && pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
 			{
 				float itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? xp * rate : (xp * rate * 0.5f) + 1.0f;
 

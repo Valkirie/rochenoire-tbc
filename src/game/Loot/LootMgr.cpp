@@ -1842,8 +1842,8 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
             }
 
             // Generate extra money for pick pocket loot
-            const uint32 a = urand(0, creature->getLevel() / 2);
-            const uint32 b = urand(0, player->getLevel() / 2);
+            const uint32 a = urand(0, creature->GetLevelForTarget(player) / 2);
+            const uint32 b = urand(0, player->GetLevelForTarget(creature) / 2);
             m_gold = uint32(10 * (a + b) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY));
 
             break;
