@@ -908,9 +908,9 @@ struct CalcDamageInfo
 // Spell damage info structure based on structure sending in SMSG_SPELLNONMELEEDAMAGELOG opcode
 struct SpellNonMeleeDamage
 {
-    SpellNonMeleeDamage(Unit* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr)
+    SpellNonMeleeDamage(Unit* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr, bool _isScaled = false)
         : target(_target), attacker(_attacker), SpellID(_SpellID), damage(0), schoolMask(_schoolMask),
-          absorb(0), resist(0), periodicLog(false), unused(false), blocked(0), HitInfo(0), spell(_spell)
+          absorb(0), resist(0), periodicLog(false), unused(false), blocked(0), HitInfo(0), spell(_spell), isScaled(_isScaled)
     {}
 
     Unit*   target;
@@ -1858,7 +1858,7 @@ class Unit : public WorldObject
         bool isInAccessablePlaceFor(Unit const* unit) const;
 
         void EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 damage, Powers powerType, bool isScaled = false);
-        uint32 SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage);
+        uint32 SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage, bool isScaled = false);
 
         SpellCastResult CastSpell(Unit* Victim, uint32 spellId, uint32 triggeredFlags, Item* castItem = nullptr, Aura* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
         SpellCastResult CastSpell(Unit* Victim, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem = nullptr, Aura* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);

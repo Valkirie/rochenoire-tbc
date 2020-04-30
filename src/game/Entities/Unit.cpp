@@ -765,8 +765,9 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         return;
     }
 
+    bool invertedScaled = !isScaled;
     uint32 scaled_damage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled);
-    uint32 originalDamage = damage;
+    uint32 originalDamage = sObjectMgr.ScaleDamage(victim, dealer, damage, invertedScaled); // inverted owner and target
 
     if (dealer) // dealer is optional
     {
@@ -1570,13 +1571,13 @@ SpellCastResult Unit::CastSpell(SpellCastTargets& targets, SpellEntry const* spe
 }
 
 // Obsolete func need remove, here only for comotability vs another patches
-uint32 Unit::SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage)
+uint32 Unit::SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage, bool isScaled)
 {
     SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellID);
-    SpellNonMeleeDamage spellDamageInfo(this, pVictim, spellInfo->Id, SpellSchoolMask(spellInfo->SchoolMask));
+    SpellNonMeleeDamage spellDamageInfo(this, pVictim, spellInfo->Id, SpellSchoolMask(spellInfo->SchoolMask), nullptr, isScaled);
     CalculateSpellDamage(&spellDamageInfo, damage, spellInfo);
     spellDamageInfo.target->CalculateAbsorbResistBlock(this, &spellDamageInfo, spellInfo);
-    Unit::DealDamageMods(this, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE);
+    Unit::DealDamageMods(this, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, nullptr, spellDamageInfo.isScaled);
     SendSpellNonMeleeDamageLog(&spellDamageInfo);
     DealSpellDamage(&spellDamageInfo, true);
     return spellDamageInfo.damage;
