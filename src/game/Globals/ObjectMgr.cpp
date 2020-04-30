@@ -1002,7 +1002,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	else
 		return false;
 
-	if (creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
+	if (!player->isGameMaster() && creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
 		return false;
 
 	// Check creatures flags_extra for disable block
