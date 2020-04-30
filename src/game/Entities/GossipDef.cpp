@@ -181,7 +181,7 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Playe
 
         data << uint32(questID);
         data << uint32(qItem.m_qIcon);
-		if (!pQuest->IsSpecificQuest() && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+		if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
 			data << uint32(pQuest_slevel);
 		else
 			data << uint32(pQuest->GetQuestLevel());
@@ -319,7 +319,7 @@ void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title
 
             data << uint32(questID);
             data << uint32(qmi.m_qIcon);
-            if (!pQuest->IsSpecificQuest() && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+            if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
 				data << uint32(pQuest_slevel);
 			else
 				data << uint32(pQuest->GetQuestLevel());
@@ -484,7 +484,7 @@ void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQue
 
     data << uint32(pQuest->GetQuestId());                   // quest id
     data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
-    if (!pQuest->IsSpecificQuest() && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+    if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
 		data << uint32(pQuest_slevel);
 	else
 		data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
