@@ -6997,7 +6997,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
         std::string current_zone_name = zone->area_name[GetSession()->GetSessionDbcLocale()];
         if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(newZone))
         {
-            GetSession()->SendNotification("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+            GetSession()->SendAreaTriggerMessage("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
             ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
         }
         else
