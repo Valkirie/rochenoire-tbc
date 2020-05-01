@@ -1765,7 +1765,7 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 				if (sObjectMgr.IsScalable(creature, player))
 				{
 					uint32 mob_level = creature->getLevel();
-					uint32 player_level = player->getLevel();
+					uint32 avg_level = player->getLevel();
 
 					if (Group const* grp = player->GetGroup())
 					{
@@ -1773,13 +1773,12 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 						{
 							if (Player* pl = itr->getSource())
 								if (pl != player && IsEligibleForLoot(pl, creature))
-									player_level += pl->getLevel();
+                                    avg_level += pl->getLevel();
 						}
-						player_level /= grp->GetMembersCount();
+                        avg_level /= grp->GetMembersCount();
 					}
 
-					mingold = sObjectMgr.ScaleGold(mob_level, player_level, mingold, true);
-					maxgold = sObjectMgr.ScaleGold(mob_level, player_level, maxgold, false);
+					sObjectMgr.ScaleGold(mob_level, avg_level, mingold, maxgold);
 
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 					{
@@ -1957,7 +1956,7 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 
 					uint32 loot_level = 1;
 					uint32 loot_count = 1;
-					uint32 player_level = player->getLevel();
+					uint32 avg_level = player->getLevel();
 
 					if (Group const* grp = player->GetGroup())
 					{
@@ -1965,9 +1964,9 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 						{
 							if (Player * pl = itr->getSource())
 								if (pl != player && IsEligibleForLoot(pl, gameObject))
-									player_level += pl->getLevel();
+                                    avg_level += pl->getLevel();
 						}
-						player_level /= grp->GetMembersCount();
+                        avg_level /= grp->GetMembersCount();
 					}
 
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
@@ -1983,8 +1982,7 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 
 					loot_level /= loot_count;
 
-					mingold = sObjectMgr.ScaleGold(loot_level, player_level, mingold, true);
-					maxgold = sObjectMgr.ScaleGold(loot_level, player_level, maxgold, false);
+					sObjectMgr.ScaleGold(loot_level, avg_level, mingold, maxgold);
 
 					GenerateMoneyLoot(mingold, maxgold);
 
@@ -2105,9 +2103,8 @@ Loot::Loot(Player* player, Item* item, LootType type) :
         default:
             FillLoot(item->GetEntry(), LootTemplates_Item, player, true, item->GetProto()->MaxMoneyLoot == 0);
 
-			uint32 item_level = item->GetProto()->RequiredLevel;
-			item_level = item_level == 0 ? item->GetProto()->ItemLevel : item_level;
-			uint32 player_level = player->getLevel();
+			uint32 item_level = item->GetProto()->RequiredLevel != 0 ? item->GetProto()->RequiredLevel : item->GetProto()->ItemLevel;
+			uint32 avg_level = player->getLevel();
 
 			if (Group const* grp = player->GetGroup())
 			{
@@ -2115,16 +2112,15 @@ Loot::Loot(Player* player, Item* item, LootType type) :
 				{
 					if (Player * pl = itr->getSource())
 						if (pl != player && IsEligibleForLoot(pl, player))
-							player_level += pl->getLevel();
+                            avg_level += pl->getLevel();
 				}
-				player_level /= grp->GetMembersCount();
+                avg_level /= grp->GetMembersCount();
 			}
 
 			uint32 mingold = item->GetProto()->MinMoneyLoot;
 			uint32 maxgold = item->GetProto()->MaxMoneyLoot;
 
-			mingold = sObjectMgr.ScaleGold(item_level, player_level, mingold, true);
-			maxgold = sObjectMgr.ScaleGold(item_level, player_level, maxgold, false);
+            sObjectMgr.ScaleGold(item_level, avg_level, mingold, maxgold);
 
             GenerateMoneyLoot(mingold, maxgold);
 
