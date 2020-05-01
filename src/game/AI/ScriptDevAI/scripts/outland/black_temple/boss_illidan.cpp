@@ -511,6 +511,26 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         }
     }
 
+    uint32 GetSubsequentActionTimer(IllidanActions id)
+    {
+        switch (id)
+        {
+            case ILLIDAN_ACTION_TRANSFORM: return 60000u;
+            case ILLIDAN_ACTION_TRAP: return 45000u;
+            case ILLIDAN_ACTION_FLAME_BURST: return 20000u;
+            case ILLIDAN_ACTION_SHADOW_BLAST: return 2500u;
+            case ILLIDAN_ACTION_AGONISING_FLAMES: return 24000u;
+            case ILLIDAN_ACTION_EYE_BLAST: return urand(37000, 65000);
+            case ILLIDAN_ACTION_DARK_BARRAGE: return urand(43000, 60000);
+            case ILLIDAN_ACTION_FIREBALL: return urand(2500, 3000);
+            case ILLIDAN_ACTION_SHADOW_FIEND: return 25000u;
+            case ILLIDAN_ACTION_FLAME_CRASH: return urand(26000, 35000);
+            case ILLIDAN_ACTION_SHEAR: return urand(12000, 15000);
+            case ILLIDAN_ACTION_DRAW_SOUL: return 32000u;
+        default: return 0;
+        }
+    }
+
     void GetAIInformation(ChatHandler& reader) override
     {
         reader.PSendSysMessage("Boss Illidan, current uiPhase = %u", m_phase);
@@ -1236,7 +1256,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             case ILLIDAN_ACTION_TRAP:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_CAGE_TRAP) == CAST_OK)
-                    ResetCombatAction(action, 45000u);
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_TRAP));
                 return;
             }
             case ILLIDAN_ACTION_ENRAGE:
@@ -1250,33 +1270,41 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             }
             case ILLIDAN_ACTION_SHADOW_DEMON:
             {
-                if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_SHADOW_DEMONS) == CAST_OK)
+                uint32 AMOUNT_DEMONS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 4);
+                float fX, fY, fZ;
+                for (uint8 i = 0; i < AMOUNT_DEMONS; ++i)
+                {
+                    m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 5.0f, M_PI_F / 4 * i);
+                    m_creature->SummonCreature(NPC_SHADOW_DEMON, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+                }
+                /* Note: normally handled by SPELL_SUMMON_SHADOW_DEMONS (summon 4 adds)
+                if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_SHADOW_DEMONS) == CAST_OK) */
                     DisableCombatAction(action);
                 return;
             }
             case ILLIDAN_ACTION_FLAME_BURST:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_FLAME_BURST) == CAST_OK)
-                    ResetCombatAction(action, 20000u);
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_FLAME_BURST));
                 return;
             }
             case ILLIDAN_ACTION_SHADOW_BLAST:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SHADOW_BLAST) == CAST_OK)
-                    ResetCombatAction(action, 2500u);
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_SHADOW_BLAST));
                 return;
             }
             case ILLIDAN_ACTION_AGONISING_FLAMES:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_AGONIZING_FLAMES) == CAST_OK)
-                    ResetCombatAction(action, 24000u);
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_AGONISING_FLAMES));
                 return;
             }
             case ILLIDAN_ACTION_EYE_BLAST:
             {
                 if (DoCastEyeBlastIfCan())
                 {
-                    ResetCombatAction(action, urand(37000, 65000));
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_EYE_BLAST));
                     ResetCombatAction(ILLIDAN_ACTION_FIREBALL, 15000u);     // Check this
                 }
                 return;
@@ -1285,14 +1313,14 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_DARK_BARRAGE) == CAST_OK)
-                        ResetCombatAction(action, urand(43000, 60000));
+                        ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_DARK_BARRAGE));
                 return;
             }
             case ILLIDAN_ACTION_FIREBALL:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_FIREBALL) == CAST_OK)
-                        ResetCombatAction(action, urand(2500, 3000));
+                        ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_FIREBALL));
                 return;
             }
 #ifndef NO_SHADOWFIEND
@@ -1300,28 +1328,28 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_PARASITIC_SHADOWFIEND, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_PARASITIC_SHADOWFIEND) == CAST_OK)
-                        ResetCombatAction(action, 25000u);
+                        ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_SHADOW_FIEND));
                 return;
             }
 #endif // !NO_SHEAR
             case ILLIDAN_ACTION_FLAME_CRASH:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FLAME_CRASH) == CAST_OK)
-                    ResetCombatAction(action, urand(26000, 35000));
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_FLAME_CRASH));
                 return;
             }
 #ifndef NO_SHEAR
             case ILLIDAN_ACTION_SHEAR:
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SHEAR) == CAST_OK)
-                    ResetCombatAction(action, urand(12000, 15000));
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_SHEAR));
                 return;
             }
 #endif // !NO_SHEAR
             case ILLIDAN_ACTION_DRAW_SOUL:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_DRAW_SOUL) == CAST_OK)
-                    ResetCombatAction(action, 32000u);
+                    ResetCombatAction(action, GetSubsequentActionTimer(ILLIDAN_ACTION_DRAW_SOUL));
                 return;
             }
         }
@@ -1363,8 +1391,9 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
         AddCombatAction(AKAMA_ACTION_HEAL, 0u);
         AddCustomAction(AKAMA_SUMMON_ILLIDARI, true, [&]()
         {
-            for (const Locations& aIllidariElitesPo : aIllidariElitesPos)
-                m_creature->SummonCreature(NPC_ILLIDARI_ELITE, aIllidariElitesPo.fX, aIllidariElitesPo.fY, aIllidariElitesPo.fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+            uint32 ILLIDARI_ELITES = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_ILLIDARI_ELITES);
+            for (uint8 i = 0; i < ILLIDARI_ELITES; ++i)
+                m_creature->SummonCreature(NPC_ILLIDARI_ELITE, aIllidariElitesPos[i].fX, aIllidariElitesPos[i].fY, aIllidariElitesPos[i].fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 
             ResetTimer(AKAMA_SUMMON_ILLIDARI, urand(35000, 50000));
         });
@@ -2055,7 +2084,7 @@ struct npc_flame_of_azzinothAI : public CombatAI
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_FLAME_BLAST) == CAST_OK)
                 {
-                    ResetCombatAction(action, 10000);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_FLAME_BLAST));
                     ResetCombatAction(FLAME_ACTION_SUMMON_BLAZE, 1000);
                 }
                 return;
@@ -2073,7 +2102,7 @@ struct npc_flame_of_azzinothAI : public CombatAI
                 {
                     if (DoCastSpellIfCan(target, SPELL_CHARGE) == CAST_OK)
                     {
-                        ResetCombatAction(action, 5000);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, SPELL_CHARGE));
                         Enrage();
                     }
                 }
