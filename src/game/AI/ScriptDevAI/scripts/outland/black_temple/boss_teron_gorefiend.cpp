@@ -134,10 +134,10 @@ struct boss_teron_gorefiendAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case GOREFIEND_ACTION_DOOM_BLOSSOM: return 35000;
-            case GOREFIEND_ACTION_INCINERATE: return urand(20000, 50000);
-            case GOREFIEND_ACTION_SHADOW_OF_DEATH: return urand(30000, 50000);
-            case GOREFIEND_ACTION_CRUSHING_SHADOWS: return urand(10000, 26000);
+            case GOREFIEND_ACTION_DOOM_BLOSSOM: return sObjectMgr.GetScaleSpellTimer(m_creature, 35000u, SPELL_SUMMON_DOOM_BLOSSOM);
+            case GOREFIEND_ACTION_INCINERATE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 50000), SPELL_INCINERATE);
+            case GOREFIEND_ACTION_SHADOW_OF_DEATH: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 50000), SPELL_SHADOW_OF_DEATH);
+            case GOREFIEND_ACTION_CRUSHING_SHADOWS: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 26000), SPELL_CRUSHING_SHADOWS);
             default: return 0;
         }
     }
@@ -309,7 +309,7 @@ struct npc_doom_blossomAI : public ScriptedAI, public TimerManager
         {
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_SHADOW_BOLT, SELECT_FLAG_PLAYER))
                 DoCastSpellIfCan(target, SPELL_SHADOW_BOLT);
-            ResetTimer(0, 1200);
+            ResetTimer(0, sObjectMgr.GetScaleSpellTimer(m_creature, 1200u, SPELL_SHADOW_BOLT));
         });
         SetCombatMovement(false);
     }
@@ -395,7 +395,7 @@ struct npc_shadow_constructAI : public ScriptedAI, public TimerManager
         {
             m_atrophyTimer = 0;
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ATROPHY) == CAST_OK)
-                m_atrophyTimer = 2500;
+                m_atrophyTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 2500u, SPELL_ATROPHY);
         }
         else m_atrophyTimer -= diff;
 
@@ -436,14 +436,27 @@ struct ShadowOfDeath : public AuraScript
         if (!apply)
         {
             Unit* target = aura->GetTarget();
+            Unit* caster = aura->GetCaster();
             target->DeleteThreatList();
-            aura->GetCaster()->AddThreat(target);
+            caster->AddThreat(target);
             target->getHostileRefManager().setOnlineOfflineState(false);
             target->CastSpell(nullptr, SPELL_SUMMON_SPIRIT, TRIGGERED_NONE); // Summon Spirit
-            target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_1, TRIGGERED_NONE); // Summon Skeleton
-            target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_2, TRIGGERED_NONE); // Summon Skeleton
-            target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_3, TRIGGERED_NONE); // Summon Skeleton
-            target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_4, TRIGGERED_NONE); // Summon Skeleton
+
+            uint32 m_auiSpellSummon = caster->GetMap()->GetFinalNAdds(caster->GetRaidTanks(), 4);
+
+            switch (m_auiSpellSummon)
+            {
+                case 4:
+                    target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_4, TRIGGERED_NONE); // Summon Skeleton
+                case 3:
+                    target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_3, TRIGGERED_NONE); // Summon Skeleton
+                case 2:
+                    target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_2, TRIGGERED_NONE); // Summon Skeleton
+                case 1:
+                    target->CastSpell(nullptr, SPELL_SUMMON_SKELETON_1, TRIGGERED_NONE); // Summon Skeleton
+                    break;
+            }
+
             target->CastSpell(nullptr, SPELL_POSSESS_SPIRIT_IMMUNE, TRIGGERED_NONE); // Possess Spirit Immune
             target->CastSpell(nullptr, SPELL_SPIRITUAL_VENGEANCE, TRIGGERED_NONE); // Spiritual Vengeance
         }
