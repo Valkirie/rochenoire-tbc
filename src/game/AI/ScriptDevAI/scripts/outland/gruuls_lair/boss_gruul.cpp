@@ -156,7 +156,7 @@ struct boss_gruulAI : public ScriptedAI
                     if (DoCastSpellIfCan(nullptr, SPELL_GROWTH) == CAST_OK)
                     {
                         DoScriptText(EMOTE_GROW, m_creature);
-                        m_timers[GRUUL_ACTION_GROW] = 30000;
+                        m_timers[GRUUL_ACTION_GROW] = sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_GROWTH);
                         m_actionReadyStatus[i] = false;
                         return;
                     }
@@ -172,7 +172,7 @@ struct boss_gruulAI : public ScriptedAI
                         m_meleeEnabled = false;
                         m_creature->MeleeAttackStop(m_creature->GetVictim());
                         m_creature->SetTarget(nullptr);
-                        m_timers[GRUUL_ACTION_GROUND_SLAM] = urand(70000, 80000);
+                        m_timers[GRUUL_ACTION_GROUND_SLAM] = sObjectMgr.GetScaleSpellTimer(m_creature, urand(70000, 80000), SPELL_GROUND_SLAM);
                         m_actionReadyStatus[i] = false;
                         m_actionReadyStatus[GRUUL_ACTION_SHATTER] = true; // top priority, blocked by stun
                         m_lookAround = true;
@@ -184,7 +184,7 @@ struct boss_gruulAI : public ScriptedAI
                 {
                     if (DoCastSpellIfCan(nullptr, SPELL_REVERBERATION) == CAST_OK)
                     {
-                        m_timers[GRUUL_ACTION_REVERBERATION] = urand(35000, 45000);
+                        m_timers[GRUUL_ACTION_REVERBERATION] = sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 45000), SPELL_REVERBERATION);
                         m_actionReadyStatus[i] = false;
                         return;
                     }
@@ -196,7 +196,7 @@ struct boss_gruulAI : public ScriptedAI
                     {
                         if (DoCastSpellIfCan(target, SPELL_CAVE_IN) == CAST_OK)
                         {
-                            m_timers[GRUUL_ACTION_CAVE_IN] = 8500;
+                            m_timers[GRUUL_ACTION_CAVE_IN] = sObjectMgr.GetScaleSpellTimer(m_creature, 8500u, SPELL_CAVE_IN);
                             m_actionReadyStatus[i] = false;
                             return;
                         }
@@ -207,7 +207,7 @@ struct boss_gruulAI : public ScriptedAI
                 {
                     if (DoCastSpellIfCan(nullptr, SPELL_HURTFUL_STRIKE) == CAST_OK)
                     {
-                        m_timers[GRUUL_ACTION_HURTFUL_STRIKE] = 8000;
+                        m_timers[GRUUL_ACTION_HURTFUL_STRIKE] = sObjectMgr.GetScaleSpellTimer(m_creature, 8000u, SPELL_HURTFUL_STRIKE);
                         m_actionReadyStatus[i] = false;
                         return;
                     }
