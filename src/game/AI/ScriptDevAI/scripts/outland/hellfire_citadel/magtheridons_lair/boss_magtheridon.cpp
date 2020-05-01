@@ -335,7 +335,7 @@ struct mob_hellfire_channelerAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiShadowGraspTimer        = 10000;
+        m_uiShadowGraspTimer        = 5000;
         m_uiShadowBoltVolleyTimer   = urand(8000, 10000);
         m_uiDarkMendingTimer        = 10000;
         m_uiFearTimer               = urand(15000, 20000);
@@ -383,8 +383,11 @@ struct mob_hellfire_channelerAI : public ScriptedAI
         {
             if (m_uiShadowGraspTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_GRASP_DUMMY) == CAST_OK)
-                    m_uiShadowGraspTimer = 0;
+                if (m_creature->isScaled())
+                    m_creature->InterruptNonMeleeSpells(false, SPELL_SHADOW_GRASP_DUMMY);
+                else
+                    DoCastSpellIfCan(m_creature, SPELL_SHADOW_GRASP_DUMMY);
+                    m_uiShadowGraspTimer = 5000;
             }
             else
                 m_uiShadowGraspTimer -= uiDiff;
