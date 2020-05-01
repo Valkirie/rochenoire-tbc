@@ -637,8 +637,11 @@ struct mob_ashtongue_channelerAI : public ScriptedAI
         {
             if (m_uiBanishTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL))
-                    m_uiBanishTimer = 0;
+                if (m_creature->isScaled())
+                    m_creature->InterruptNonMeleeSpells(false, SPELL_SHADE_SOUL_CHANNEL);
+                else
+                    DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL);
+                m_uiBanishTimer = 5000;
             }
             else
                 m_uiBanishTimer -= uiDiff;
@@ -693,7 +696,7 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
     npc_creature_generatorAI(Creature* creature) : ScriptedAI(creature), m_spawn(false), m_left(creature->GetPositionY() > 400.f)
     {
         m_instance = static_cast<instance_black_temple*>(creature->GetInstanceData());
-        AddCustomAction(0, true, [&] { m_spawn = true; });
+        AddCustomAction(0, true, [&] { m_spawn = true; m_uiSpawnTimer = 0; });
     }
 
     bool m_spawn;
@@ -701,9 +704,11 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
     GuidVector m_summoned;
     instance_black_temple* m_instance;
 
+    uint32 m_uiSpawnTimer;
+
     void Reset() override
     {
-
+        m_uiSpawnTimer = 0;
     }
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
@@ -737,8 +742,18 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
                     return;
 
         if (m_creature->IsSpellReady(SPELL_ASHTONGUE_WAVE_B))
-            if (DoCastSpellIfCan(nullptr, SPELL_ASHTONGUE_WAVE_B) == CAST_OK)
-                return;
+        {
+            /* Note: normally handled by SPELL_ASHTONGUE_WAVE_B(summon 3 adds)
+                NPC_ASH_ELEMENTAL = 23523
+                NPC_ASH_ROGUE = 23318
+                NPC_ASH_SPIRITBIND = 23524 */
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 3); ++i)
+            {
+                m_creature->SummonCreature(auiRandSpawnEntry[i], m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+            }
+            /* if (DoCastSpellIfCan(nullptr, SPELL_ASHTONGUE_WAVE_B) == CAST_OK)
+                return; */
+        }
 
         if (m_left)
             if (m_creature->IsSpellReady(SPELL_SUMMON_DEFENDER))
@@ -806,7 +821,15 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
         UpdateTimers(diff);
 
         if (m_spawn)
-            TrySummoning();
+        {
+            if (m_uiSpawnTimer < diff)
+            {
+                TrySummoning();
+                m_uiSpawnTimer = 35000;
+            }
+            else
+                m_uiSpawnTimer -= diff;
+        }
     }
 };
 
