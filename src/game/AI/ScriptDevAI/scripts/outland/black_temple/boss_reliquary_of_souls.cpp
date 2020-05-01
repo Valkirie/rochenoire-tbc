@@ -140,11 +140,14 @@ struct boss_reliquary_of_soulsAI : public Scripted_NoMovementAI, public TimerMan
         });
         AddCustomAction(RELIQUARY_ACTION_SUMMON_SOUL, 0u, [&]
         {
-            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
-            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
-            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
-            m_soulSummonedCount += 3;
-            if (m_soulSummonedCount < MAX_ENSLAVED_SOULS)
+            uint8 m_auiSpellSummonEnslavedSoul = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 3);
+            for (uint8 i = 0; i < m_auiSpellSummonEnslavedSoul; ++i)
+                DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
+
+            m_soulSummonedCount += m_auiSpellSummonEnslavedSoul;
+
+            uint8 ENSLAVED_SOULS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_ENSLAVED_SOULS);
+            if (m_soulSummonedCount < ENSLAVED_SOULS)
                 ResetTimer(RELIQUARY_ACTION_SUMMON_SOUL, 2400);
         });
         Reset();
@@ -255,7 +258,8 @@ struct boss_reliquary_of_soulsAI : public Scripted_NoMovementAI, public TimerMan
         ++m_soulDeathCount;
 
         // Prepare to summon the essence
-        if (m_soulDeathCount == MAX_ENSLAVED_SOULS)
+        uint8 ENSLAVED_SOULS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MAX_ENSLAVED_SOULS);
+        if (m_soulDeathCount == ENSLAVED_SOULS)
             ReduceTimer(RELIQUARY_ACTION_SUBMERGE, 4000);
     }
 
@@ -381,8 +385,8 @@ struct boss_essence_of_sufferingAI : public essence_base_AI
     {
         switch (id)
         {
-            case SUFFERING_ACTION_ENRAGE: return 45000;
-            case SUFFERING_ACTION_SOUL_DRAIN: return 22000;
+            case SUFFERING_ACTION_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, SPELL_ENRAGE);
+            case SUFFERING_ACTION_SOUL_DRAIN: return sObjectMgr.GetScaleSpellTimer(m_creature, 22000u, SPELL_SOUL_DRAIN);
             default: return 0;
         }
     }
@@ -487,9 +491,9 @@ struct boss_essence_of_desireAI : public essence_base_AI
     {
         switch (id)
         {
-            case DESIRE_ACTION_RUNE_SHIELD: return 15000;
-            case DESIRE_ACTION_DEADEN: return 30000;
-            case DESIRE_ACTION_SPIRIT_SHOCK: return 5000; // chain cast during tbc
+            case DESIRE_ACTION_RUNE_SHIELD: return sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, SPELL_RUNE_SHIELD);
+            case DESIRE_ACTION_DEADEN: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_DEADEN);
+            case DESIRE_ACTION_SPIRIT_SHOCK: return sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, SPELL_SPIRIT_SHOCK); // chain cast during tbc
             default: return 0;
         }
     }
@@ -621,8 +625,8 @@ struct boss_essence_of_angerAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case ANGER_ACTION_SOUL_SCREAM: return 10000;
-            case ANGER_ACTION_SPITE: return 20000;
+            case ANGER_ACTION_SOUL_SCREAM: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_SOUL_SCREAM);
+            case ANGER_ACTION_SPITE: return sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, SPELL_SPITE);
             default: return 0;
         }
     }
