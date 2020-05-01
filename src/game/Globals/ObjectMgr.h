@@ -222,7 +222,6 @@ typedef std::unordered_map<uint32, QuestLocale> QuestLocaleMap;
 typedef std::unordered_map<uint32, uint32> CreaturePoolMap;
 typedef std::unordered_map<uint32, ZoneFlex> ZoneFlexMap;
 typedef std::unordered_map<std::string, CreatureFlex> CreatureFlexMap;
-typedef std::unordered_map<std::string, SpellFlex> SpellFlexMap;
 typedef std::unordered_map<std::string, ItemLootScale> LootScaleMap;
 typedef std::unordered_map<uint32, ItemLootScale> LootScaleParentingMap;
 typedef std::unordered_map<uint32, NpcTextLocale> NpcTextLocaleMap;
@@ -716,7 +715,6 @@ class ObjectMgr
 		void LoadLootScale();
 		void LoadCreaturesScale();
         void LoadCreaturesPools();
-		void LoadFlexibleSpells();
         void LoadZoneScale();
         void LoadQuestLocales();
         void LoadGossipTextLocales();
@@ -929,13 +927,6 @@ class ObjectMgr
             if (itr == mCreaturePoolMap.end()) return 0;
             return itr->second;
         }
-
-		SpellFlex const* GetSpellFlex(std::string entry) const
-		{
-			SpellFlexMap::const_iterator itr = mSpellFlexMap.find(entry);
-			if (itr == mSpellFlexMap.end()) return nullptr;
-			return &itr->second;
-		}
 
         ZoneFlex const* GetZoneFlex(uint32 AreaID) const
         {
@@ -1415,7 +1406,6 @@ class ObjectMgr
 		LootScaleMap mLootScaleMap;
 	   	CreatureFlexMap mCreatureFlexMap;
         CreaturePoolMap mCreaturePoolMap;
-		SpellFlexMap mSpellFlexMap;
         ZoneFlexMap mZoneFlexMap;
 
 		LootScaleParentingMap mLootScaleParentingMap;

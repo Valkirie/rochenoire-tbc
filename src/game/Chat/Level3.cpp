@@ -851,14 +851,6 @@ bool ChatHandler::HandleReloadCreatureFlexCommand(char* /*args*/)
 	return true;
 }
 
-bool ChatHandler::HandleReloadSpellFlexCommand(char* /*args*/)
-{
-	sLog.outString("Re-Loading Spell Scaling Details ... ");
-	sObjectMgr.LoadFlexibleSpells();
-	SendSysMessage("DB table `scale_spell` reloaded.");
-	return true;
-}
-
 bool ChatHandler::HandleReloadZoneFlexCommand(char* /*args*/)
 {
     sLog.outString("Re-Loading Zone Scaling Details ... ");

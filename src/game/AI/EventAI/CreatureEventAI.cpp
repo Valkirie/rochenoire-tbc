@@ -50,27 +50,9 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
 	{
 		if (event.action[j].type == ACTION_T_CAST)
 		{
-            uint32 spellId = event.action[j].cast.spellId;
-            uint32 mapId = creature->GetMap()->GetId();
-            float CoeffSpellRatio = 1.0f;
-
             if (creature->GetMap() && creature->GetMap()->IsRaid())
             {
-                CoeffSpellRatio = sObjectMgr.GetSpellCoeffRatio(spellId);
-
-                if (SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId))
-                {
-                    std::string comment = std::string(creature->GetMap()->GetMapName()) + ": " + std::string(spellInfo->SpellName[0]) + " (" + std::string(creature->GetName()) + ")";
-                    std::string s = std::to_string(spellId) + ":" + std::to_string(mapId);
-
-                    if (SpellFlex const* s_values = sObjectMgr.GetSpellFlex(s))
-                    {
-                        WorldDatabase.PExecuteLog("UPDATE scale_spell SET comment = \"%s\", ratio_spell = '%f' WHERE s_entry = '%u' AND m_entry = '%u';", comment.c_str(), CoeffSpellRatio, spellId, mapId);
-                        CoeffSpellRatio = s_values->ratio_spell;
-                    }
-                    else
-                        WorldDatabase.PExecuteLog("INSERT IGNORE INTO scale_spell VALUES ('%u', '%u', '%f', \"%s\");", spellId, mapId, CoeffSpellRatio, comment.c_str());
-                }
+                uint32 spellId = event.action[j].cast.spellId;
 
                 repeatMin = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMin, spellId);
                 repeatMax = sObjectMgr.GetScaleSpellTimer(creature, event.timer.repeatMax, spellId);

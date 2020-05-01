@@ -679,7 +679,6 @@ ChatCommand* ChatHandler::getCommandTable()
 		
 		{ "scale_loot",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootScaleCommand,               "", nullptr },
 		{ "scale_creature",			     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureFlexCommand,            "", nullptr },
-		{ "scale_spell",				 SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellFlexCommand,               "", nullptr },
         { "scale_zone",				     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadZoneFlexCommand,                "", nullptr },
 
         { nullptr,                       0,                 false, nullptr,                                                  "", nullptr }

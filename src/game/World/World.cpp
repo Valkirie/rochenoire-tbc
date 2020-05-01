@@ -1234,9 +1234,6 @@ void World::SetInitialWorldSettings()
 	sObjectMgr.LoadCreaturesScale();
     sObjectMgr.LoadCreaturesPools();
 
-	sLog.outString("Loading Spell Flex Details...");
-	sObjectMgr.LoadFlexibleSpells();
-
     sLog.outString("Load Zone Flex Details...");
     sObjectMgr.LoadZoneScale();
 

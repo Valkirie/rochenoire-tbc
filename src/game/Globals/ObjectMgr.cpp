@@ -2487,44 +2487,6 @@ uint32 ObjectMgr::GetPlayerAccountIdByPlayerName(const std::string& name) const
     return 0;
 }
 
-void ObjectMgr::LoadFlexibleSpells()
-{
-    mSpellFlexMap.clear();
-    QueryResult* result = WorldDatabase.Query("SELECT * FROM scale_spell");
-
-    if (!result)
-    {
-        BarGoLink bar(1);
-        bar.step();
-        sLog.outString();
-        sLog.outString(">> Loaded 0 Spell scaling details. DB table `scale_spell` is empty.");
-        return;
-    }
-
-    BarGoLink bar(result->GetRowCount());
-
-    do
-    {
-        Field* fields = result->Fetch();
-        bar.step();
-
-        uint32 s_entry = fields[0].GetUInt32();
-        uint32 m_entry = fields[1].GetUInt32();
-        float ratio_spell = fields[2].GetFloat();
-
-        std::string s = std::to_string(s_entry) + ":" + std::to_string(m_entry);
-        SpellFlex& data = mSpellFlexMap[s];
-        data.s_entry = s_entry;
-        data.m_entry = m_entry;
-        data.ratio_spell = ratio_spell;
-
-    } while (result->NextRow());
-
-    delete result;
-    sLog.outString();
-    sLog.outString(">> Loaded %lu Spell scaling details", (unsigned long)mSpellFlexMap.size());
-}
-
 void ObjectMgr::LoadZoneScale()
 {
 	mZoneFlexMap.clear();

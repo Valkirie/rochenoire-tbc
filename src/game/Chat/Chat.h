@@ -532,7 +532,6 @@ class ChatHandler
         bool HandleReloadItemEnchantementsCommand(char* args);
         bool HandleReloadItemRequiredTragetCommand(char* args);
 		bool HandleReloadCreatureFlexCommand(char* args);
-		bool HandleReloadSpellFlexCommand(char* args);
         bool HandleReloadZoneFlexCommand(char* args);
 		bool HandleReloadLootScaleCommand(char* args);
         bool HandleReloadLocalesCreatureCommand(char* args);

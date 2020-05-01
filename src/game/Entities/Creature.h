@@ -327,14 +327,6 @@ struct CreatureFlex
 	float ratio_c2;
 };
 
-struct SpellFlex
-{
-	uint32 c_entry;
-	uint32 m_entry;
-	uint32 s_entry;
-	float ratio_spell;
-};
-
 struct CreatureLocale
 {
     std::vector<std::string> Name;
