@@ -161,7 +161,7 @@ struct boss_high_king_maulgarAI : public ScriptedAI
             if (m_uiMightyBlowTimer <= uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_MIGHTY_BLOW) == CAST_OK)
-                    m_uiMightyBlowTimer = urand(20000, 35000);
+                    m_uiMightyBlowTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 35000), SPELL_MIGHTY_BLOW);
             }
             else
                 m_uiMightyBlowTimer -= uiDiff;
@@ -169,7 +169,7 @@ struct boss_high_king_maulgarAI : public ScriptedAI
             if (m_uiArcingSmashTimer <= uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_ARCING_SMASH) == CAST_OK)
-                    m_uiArcingSmashTimer = urand(8000, 12000);
+                    m_uiArcingSmashTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 12000), SPELL_ARCING_SMASH);
             }
             else
                 m_uiArcingSmashTimer -= uiDiff;
@@ -181,7 +181,7 @@ struct boss_high_king_maulgarAI : public ScriptedAI
                     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, nullptr, SELECT_FLAG_PLAYER))
                     {
                         if (DoCastSpellIfCan(pTarget, SPELL_CHARGE) == CAST_OK)
-                            m_uiChargeTimer = urand(14000, 20000);
+                            m_uiChargeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(14000, 20000), SPELL_CHARGE);
                     }
                 }
                 else
@@ -190,7 +190,7 @@ struct boss_high_king_maulgarAI : public ScriptedAI
                 if (m_uiFearTimer <= uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FEAR) == CAST_OK)
-                        m_uiFearTimer = urand(20000, 35000);
+                        m_uiFearTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 35000), SPELL_FEAR);
                 }
                 else
                     m_uiFearTimer -= uiDiff;
@@ -200,7 +200,7 @@ struct boss_high_king_maulgarAI : public ScriptedAI
         if (m_uiWhirlwindTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_WHIRLWIND) == CAST_OK)
-                m_uiWhirlwindTimer = urand(30000, 40000);
+                m_uiWhirlwindTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 40000), SPELL_WHIRLWIND);
         }
         else
             m_uiWhirlwindTimer -= uiDiff;
@@ -260,7 +260,7 @@ struct boss_olm_the_summonerAI : public Council_Base_AI
         if (m_uiDarkDecayTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DARK_DECAY) == CAST_OK)
-                m_uiDarkDecayTimer = 5000;
+                m_uiDarkDecayTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 5000, SPELL_DARK_DECAY);
         }
         else
             m_uiDarkDecayTimer -= uiDiff;
@@ -268,7 +268,7 @@ struct boss_olm_the_summonerAI : public Council_Base_AI
         if (m_uiDeathCoilTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DEATH_COIL) == CAST_OK)
-                m_uiDeathCoilTimer = urand(8000, 13000);
+                m_uiDeathCoilTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 13000), SPELL_DEATH_COIL);
         }
         else
             m_uiDeathCoilTimer -= uiDiff;
@@ -276,7 +276,7 @@ struct boss_olm_the_summonerAI : public Council_Base_AI
         if (m_uiSummonTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_WILD_FELHUNTER) == CAST_OK)
-                m_uiSummonTimer = urand(25000, 35000);
+                m_uiSummonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 35000), SPELL_SUMMON_WILD_FELHUNTER);
         }
         else
             m_uiSummonTimer -= uiDiff;
@@ -352,7 +352,7 @@ struct boss_kiggler_the_crazedAI : public Council_Base_AI
                     case KIGGLER_ACTION_GREATER_POLYMORPH:
                         if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_GREATER_POLYMORPH) == CAST_OK)
                         {
-                            m_actionTimers[KIGGLER_ACTION_GREATER_POLYMORPH] = 11000;
+                            m_actionTimers[KIGGLER_ACTION_GREATER_POLYMORPH] = sObjectMgr.GetScaleSpellTimer(m_creature, 11000u, SPELL_GREATER_POLYMORPH);
                             m_actionReadyStatus[i] = false;
                             return;
                         }
@@ -362,7 +362,7 @@ struct boss_kiggler_the_crazedAI : public Council_Base_AI
                         {
                             if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                             {
-                                m_actionTimers[KIGGLER_ACTION_ARCANE_EXPLOSION] = 30000;
+                                m_actionTimers[KIGGLER_ACTION_ARCANE_EXPLOSION] = sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_ARCANE_EXPLOSION);
                                 m_actionReadyStatus[i] = false;
                                 return;
                             }
@@ -371,7 +371,7 @@ struct boss_kiggler_the_crazedAI : public Council_Base_AI
                     case KIGGLER_ACTION_ARCANE_SHOCK:
                         if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ARCANE_SHOCK) == CAST_OK)
                         {
-                            m_actionTimers[KIGGLER_ACTION_ARCANE_SHOCK] = urand(15000, 20000);
+                            m_actionTimers[KIGGLER_ACTION_ARCANE_SHOCK] = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_ARCANE_SHOCK);
                             m_actionReadyStatus[i] = false;
                             return;
                         }
@@ -449,7 +449,7 @@ struct boss_blindeye_the_seerAI : public Council_Base_AI
             if (DoCastSpellIfCan(m_creature, SPELL_GREATER_PW_SHIELD) == CAST_OK)
             {
                 DoCastSpellIfCan(m_creature, SPELL_PRAYEROFHEALING);
-                m_uiGreaterPowerWordShieldTimer = urand(30000, 40000);
+                m_uiGreaterPowerWordShieldTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 40000), SPELL_GREATER_PW_SHIELD);
             }
         }
         else
@@ -460,7 +460,7 @@ struct boss_blindeye_the_seerAI : public Council_Base_AI
             if (Unit* pTarget = DoSelectLowestHpFriendly(50.0f))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_HEAL) == CAST_OK)
-                    m_uiHealTimer = urand(15000, 40000);
+                    m_uiHealTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 40000), SPELL_HEAL);
             }
         }
         else
@@ -502,7 +502,7 @@ struct boss_krosh_firehandAI : public Council_Base_AI
         if (m_uiGreaterFireballTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_GREATER_FIREBALL) == CAST_OK)
-                m_uiGreaterFireballTimer = 3200;
+                m_uiGreaterFireballTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3200u, SPELL_GREATER_FIREBALL);
         }
         else
             m_uiGreaterFireballTimer -= uiDiff;
@@ -510,7 +510,7 @@ struct boss_krosh_firehandAI : public Council_Base_AI
         if (m_uiSpellShieldTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SPELLSHIELD) == CAST_OK)
-                m_uiSpellShieldTimer = 30000;
+                m_uiSpellShieldTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_SPELLSHIELD);
         }
         else
             m_uiSpellShieldTimer -= uiDiff;
@@ -520,7 +520,7 @@ struct boss_krosh_firehandAI : public Council_Base_AI
             if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_NEAREST_BY, 0, nullptr, SELECT_FLAG_PLAYER | SELECT_FLAG_RANGE_AOE_RANGE, m_paramsBlastWave))
             {
                 DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE, CAST_INTERRUPT_PREVIOUS);
-                m_uiBlastWaveTimer = 6000;
+                m_uiBlastWaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 6000, SPELL_BLAST_WAVE);
             }
         }
         else
