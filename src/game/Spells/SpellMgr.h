@@ -1371,10 +1371,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 31298:                                 // Sleep (Hyjal Summit, Anetheron)
                 case 39341:                                 // Karazhan - Chess, Medivh CHEAT: Fury of Medivh, Target Horde
                 case 39344:                                 // Karazhan - Chess, Medivh CHEAT: Fury of Medivh, Target Alliance
-                case 39992:                                 // Needle Spine Targeting (BT, Warlord Najentus)
-                case 40869:                                 // Fatal Attraction (BT, Mother Shahraz)
-                case 41303:                                 // Soul Drain (BT, Reliquary of Souls)
-                case 41376:                                 // Spite (BT, Reliquary of Souls)
                     return 3;
                 case 37676:                                 // Insidious Whisper (SSC, Leotheras the Blind)
                 case 38028:                                 // Watery Grave (SSC, Morogrim Tidewalker)
@@ -1382,16 +1378,11 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                     return 4;
                 case 29232:                                 // Fungal Bloom (Loatheb)
                 case 30843:                                 // Enfeeble (Karazhan, Prince Malchezaar)
-                case 40243:                                 // Crushing Shadows (BT, Teron Gorefiend)
-                case 42005:                                 // Bloodboil (BT, Gurtogg Bloodboil)
                 case 45641:                                 // Fire Bloom (SWP, Kil'jaeden)
                     return 5;
                 case 25676:                                 // Drain Mana (correct number has to be researched)
                 case 25754:
                     return 6;
-                case 28796:                                 // Poison Bolt Volley (Naxx, Faerlina)
-                case 29213:                                 // Curse of the Plaguebringer (Naxx, Noth the Plaguebringer)
-                    return 10;
                 case 26457:                                 // Drain Mana (correct number has to be researched)
                 case 26559:
                     return 12;
@@ -1402,9 +1393,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                         return ai->GetScriptData();
                     else
                         return 1; // for testing purposes
-                case 26052:                                 // Poison Bolt Volley (spell hits only the 15 closest targets)
-                    if (Unit* m_creature = static_cast<Unit*>(caster))
-                        return m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), spellInfo->MaxAffectedTargets);
                 default: break;
             }
             break;
@@ -1423,6 +1411,35 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
         }
         default:
             break;
+    }
+
+    // custom target when scaled
+    if (Unit* m_creature = static_cast<Unit*>(caster))
+    {
+        uint32 MaxAffectedTargets = 0;
+        switch (spellInfo->Id)
+        {
+            case 39992:                                 // Needle Spine Targeting (BT, Warlord Najentus)
+            case 40869:                                 // Fatal Attraction (BT, Mother Shahraz)
+            case 41303:                                 // Soul Drain (BT, Reliquary of Souls)
+            case 41376:                                 // Spite (BT, Reliquary of Souls)
+                MaxAffectedTargets = 3;
+                break;
+            case 42005:                                 // Bloodboil (BT, Gurtogg Bloodboil)
+            case 40243:                                 // Crushing Shadows (BT, Teron Gorefiend)
+                MaxAffectedTargets = 5;
+                break;
+            case 28796:                                 // Poison Bolt Volley (Naxx, Faerlina)
+            case 29213:                                 // Curse of the Plaguebringer (Naxx, Noth the Plaguebringer)
+                MaxAffectedTargets = 10;
+                break;
+            case 26052:                                 // Poison Bolt Volley (AQ40, Huhuran)
+                MaxAffectedTargets = spellInfo->MaxAffectedTargets;
+                break;
+        }
+
+        if(MaxAffectedTargets)
+            return m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MaxAffectedTargets);
     }
 
     return spellInfo->MaxAffectedTargets;
