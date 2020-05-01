@@ -119,10 +119,10 @@ struct boss_shahrazAI : public CombatAI
     {
         switch (id)
         {
-            case SHAHRAZ_ACTION_FATAL_ATTRACTION: return urand(22000, 40000);
-            case SHAHRAZ_ACTION_BEAM: return 20000;
-            case SHAHRAZ_ACTION_SHRIEK: return 30000;
-            case SHAHRAZ_ACTION_PRISMATIC_SHIELD: return 15000;
+            case SHAHRAZ_ACTION_FATAL_ATTRACTION: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(22000, 40000), SPELL_FATAL_ATTRACTION);
+            case SHAHRAZ_ACTION_BEAM: return sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, aPeriodicBeams[m_currentBeam]);
+            case SHAHRAZ_ACTION_SHRIEK: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_SILENCING_SHRIEK);
+            case SHAHRAZ_ACTION_PRISMATIC_SHIELD: return sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, aPrismaticAuras[urand(0, 5)]);
             default: return 0;
         }
     }
