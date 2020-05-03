@@ -3483,10 +3483,10 @@ bool ChatHandler::HandleNpcChangePackCommand(char* args)
 		if (QueryResult * result = WorldDatabase.PQuery("SELECT guid FROM scale_creature_pool WHERE guid = %u", guid))
 		{
 			delete result;
-            WorldDatabase.PExecute("UPDATE scale_creature_pool SET pool_id = %u, comment = \"%s\" WHERE guid = %u", pool, comment.c_str(), guid);
+            WorldDatabase.PExecuteLog("UPDATE scale_creature_pool SET pool_id = %u, comment = \"%s\" WHERE guid = %u", pool, comment.c_str(), guid);
 		}
 		else
-			WorldDatabase.PExecute("REPLACE INTO scale_creature_pool(guid,pool_id,comment) VALUES(%u, %u, \"%s\")", guid, pool, comment.c_str());
+			WorldDatabase.PExecuteLog("REPLACE INTO scale_creature_pool(guid,pool_id,comment) VALUES(%u, %u, \"%s\")", guid, pool, comment.c_str());
 
 		PSendSysMessage("Guid %u has pack value %u", guid, pool);
         
@@ -3597,7 +3597,7 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
         delete result;
     else
     {
-        if (!WorldDatabase.PExecute("REPLACE INTO scale_creature_template(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str()))
+        if (!WorldDatabase.PExecuteLog("REPLACE INTO scale_creature_template(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str()))
         {
             PSendSysMessage("Error: couldn't not creature creature %u scaling template.", c_entry);
             return false;
@@ -3606,31 +3606,31 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
 
     if (nb_tank > 0)
     {
-        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_tank, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_tank, c_entry, m_entry))
             PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
     }
     if (nb_pack > 0)
     {
-        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_pack, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_pack, c_entry, m_entry))
             PSendSysMessage("Current creature pack size was set to: %u", nb_pack);
     }
     if (ratio_hrht > 0)
     {
-        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_hrht, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_hrht, c_entry, m_entry))
             PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
     }
     if (ratio_c1 > 0)
     {
-        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c1, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c1, c_entry, m_entry))
             PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
     }
     if (ratio_c2 > 0)
     {
-        if (WorldDatabase.PExecute("UPDATE scale_creature_template SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c2, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c2, c_entry, m_entry))
             PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
     }
 
-    if (WorldDatabase.PExecute("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u';", comment.c_str(), c_entry, m_entry))
+    if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u';", comment.c_str(), c_entry, m_entry))
         PSendSysMessage("Current creature comment was successfully updated.");
 
     sObjectMgr.AddCreatureScale(c_entry, m_entry, nb_tank, nb_pack, ratio_hrht, ratio_c1, ratio_c2);
