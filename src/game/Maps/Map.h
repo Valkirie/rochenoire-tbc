@@ -127,8 +127,8 @@ class Map : public GridRefManager<NGridType>
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
 
-		void UpdateFlexibleRaid(bool isRefresh = false, uint32 RefreshSize = 0);
-        void ShuffleFlexibleRaid();
+		void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
+        void ShuffleFlexibleCore();
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
 		uint32 GetCreaturesCount(uint32 entry, bool IsAlive = false) const;
 		uint32 GetCreaturesPackSize(uint32 pack, bool IsAlive = false) const;
@@ -278,7 +278,7 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
 
-        // Flexible Raid
+        // Flexible Core
         struct CreatureRatio
         {
             bool treated = false;
@@ -296,7 +296,7 @@ class Map : public GridRefManager<NGridType>
             uint32 nbr_adds_alive;
             float nbr_adds_keep;
 
-            uint32 raid_size;
+            uint32 instance_size;
             uint32 pool_size;
 
             uint32 packid;
@@ -400,6 +400,7 @@ class Map : public GridRefManager<NGridType>
         void CreatePlayerOnClient(Player* player);
 
         uint32 GetLoadedGridsCount();
+        MapEntry const* GetMapEntry() { return i_mapEntry; }
 
     private:
         void LoadMapAndVMap(int gx, int gy);

@@ -275,17 +275,25 @@ MaxWhoListReturns = 49
 #         Group XP rates bonus
 #         Default: 0.5
 #
-#    Rochenoire.Flexible.Raids
-#        Enable/Disable raids size scaling
-#        Default: 1 (enable)
-#                 0 (disable)
+#    Rochenoire.Flexible.Core.MapType
+#        Enable/Disable map size scaling
+#        Default: 2
+#                 4 (Arena)
+#                 3 (Battleground)
+#                 2 (Raid)
+#                 1 (Instance)
+#                 0 (Common)
 #
-#    Rochenoire.Flexible.Raids.Ratio
+#    Rochenoire.Flexible.Core.Ratio
 #        Set the flexible raids players ratio
 #        Default:     2 - (raid 40 become raid 20, raid 20 become raid 10)
 #
-#    Rochenoire.Flexible.Raids.MinSize
-#        Minimum rescaled raid size (number of players)
+#    Rochenoire.Flexible.Core.MinSize.Common
+#    Rochenoire.Flexible.Core.MinSize.Instance
+#    Rochenoire.Flexible.Core.MinSize.Raid
+#    Rochenoire.Flexible.Core.MinSize.Battleground
+#    Rochenoire.Flexible.Core.MinSize.Arena
+#        Minimum rescaled map size (number of players)
 #        Default:     5
 #
 #    Rochenoire.SmartLoot.Enabled
@@ -317,9 +325,13 @@ WowPatch = 15
 Rochenoire.Scaling.PvP.Enabled = 0
 Rochenoire.Rate.Drop.Item.Group = 0.5
 Rochenoire.Rate.XP.Group = 0.5
-Rochenoire.Flexible.Raids = 1
-Rochenoire.Flexible.Raids.Ratio = 2
-Rochenoire.Flexible.Raids.MinSize = 5
+Rochenoire.Flexible.Core.MapType = 2
+Rochenoire.Flexible.Core.Ratio = 4
+Rochenoire.Flexible.Core.MinSize.Common = 5
+Rochenoire.Flexible.Core.MinSize.Instance = 2
+Rochenoire.Flexible.Core.MinSize.Raid = 5
+Rochenoire.Flexible.Core.MinSize.Battleground = 5
+Rochenoire.Flexible.Core.MinSize.Arena = 5
 Rochenoire.SmartLoot.Enabled = 1
 Rochenoire.SmartLoot.Amount = 4
 Rate.Weight.Item.Poor = 1.0

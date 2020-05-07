@@ -307,7 +307,7 @@ struct npc_zulian_prowlerAI : public ScriptedAI
             }
 
             // Check if more than 40 are alive, if so, despawn
-            if (count > m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 40))
+            if (count > m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 40))
             {
                 m_creature->ForcedDespawn();
                 return;

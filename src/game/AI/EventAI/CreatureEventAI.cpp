@@ -45,7 +45,7 @@ bool CreatureEventAIHolder::UpdateRepeatTimer(Creature* creature, uint32 repeatM
         return false;
     }
 	   
-	//Flexible Raid
+	//Flexible Core
 	for (uint32 j = 0; j < MAX_ACTIONS; ++j)
 	{
 		if (event.action[j].type == ACTION_T_CAST)

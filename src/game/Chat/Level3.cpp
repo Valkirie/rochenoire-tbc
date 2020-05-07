@@ -6142,14 +6142,15 @@ bool ChatHandler::HandleInstanceRescaleCommand(char* args)
     Map* target_map = target->GetMap();
     uint32 value = 0;
 
-    if (!target)
+    if (!target || !target_map)
     {
         SendSysMessage(LANG_PLAYER_NOT_FOUND);
         SetSentErrorMessage(true);
         return false;
     }
 
-    if (!target_map->IsRaid())
+    uint32 mapType = target_map->GetMapEntry() ? target_map->GetMapEntry()->map_type : 0;
+    if (mapType == 0 || mapType > sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
     {
         SetSentErrorMessage(true);
         return false;
@@ -6163,8 +6164,8 @@ bool ChatHandler::HandleInstanceRescaleCommand(char* args)
     else
     {
         ExtractUInt32(&args, value);
-        target_map->UpdateFlexibleRaid(true, value);
-        PSendSysMessage(LANG_FLEXIBLE_RAID_FORCED, target_map->GetMapName(), value);
+        target_map->UpdateFlexibleCore(true, value);
+        PSendSysMessage(LANG_FLEXIBLE_CORE_FORCED, target_map->GetMapName(), value);
         return true;
     }
 }

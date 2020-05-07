@@ -1603,39 +1603,39 @@ class Unit : public WorldObject
         uint32 GetItemLevel() const { return ilevel_avg; };
         void SetItemLevel(uint32 ilevel) { ilevel_avg = ilevel; };
 
-        // Flexible Raid
-        float raid_ratio_dmg = 1.0f;
-        float raid_ratio_health = 1.0f;
-        float raid_ratio_attacktime = 1.0f;
-        float raid_ratio_dps = 1.0f;
-        int raid_number_adds = 1;
-        int raid_number_adds_keep = 1;
-        int raid_number_players = 1;
-        int raid_number_tanks = 1;
+        // Flexible Core
+        float instance_ratio_dmg        = 1.0f;
+        float instance_ratio_health     = 1.0f;
+        float instance_ratio_attacktime = 1.0f;
+        float instance_ratio_dps        = 1.0f;
+        int instance_number_adds        = 1;
+        int instance_number_adds_keep   = 1;
+        int instance_number_players     = 1;
+        int instance_number_tanks       = 1;
 
-        float GetRaidDmg() const { return raid_ratio_dmg; };
-        void SetRaidDmg(float value) { raid_ratio_dmg = value; };
+        float GetInstanceDmg() const { return instance_ratio_dmg; };
+        void SetInstanceDmg(float value) { instance_ratio_dmg = value; };
 
-        float GetRaidHealth() const { return raid_ratio_health; };
-        void SetRaidHealth(float value) { raid_ratio_health = value; };
+        float GetInstanceHealth() const { return instance_ratio_health; };
+        void SetInstanceHealth(float value) { instance_ratio_health = value; };
 
-        float GetRaidAttackTime() const { return raid_ratio_attacktime; };
-        void SetRaidAttackTime(float value) { raid_ratio_attacktime = value; };
+        float GetInstanceAttackTime() const { return instance_ratio_attacktime; };
+        void SetInstanceAttackTime(float value) { instance_ratio_attacktime = value; };
 
-        float GetRaidDps() const { return raid_ratio_dps; };
-        void SetRaidDps(float value) { raid_ratio_dps = value; };
+        float GetInstanceDps() const { return instance_ratio_dps; };
+        void SetInstanceDps(float value) { instance_ratio_dps = value; };
 
-        int GetRaidAdds() const { return raid_number_adds; };
-        void SetRaidAdds(int value) { raid_number_adds = value; };
+        int GetInstanceAdds() const { return instance_number_adds; };
+        void SetInstanceAdds(int value) { instance_number_adds = value; };
 
-        int GetRaidTanks() const { return raid_number_tanks; };
-        void SetRaidTanks(int value) { raid_number_tanks = value; };
+        int GetInstanceTanks() const { return instance_number_tanks; };
+        void SetInstanceTanks(int value) { instance_number_tanks = value; };
 
-        int GetRaidAddsKeep() const { return raid_number_adds_keep; };
-        void SetRaidAddsKeep(int value) { raid_number_adds_keep = value; };
+        int GetInstanceAddsKeep() const { return instance_number_adds_keep; };
+        void SetInstanceAddsKeep(int value) { instance_number_adds_keep = value; };
 
-        int GetRaidSize() const { return raid_number_players; };
-        void SetRaidSize(int value) { raid_number_players = value; };
+        int GetInstanceSize() const { return instance_number_players; };
+        void SetInstanceSize(int value) { instance_number_players = value; };
 
         uint16 GetSkillMaxForLevel(Unit const* target = nullptr) const { return (target ? GetLevelForTarget(target) : getLevel()) * 5; }
 

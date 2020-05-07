@@ -783,11 +783,11 @@ class ObjectMgr
         /// @param _map Map* of the map for which to load active entities. If nullptr active entities on continents are loaded
         void LoadActiveEntities(Map* _map);
 
-        // getters for flexible stuff
+        // getters for flexible core
         CreatureFlexMap GetCreatureFlexMap() const;
         CreaturePoolMap GetCreaturePoolMap() const;
 
-        // setters for flexible stuff
+        // setters for flexible core
         void AddCreatureScale(uint32 entry, uint32 map, uint32 nb_tank = 2, uint32 nb_pack = 1, float ratio_hrht = 0.0f, float ratio_c1 = 0.85f, float ratio_c2 = 0.85f);
         void AddCreaturePool(uint32 guid, uint32 pool_id);
 

@@ -210,7 +210,7 @@ struct boss_anubrekhanAI : public ScriptedAI
                         continue;
 
                     float fX, fY, fZ;
-                    for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), 10); ++i)
+                    for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 10); ++i)
                     {
                         creature->GetNearPoint(creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
                         creature->SummonCreature(NPC_CORPSE_SCARAB, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);

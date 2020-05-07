@@ -2347,7 +2347,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     }
                     case 30166:                             // Shadow Grasp - upon magtheridon
                     {
-                        if (target->GetAuraCount(30166) == target->GetMap()->GetFinalNAdds(target->GetRaidTanks(), 5))
+                        if (target->GetAuraCount(30166) == target->GetMap()->GetFinalNAdds(target->GetInstanceTanks(), 5))
                         {
                             target->CastSpell(target, 30168, TRIGGERED_OLD_TRIGGERED); // cast Shadow cage if stacks are 5
                             target->InterruptSpell(CURRENT_CHANNELED_SPELL); // if he is casting blast nova interrupt channel, only magth channel spell

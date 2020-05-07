@@ -1440,7 +1440,7 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
         }
 
         if(MaxAffectedTargets)
-            return m_creature->GetMap()->GetFinalNAdds(m_creature->GetRaidTanks(), MaxAffectedTargets);
+            return m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MaxAffectedTargets);
     }
 
     return spellInfo->MaxAffectedTargets;

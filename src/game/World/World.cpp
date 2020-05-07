@@ -598,9 +598,13 @@ void World::LoadConfigSettings(bool reload)
 	setConfig(CONFIG_FLOAT_RATE_DROP_ITEM_GROUP, "Rochenoire.Rate.Drop.Item.Group", 1.0f);
 	setConfig(CONFIG_FLOAT_RATE_XP_GROUP, "Rochenoire.Rate.XP.Group", 1.0f);
 
-	setConfig(CONFIG_BOOL_FLEXIBLE_RAID, "Rochenoire.Flexible.Raids", true);
-	setConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO, "Rochenoire.Flexible.Raids.Ratio", 3.75);
-    setConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE, "Rochenoire.Flexible.Raids.MinSize", 5);
+	setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE, "Rochenoire.Flexible.Core.MapType", 2);
+	setConfig(CONFIG_FLOAT_FLEXIBLE_CORE_RATIO, "Rochenoire.Flexible.Core.Ratio", 2);
+    setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_COMMON, "Rochenoire.Flexible.Core.MinSize.Common", 5);
+    setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_INSTANCE, "Rochenoire.Flexible.Core.MinSize.Instance", 5);
+    setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_RAID, "Rochenoire.Flexible.Core.MinSize.Raid", 5);
+    setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_BATTLEGROUND, "Rochenoire.Flexible.Core.MinSize.Battleground", 5);
+    setConfig(CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_ARENA, "Rochenoire.Flexible.Core.MinSize.Arena", 5);
 
     setConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA, "Calculate.Creature.Zone.Area.Data", false);
     setConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA, "Calculate.Gameoject.Zone.Area.Data", false);

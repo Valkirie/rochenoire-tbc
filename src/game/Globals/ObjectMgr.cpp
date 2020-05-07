@@ -1238,9 +1238,9 @@ float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
 
 uint32 ObjectMgr::GetScaleSpellTimer(Creature* creature, uint32 timer, uint32 spellid) const
 {
-    float RatioDps = creature->GetRaidDps();
-    float NbrAdds = creature->GetRaidAdds();
-    float NbrAddsKeep = creature->GetRaidAddsKeep();
+    float RatioDps = creature->GetInstanceDps();
+    float NbrAdds = creature->GetInstanceAdds();
+    float NbrAddsKeep = creature->GetInstanceAddsKeep();
     float Coeff = GetScaleSpellTimer(RatioDps, NbrAdds, NbrAddsKeep, GetSpellCoeffRatio(spellid));
 	return (uint32)timer / Coeff;
 }

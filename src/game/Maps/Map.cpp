@@ -783,7 +783,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
 	return output;
 }
 
-void Map::ShuffleFlexibleRaid()
+void Map::ShuffleFlexibleCore()
 {
     if (m_creaturesStore.size() == 0)
         return;
@@ -801,7 +801,7 @@ void Map::ShuffleFlexibleRaid()
     }
 }
 
-enum FlexibleRaid
+enum FlexibleCore
 {
     SPELL_CHANNEL_VISUAL_RED = 32839,
     SPELL_CHANNEL_VISUAL_BLUE = 32840,
@@ -811,7 +811,7 @@ enum FlexibleRaid
     DISPLAY_VISIBLE = 2
 };
 
-void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
+void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
 {
 	if (RefreshSize != 0)
 		lastKnownRefreshSize = RefreshSize > GetMaxPlayers() ? GetMaxPlayers() : RefreshSize;
@@ -832,9 +832,9 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 {
                     Player* plr = m_mapRefIter->getSource();
                     if (u_GroupSize > lastKnownGroupSize)
-                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_INC, GetMapName());
+                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_CORE_INC, GetMapName());
                     else if (u_GroupSize < lastKnownGroupSize)
-                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_DEC, GetMapName());
+                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_CORE_DEC, GetMapName());
                 }
             }
 
@@ -888,7 +888,7 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 uint32 leftAlive            = 0;
                 uint32 leftMulti            = 1;
 
-                if (cdata.raid_size != GetCurPlayers())
+                if (cdata.instance_size != GetCurPlayers())
                     cdata.treated = false;
                 else if (cdata.pool_size != lastKnownPoolSize)
                 {
@@ -912,12 +912,23 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                         cdata.ratio_c2 = f_values->ratio_c2;
                         cdata.ratio_c0 = GetCurPlayers() * (cdata.ratio_c2 - cdata.ratio_c1) / (GetMaxPlayers() - GetMinPlayers()) + (GetMaxPlayers() * cdata.ratio_c1 - GetMinPlayers() * cdata.ratio_c2) / (GetMaxPlayers() - GetMinPlayers());
                     }
+                    else
+                    {
+                        switch (GetMaxPlayers())
+                        {
+                            case 40: cdata.nbr_tank = 3; break;
+                            case 25: cdata.nbr_tank = 2; break;
+                            case 20: cdata.nbr_tank = 2; break;
+                            case 10: cdata.nbr_tank = 2; break;
+                            case 5: cdata.nbr_tank = 1; break;
+                        }
+                    }
 
                     cdata.r_health = 1.0f * sObjectMgr.GetFactorHP(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness);
                     cdata.r_dps = 1.0f * sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht);
                     cdata.r_dmg = 1.0f * (1 - (1 - f_max_red_boss) * (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)) / (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetMinPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)));
                     cdata.r_attack = 1.0f * cdata.r_dps / cdata.r_dmg;
-                    cdata.raid_size = GetCurPlayers();
+                    cdata.instance_size = GetCurPlayers();
 
                     // Temporary calculations
                     MaxHealth *= cdata.r_health / cdata.ratio_c0;
@@ -965,20 +976,20 @@ void Map::UpdateFlexibleRaid(bool isRefresh, uint32 RefreshSize)
                 creature->SetAttackTime(RANGED_ATTACK, (uint32)RangedBaseAttackTime);
 
                 // Storing values for remote calls
-                creature->SetRaidHealth(cdata.r_health);
-                creature->SetRaidDps(cdata.r_dps);
-                creature->SetRaidDmg(cdata.r_dmg);
-                creature->SetRaidAttackTime(cdata.r_attack);
+                creature->SetInstanceHealth(cdata.r_health);
+                creature->SetInstanceDps(cdata.r_dps);
+                creature->SetInstanceDmg(cdata.r_dmg);
+                creature->SetInstanceAttackTime(cdata.r_attack);
 
-                // Computing raid size (stored for optimisation purposes)
-                creature->SetRaidSize(cdata.raid_size);
-                creature->SetRaidAdds(cdata.nbr_pack);
-                creature->SetRaidTanks(cdata.nbr_tank);
+                // Computing instance size (stored for optimisation purposes)
+                creature->SetInstanceSize(cdata.instance_size);
+                creature->SetInstanceAdds(cdata.nbr_pack);
+                creature->SetInstanceTanks(cdata.nbr_tank);
 
                 if (cdata.nbr_pack > 1 && cdata.nbr_adds_alive != cdata.nbr_adds_keep)
 				{
-                    creature->SetRaidAddsKeep(cdata.nbr_adds_keep);
-					creature->SetRaidDps(cdata.r_dps * cdata.nbr_pack / cdata.nbr_adds_keep);
+                    creature->SetInstanceAddsKeep(cdata.nbr_adds_keep);
+					creature->SetInstanceDps(cdata.r_dps * cdata.nbr_pack / cdata.nbr_adds_keep);
 
                     leftAlive = floor(cdata.nbr_adds_keep / cdata.nbr_adds * cdata.nbr_pack);
 
@@ -1314,6 +1325,15 @@ void Map::UnloadAll(bool pForce)
     }
 }
 
+static eConfigUInt32Values const mapTypeToMinSize[5] =
+{
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_COMMON,                       // MAP_COMMON
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_INSTANCE,                     // MAP_INSTANCE
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_RAID,                         // MAP_RAID
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_BATTLEGROUND,                 // MAP_BATTLEGROUND
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_ARENA,                        // MAP_ARENA
+};
+
 uint32 Map::GetMaxPlayers() const
 {
     InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId());
@@ -1324,10 +1344,12 @@ uint32 Map::GetMaxPlayers() const
 
 uint32 Map::GetMinPlayers() const
 {
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+    float mapRatio = (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_FLEXIBLE_CORE_RATIO));
     switch (GetMaxPlayers())
     {
         case 25: return 8;
-        default: return std::max((float)sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_MINSIZE), (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_SCALE_RAIDS_RATIO)));
+        default: return std::max((float)sWorld.getConfig(mapTypeToMinSize[mapType]), (float)mapRatio);
     }
 }
 
@@ -1922,7 +1944,7 @@ bool DungeonMap::Add(Player* player)
     Map::Add(player);
 
     //if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
-        //ShuffleFlexibleRaid();
+        //ShuffleFlexibleCore();
 
     return true;
 }
@@ -1931,9 +1953,10 @@ void DungeonMap::Update(const uint32& t_diff)
 {
     Map::Update(t_diff);
 
-	// Refresh and update Raid datas for Flexible implementation
-	if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
-		UpdateFlexibleRaid();
+	// Refresh and update flexible core
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+	if (mapType > 0 && mapType <= sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+		UpdateFlexibleCore();
 }
 
 void DungeonMap::Remove(Player* player, bool remove)
