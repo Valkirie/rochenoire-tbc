@@ -2810,8 +2810,8 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
         if (groupId > Groups.size())
             return;                                         // Error message already printed at loading stage
 		
-		for (int ITEM_QUALITY = MAX_ITEM_QUALITY - 1; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
-			Groups[groupId - 1].Process(loot, lootOwner, ITEM_QUALITY);
+		for (int i = MAX_ITEM_QUALITY - 1; i >= 0; --i)
+			Groups[groupId - 1].Process(loot, lootOwner, i);
         return;
     }
 
@@ -2843,13 +2843,9 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
     }
 
     // Now processing groups
-	for (int ITEM_QUALITY = MAX_ITEM_QUALITY - 1; ITEM_QUALITY >= 0; --ITEM_QUALITY) // Ref multiplicator
-	{
-		uint32 maxcount = std::round(lootOwner ? lootOwner->getItemLevelCoeff(ITEM_QUALITY) : 1.0f);
-		for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
-			for (const auto& Group : Groups)
-				Group.Process(loot, lootOwner, ITEM_QUALITY);
-	}
+    for (const auto& Group : Groups)
+	    for (int i = MAX_ITEM_QUALITY - 1; i >= 0; --i)
+            Group.Process(loot, lootOwner, i);
 }
 
 // True if template includes at least 1 quest drop entry

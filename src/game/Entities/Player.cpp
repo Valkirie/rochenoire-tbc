@@ -10791,7 +10791,7 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 		case ITEM_QUALITY_RARE:     // BLUE
 		case ITEM_QUALITY_EPIC:     // PURPLE
             float drop_value = (float)drop_map[pQuality][pLevel - 1];
-			quantityModifier = pCount != 0 ? drop_value / pCount : std::max(drop_value, 2.0f);
+			quantityModifier = drop_value - pCount;
 		break;
 	}
 	
