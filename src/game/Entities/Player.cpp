@@ -13639,7 +13639,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
 			uint32 l_timer = pQuest->GetLimitTime();
 			uint32 m_timer = q_status.m_timer / 1000;
 			uint32 e_timer = l_timer - m_timer;
-			LogsDatabase.PExecute("REPLACE INTO `logs_quests` VALUES (%u,%u,%u,%u,%u);", GetSession()->GetAccountId(), GetGUIDLow(), getLevel(), pQuest->GetQuestId(), e_timer);
+			LogsDatabase.PExecuteLog("REPLACE INTO `logs_quests` VALUES (%u,%u,%u,%u,%u)", GetSession()->GetAccountId(), GetGUIDLow(), getLevel(), pQuest->GetQuestId(), e_timer);
 		}
 	}
 
