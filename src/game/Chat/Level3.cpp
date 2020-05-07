@@ -3523,16 +3523,16 @@ bool ChatHandler::HandleNpcSetLevelVarCommand(char* args)
     if (istpl)
     {
         uint32 entry = unit->GetEntry();
-        if (QueryResult* result = WorldDatabase.PQuery("SELECT entry FROM creature_template_addon WHERE entry = %u;", entry))
+        if (QueryResult* result = WorldDatabase.PQuery("SELECT entry FROM creature_template_addon WHERE entry = %u", entry))
         {
             delete result;
 
-            if (WorldDatabase.PExecute("UPDATE creature_template_addon SET lvar = %i WHERE entry = %u;", level_var, entry))
+            if (WorldDatabase.PExecute("UPDATE creature_template_addon SET lvar = %i WHERE entry = %u", level_var, entry))
                 PSendSysMessage("Creature level variation was set to %i", level_var);
         }
         else
         {
-            if (WorldDatabase.PExecute("INSERT INTO creature_template_addon(entry,lvar) VALUES (%u,%i);", entry, level_var))
+            if (WorldDatabase.PExecute("INSERT INTO creature_template_addon(entry,lvar) VALUES (%u,%i)", entry, level_var))
                 PSendSysMessage("Creature level variation was set to %i", level_var);
         }
     }
@@ -3544,12 +3544,12 @@ bool ChatHandler::HandleNpcSetLevelVarCommand(char* args)
         {
             delete result;
 
-            if (WorldDatabase.PExecute("UPDATE creature_addon SET lvar = %i WHERE guid = %u;", level_var, guid))
+            if (WorldDatabase.PExecuteLog("UPDATE creature_addon SET lvar = %i WHERE guid = %u", level_var, guid))
                 PSendSysMessage("Creature level variation was set to %i", level_var);
         }
         else
         {
-            if (WorldDatabase.PExecute("INSERT INTO creature_addon(guid,lvar) VALUES (%u,%i);", guid, level_var))
+            if (WorldDatabase.PExecuteLog("INSERT INTO creature_addon(guid,lvar) VALUES (%u,%i)", guid, level_var))
                 PSendSysMessage("Creature level variation was set to %i", level_var);
         }
     }
@@ -3597,7 +3597,7 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
         delete result;
     else
     {
-        if (!WorldDatabase.PExecuteLog("REPLACE INTO scale_creature_template(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\");", c_entry, m_entry, comment.c_str()))
+        if (!WorldDatabase.PExecuteLog("REPLACE INTO scale_creature_template(c_entry,m_entry,comment) VALUES('%u','%u',\"%s\")", c_entry, m_entry, comment.c_str()))
         {
             PSendSysMessage("Error: couldn't not creature creature %u scaling template.", c_entry);
             return false;
@@ -3606,31 +3606,31 @@ bool ChatHandler::HandleNpcSetScaleCommand(char* args)
 
     if (nb_tank > 0)
     {
-        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_tank, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_tank = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_tank, c_entry, m_entry))
             PSendSysMessage("Expected number of tank(s) was set to: %u", nb_tank);
     }
     if (nb_pack > 0)
     {
-        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u';", nb_pack, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET nb_pack = %u WHERE c_entry = '%u' AND m_entry = '%u'", nb_pack, c_entry, m_entry))
             PSendSysMessage("Current creature pack size was set to: %u", nb_pack);
     }
     if (ratio_hrht > 0)
     {
-        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_hrht, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_hrht = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_hrht, c_entry, m_entry))
             PSendSysMessage("Current creature damage ratio was set to: %f", ratio_hrht);
     }
     if (ratio_c1 > 0)
     {
-        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c1, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c1 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c1, c_entry, m_entry))
             PSendSysMessage("Current creature difficulty ratio (low) was set to: %f", ratio_c1);
     }
     if (ratio_c2 > 0)
     {
-        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u';", ratio_c2, c_entry, m_entry))
+        if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET ratio_c2 = %f WHERE c_entry = '%u' AND m_entry = '%u'", ratio_c2, c_entry, m_entry))
             PSendSysMessage("Current creature difficulty ratio (high) was set to: %f", ratio_c2);
     }
 
-    if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u';", comment.c_str(), c_entry, m_entry))
+    if (WorldDatabase.PExecuteLog("UPDATE scale_creature_template SET comment = \"%s\" WHERE c_entry = '%u' AND m_entry = '%u'", comment.c_str(), c_entry, m_entry))
         PSendSysMessage("Current creature comment was successfully updated.");
 
     sObjectMgr.AddCreatureScale(c_entry, m_entry, nb_tank, nb_pack, ratio_hrht, ratio_c1, ratio_c2);
