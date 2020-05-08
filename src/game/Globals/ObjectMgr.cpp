@@ -1074,11 +1074,18 @@ bool ObjectMgr::isEffectSafe(uint32 Effect) const
 
 float ObjectMgr::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness, float NT) const
 {
-    return NT + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
+    return NT + 1.0f / (std::exp((0.7375f * u_MaxPlayer - u_nbr_players) / f_softness * 100.0f) + 1.0f) + 1.0f / (std::exp((0.5125f * u_MaxPlayer - u_nbr_players) / f_softness * 100.0f) + 1.0f);
 }
 
 float ObjectMgr::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
+    // dirty dungeon fix
+    if (u_MaxPlayer == 5)
+    {
+        u_MaxPlayer *= 2;
+        u_nbr_players *= 2;
+    }
+
     float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
     float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness, NT);
     return u_nbr_players - NHT - NT - NDPS;
@@ -1088,7 +1095,7 @@ float ObjectMgr::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT,
 {
     float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness, NT);
     float left = std::max(1.0f, (float)(u_nbr_players - NHT - NT));
-    return left / (1 + f_ratio_heal_dps);
+    return left / (1.0f + f_ratio_heal_dps);
 }
 
 float ObjectMgr::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
@@ -1104,6 +1111,13 @@ float ObjectMgr::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, 
 float ObjectMgr::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health) const
 {
     float FinalNAdds = Nadds;
+
+    // dirty dungeon fix
+    if (u_MaxPlayer == 5)
+    {
+        u_MaxPlayer *= 2;
+        u_nbr_players *= 2;
+    }
 
     while (((GetFactorHP(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) * Nadds / FinalNAdds < f_min_red_health) && FinalNAdds > 1)
         FinalNAdds = FinalNAdds - 1;
