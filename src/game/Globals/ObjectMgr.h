@@ -1263,7 +1263,7 @@ class ObjectMgr
         float GetSpellCoeffRatio(uint32 spellid) const;
         uint32 GetScaleSpellTimer(Creature* creature, uint32 timer, uint32 spellid = 0) const;
 		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio) const;
-        float GetFactorNHT(float Nmax, float Np, float f_softness) const;
+        float GetFactorNHT(float Nmax, float Np, float f_softness, float NT) const;
         float GetFactorNHR(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
         float GetFactorHP(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;
         float GetFactorNDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness) const;

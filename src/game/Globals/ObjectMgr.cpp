@@ -1072,21 +1072,21 @@ bool ObjectMgr::isEffectSafe(uint32 Effect) const
 	return true;
 }
 
-float ObjectMgr::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness) const
+float ObjectMgr::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness, float NT) const
 {
-    return 2 + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
+    return NT + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
 }
 
 float ObjectMgr::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
     float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
-    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness, NT);
     return u_nbr_players - NHT - NT - NDPS;
 }
 
 float ObjectMgr::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness) const
 {
-    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
+    float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness, NT);
     float left = std::max(1.0f, (float)(u_nbr_players - NHT - NT));
     return left / (1 + f_ratio_heal_dps);
 }
@@ -1098,7 +1098,7 @@ float ObjectMgr::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, f
 
 float ObjectMgr::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT) const
 {
-    return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
+    return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness, NT) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness, NT) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
 }
 
 float ObjectMgr::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health) const
