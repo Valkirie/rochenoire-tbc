@@ -1336,10 +1336,14 @@ static eConfigUInt32Values const mapTypeToMinSize[5] =
 
 uint32 Map::GetMaxPlayers() const
 {
-    InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId());
-    if (!iTemplate)
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+    if (mapType < MAP_RAID)
+        return 5;
+
+    if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
+        return iTemplate->maxPlayers;
+    else
         return 0;
-    return iTemplate->maxPlayers;
 }
 
 uint32 Map::GetMinPlayers() const
