@@ -2675,7 +2675,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     int32 randomPoints = spellProto->EffectDieSides[effect_index];
     if (unitCaster && basePointsPerLevel != 0.f)
     {
-        int32 level = int32(unitCaster->getLevel());
+        int32 level = int32(target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel());
         if (level > (int32)spellProto->maxLevel && spellProto->maxLevel > 0)
             level = (int32)spellProto->maxLevel;
         else if (level < (int32)spellProto->baseLevel)
@@ -2735,7 +2735,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
-            value += int32(std::max(0, int32(unitCaster->getLevel() - spellProto->maxLevel)) * basePointsPerLevel);
+            value += int32(std::max(0, int32((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
 
             switch (aura)
             {
@@ -2769,7 +2769,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (damage && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION))
         {
             GtNPCManaCostScalerEntry const* spellScaler = sGtNPCManaCostScalerStore.LookupEntry(spellProto->spellLevel - 1);
-            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->getLevel() - 1);
+            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - 1);
             if (spellScaler && casterScaler)
                 value *= casterScaler->ratio / spellScaler->ratio;
         }
@@ -2782,23 +2782,14 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (value == 0)
             return value;
 
-        Unit* uTarget = ((Unit*)target)->GetBeneficiary();
-        Unit* uCaster = ((Unit*)unitCaster)->GetBeneficiary();
+        Unit* uTarget = (Unit*)target->GetBeneficiary();
+        Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
 
-        if (!uTarget || !uCaster)
+        if (!sObjectMgr.IsScalable(uTarget, uCaster))
             return value;
 
         uint32 target_level = uTarget->getLevel();
         uint32 caster_level = uCaster->getLevel();
-
-        if (caster_level == target_level)
-            return value;
-
-        if (!uTarget->IsPlayer() && !uCaster->IsPlayer())
-            return value;
-
-        if (!sObjectMgr.IsScalable(uTarget, uCaster))
-            return value;
 
         bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
         bool IsBattleGround = uTarget->GetMap() ? uTarget->GetMap()->IsBattleGround() : false;
