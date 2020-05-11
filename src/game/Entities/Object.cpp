@@ -2771,114 +2771,67 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             GtNPCManaCostScalerEntry const* spellScaler = sGtNPCManaCostScalerStore.LookupEntry(spellProto->spellLevel - 1);
             GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - 1);
             if (spellScaler && casterScaler)
+            {
                 value *= casterScaler->ratio / spellScaler->ratio;
+                spell->isScaled = true;
+            }
         }
-    }
-
-    bool value_neg = (value < 0) ? true : false;
-
-    if (unitCaster && target && target->GetObjectGuid() != unitCaster->GetObjectGuid())
-    {
-        if (value == 0)
-            return value;
-
-        Unit* uTarget = (Unit*)target->GetBeneficiary();
-        Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
-
-        if (!sObjectMgr.IsScalable(uTarget, uCaster))
-            return value;
-
-        uint32 target_level = uTarget->getLevel();
-        uint32 caster_level = uCaster->getLevel();
-
-        bool IsForcePVP = sWorld.getConfig(CONFIG_BOOL_SCALE_FORCE_PVP);
-        bool IsBattleGround = uTarget->GetMap() ? uTarget->GetMap()->IsBattleGround() : false;
-        bool canKeep = false;
-
-        if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
-            canKeep = uCaster && uCaster->hasZoneLevel();
-        else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
-            canKeep = true;
-        else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells
-            canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
-
-        if (canKeep)
+        else
         {
-            if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-                canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
-            else
-                canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
-        }
+            bool value_neg = (value < 0) ? true : false;
 
-        if (!canKeep)
-            return value;
-
-        if (spell)
-            spell->isScaled = canKeep;
-
-        /* Check for lower rank of same spell if config is set to auto downrank
-        if (sWorld.getConfig(CONFIG_BOOL_AUTO_DOWNRANK) && caster_level > target_level)
-        {
-            for (uint32 prevSpellId = spellProto->Id; prevSpellId != 0; prevSpellId = sSpellMgr.GetPrevSpellInChain(prevSpellId))
+            if (spell && target && target->GetObjectGuid() != unitCaster->GetObjectGuid())
             {
-                SpellEntry const* prevSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(prevSpellId);
-                if (!prevSpellInfo)
-                    break;
+                if (value == 0)
+                    return value;
 
-                // get close to proper value
-                if (prevSpellInfo->spellLevel < spellProto->spellLevel)
-                {
-                    caster_level = prevSpellInfo->spellLevel;
-                    value = prevSpellInfo->CalculateSimpleValue(effect_index);
-                }
+                Unit* uTarget = (Unit*)target->GetBeneficiary();
+                Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
 
-                // if found appropriate level
-                if (target_level + 10 >= prevSpellInfo->spellLevel)
+                if (!sObjectMgr.IsScalable(uTarget, uCaster))
+                    return value;
+
+                uint32 target_level = uTarget->getLevel();
+                uint32 caster_level = uCaster->getLevel();
+
+                bool canKeep = false;
+
+                if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
+                    canKeep = uCaster && uCaster->hasZoneLevel();
+                else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
+                    canKeep = true;
+                else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells
+                    canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
+
+                if (canKeep)
                 {
-                    if(damage)
-                        break;
+                    if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+                        canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
                     else
-                        return value;
+                        canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
+                }
+
+                if (canKeep)
+                {
+                    // Avoid breaking the below calculation
+                    if (value_neg)
+                        value *= -1;
+
+                    float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
+                    float caster_ratio = value / caster_funct;
+
+                    float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
+                    float target_scale = target_value * caster_ratio;
+                    value = (int)ceil(target_scale);
+
+                    // Restore value sign
+                    if (value_neg)
+                        value *= -1;
+
+                    spell->isScaled = true;
                 }
             }
         }
-
-        // Check for higher rank of same spell if config is set to auto uprank
-        if (sWorld.getConfig(CONFIG_BOOL_AUTO_UPRANK) && caster_level <= target_level)
-        {
-            for (uint32 nextSpellId = spellProto->Id; nextSpellId != 0; nextSpellId = sSpellMgr.GetNextSpellInChain(nextSpellId))
-            {
-                SpellEntry const* nextSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(nextSpellId);
-                if (!nextSpellInfo)
-                    break;
-
-                // if found appropriate level
-                if (target_level >= nextSpellInfo->spellLevel)
-                {
-                    // get close to proper value
-                    caster_level = nextSpellInfo->spellLevel;
-                    value = nextSpellInfo->CalculateSimpleValue(effect_index);
-                }
-            }
-
-            if (caster_level >= target_level)
-                return value;
-        } */
-
-        // Avoid breaking the below calculation
-        if (value_neg)
-            value *= -1;
-
-        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
-        float caster_ratio = value / caster_funct;
-
-        float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
-        float target_scale = target_value * caster_ratio;
-        value = (int)ceil(target_scale);
-
-        // Restore value sign
-        if (value_neg)
-            value *= -1;
     }
 
     return value;
