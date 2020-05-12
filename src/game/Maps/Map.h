@@ -130,8 +130,8 @@ class Map : public GridRefManager<NGridType>
 		void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
         void ShuffleFlexibleCore();
 		uint32 GetFinalNAdds(float NT, float Nadds) const;
-		uint32 GetCreaturesCount(uint32 entry, bool IsAlive = false) const;
-		uint32 GetCreaturesPackSize(uint32 pack, bool IsAlive = false) const;
+		uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
+		uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
 		uint32 GetPlayersCount() const;
 		
 		virtual void Update(const uint32&);
@@ -293,6 +293,7 @@ class Map : public GridRefManager<NGridType>
             uint32 nbr_tank = 2;        // number of tanks needed for that encounter
             uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
             uint32 nbr_adds;
+            uint32 nbr_adds_scaled;
             uint32 nbr_adds_alive;
             float nbr_adds_keep;
 

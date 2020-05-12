@@ -741,7 +741,7 @@ uint32 Map::GetFinalNAdds(float NT, float Nadds) const
 	return sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
 }
 
-uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
+uint32 Map::GetCreaturesCount(uint32 entry, bool IsScaled) const
 {
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
@@ -758,14 +758,14 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsAlive) const
             if (creature->IsTemporarySummon())
                 continue; // skip if is summoned
 
-            if (creature->GetEntry() == entry && (!IsAlive || (IsAlive && !creature->isScaled() && creature->IsAlive())))
+            if (creature->GetEntry() == entry && ((IsScaled && creature->isScaled()) || (!IsScaled && !creature->isScaled())))
                 output++;
         }
 	}
 	return output;
 }
 
-uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
+uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
 {
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
@@ -776,7 +776,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsAlive) const
             if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-            if (packId == pack && (!IsAlive || (IsAlive && !creature->isScaled() && creature->IsAlive())))
+            if (packId == pack && ((IsScaled && creature->isScaled()) || (!IsScaled && !creature->isScaled())))
                 output++;
         }
 	}
@@ -943,7 +943,7 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 if (packId == 0 && !cdata.treated)
                 {
                     cdata.nbr_adds = GetCreaturesCount(cinfo->Entry);
-                    cdata.nbr_adds_alive = GetCreaturesCount(cinfo->Entry, true);
+                    cdata.nbr_adds_scaled = GetCreaturesCount(cinfo->Entry, true);
                     cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
                     cdata.packid = cinfo->Entry;
                 }
@@ -956,9 +956,11 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                     }
 
                     cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
-                    cdata.nbr_adds_alive = GetCreaturesPackSize(packId, true);
+                    cdata.nbr_adds_scaled = GetCreaturesPackSize(packId, true);
                     cdata.packid = packId;
                 }
+
+                cdata.nbr_adds_alive = cdata.nbr_adds - cdata.nbr_adds_scaled;
 
                 if (!cdata.treated)
                     cdata.treated = true;
@@ -999,7 +1001,7 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
 					if (cdata.nbr_adds_alive > cdata.nbr_adds_keep)
 					{
                         if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
-                            if ((!creature->isScaled() && !creature->IsInCombat() && creature->IsAlive()) || (RefreshSize != 0))
+                            if ((!creature->isScaled() /* && !creature->IsInCombat() */ && creature->IsAlive()) || (RefreshSize != 0))
                             {
                                 m_displayStore[guid] = DISPLAY_INVISIBLE;
                                 creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
@@ -1036,7 +1038,8 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 uint8 displayStatus = m_displayStore[guid];
                 if (displayStatus == DISPLAY_VISIBLE)
                 {
-                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->SetStunned(false);
 
                     if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
                         creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
@@ -1049,7 +1052,8 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 else if (displayStatus == DISPLAY_INVISIBLE)
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->SetStunned(true);
 
                     if (creature->IsTemporarySummon())
                     {
