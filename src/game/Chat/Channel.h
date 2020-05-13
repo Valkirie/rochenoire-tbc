@@ -102,7 +102,7 @@ class Channel
             CHANNEL_DBC_FLAG_LFG        = 0x40000           // LookingForGroup
         };
 
-        enum ChannelMemberFlags
+        enum ChannelMemberFlags : uint8
         {
             MEMBER_FLAG_NONE        = 0x00,
             MEMBER_FLAG_OWNER       = 0x01,
@@ -120,40 +120,27 @@ class Channel
             ObjectGuid player;
             uint8 flags;
 
-            bool HasFlag(uint8 flag) const { return (flags & flag) != 0; }
-            void SetFlag(uint8 flag) { if (!HasFlag(flag)) flags |= flag; }
-            bool IsOwner() const { return (flags & MEMBER_FLAG_OWNER) != 0; }
-            void SetOwner(bool state)
-            {
-                if (state) flags |= MEMBER_FLAG_OWNER;
-                else flags &= ~MEMBER_FLAG_OWNER;
-            }
-            bool IsModerator() const { return (flags & MEMBER_FLAG_MODERATOR) != 0; }
-            void SetModerator(bool state)
-            {
-                if (state) flags |= MEMBER_FLAG_MODERATOR;
-                else flags &= ~MEMBER_FLAG_MODERATOR;
-            }
-            bool IsMuted() const { return (flags & MEMBER_FLAG_MUTED) != 0; }
-            void SetMuted(bool state)
-            {
-                if (state) flags |= MEMBER_FLAG_MUTED;
-                else flags &= ~MEMBER_FLAG_MUTED;
-            }
+            inline bool HasFlag(uint8 flag) const { return (flags & flag) != 0; }
+            void SetFlag(uint8 flag, bool state) { if (state) flags |= flag; else flags &= ~flag; }
+            inline bool IsOwner() const { return HasFlag(MEMBER_FLAG_OWNER); }
+            inline void SetOwner(bool state) { SetFlag(MEMBER_FLAG_OWNER, state); }
+            inline bool IsModerator() const { return HasFlag(MEMBER_FLAG_MODERATOR); }
+            inline void SetModerator(bool state) { SetFlag(MEMBER_FLAG_MODERATOR, state); }
+            inline bool IsMuted() const { return HasFlag(MEMBER_FLAG_MUTED); }
+            inline void SetMuted(bool state) { SetFlag(MEMBER_FLAG_MUTED, state); }
         };
 
+        typedef std::map<ObjectGuid, PlayerInfo> PlayerList;
+
     public:
-        Channel(const std::string& name, uint32 channel_id);
+        Channel(const std::string& name, uint32 channel_id = 0);
         std::string GetName() const { return m_name; }
         uint32 GetChannelId() const { return m_channelId; }
         bool IsConstant() const { return m_channelId != 0; }
         bool IsStatic() const { return m_static; }
-        bool IsAnnounce() const { return m_announce; }
         bool IsLFG() const { return (GetFlags() & CHANNEL_FLAG_LFG) != 0; }
         inline bool IsPublic() const { return (IsConstant() || IsStatic()); }
         std::string GetPassword() const { return m_password; }
-        void SetPassword(const std::string& npassword) { m_password = npassword; }
-        void SetAnnounce(bool nannounce) { m_announce = nannounce; }
         size_t GetNumPlayers() const { return m_players.size(); }
         uint8 GetFlags() const { return m_flags; }
         bool HasFlag(uint8 flag) const { return (m_flags & flag) != 0; }
@@ -164,17 +151,15 @@ class Channel
         void Kick(Player* player, const char* targetName) { KickOrBan(player, targetName, false); }
         void Ban(Player* player, const char* targetName) { KickOrBan(player, targetName, true); }
         void UnBan(Player* player, const char* targetName);
-        void Password(Player* player, const char* password);
-        void SetMode(Player* player, const char* targetName, bool moderator, bool set);
+        void SetPassword(Player* player, const char* password);
+        void SetModeFlags(Player* player, const char* targetName, ChannelMemberFlags flags, bool set);
+        inline void SetModerator(Player* player, const char* targetName, bool set) { SetModeFlags(player, targetName, MEMBER_FLAG_MODERATOR, set); }
+        inline void SetMute(Player* player, const char* targetName, bool set) { SetModeFlags(player, targetName, MEMBER_FLAG_MUTED, set); }
         void SetOwner(Player* player, const char* targetName);
-        void SendWhoOwner(Player* player) const;
-        void SetModerator(Player* player, const char* targetName) { SetMode(player, targetName, true, true); }
-        void UnsetModerator(Player* player, const char* targetName) { SetMode(player, targetName, true, false); }
-        void SetMute(Player* player, const char* targetName) { SetMode(player, targetName, false, true); }
-        void UnsetMute(Player* player, const char* targetName) { SetMode(player, targetName, false, false); }
-        void List(Player* player, bool display = false);
-        void Announce(Player* player);
-        void Moderate(Player* player);
+        void SendChannelOwnerResponse(Player* player) const;
+        void SendChannelListResponse(Player* player, bool display = false);
+        void ToggleAnnouncements(Player* player);
+        void ToggleModeration(Player* player);
         void Say(Player* player, const char* text, uint32 lang);
         void Invite(Player* player, const char* targetName);
         void Voice(ObjectGuid guid1, ObjectGuid guid2) const;
@@ -244,48 +229,21 @@ class Channel
 
         ObjectGuid SelectNewOwner() const;
 
-        void SetModerator(ObjectGuid guid, bool set)
-        {
-            if (m_players[guid].IsModerator() != set)
-            {
-                uint8 oldFlag = GetPlayerFlags(guid);
-                m_players[guid].SetModerator(set);
-
-                WorldPacket data;
-                MakeModeChange(data, m_name, guid, oldFlag, GetPlayerFlags(guid));
-                SendToAll(data);
-            }
-        }
-
-        void SetMute(ObjectGuid guid, bool set)
-        {
-            if (m_players[guid].IsMuted() != set)
-            {
-                uint8 oldFlag = GetPlayerFlags(guid);
-                m_players[guid].SetMuted(set);
-
-                WorldPacket data;
-                MakeModeChange(data, m_name, guid, oldFlag, GetPlayerFlags(guid));
-                SendToAll(data);
-            }
-        }
-
+        void SetModeFlags(ObjectGuid guid, ChannelMemberFlags flags, bool set);
         void SetOwner(ObjectGuid guid, bool exclaim = true);
 
     private:
-        bool        m_announce;
-        bool        m_moderate;
         std::string m_name;
         std::string m_password;
-        uint8       m_flags;
         uint32      m_channelId;
         ObjectGuid  m_ownerGuid;
-
-        bool        m_static;
-        bool        m_realmzone;
-
-        typedef     std::map<ObjectGuid, PlayerInfo> PlayerList;
         PlayerList  m_players;
-        GuidSet m_banned;
+        GuidSet     m_banned;
+        bool        m_announcements = false;
+        bool        m_moderation = false;
+        uint8       m_flags = CHANNEL_FLAG_NONE;
+        // Custom features:
+        bool        m_static = false;
+        bool        m_realmzone = false;
 };
 #endif
