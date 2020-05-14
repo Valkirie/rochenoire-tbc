@@ -872,11 +872,15 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
                 CreatureRatio& cdata = m_creaturesRatio[s_entry];
 
-                if (cdata.m_health == 0)
+                // Store once values
+                if (!cdata.m_health)
                     cdata.m_health = creature->GetMaxHealth();
-
-                if (cdata.m_power == 0)
+                if (!cdata.m_power)
                     cdata.m_power = creature->GetMaxPower(creature->HasMana() ? POWER_MANA : POWER_ENERGY);
+                if (!cdata.m_reactstate)
+                    cdata.m_reactstate = (int)creature->AI()->GetReactState();
+                if (!cdata.m_flags)
+                    cdata.m_flags = creature->GetUInt32Value(UNIT_FIELD_FLAGS);
 
 				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
 				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
@@ -1034,19 +1038,23 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
 
                 uint32 guid = creature->GetGUIDLow();
                 if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+                uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+                std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
+                CreatureRatio& cdata = m_creaturesRatio[s_entry];
 
                 uint8 displayStatus = m_displayStore[guid];
                 if (displayStatus == DISPLAY_VISIBLE)
                 {
-                    creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->SetStunned(false);
+                    // Restore FIELD_FLAGS
+                    creature->SetUInt32Value(UNIT_FIELD_FLAGS, cdata.m_flags);
 
-                    creature->CombatStop();
+                    // Restore creature combat mode
+                    creature->AI()->SetReactState(ReactStates(cdata.m_reactstate));
 
                     if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
                         creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
-
-                    if (creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
+                    else if (creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
                         creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_BLUE);
 
                     creature->SetVisibility(VISIBILITY_ON);
@@ -1055,9 +1063,11 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
 
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->SetStunned(true);
+                    // Update FIELD_FLAGS
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
 
+                    // Update creature combat mode
+                    creature->AI()->SetReactState(REACT_PASSIVE);
                     creature->CombatStop();
 
                     if (creature->IsTemporarySummon())
@@ -2447,15 +2457,9 @@ void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
     CreatureRatio& cdata = m_creaturesRatio[s_entry];
 
     if (erased)
-    {
         cdata.removed = true;
-        //m_displayStore[guid] = false;
-    }
     else
-    {
         cdata.added = true;
-        //m_displayStore[guid] = true;
-    }
 
     m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
 }

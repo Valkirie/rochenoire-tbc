@@ -295,7 +295,7 @@ class Map : public GridRefManager<NGridType>
             uint32 nbr_adds;
             uint32 nbr_adds_scaled;
             uint32 nbr_adds_alive;
-            float nbr_adds_keep;
+            float  nbr_adds_keep;
 
             uint32 instance_size;
             uint32 pool_size;
@@ -307,8 +307,12 @@ class Map : public GridRefManager<NGridType>
             float r_dmg;
             float r_attack;
 
-            float m_health = 0.0f;
-            float m_power = 0.0f;
+            float m_health;
+            float m_power;
+
+            uint32 m_faction;
+            uint32 m_reactstate;
+            uint32 m_flags;
         };
 
         std::map<uint32, uint32> m_poolsStore;
