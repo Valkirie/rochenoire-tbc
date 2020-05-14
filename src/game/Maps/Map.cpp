@@ -758,7 +758,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsScaled) const
             if (creature->IsTemporarySummon())
                 continue; // skip if is summoned
 
-            if (creature->GetEntry() == entry && ((IsScaled && creature->isScaled()) || (!IsScaled && !creature->isScaled())))
+            if (creature->GetEntry() == entry && ((IsScaled && creature->isScaled()) || !IsScaled))
                 output++;
         }
 	}
@@ -776,7 +776,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
             if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-            if (packId == pack && ((IsScaled && creature->isScaled()) || (!IsScaled && !creature->isScaled())))
+            if (packId == pack && ((IsScaled && creature->isScaled()) || !IsScaled))
                 output++;
         }
 	}
