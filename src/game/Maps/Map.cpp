@@ -1039,6 +1039,7 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 if (displayStatus == DISPLAY_VISIBLE)
                 {
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->AI()->DoResetThreat();
                     creature->SetStunned(false);
 
                     if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
@@ -1052,23 +1053,15 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 else if (displayStatus == DISPLAY_INVISIBLE)
                 {
                     creature->SetVisibility(VISIBILITY_OFF);
+
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+                    creature->AI()->DoResetThreat();
                     creature->SetStunned(true);
 
                     if (creature->IsTemporarySummon())
-                    {
-                        if (!creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
-                            creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
-                    }
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
                     else
-                    {
-                        if (!creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
-                            creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
-                    }
-                }
-                else
-                {
-                    // do nothing
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
                 }
             }
 		}
