@@ -1039,8 +1039,9 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 if (displayStatus == DISPLAY_VISIBLE)
                 {
                     creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->AI()->DoResetThreat();
                     creature->SetStunned(false);
+
+                    creature->CombatStop();
 
                     if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
                         creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
@@ -1055,8 +1056,9 @@ void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                     creature->SetVisibility(VISIBILITY_OFF);
 
                     creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-                    creature->AI()->DoResetThreat();
                     creature->SetStunned(true);
+
+                    creature->CombatStop();
 
                     if (creature->IsTemporarySummon())
                         creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
