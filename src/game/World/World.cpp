@@ -614,6 +614,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_SUMMONINGRITUAL_REQPARTICIPANTS, "SummoningRitual.ReqParticipants", 4);
     setConfig(CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF, "SummoningRitual.AllowSelfUse", false);
 
+    setConfigMinMax(CONFIG_UINT32_MAINTENANCE_DAY, "MaintenanceDay", 3, 0, 6);
+
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);
 
     setConfigMin(CONFIG_UINT32_MASS_MAILER_SEND_PER_TICK, "MassMailer.SendPerTick", 10, 1);
