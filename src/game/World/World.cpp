@@ -99,6 +99,8 @@ World::World() : mail_timer(0), mail_timer_expires(0), m_NextDailyQuestReset(0),
     m_ShutdownMask = 0;
     m_ShutdownTimer = 0;
     m_gameTime = time(nullptr);
+    m_gameDay = m_gameTime / DAY;
+    m_MaintenanceTimeChecker = 0;
     m_startTime = m_gameTime;
     m_maxActiveSessionCount = 0;
     m_maxQueuedSessionCount = 0;
@@ -1323,6 +1325,7 @@ void World::SetInitialWorldSettings()
     ///- Initialize game time and timers
     sLog.outString("Initialize game time and timers");
     m_gameTime = time(nullptr);
+    m_gameDay = m_gameTime / DAY;
     m_startTime = m_gameTime;
 
     time_t curr;
@@ -1395,6 +1398,10 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Loading Spam records...");
     LoadSpamRecords();
+    sLog.outString();
+
+    sLog.outString("Starting Maintenance system...");
+    InitializeMaintenanceDay();
     sLog.outString();
 
     sLog.outString("Starting Game Event system...");
@@ -1475,6 +1482,39 @@ void World::DetectDBCLang()
 
     sLog.outString("Using %s DBC Locale as default. All available DBC locales: %s", localeNames[m_defaultDbcLocale], availableLocalsStr.empty() ? "<none>" : availableLocalsStr.c_str());
     sLog.outString();
+}
+
+void World::CheckMaintenanceDay()
+{
+    if (sWorld.GetGameDay() >= m_nextMaintenanceDay)
+    {
+        sWorld.ShutdownServ(900, SHUTDOWN_MASK_RESTART, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
+        sObjectAccessor.SaveAllPlayers(); // Force database save
+    }
+}
+
+void World::SetMaintenanceDays(uint32 last)
+{
+    m_lastMaintenanceDay = last;
+    m_nextMaintenanceDay = m_lastMaintenanceDay + 7;
+
+    CharacterDatabase.PExecute("UPDATE saved_variables SET lastMaintenanceDay = '" UI64FMTD "'", uint64(m_lastMaintenanceDay));
+    CharacterDatabase.PExecute("UPDATE saved_variables SET nextMaintenanceDay = '" UI64FMTD "'", uint64(m_nextMaintenanceDay));
+}
+
+void World::InitializeMaintenanceDay()
+{
+    QueryResult* result = CharacterDatabase.Query("SELECT `lastMaintenanceDay`, `nextMaintenanceDay` FROM `saved_variables`");
+    if (result)
+    {
+        Field* fields = result->Fetch();
+        m_lastMaintenanceDay = fields[0].GetUInt32();
+        m_nextMaintenanceDay = fields[1].GetUInt32();
+        delete result;
+    }
+
+    if (!m_lastMaintenanceDay)
+        SetMaintenanceDays(GetLastMaintenanceDay());
 }
 
 /// Update the World !
@@ -1599,6 +1639,15 @@ void World::Update(uint32 diff)
 
     // update the instance reset times
     sMapPersistentStateMgr.Update();
+
+    /// Maintenance checker
+    if (m_MaintenanceTimeChecker < diff)
+    {
+        CheckMaintenanceDay();
+        m_MaintenanceTimeChecker = 60000;
+    }
+    else
+        m_MaintenanceTimeChecker -= diff;
 
     // And last, but not least handle the issued cli commands
     ProcessCliCommands();
@@ -1944,6 +1993,7 @@ void World::_UpdateGameTime()
     time_t thisTime = time(nullptr);
     uint32 elapsed = uint32(thisTime - m_gameTime);
     m_gameTime = thisTime;
+    m_gameDay = m_gameTime / DAY;
 
     ///- if there is a shutdown timer
     if (!m_stopEvent && m_ShutdownTimer > 0 && elapsed > 0)

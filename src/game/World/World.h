@@ -66,6 +66,7 @@ enum ShutdownExitCode
     SHUTDOWN_EXIT_CODE = 0,
     ERROR_EXIT_CODE    = 1,
     RESTART_EXIT_CODE  = 2,
+    MAINTENANCE_EXIT_CODE = 3,
 };
 
 enum WowPatch
@@ -234,6 +235,7 @@ enum eConfigUInt32Values
     CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_ARENA,
     CONFIG_UINT32_CREATURE_PICKPOCKET_RESTOCK_DELAY,
     CONFIG_UINT32_SUMMONINGRITUAL_REQPARTICIPANTS,
+    CONFIG_UINT32_MAINTENANCE_DAY,
     CONFIG_UINT32_CHANNEL_STATIC_AUTO_TRESHOLD,
     CONFIG_UINT32_VALUE_COUNT
 };
@@ -560,10 +562,23 @@ class World
         time_t const& GetStartTime() const { return m_startTime; }
         /// What time is it?
         time_t const& GetGameTime() const { return m_gameTime; }
+        /// What day is it?
+        uint32 const& GetGameDay() const { return m_gameDay; }
         /// Uptime (in secs)
         uint32 GetUptime() const { return uint32(m_gameTime - m_startTime); }
         /// Next daily quests reset time
         time_t GetNextDailyQuestsResetTime() const { return m_NextDailyQuestReset; }
+
+        tm* GetLocalTimeByTime(time_t now) const { return localtime(&now); }
+
+        /// Get the last maintenance day
+        uint32 GetLastMaintenanceDay() const
+        {
+            uint32 mDay = getConfig(CONFIG_UINT32_MAINTENANCE_DAY);
+            tm* date = GetLocalTimeByTime(m_gameTime);
+            // formula to find last mDay of gregorian calendary
+            return m_gameDay - ((date->tm_wday - mDay + 7) % 7);
+        }
 
         /// Get the maximum skill level a player can reach
         uint16 GetConfigMaxSkillValue() const
@@ -593,6 +608,10 @@ class World
         static uint8 GetExitCode() { return m_ExitCode; }
         static void StopNow(uint8 exitcode) { m_stopEvent = true; m_ExitCode = exitcode; }
         static bool IsStopped() { return m_stopEvent; }
+
+        void CheckMaintenanceDay();
+        void SetMaintenanceDays(uint32 last);
+        void InitializeMaintenanceDay();
 
         void Update(uint32 diff);
 
@@ -717,8 +736,13 @@ class World
         uint32 m_ShutdownTimer;
         uint32 m_ShutdownMask;
 
+        uint32 m_MaintenanceTimeChecker;
+        uint32 m_lastMaintenanceDay;
+        uint32 m_nextMaintenanceDay;
+
         time_t m_startTime;
         time_t m_gameTime;
+        uint32 m_gameDay;
         IntervalTimer m_timers[WUPDATE_COUNT];
         uint32 mail_timer;
         uint32 mail_timer_expires;
