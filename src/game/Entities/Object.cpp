@@ -536,11 +536,22 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                 {
                     *data << uint32(0);
                 }
-
-                // Gamemasters should be always able to select units - remove not selectable flag
-                else if (index == UNIT_FIELD_FLAGS && target->isGameMaster())
+                else if (index == UNIT_FIELD_FLAGS)
                 {
-                    *data << (m_uint32Values[index] & ~UNIT_FLAG_NOT_SELECTABLE);
+                    uint32 value = m_uint32Values[index];
+
+                    // For gamemasters in GM mode:
+                    if (target->isGameMaster())
+                    {
+                        // Gamemasters should be always able to select units - remove not selectable flag:
+                        value &= ~UNIT_FLAG_NOT_SELECTABLE;
+
+                        // Gamemasters have power to cliffwalk in GM mode:
+                        if (target == this)
+                            value |= UNIT_FLAG_UNK_0;
+                    }
+
+                    *data << value;
                 }
                 // Hide lootable animation for unallowed players
                 // Handle tapped flag
@@ -1199,7 +1210,8 @@ void Object::ForceValuesUpdateAtIndex(uint32 index)
 WorldObject::WorldObject() :
     m_transportInfo(nullptr), m_isOnEventNotified(false),
     m_currMap(nullptr), m_mapId(0),
-    m_InstanceId(0), m_isActiveObject(false), m_visibilityData(this)
+    m_InstanceId(0), m_isActiveObject(false), m_visibilityData(this),
+    m_debugFlags(0)
 {
 }
 
