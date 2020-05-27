@@ -4403,12 +4403,21 @@ bool PlayerbotAI::IsRegenerating()
     for (auto & aura : auras)
     {
         SpellEntry const* spell = aura.second->GetSpellProto();
-        if (!spell)
+        // Exclude permanent regenerating aura (DurationIndex 21 : unlimited)
+        if (!spell || spell->DurationIndex == 21)
             continue;
-        if (spell->Category == 59 || spell->Category == 11
-            || ((m_bot->HasAuraType(SPELL_AURA_MOD_POWER_REGEN) || m_bot->HasAuraType(SPELL_AURA_MOD_REGEN))
-                && spell->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_SITTING)))
+        // Generic drinking / eating
+        if (spell->Category == 59 || spell->Category == 11)
             return true;
+        // Specific drinking / eating after patch 2.0.1, especially conjured goods
+        if(spell->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_SITTING))
+        {
+            for (uint32 i = EFFECT_INDEX_0; i < MAX_EFFECT_INDEX; ++i)
+            {
+                if (spell->Effect[i] == SPELL_EFFECT_APPLY_AURA && (spell->EffectApplyAuraName[i] == SPELL_AURA_MOD_POWER_REGEN || spell->EffectApplyAuraName[i] == SPELL_AURA_MOD_REGEN))
+                    return true;
+            }
+        }
     }
     if (m_bot->getStandState() != UNIT_STAND_STATE_STAND)
         m_bot->SetStandState(UNIT_STAND_STATE_STAND);
@@ -5194,7 +5203,7 @@ void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
     }
 
     // If bot is in water, allow it to swim instead of being stuck above water or at the floor until it drowns itself
-    if (m_bot->IsInWater())
+    if (m_bot->IsInWater() && m_bot->GetMap()->GetTerrain()->IsSwimmable(m_bot->GetPositionX(), m_bot->GetPositionY(), m_bot->GetPositionZ(), m_bot->GetCollisionHeight()))
     {
         if (!m_bot->IsSwimming())
             m_bot->m_movementInfo.AddMovementFlag(MOVEFLAG_SWIMMING);
