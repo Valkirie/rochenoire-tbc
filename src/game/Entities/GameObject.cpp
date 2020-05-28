@@ -944,6 +944,9 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
         if (!IsSpawned())
             return false;
 
+        if (GetGOInfo()->IsServerOnly())
+            return false;
+
         // special invisibility cases
         switch (GetGOInfo()->type)
         {
@@ -993,13 +996,6 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
                 }
 
                 if (trapNotVisible)
-                    return false;
-
-                break;
-            }
-            case GAMEOBJECT_TYPE_SPELL_FOCUS:
-            {
-                if (GetGOInfo()->spellFocus.serverOnly == 1)
                     return false;
 
                 break;
@@ -1181,6 +1177,9 @@ GameObject* GameObject::LookupFishingHoleAround(float range) const
 bool GameObject::IsCollisionEnabled() const
 {
     if (!IsSpawned())
+        return false;
+
+    if (GetGOInfo()->IsServerOnly()) // serverside GOs do not have LOS
         return false;
 
     // TODO: Possible that this function must consider multiple checks
