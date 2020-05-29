@@ -146,7 +146,7 @@ struct boss_fankrissAI : public CombatAI
                     if (!m_wormsSpawnPerWave)
                     {
                         // Determine how many Spawn of Fankriss will be spawned in the next wave
-                        m_wormsSpawnPerWave = urand(1, 3);
+                        m_wormsSpawnPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), urand(1, 3));
                         // Randomise the summoning spells so each NPC spawns in a different location
                         std::random_shuffle(m_summonWormSpells.begin(), m_summonWormSpells.end());
                         ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(22000, 70000), spellId));
@@ -162,7 +162,7 @@ struct boss_fankrissAI : public CombatAI
                 // Teleport and untangle one random player into one of the three alcoves
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_PLAYER | SELECT_FLAG_SKIP_TANK))
                 {
-                    uint32 spellId = aEntangleSpells[uiEntangleIndex];
+                    uint32 spellId = aEntangleSpells[entangleIndex];
                     if (DoCastSpellIfCan(target, spellId) == CAST_OK)
                     {
                         m_EntangleTargetGuid = target->GetObjectGuid();
