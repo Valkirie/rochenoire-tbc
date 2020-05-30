@@ -1489,11 +1489,17 @@ void World::DetectDBCLang()
 
 void World::CheckMaintenanceDay()
 {
-    if (sWorld.GetGameDay() >= m_nextMaintenanceDay)
+    if (sWorld.GetGameDay() >= m_nextMaintenanceDay && !m_markerToStart)
     {
-        sWorld.ShutdownServ(900, 0, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
+        sWorld.ShutdownServ(900, SHUTDOWN_MASK_RESTART, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
         sObjectAccessor.SaveAllPlayers(); // Force database save
     }
+}
+
+void World::ToggleMaintenanceMarker()
+{
+    m_markerToStart = !m_markerToStart;
+    CharacterDatabase.PExecute("UPDATE saved_variables SET MaintenanceMarker = '%c'", m_markerToStart);
 }
 
 void World::SetMaintenanceDays(uint32 last)
@@ -1501,18 +1507,27 @@ void World::SetMaintenanceDays(uint32 last)
     m_lastMaintenanceDay = last;
     m_nextMaintenanceDay = m_lastMaintenanceDay + 7;
 
-    CharacterDatabase.PExecute("UPDATE saved_variables SET lastMaintenanceDay = '" UI64FMTD "'", uint64(m_lastMaintenanceDay));
-    CharacterDatabase.PExecute("UPDATE saved_variables SET nextMaintenanceDay = '" UI64FMTD "'", uint64(m_nextMaintenanceDay));
+    CharacterDatabase.PExecute("UPDATE saved_variables SET lastMaintenanceDay = '" UI64FMTD "', nextMaintenanceDay = '" UI64FMTD "'", uint64(m_lastMaintenanceDay), uint64(m_nextMaintenanceDay));
+}
+
+void World::DoMaintenance()
+{
+    if (!m_markerToStart)
+        return;
+
+    ToggleMaintenanceMarker();
+    SetMaintenanceDays(GetNextMaintenanceDay());
 }
 
 void World::InitializeMaintenanceDay()
 {
-    QueryResult* result = CharacterDatabase.Query("SELECT `lastMaintenanceDay`, `nextMaintenanceDay` FROM `saved_variables`");
+    QueryResult* result = CharacterDatabase.Query("SELECT `lastMaintenanceDay`, `nextMaintenanceDay`, `MaintenanceMarker` FROM `saved_variables`");
     if (result)
     {
         Field* fields = result->Fetch();
         m_lastMaintenanceDay = fields[0].GetUInt32();
         m_nextMaintenanceDay = fields[1].GetUInt32();
+        m_markerToStart = fields[2].GetBool();
         delete result;
     }
 

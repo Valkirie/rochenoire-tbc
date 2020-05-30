@@ -610,8 +610,12 @@ class World
         static void StopNow(uint8 exitcode) { m_stopEvent = true; m_ExitCode = exitcode; }
         static bool IsStopped() { return m_stopEvent; }
 
+        uint32 GetNextMaintenanceDay() const { return m_nextMaintenanceDay; }
+
         void CheckMaintenanceDay();
+        void ToggleMaintenanceMarker();
         void SetMaintenanceDays(uint32 last);
+        void DoMaintenance();
         void InitializeMaintenanceDay();
 
         void Update(uint32 diff);
@@ -740,6 +744,7 @@ class World
         uint32 m_MaintenanceTimeChecker;
         uint32 m_lastMaintenanceDay;
         uint32 m_nextMaintenanceDay;
+        bool m_markerToStart;
 
         time_t m_startTime;
         time_t m_gameTime;
