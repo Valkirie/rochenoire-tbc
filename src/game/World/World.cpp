@@ -1491,7 +1491,7 @@ void World::CheckMaintenanceDay()
 {
     if (sWorld.GetGameDay() >= m_nextMaintenanceDay)
     {
-        sWorld.ShutdownServ(900, SHUTDOWN_MASK_RESTART, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
+        sWorld.ShutdownServ(900, 0, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
         sObjectAccessor.SaveAllPlayers(); // Force database save
     }
 }
