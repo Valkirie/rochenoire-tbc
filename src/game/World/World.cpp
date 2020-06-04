@@ -1405,6 +1405,7 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Starting Maintenance system...");
     InitializeMaintenanceDay();
+    DoMaintenance();
     sLog.outString();
 
     sLog.outString("Starting Game Event system...");
@@ -1493,13 +1494,14 @@ void World::CheckMaintenanceDay()
     {
         sWorld.ShutdownServ(900, SHUTDOWN_MASK_RESTART, MAINTENANCE_EXIT_CODE); // Restart 15 minutes after honor weekend by server time
         sObjectAccessor.SaveAllPlayers(); // Force database save
+        ToggleMaintenanceMarker();
     }
 }
 
 void World::ToggleMaintenanceMarker()
 {
     m_markerToStart = !m_markerToStart;
-    CharacterDatabase.PExecute("UPDATE saved_variables SET MaintenanceMarker = '%c'", m_markerToStart);
+    CharacterDatabase.PExecute("UPDATE saved_variables SET MaintenanceMarker = '%u'", m_markerToStart);
 }
 
 void World::SetMaintenanceDays(uint32 last)
