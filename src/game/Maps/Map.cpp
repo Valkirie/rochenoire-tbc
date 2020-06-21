@@ -1421,12 +1421,10 @@ void Map::SendInitSelf(Player* player) const
         }
     }
 
-    WorldPacket packet;
     for (size_t i = 0; i < updateData.GetPacketCount(); ++i)
     {
-        updateData.BuildPacket(packet, i, hasTransport);
+        WorldPacket packet = updateData.BuildPacket(i, hasTransport);
         player->GetSession()->SendPacket(packet);
-        packet.clear();
     }
 }
 
@@ -1455,12 +1453,10 @@ void Map::SendInitTransports(Player* player) const
         }
     }
 
-    WorldPacket packet;
     for (size_t i = 0; i < updateData.GetPacketCount(); ++i)
     {
-        updateData.BuildPacket(packet, i, hasTransport);
+        WorldPacket packet = updateData.BuildPacket(i, hasTransport);
         player->GetSession()->SendPacket(packet);
-        packet.clear();
     }
 }
 
@@ -1482,12 +1478,10 @@ void Map::SendRemoveTransports(Player* player) const
         if (i != player->GetTransport() && i->GetMapId() != i_id)
             i->BuildOutOfRangeUpdateBlock(&updateData);
 
-    WorldPacket packet;
     for (size_t i = 0; i < updateData.GetPacketCount(); ++i)
     {
-        updateData.BuildPacket(packet, i);
+        WorldPacket packet = updateData.BuildPacket(i);
         player->GetSession()->SendPacket(packet);
-        packet.clear();
     }
 }
 
@@ -2436,14 +2430,12 @@ void Map::SendObjectUpdates()
         obj->BuildUpdateData(update_players);
     }
 
-    WorldPacket packet;                                     // here we allocate a std::vector with a size of 0x10000
     for (auto& update_player : update_players)
     {
         for (size_t i = 0; i < update_player.second.GetPacketCount(); ++i)
         {
-            update_player.second.BuildPacket(packet, i);
+            WorldPacket packet = update_player.second.BuildPacket(i);
             update_player.first->GetSession()->SendPacket(packet);
-            packet.clear(); // clean the string
         }
     }
 }

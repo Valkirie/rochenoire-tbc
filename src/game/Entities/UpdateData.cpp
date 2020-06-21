@@ -44,7 +44,9 @@ void UpdateData::AddOutOfRangeGUID(ObjectGuid const& guid)
 
 void UpdateData::AddUpdateBlock(const ByteBuffer& block)
 {
-    if (m_data[m_currentIndex].m_buffer.size() < 700)
+    const size_t existing = (128 + (9 * m_outOfRangeGUIDs.size()) + m_data[m_currentIndex].m_buffer.size());
+
+    if ((existing + block.size()) < MAX_NETCLIENT_PACKET_SIZE)
     {
         m_data[m_currentIndex].m_buffer.append(block);
         ++m_data[m_currentIndex].m_blockCount;
@@ -114,8 +116,9 @@ void UpdateData::Compress(void* dst, uint32* dst_size, void* src, int src_size)
     *dst_size = c_stream.total_out;
 }
 
-bool UpdateData::BuildPacket(WorldPacket& packet, size_t index, bool hasTransport)
+WorldPacket UpdateData::BuildPacket(size_t index, bool hasTransport)
 {
+    WorldPacket packet;
     MANGOS_ASSERT(packet.empty());                         // shouldn't happen
 
     ByteBuffer buf(4 + 1 + (m_outOfRangeGUIDs.empty() ? 0 : 1 + 4 + 9 * m_outOfRangeGUIDs.size()) + m_data[index].m_buffer.wpos());
@@ -144,7 +147,7 @@ bool UpdateData::BuildPacket(WorldPacket& packet, size_t index, bool hasTranspor
         packet.put<uint32>(0, pSize);
         Compress(const_cast<uint8*>(packet.contents()) + sizeof(uint32), &destsize, (void*)buf.contents(), pSize);
         if (destsize == 0)
-            return false;
+            return packet;
 
         packet.resize(destsize + sizeof(uint32));
         packet.SetOpcode(SMSG_COMPRESSED_UPDATE_OBJECT);
@@ -155,7 +158,7 @@ bool UpdateData::BuildPacket(WorldPacket& packet, size_t index, bool hasTranspor
         packet.SetOpcode(SMSG_UPDATE_OBJECT);
     }
 
-    return true;
+    return packet;
 }
 
 void UpdateData::Clear()

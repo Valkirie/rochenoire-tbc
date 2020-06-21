@@ -20407,12 +20407,10 @@ void Player::UpdateForQuestWorldObjects()
                 obj->BuildValuesUpdateBlockForPlayer(&updateData, this);
         }
     }
-    WorldPacket packet;
     for (size_t i = 0; i < updateData.GetPacketCount(); ++i)
     {
-        updateData.BuildPacket(packet, i);
+        WorldPacket packet = updateData.BuildPacket(i);
         GetSession()->SendPacket(packet);
-        packet.clear();
     }
 }
 
@@ -20421,24 +20419,15 @@ void Player::UpdateEverything()
     if (m_clientGUIDs.empty())
         return;
 
-    UpdateData updateDataCreature;
-    UpdateData updateDataRest;
-    WorldPacket packet;
-    for (GuidSet::const_iterator itr = m_clientGUIDs.begin(); itr != m_clientGUIDs.end(); ++itr)
+    UpdateData updateData;
+    for (const auto guid : m_clientGUIDs)
+        if (WorldObject* obj = GetMap()->GetWorldObject(guid))
+            obj->BuildForcedValuesUpdateBlockForPlayer(&updateData, this);
+    for (size_t i = 0; i < updateData.GetPacketCount(); ++i)
     {
-        if (WorldObject* obj = GetMap()->GetWorldObject(*itr))
-        {
-            if (obj->GetTypeId() == TYPEID_UNIT)
-                obj->BuildForcedValuesUpdateBlockForPlayer(&updateDataCreature, this);
-            else
-                obj->BuildValuesUpdateBlockForPlayer(&updateDataRest, this);
-        }
+        WorldPacket packet = updateData.BuildPacket(i);
+        GetSession()->SendPacket(packet);
     }
-    updateDataCreature.BuildPacket(packet, 0); // protection against too big packets - TODO: extend to all
-    GetSession()->SendPacket(packet);
-    packet.clear();
-    updateDataRest.BuildPacket(packet, 0);
-    GetSession()->SendPacket(packet);
 }
 
 void Player::SummonIfPossible(bool agree)
