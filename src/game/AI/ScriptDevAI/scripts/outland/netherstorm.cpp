@@ -1195,16 +1195,16 @@ struct npc_bessyAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 3:
+            case 4:
                 m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.67f, 2183.11f, 96.85f, 6.20f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 25000);
                 m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.53f, 2184.43f, 96.36f, 6.27f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 25000);
                 m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.85f, 2186.34f, 97.57f, 6.08f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 25000);
                 break;
-            case 7:
+            case 8:
                 m_creature->SummonCreature(NPC_SEVERED_SPIRIT, 2309.64f, 2186.24f, 92.25f, 6.06f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 25000);
                 m_creature->SummonCreature(NPC_SEVERED_SPIRIT, 2309.25f, 2183.46f, 91.75f, 6.22f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 25000);
                 break;
-            case 12:
+            case 13:
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_COWS_COME_HOME, m_creature);
                 break;
@@ -1512,24 +1512,24 @@ struct npc_protectorate_demolitionistAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 DoScriptText(SAY_INTRO, m_creature);
                 break;
-            case 3:
+            case 4:
                 DoScriptText(SAY_STAGING_GROUNDS, m_creature);
                 break;
-            case 4:
+            case 5:
                 DoScriptText(SAY_TOXIC_HORROR, m_creature);
                 break;
-            case 9:
+            case 10:
                 DoScriptText(SAY_SALHADAAR, m_creature);
                 break;
-            case 12:
+            case 13:
                 DoScriptText(SAY_DISRUPTOR, m_creature);
                 SetEscortPaused(true);
                 m_uiEventTimer = 5000;
                 break;
-            case 13:
+            case 14:
                 DoScriptText(SAY_FINISH_2, m_creature);
                 if (Player* pPlayer = GetPlayerForEscort())
                 {
@@ -1628,19 +1628,19 @@ struct npc_captured_vanguardAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 15:
+            case 16:
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_ID_ESCAPE_STAGING_GROUNDS, m_creature);
                 break;
-            case 16:
+            case 17:
                 DoScriptText(SAY_VANGUARD_FINISH, m_creature);
                 SetRun();
                 break;
-            case 17:
+            case 18:
                 if (Creature* pAmeer = GetClosestCreatureWithEntry(m_creature, NPC_COMMANDER_AMEER, 5.0f))
                     DoScriptText(EMOTE_VANGUARD_FINISH, m_creature, pAmeer);
                 break;
-            case 18:
+            case 19:
                 if (DoCastSpellIfCan(m_creature, SPELL_ETHEREAL_TELEPORT, CAST_TRIGGERED) == CAST_OK)
                     m_creature->ForcedDespawn(1000);
                 break;
@@ -1817,17 +1817,17 @@ struct npc_drijyaAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 DoScriptText(SAY_DRIJYA_START, m_creature);
                 SetRun();
                 break;
-            case 1:
+            case 2:
                 DoScriptText(SAY_DRIJYA_1, m_creature);
                 break;
-            case 5:
+            case 6:
                 DoScriptText(SAY_DRIJYA_2, m_creature);
                 break;
-            case 7:
+            case 8:
                 SetEscortPaused(true);
                 m_uiSayCount = false;
                 m_uiDestroyingTimer = 60000;
@@ -1837,7 +1837,7 @@ struct npc_drijyaAI : public npc_escortAI
                 if (Creature* pTrigger = GetClosestCreatureWithEntry(m_creature, NPC_EXPLODE_TRIGGER, 40.0f))
                     m_explodeTriggerGuid = pTrigger->GetObjectGuid();
                 break;
-            case 8:
+            case 9:
                 if (Player* pPlayer = GetPlayerForEscort())
                     m_creature->SetFacingToObject(pPlayer);
                 // first pillar smoke
@@ -1845,7 +1845,7 @@ struct npc_drijyaAI : public npc_escortAI
                 DoScriptText(SAY_DRIJYA_4, m_creature);
                 m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
                 break;
-            case 12:
+            case 13:
                 SetEscortPaused(true);
                 m_uiSayCount = false;
                 m_uiDestroyingTimer = 60000;
@@ -1853,7 +1853,7 @@ struct npc_drijyaAI : public npc_escortAI
                 m_uiSpawnCount = 0;
                 m_creature->HandleEmote(EMOTE_STATE_WORK);
                 break;
-            case 13:
+            case 14:
                 if (Player* pPlayer = GetPlayerForEscort())
                     m_creature->SetFacingToObject(pPlayer);
                 // second pillar smoke
@@ -1861,34 +1861,34 @@ struct npc_drijyaAI : public npc_escortAI
                 DoScriptText(SAY_DRIJYA_5, m_creature);
                 m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
                 break;
-            case 17:
+            case 18:
                 SetEscortPaused(true);
                 m_uiSayCount = false;
                 m_uiDestroyingTimer = 60000;
                 m_uiSpawnDestroyerTimer = 15000;
                 m_creature->HandleEmote(EMOTE_STATE_WORK);
                 break;
-            case 18:
+            case 19:
                 m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
                 // manifold smoke
                 RespawnGo(true, 2, 4);
                 DoScriptText(SAY_DRIJYA_6, m_creature);
                 m_creature->HandleEmote(EMOTE_ONESHOT_ROAR);
                 break;
-            case 19:
+            case 20:
                 // warp gate explosion, smoke and fire
                 if (Creature* pTrigger = m_creature->GetMap()->GetCreature(m_explodeTriggerGuid))
                     pTrigger->CastSpell(pTrigger, SPELL_EXPLOSION_VISUAL, TRIGGERED_NONE);
                 RespawnGo(false, 0, 4);
                 RespawnGo(true, 5, 10);
                 break;
-            case 20:
+            case 21:
                 DoScriptText(SAY_DRIJYA_7, m_creature);
                 break;
-            case 23:
+            case 24:
                 SetRun(false);
                 break;
-            case 27:
+            case 28:
                 if (Player* pPlayer = GetPlayerForEscort())
                 {
                     DoScriptText(SAY_DRIJYA_COMPLETE, m_creature, pPlayer);

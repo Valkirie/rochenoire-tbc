@@ -121,11 +121,11 @@ struct npc_muglashAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 if (Player* pPlayer = GetPlayerForEscort())
                     DoScriptText(SAY_MUG_START2, m_creature, pPlayer);
                 break;
-            case 24:
+            case 25:
                 if (Player* pPlayer = GetPlayerForEscort())
                     DoScriptText(SAY_MUG_BRAZIER, m_creature, pPlayer);
 
@@ -136,16 +136,16 @@ struct npc_muglashAI : public npc_escortAI
                     SetEscortPaused(true);
                 }
                 break;
-            case 25:
+            case 26:
                 DoScriptText(SAY_MUG_GRATITUDE, m_creature);
 
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_VORSHA, m_creature);
                 break;
-            case 26:
+            case 27:
                 DoScriptText(SAY_MUG_PATROL, m_creature);
                 break;
-            case 27:
+            case 28:
                 DoScriptText(SAY_MUG_RETURN, m_creature);
                 break;
         }
@@ -289,13 +289,13 @@ struct npc_ruul_snowhoofAI : public npc_escortAI
     {
         switch (pointId)
         {
-            case 13:
+            case 14:
                 DoSpawnAmbush(0);
                 break;
-            case 30:
+            case 31:
                 DoSpawnAmbush(1);
                 break;
-            case 31:
+            case 32:
                 m_creature->SetImmuneToNPC(true);
                 m_creature->RemoveAurasDueToSpell(SPELL_RUUL_SHAPECHANGE);
                 if (Player* player = GetPlayerForEscort())
@@ -304,7 +304,7 @@ struct npc_ruul_snowhoofAI : public npc_escortAI
                     player->RewardPlayerAndGroupAtEventExplored(QUEST_FREEDOM_TO_RUUL, m_creature);
                 }
                 break;
-            case 32:
+            case 33:
                 if (Player* player = GetPlayerForEscort())
                 {
                     DoScriptText(SAY_RUUL_COMPLETE, m_creature, player);
@@ -313,10 +313,10 @@ struct npc_ruul_snowhoofAI : public npc_escortAI
                 m_creature->HandleEmote(EMOTE_ONESHOT_BOW);
                 m_creature->SetWalk(false);
                 break;
-            case 33:
+            case 34:
                 DoCastSpellIfCan(m_creature, SPELL_RUUL_SHAPECHANGE);
                 break;
-            case 35:
+            case 36:
                 m_creature->SetImmuneToNPC(false);
                 m_creature->SetWalk(true);
                 m_creature->ForcedDespawn();
@@ -387,23 +387,23 @@ struct npc_torekAI : public npc_escortAI
 
         switch (uiPointId)
         {
-            case 1:
+            case 2:
                 DoScriptText(SAY_MOVE, m_creature, pPlayer);
                 break;
-            case 8:
+            case 9:
                 DoScriptText(SAY_PREPARE, m_creature, pPlayer);
                 break;
-            case 19:
+            case 20:
                 // TODO: verify location and creatures amount.
                 m_creature->SummonCreature(NPC_DURIEL, 1776.73f, -2049.06f, 109.83f, 1.54f, TEMPSPAWN_TIMED_OOC_DESPAWN, 25000);
                 m_creature->SummonCreature(NPC_SILVERWING_SENTINEL, 1774.64f, -2049.41f, 109.83f, 1.40f, TEMPSPAWN_TIMED_OOC_DESPAWN, 25000);
                 m_creature->SummonCreature(NPC_SILVERWING_WARRIOR, 1778.73f, -2049.50f, 109.83f, 1.67f, TEMPSPAWN_TIMED_OOC_DESPAWN, 25000);
                 break;
-            case 20:
+            case 21:
                 DoScriptText(SAY_WIN, m_creature, pPlayer);
                 pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_TOREK_ASSULT, m_creature);
                 break;
-            case 21:
+            case 22:
                 DoScriptText(SAY_END, m_creature, pPlayer);
                 break;
         }
@@ -528,26 +528,26 @@ struct npc_feero_ironhandAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 14:
+            case 15:
                 // Prepare the first ambush
                 DoScriptText(SAY_FIRST_AMBUSH_START, m_creature);
                 for (uint8 i = 0; i < 4; ++i)
                     DoSpawnMob(NPC_DARK_STRAND_ASSASSIN, aSummonPositions[0][0], aSummonPositions[0][1] - M_PI_F / 4 * i);
                 break;
-            case 20:
+            case 21:
                 // Prepare the second ambush
                 DoScriptText(SAY_SECOND_AMBUSH_START, m_creature);
                 for (uint8 i = 0; i < 3; ++i)
                     DoSpawnMob(NPC_FORSAKEN_SCOUT, aSummonPositions[1][0], aSummonPositions[1][1] - M_PI_F / 3 * i);
                 break;
-            case 29:
+            case 30:
                 // Final ambush
                 DoScriptText(SAY_FINAL_AMBUSH_START, m_creature);
                 m_creature->SummonCreature(NPC_BALIZAR_THE_UMBRAGE, aEliteSummonPositions[0][0], aEliteSummonPositions[0][1], aEliteSummonPositions[0][2], aEliteSummonPositions[0][3], TEMPSPAWN_TIMED_OOC_DESPAWN, 20000);
                 m_creature->SummonCreature(NPC_ALIGAR_THE_TORMENTOR, aEliteSummonPositions[1][0], aEliteSummonPositions[1][1], aEliteSummonPositions[1][2], aEliteSummonPositions[1][3], TEMPSPAWN_TIMED_OOC_DESPAWN, 20000);
                 m_creature->SummonCreature(NPC_CAEDAKAR_THE_VICIOUS, aEliteSummonPositions[2][0], aEliteSummonPositions[2][1], aEliteSummonPositions[2][2], aEliteSummonPositions[2][3], TEMPSPAWN_TIMED_OOC_DESPAWN, 20000);
                 break;
-            case 30:
+            case 31:
                 // Complete the quest
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_SUPPLIES_TO_AUBERDINE, m_creature);

@@ -56,12 +56,12 @@ struct npc_kanatiAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                 DoScriptText(SAY_KAN_START, m_creature);
                 DoSpawnGalak();
                 break;
-            case 1:
+            case 2:
                 m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_PROTECT_KANATI, m_creature);
@@ -142,19 +142,19 @@ struct npc_lakota_windsongAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 8:
+            case 9:
                 DoScriptText(SAY_LAKO_LOOK_OUT, m_creature);
                 DoSpawnBandits(ID_AMBUSH_1);
                 break;
-            case 14:
+            case 15:
                 DoScriptText(SAY_LAKO_HERE_COME, m_creature);
                 DoSpawnBandits(ID_AMBUSH_2);
                 break;
-            case 21:
+            case 22:
                 DoScriptText(SAY_LAKO_MORE, m_creature);
                 DoSpawnBandits(ID_AMBUSH_3);
                 break;
-            case 45:
+            case 46:
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_FREE_AT_LAST, m_creature);
                 break;
@@ -223,14 +223,14 @@ struct npc_paoka_swiftmountainAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 15:
+            case 16:
                 DoScriptText(SAY_WYVERN, m_creature);
                 DoSpawnWyvern();
                 break;
-            case 26:
+            case 27:
                 DoScriptText(SAY_COMPLETE, m_creature);
                 break;
-            case 27:
+            case 28:
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->RewardPlayerAndGroupAtEventExplored(QUEST_HOMEWARD, m_creature);
                 break;

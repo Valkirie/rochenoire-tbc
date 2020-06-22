@@ -341,28 +341,28 @@ struct npc_grimstoneAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 0:                                         // Middle reached first time
+            case 1:                                         // Middle reached first time
                 DoScriptText(SAY_START_1, m_creature);
                 SetEscortPaused(true);
                 m_uiEventTimer = 5000;
                 break;
-            case 1:                                         // Reached wall again
+            case 2:                                         // Reached wall again
                 DoScriptText(SAY_OPEN_EAST_GATE, m_creature);
                 SetEscortPaused(true);
                 m_uiEventTimer = 5000;
                 break;
-            case 2:                                         // walking along the wall, while door opened
+            case 3:                                         // walking along the wall, while door opened
                 SetEscortPaused(true);
                 break;
-            case 3:                                         // Middle reached second time
+            case 4:                                         // Middle reached second time
                 DoScriptText(SAY_SUMMON_BOSS_1, m_creature);
                 break;
-            case 4:                                         // Reached North Gate
+            case 5:                                         // Reached North Gate
                 DoScriptText(SAY_OPEN_NORTH_GATE, m_creature);
                 SetEscortPaused(true);
                 m_uiEventTimer = 5000;
                 break;
-            case 5:
+            case 6:
                 if (m_pInstance)
                 {
                     m_pInstance->SetData(TYPE_RING_OF_LAW, DONE);
@@ -597,10 +597,10 @@ struct npc_phalanxAI : public npc_escortAI
 
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 DoScriptText(YELL_PHALANX_AGGRO, m_creature);
                 break;
-            case 1:
+            case 2:
                 SetEscortPaused(true);
                 // There are two ways of activating Phalanx: completing Rocknot event, making Phalanx hostile to anyone
                 // killing Plugger making Phalanx hostile to Horde (do not ask why)
@@ -917,44 +917,44 @@ struct npc_rocknotAI : public npc_escortAI
 
         switch (uiPointId)
         {
-            case 0:     // if Nagmara and Potion of Love event is in progress, switch to second part of the escort
+            case 1:     // if Nagmara and Potion of Love event is in progress, switch to second part of the escort
                 SetEscortPaused(true);
                 if (m_pInstance->GetData(TYPE_NAGMARA) == IN_PROGRESS)
-                    SetCurrentWaypoint(9);
+                    SetCurrentWaypoint(10);
 
                 SetEscortPaused(false);
                 break;
-            case 2:
-                DoScriptText(SAY_BARREL_1, m_creature);
-                break;
             case 3:
-                DoScriptText(SAY_BARREL_2, m_creature);
+                DoScriptText(SAY_BARREL_1, m_creature);
                 break;
             case 4:
                 DoScriptText(SAY_BARREL_2, m_creature);
                 break;
             case 5:
-                DoScriptText(SAY_BARREL_1, m_creature);
+                DoScriptText(SAY_BARREL_2, m_creature);
                 break;
             case 6:
+                DoScriptText(SAY_BARREL_1, m_creature);
+                break;
+            case 7:
                 DoCastSpellIfCan(m_creature, SPELL_DRUNKEN_RAGE, false);
                 m_uiBreakKegTimer = 2000;
                 break;
-            case 8:     // Back home stop here
+            case 9:     // Back home stop here
                 SetEscortPaused(true);
                 m_creature->SetFacingTo(m_fInitialOrientation);
                 break;
-            case 9:     // This step is the start of the "alternate" waypoint path used with Nagmara
+            case 10:     // This step is the start of the "alternate" waypoint path used with Nagmara
                 // Make Nagmara follow Rocknot
                 if (!pNagmara)
                 {
                     SetEscortPaused(true);
-                    SetCurrentWaypoint(8);
+                    SetCurrentWaypoint(9);
                 }
                 else
                     pNagmara->GetMotionMaster()->MoveFollow(m_creature, 2.0f, 0);
                 break;
-            case 16:
+            case 17:
                 // Open the bar back door if relevant
                 m_pInstance->GetBarDoorIsOpen(m_bIsDoorOpen);
                 if (!m_bIsDoorOpen)
@@ -965,7 +965,7 @@ struct npc_rocknotAI : public npc_escortAI
                 if (pNagmara)
                     pNagmara->GetMotionMaster()->MoveFollow(m_creature, 2.0f, 0);
                 break;
-            case 33: // Reach under the stair, make Nagmara move to her position and give the handle back to Nagmara AI script
+            case 34: // Reach under the stair, make Nagmara move to her position and give the handle back to Nagmara AI script
                 if (!pNagmara)
                     break;
 
@@ -1501,11 +1501,11 @@ struct npc_hurley_blackbreathAI : public npc_escortAI
 
         switch (uiPointId)
         {
-            case 1:
+            case 2:
                 DoScriptText(YELL_HURLEY_SPAWN, m_creature);
                 SetRun(true);
                 break;
-            case 5:
+            case 6:
                 {
                     SetEscortPaused(true);
                     // Make Hurley and his cronies able to attack players (and be attacked)

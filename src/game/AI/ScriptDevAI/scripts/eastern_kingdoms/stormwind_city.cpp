@@ -328,14 +328,14 @@ struct npc_squire_roweAI : public npc_escortAI, private DialogueHelper
     {
         switch (uiPointId)
         {
-            case 2:
+            case 3:
                 m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
                 break;
-            case 3:
+            case 4:
                 m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 m_creature->SummonCreature(NPC_WINDSOR, aWindsorSpawnLoc[0], aWindsorSpawnLoc[1], aWindsorSpawnLoc[2], 0, TEMPSPAWN_CORPSE_DESPAWN, 0);
                 break;
-            case 6:
+            case 7:
                 DoScriptText(SAY_SIGNAL_SENT, m_creature);
                 m_creature->SetFacingTo(2.15f);
                 SetEscortPaused(true);
@@ -670,7 +670,7 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
     {
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 if (!m_pScriptedMap)
                     break;
                 // Prepare Jonathan for the first event
@@ -688,14 +688,14 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
                     pJonathan->GetMotionMaster()->MovePoint(0, aMoveLocations[0][0], aMoveLocations[0][1], aMoveLocations[0][2]);
                 }
                 break;
-            case 1:
+            case 2:
                 StartNextDialogueText(SAY_JON_DIALOGUE_1);
                 SetEscortPaused(true);
                 break;
-            case 3:
+            case 4:
                 m_bCanGuardSalute = true;
                 break;
-            case 11:
+            case 12:
                 if (!m_pScriptedMap)
                     break;
                 // We can reset Jonathan now
@@ -706,15 +706,15 @@ struct npc_reginald_windsorAI : public npc_escortAI, private DialogueHelper
                     pJonathan->GetMotionMaster()->MoveTargetedHome();
                 }
                 break;
-            case 22:
+            case 23:
                 SetEscortPaused(true);
                 m_creature->SetFacingTo(5.41f);
                 StartNextDialogueText(NPC_GUARD_ROYAL);
                 break;
-            case 24:
+            case 25:
                 m_bCanGuardSalute = false;
                 break;
-            case 25:
+            case 26:
                 StartNextDialogueText(NPC_WRYNN);
                 SetEscortPaused(true);
                 m_bCanGuardSalute = false;

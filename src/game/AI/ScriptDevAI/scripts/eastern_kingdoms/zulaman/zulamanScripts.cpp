@@ -623,7 +623,7 @@ struct npc_amanishi_lookoutAI : public ScriptedAI
         if (motionType != EXTERNAL_WAYPOINT_MOVE)
             return;
 
-        if (pointId && pointId == 10)
+        if (pointId && pointId == 11)
             m_creature->ForcedDespawn();
     }
 };
@@ -1011,23 +1011,23 @@ struct npc_harkorAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 0:
+                case 1:
                     m_uiEvent = 1;
                     m_uiEventTimer = 1000;
                     break;
-                case 2:
+                case 3:
                     m_uiEvent = 3;
                     m_uiEventTimer = 1000;
                     break;
-                case 3:
+                case 4:
                     m_uiEvent = 6;
                     m_uiEventTimer = 1000;
                     break;
-                case 4:
+                case 5:
                     m_uiEvent = 9;
                     m_uiEventTimer = 1000;
                     break;
-                case 41:
+                case 42:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_bReachedEntrance = true;
                     break;
@@ -1037,19 +1037,19 @@ struct npc_harkorAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 0:
+                case 1:
                     m_creature->SetWalk(false);
                     m_bReachedEntrance = false;
                     break;
-                case 11:
+                case 12:
                     m_uiEvent = 11;
                     m_uiEventTimer = 1000;
                     break;
-                case 15:
+                case 16:
                     m_uiEvent = 14;
                     m_uiEventTimer = 1000;
                     break;
-                case 18:
+                case 19:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_bReachedEntrance = true;
                     break;
@@ -1343,23 +1343,23 @@ struct npc_tanzarAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 1:
+                case 2:
                     m_uiEvent = 1;
                     m_uiEventTimer = 2000;
                     break;
-                case 3:
+                case 4:
                     m_uiEvent = 3;
                     m_uiEventTimer = 1000;
                     break;
-                case 5:
+                case 6:
                     m_uiEvent = 6;
                     m_uiEventTimer = 1000;
                     break;
-                case 52:
+                case 53:
                     m_uiEvent = 7;
                     m_uiEventTimer = 5000;
                     break;
-                case 54:
+                case 55:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_creature->HandleEmoteState(EMOTE_STATE_DANCE);
                     break;
@@ -1369,15 +1369,15 @@ struct npc_tanzarAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 0:
+                case 1:
                     m_creature->SetWalk(false);
                     break;
-                case 12:
+                case 13:
                     m_creature->SetWalk(true);
                     m_uiEvent = 9;
                     m_uiEventTimer = 2000;
                     break;
-                case 14:
+                case 15:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_uiEvent = 11;
                     m_uiEventTimer = 1000;
@@ -1633,19 +1633,19 @@ struct npc_krazAI : public ScriptedAI
 
         switch (pointId)
         {
-            case 1:
+            case 2:
                 m_uiEvent = 1;
                 m_uiEventTimer = 2000;
                 break;
-            case 5:
+            case 6:
                 m_uiEvent = 3;
                 m_uiEventTimer = 1000;
                 break;
-            case 7:
+            case 8:
                 m_uiEvent = 6;
                 m_uiEventTimer = 1000;
                 break;
-            case 11:
+            case 12:
                 m_uiEvent = 9;
                 m_uiEventTimer = 1000;
                 break;
@@ -1967,27 +1967,27 @@ struct npc_ashliAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 1:
+                case 2:
                     m_uiEvent = 2;
                     m_uiEventTimer = 1000;
                     break;
-                case 6:
+                case 7:
                     m_uiEvent = 3;
                     m_uiEventTimer = 3000;
                     break;
-                case 12:
+                case 13:
                     m_uiEvent = 5;
                     m_uiEventTimer = 1000;
                     break;
-                case 20:
+                case 21:
                     m_uiEvent = 7;
                     m_uiEventTimer = 2000;
                     break;
-                case 22:
+                case 23:
                     m_uiEvent = 9;
                     m_uiEventTimer = 1000;
                     break;
-                case 83:
+                case 84:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_bReachedEntrance = true;
                     break;
@@ -1997,15 +1997,15 @@ struct npc_ashliAI : public ScriptedAI
         {
             switch (pointId)
             {
-                case 0:
+                case 1:
                     m_creature->SetWalk(false);
                     m_bReachedEntrance = false;
                     break;
-                case 13:
+                case 14:
                     m_uiEvent = 10;
                     m_uiEventTimer = 2000;
                     break;
-                case 29:
+                case 30:
                     m_creature->GetMotionMaster()->MoveIdle();
                     m_bReachedEntrance = true;
                     break;

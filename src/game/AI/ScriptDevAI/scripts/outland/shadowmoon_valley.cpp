@@ -518,33 +518,33 @@ struct npc_wildaAI : public npc_escortAI
     {
         switch (uiPointId)
         {
-            case 8:
-            case 26:
-            case 30:
-            case 32:
-            case 39:
-            case 43:
-            case 51:
+            case 9:
+            case 27:
+            case 31:
+            case 33:
+            case 40:
+            case 44:
+            case 52:
                 DoSpawnAssassin();
                 break;
-            case 13:
+            case 14:
                 if (Player* pPlayer = GetPlayerForEscort())
                     DoScriptText(SAY_WIL_FREE_SPIRITS, m_creature, pPlayer);
                 DoCastSpellIfCan(m_creature, SPELL_BREAK_WATER_PRISON);
                 break;
-            case 14:
+            case 15:
                 if (Player* pPlayer = GetPlayerForEscort())
                     DoScriptText(SAY_WIL_FIND_EXIT, m_creature, pPlayer);
                 DoFreeSpirits();
                 break;
-            case 15:
+            case 16:
                 DoSpawnAssassin(2);
                 break;
-            case 40:
+            case 41:
                 if (Player* pPlayer = GetPlayerForEscort())
                     DoScriptText(SAY_WIL_JUST_AHEAD, m_creature, pPlayer);
                 break;
-            case 52:
+            case 53:
                 if (Player* pPlayer = GetPlayerForEscort())
                 {
                     DoDespawnSpirits();
@@ -3350,16 +3350,16 @@ struct npc_dragonmaw_racer_muckjawAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 3:
+        case 4:
             m_creature->SetCanFly(true);
             break;
-        case 6:
+        case 7:
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 8:
+        case 9:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 34:
+        case 35:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
@@ -3374,16 +3374,16 @@ struct npc_dragonmaw_racer_tropeAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 4:
+        case 5:
             m_creature->SetCanFly(true);
             break;
-        case 6:
+        case 7:
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 9:
+        case 10:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 52:
+        case 53:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
@@ -3398,16 +3398,16 @@ struct npc_dragonmaw_racer_corlokAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 5:
+        case 6:
             m_creature->SetCanFly(true);
             break;
-        case 8:
+        case 9:
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 11:
+        case 12:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 78:
+        case 79:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
@@ -3422,14 +3422,14 @@ struct npc_dragonmaw_racer_ichmanAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 3:
+        case 4:
             m_creature->SetCanFly(true);
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 11:
+        case 12:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 106:
+        case 107:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
@@ -3444,16 +3444,16 @@ struct npc_dragonmaw_racer_mulverickAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 4:
+        case 5:
             m_creature->SetCanFly(true);
             break;
-        case 8:
+        case 9:
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 11:
+        case 12:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 165:
+        case 166:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
@@ -3479,19 +3479,19 @@ struct npc_dragonmaw_racer_skyshatterAI : public npc_dragonmaw_racerAI
     {
         switch (uiPointId)
         {
-        case 2:
+        case 3:
             m_creature->SetCanFly(true);
             break;
-        case 6:
+        case 7:
             if (Player* pPlayer = GetPlayerForEscort())
                 DoScriptText(SAY_MID_SKYSHATTER, m_creature, pPlayer);
 
             npc_dragonmaw_racerAI::StartRace();
             break;
-        case 9:
+        case 10:
             npc_dragonmaw_racerAI::StartAttack();
             break;
-        case 139:
+        case 140:
             npc_dragonmaw_racerAI::FinishRace();
             break;
         }
