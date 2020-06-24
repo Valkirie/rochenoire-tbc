@@ -1343,6 +1343,16 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                 case RUN_CHASE: m_chaseRun = true; break;
             }
             break;
+        case ACTION_T_SET_SPELL_SET:
+        {
+            m_creature->UpdateSpellSet(action.spellSet.setId);
+            break;
+        }
+        case ACTION_T_SET_IMMOBILIZED_STATE:
+        {
+            SetRootSelf(action.immobilizedState.apply, action.immobilizedState.combatOnly);
+            break;
+        }
         default:
             sLog.outError("%s::ProcessAction(): action(%u) not implemented", GetAIName().data(), static_cast<uint32>(action.type));
             return false;
@@ -1396,6 +1406,7 @@ void CreatureEventAI::Reset()
     // reset AI state
     SetAIOrder(ORDER_NONE);
     SetCombatScriptStatus(false);
+    ClearSelfRoot();
 
     // Reset all events to enabled
     for (auto& i : m_CreatureEventAIList)
