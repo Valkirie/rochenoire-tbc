@@ -458,7 +458,7 @@ int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 		displayid = ilevel;
 
 	if (randomPropertyId != 0)
-		if (randomPropertyIdArray[displayid])
+        if (std::find(randomPropertyIdArray.begin(), randomPropertyIdArray.end(), displayid) != randomPropertyIdArray.end())
 			return randomPropertyIdArray[displayid];
 
 	return 0;
@@ -498,7 +498,7 @@ int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
 		displayid = ilevel;
 
 	if (randomSuffix != 0)
-		if (randomSuffixIdArray[displayid])
+        if (std::find(randomSuffixIdArray.begin(), randomSuffixIdArray.end(), displayid) != randomSuffixIdArray.end())
 			return randomSuffixIdArray[displayid];
 
 	return 0;
