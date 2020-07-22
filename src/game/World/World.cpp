@@ -60,12 +60,15 @@
 #include "MotionGenerators/WaypointManager.h"
 #include "GMTickets/GMTicketMgr.h"
 #include "Util.h"
-#include "AuctionHouseBot/AuctionHouseBot.h"
 #include "Tools/CharacterDatabaseCleaner.h"
 #include "Entities/CreatureLinkingMgr.h"
 #include "Weather/Weather.h"
 #include "World/WorldState.h"
 #include "Cinematics/CinematicMgr.h"
+
+#ifdef BUILD_AHBOT
+#include "AuctionHouseBot/AuctionHouseBot.h"
+#endif
 
 #include <algorithm>
 #include <mutex>
@@ -1348,8 +1351,10 @@ void World::SetInitialWorldSettings()
     m_timers[WUPDATE_CORPSES].SetInterval(20 * MINUTE * IN_MILLISECONDS);
     m_timers[WUPDATE_DELETECHARS].SetInterval(DAY * IN_MILLISECONDS); // check for chars to delete every day
 
+#ifdef BUILD_AHBOT
     // for AhBot
     m_timers[WUPDATE_AHBOT].SetInterval(20 * IN_MILLISECONDS); // every 20 sec
+#endif
 
     // Update groups with offline leader after delay in seconds
     m_timers[WUPDATE_GROUPS].SetInterval(IN_MILLISECONDS);
@@ -1421,9 +1426,11 @@ void World::SetInitialWorldSettings()
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();
 
+#ifdef BUILD_AHBOT
     sLog.outString("Initialize AuctionHouseBot...");
-    sAuctionBot.Initialize();
+    sAuctionHouseBot.Initialize();
     sLog.outString();
+#endif
 
     sLog.outString("Loading WorldState");
     sWorldState.Load();
@@ -1589,12 +1596,14 @@ void World::Update(uint32 diff)
         sAuctionMgr.Update();
     }
 
+#ifdef BUILD_AHBOT
     /// <li> Handle AHBot operations
     if (m_timers[WUPDATE_AHBOT].Passed())
     {
-        sAuctionBot.Update();
+        sAuctionHouseBot.Update();
         m_timers[WUPDATE_AHBOT].Reset();
     }
+#endif
 
     /// <li> Handle session updates
     UpdateSessions(diff);
