@@ -307,6 +307,8 @@ enum TriggerCastFlags : uint32
     TRIGGERED_IGNORE_GCD                        = 0x00000200,   // Ignores GCD - to be used in spell scripts
     TRIGGERED_IGNORE_COSTS                      = 0x00000400,   // Ignores spell costs
     TRIGGERED_IGNORE_COOLDOWNS                  = 0x00000800,   // Ignores cooldowns
+    TRIGGERED_IGNORE_CURRENT_CASTED_SPELL       = 0x00001000,   // Ignores concurrent casts and is not set as currently executed
+    TRIGGERED_HIDE_CAST_IN_COMBAT_LOG           = 0x00002000,   // Sends cast flag for ignoring combat log display - used for many procs - default behaviour for triggered by aura
     TRIGGERED_FULL_MASK                         = 0xFFFFFFFF
 };
 
@@ -1559,6 +1561,7 @@ class Unit : public WorldObject
 
         bool CanAttackOnSight(Unit const* target) const; // Used in MoveInLineOfSight checks
         bool CanAssistInCombatAgainst(Unit const* who, Unit const* enemy) const;
+        bool CanJoinInAttacking(Unit const* enemy) const;
 
         bool IsImmuneToNPC() const { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC); }
         void SetImmuneToNPC(bool state);
@@ -2490,7 +2493,7 @@ class Unit : public WorldObject
         void Uncharm(Unit* charmed, uint32 spellId = 0);
 
         // Combat prevention
-        bool CanEnterCombat() { return m_canEnterCombat && !GetCombatManager().IsEvadingHome(); }
+        bool CanEnterCombat() const { return m_canEnterCombat && !GetCombatManager().IsEvadingHome(); }
         void SetCanEnterCombat(bool can) { m_canEnterCombat = can; }
 
         void SetIgnoreRangedTargets(bool state) { m_ignoreRangedTargets = state; }
@@ -2533,6 +2536,15 @@ class Unit : public WorldObject
         void RegisterScriptedLocationAura(Aura* aura, AuraScriptLocation location, bool apply); // Spell scripting - requires correctly set spell_affect
         std::vector<Aura*>& GetScriptedLocationAuras(AuraScriptLocation location) { return m_scriptedLocations[location]; }
 
+        uint8 GetComboPoints() const { return m_comboPoints; }
+        ObjectGuid const& GetComboTargetGuid() const { return m_comboTargetGuid; }
+
+        void AddComboPoints(Unit* target, int8 count);
+        void ClearComboPoints();
+
+        void RegisterScalingAura(Aura* aura, bool apply);
+        void UpdateScalingAuras();
+
     protected:
 
         struct WeaponDamageInfo
@@ -2573,6 +2585,7 @@ class Unit : public WorldObject
         SpellAuraHolderList m_deletedHolders;
         std::map<uint32, Aura*> m_classScripts;
         std::vector<Aura*> m_scriptedLocations[SCRIPT_LOCATION_MAX];
+        std::vector<Aura*> m_scalingAuras;
 
         // Store Auras for which the target must be tracked
         TrackedAuraTargetMap m_trackedAuraTargets[MAX_TRACKED_AURA_TYPES];
@@ -2707,6 +2720,9 @@ class Unit : public WorldObject
         bool m_extraAttacksExecuting;
 
         uint64 m_auraUpdateMask;
+
+        ObjectGuid m_comboTargetGuid;
+        int8 m_comboPoints;
 
     private:                                                // Error traps for some wrong args using
         // this will catch and prevent build for any cases when all optional args skipped and instead triggered used non boolean type

@@ -500,6 +500,8 @@ class Spell
         bool m_ignoreGCD;
         bool m_ignoreCosts;
         bool m_ignoreCooldowns;
+        bool m_ignoreConcurrentCasts;
+        bool m_hideInCombatLog;
 
         int32 GetCastTime() const { return m_casttime; }
         uint32 GetCastedTime() const { return m_timer; }
@@ -553,8 +555,6 @@ class Spell
         Unit* GetAffectiveCaster() const { return m_originalCasterGUID ? m_originalCaster : m_caster; }
         // m_originalCasterGUID can store GO guid, and in this case this is visual caster
         WorldObject* GetCastingObject() const;
-
-        uint32 GetPowerCost() const { return m_powerCost; }
         // channels are generally instant - until more research provided all need to have speed 0
         float GetSpellSpeed() const;
 
@@ -606,7 +606,9 @@ class Spell
         void SetJumpRadius(float newValue) { m_jumpRadius = newValue; }
         // warning - always set scheme for first unique target in a row
         void SetFilteringScheme(SpellEffectIndex effIdx, bool targetB, SpellTargetFilterScheme scheme) { m_filteringScheme[effIdx][uint32(targetB)] = scheme; }
-
+        // onsuccessfulspellstart
+        uint32 GetPowerCost() const { return m_powerCost; }
+        void SetPowerCost(uint32 powerCost) { m_powerCost = powerCost; }
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
         bool IgnoreItemRequirements() const;                // some item use spells have unexpected reagent data

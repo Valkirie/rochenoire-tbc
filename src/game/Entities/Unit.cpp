@@ -404,6 +404,8 @@ Unit::Unit() :
 
     m_baseSpeedWalk = 1.f;
     m_baseSpeedRun = 1.f;
+
+    m_comboPoints = 0;
 }
 
 Unit::~Unit()
@@ -2060,13 +2062,23 @@ void Unit::DealMeleeDamage(CalcDamageInfo* calcDamageInfo, bool durabilityLoss)
     CleanDamage cleanDamage(calcDamageInfo->cleanDamage, calcDamageInfo->attackType, calcDamageInfo->hitOutCome);
     DealDamage(this, victim, calcDamageInfo->totalDamage, &cleanDamage, DIRECT_DAMAGE, SpellSchoolMask(calcDamageInfo->subDamage[0].damageSchoolMask), nullptr, durabilityLoss);
 
-    // If not miss
-    if (!(calcDamageInfo->HitInfo & HITINFO_MISS))
+    // If not immune
+    if (calcDamageInfo->TargetState != VICTIMSTATE_IS_IMMUNE && calcDamageInfo->TargetState != VICTIMSTATE_EVADES)
     {
-        // If not immune
-        if (calcDamageInfo->TargetState != VICTIMSTATE_IS_IMMUNE)
+        if (CanEnterCombat() && victim->CanEnterCombat())
         {
-            EngageInCombatWithAggressor(victim);
+            // if damage pVictim call AI reaction
+            victim->AttackedBy(this);
+
+            if (Unit* owner = GetOwner())
+                if (owner->GetTypeId() == TYPEID_UNIT)
+                    if (owner->CanJoinInAttacking(victim))
+                        owner->EngageInCombatWithAggressor(victim);
+
+            for (auto m_guardianPet : m_guardianPets)
+                if (Unit* pet = (Unit*)GetMap()->GetPet(m_guardianPet))
+                    if (pet->CanJoinInAttacking(victim))
+                        pet->EngageInCombatWithAggressor(victim);
         }
     }
 
@@ -2656,20 +2668,6 @@ void Unit::AttackerStateUpdate(Unit* pVictim, WeaponAttackType attType, bool ext
     else
         DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "AttackerStateUpdate: (NPC)    %u attacked %u (TypeId: %u) for %u dmg, absorbed %u, blocked %u, resisted %u.",
                          GetGUIDLow(), pVictim->GetGUIDLow(), pVictim->GetTypeId(), meleeDamageInfo.totalDamage, totalAbsorb, meleeDamageInfo.blocked_amount, totalResist);
-
-    if (CanEnterCombat() && pVictim->CanEnterCombat())
-    {
-        // if damage pVictim call AI reaction
-        pVictim->AttackedBy(this);
-
-        if (Unit* owner = GetOwner())
-            if (owner->GetTypeId() == TYPEID_UNIT)
-                owner->EngageInCombatWith(pVictim);
-
-        for (auto m_guardianPet : m_guardianPets)
-            if (Unit* pet = (Unit*)GetMap()->GetPet(m_guardianPet))
-                pet->EngageInCombatWith(pVictim);
-    }
 }
 
 void Unit::DoExtraAttacks(Unit* pVictim)
@@ -6356,8 +6354,11 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     return true;
 }
 
-bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= false*/, bool /*includingCombo = false*/)
+bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= false*/, bool includingCombo /*= false*/)
 {
+    if (includingCombo)
+        ClearComboPoints();
+
     // interrupt cast only id includingCast == true and we have something to interrupt.
     if (includingCast && IsNonMeleeSpellCasted(false))
         InterruptNonMeleeSpells(false);
@@ -7256,11 +7257,6 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, ui
             break;
     }
 
-    // Pets just add their bonus damage to their spell damage
-    // note that their spell damage is just gain of their own auras
-    if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsPet())
-        DoneAdvertisedBenefit += ((Pet*)this)->GetBonusDamage();
-
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
 	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
@@ -7758,10 +7754,6 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
                 DoneFlat += i->GetModifier()->m_amount;
             }
         }
-
-        // Pets just add their bonus damage to their melee damage
-        if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsPet())
-            DoneFlat += ((Pet*)this)->GetBonusDamage();
     }
 
     // ..done flat (by creature type mask)
@@ -8238,7 +8230,8 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     if (!IsAlive())
         return;
 
-    bool creatureNotInCombat = GetTypeId() == TYPEID_UNIT && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+    bool notInCombat = !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+    bool creatureNotInCombat = GetTypeId() == TYPEID_UNIT && notInCombat;
 
     // For player itself and his pet during pvp combat enable own combat timer
     if (PvP || creatureNotInCombat)
@@ -8249,12 +8242,12 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     if (HasCharmer() || !GetOwnerGuid().IsEmpty())
     {
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
-        if (enemy)
+        if (enemy && notInCombat)
         {
             // TODO: Unify this combat propagation with linking combat propagation in threat system
             Unit* controller = GetMaster();
 
-            if (controller && enemy->CanAttackOnSight(controller))
+            if (controller && controller->CanJoinInAttacking(enemy))
             {
                 if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
                 {
@@ -10573,9 +10566,8 @@ void Unit::ClearAllReactives()
         ModifyAuraState(AURA_STATE_CRIT, false);
     if (getClass() == CLASS_HUNTER && HasAuraState(AURA_STATE_HUNTER_CRIT_STRIKE))
         ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, false);
-
-    if (getClass() == CLASS_WARRIOR && GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->ClearComboPoints();
+    if (getClass() == CLASS_WARRIOR)
+        ClearComboPoints();
 }
 
 void Unit::UpdateReactives(uint32 p_time)
@@ -10610,8 +10602,8 @@ void Unit::UpdateReactives(uint32 p_time)
                         ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, false);
                     break;
                 case REACTIVE_OVERPOWER:
-                    if (getClass() == CLASS_WARRIOR && GetTypeId() == TYPEID_PLAYER)
-                        ((Player*)this)->ClearComboPoints();
+                    if (getClass() == CLASS_WARRIOR)
+                        ClearComboPoints();
                     break;
                 default:
                     break;
@@ -12091,3 +12083,68 @@ void Unit::RegisterScriptedLocationAura(Aura* aura, AuraScriptLocation location,
     else
         m_scriptedLocations[location].erase(std::remove(m_scriptedLocations[location].begin(), m_scriptedLocations[location].end(), aura), m_scriptedLocations[location].end());
 }
+
+void Unit::AddComboPoints(Unit* target, int8 count)
+{
+    if (!count)
+        return;
+
+    // without combo points lost (duration checked in aura)
+    RemoveSpellsCausingAura(SPELL_AURA_RETAIN_COMBO_POINTS);
+
+    if (target->GetObjectGuid() == m_comboTargetGuid)
+    {
+        m_comboPoints += count;
+    }
+    else
+    {
+        if (m_comboTargetGuid)
+            if (Unit* target2 = ObjectAccessor::GetUnit(*this, m_comboTargetGuid))
+                target2->RemoveComboPointHolder(GetGUIDLow());
+
+        m_comboTargetGuid = target->GetObjectGuid();
+        m_comboPoints = count;
+
+        target->AddComboPointHolder(GetGUIDLow());
+    }
+
+    if (m_comboPoints > 5) m_comboPoints = 5;
+    if (m_comboPoints < 0) m_comboPoints = 0;
+
+    if (IsPlayer())
+        static_cast<Player*>(this)->SendComboPoints();
+}
+
+void Unit::ClearComboPoints()
+{
+    if (!m_comboTargetGuid)
+        return;
+
+    // without combopoints lost (duration checked in aura)
+    RemoveSpellsCausingAura(SPELL_AURA_RETAIN_COMBO_POINTS);
+
+    m_comboPoints = 0;
+
+    if (Unit* target = ObjectAccessor::GetUnit(*this, m_comboTargetGuid))
+        target->RemoveComboPointHolder(GetGUIDLow());
+
+    m_comboTargetGuid.Clear();
+
+    if (IsPlayer())
+        static_cast<Player*>(this)->SendComboPoints();
+}
+
+void Unit::RegisterScalingAura(Aura* aura, bool apply)
+{
+    if (apply)
+        m_scalingAuras.push_back(aura);
+    else
+        m_scalingAuras.erase(std::remove(m_scalingAuras.begin(), m_scalingAuras.end(), aura), m_scalingAuras.end());
+}
+
+void Unit::UpdateScalingAuras()
+{
+    for (Aura* aura : m_scalingAuras)
+        aura->UpdateAuraScaling();
+}
+
