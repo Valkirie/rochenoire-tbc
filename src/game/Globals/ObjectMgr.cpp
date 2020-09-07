@@ -2013,14 +2013,6 @@ void ObjectMgr::LoadCreatures()
         data.patch_min          = fields[21].GetInt16();
         data.patch_max          = fields[22].GetInt16();
 
-        if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA))
-        {
-            auto terrainInfo = sTerrainMgr.LoadTerrain(data.mapid);
-            uint32 zoneId = terrainInfo->GetZoneId(data.posX, data.posY, data.posZ);
-            uint32 areaId = terrainInfo->GetAreaId(data.posX, data.posY, data.posZ);
-            WorldDatabase.PExecute("UPDATE creature SET zoneId = %u, areaId = %u WHERE guid = %u", zoneId, areaId, guid);
-        }
-
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)
         {
@@ -2247,14 +2239,6 @@ void ObjectMgr::LoadGameObjects()
         data.gameEvent        = fields[16].GetInt16();
         data.GuidPoolId       = fields[17].GetInt16();
         data.EntryPoolId      = fields[18].GetInt16();
-
-        if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA))
-        {
-            auto terrainInfo = sTerrainMgr.LoadTerrain(data.mapid);
-            uint32 zoneId = terrainInfo->GetZoneId(data.posX, data.posY, data.posZ);
-            uint32 areaId = terrainInfo->GetAreaId(data.posX, data.posY, data.posZ);
-            WorldDatabase.PExecute("UPDATE gameobject SET zoneId = %u, areaId = %u WHERE guid = %u", zoneId, areaId, guid);
-        }
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)

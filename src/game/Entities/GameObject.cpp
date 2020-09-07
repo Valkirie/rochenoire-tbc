@@ -114,6 +114,13 @@ void GameObject::AddToWorld()
     if (m_model)
         GetMap()->InsertGameObjectModel(*m_model);
 
+    if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA))
+    {
+        uint32 zone_id, area_id;
+        GetZoneAndAreaId(zone_id, area_id);
+        WorldDatabase.PExecute("UPDATE gameobject SET zoneId = %u, areaId = %u WHERE guid = %u", zone_id, area_id, GetGUIDLow());
+    }
+
     WorldObject::AddToWorld();
 
     // After Object::AddToWorld so that for initial state the GO is added to the world (and hence handled correctly)

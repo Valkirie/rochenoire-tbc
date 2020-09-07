@@ -176,6 +176,13 @@ void Creature::AddToWorld()
 		GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
 	}
 
+    if (sWorld.getConfig(CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA))
+    {
+        uint32 zone_id, area_id;
+        GetZoneAndAreaId(zone_id, area_id);
+        WorldDatabase.PExecute("UPDATE creature SET zoneId = %u, areaId = %u WHERE guid = %u", zone_id, area_id, GetGUIDLow());
+    }
+
     switch (GetSubtype())
     {
         case CREATURE_SUBTYPE_PET:
