@@ -177,11 +177,11 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Playe
         QuestMenuItem const& qItem = mQuestMenu.GetItem(iI);
         uint32 questID = qItem.m_qId;
         Quest const* pQuest = sObjectMgr.GetQuestTemplate(questID);
-        uint32 pQuest_slevel = pPlayer ? pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel()) : pQuest->GetQuestLevel();
+        uint32 pQuest_slevel = pPlayer ? pPlayer->getZoneLevel(pQuest->GetZoneOrSort()) + (pQuest->GetQuestLevel() - pQuest->GetMinLevel()) : pQuest->GetQuestLevel();
 
         data << uint32(questID);
         data << uint32(qItem.m_qIcon);
-		if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+		if (!pQuest->IsSpecificQuest())
 			data << uint32(pQuest_slevel);
 		else
 			data << uint32(pQuest->GetQuestLevel());
@@ -315,11 +315,11 @@ void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title
             std::string title = pQuest->GetTitle();
             sObjectMgr.GetQuestLocaleStrings(questID, loc_idx, &title);
 
-			uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+			uint32 pQuest_slevel = pPlayer->getZoneLevel(pQuest->GetZoneOrSort()) + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
 
             data << uint32(questID);
             data << uint32(qmi.m_qIcon);
-            if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+            if (!pQuest->IsSpecificQuest())
 				data << uint32(pQuest_slevel);
 			else
 				data << uint32(pQuest->GetQuestLevel());
@@ -480,11 +480,11 @@ void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQue
     }
 
     WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size
-	uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+	uint32 pQuest_slevel = pPlayer->getZoneLevel(pQuest->GetZoneOrSort()) + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
 
     data << uint32(pQuest->GetQuestId());                   // quest id
     data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
-    if (!pQuest->IsSpecificQuest() && pPlayer && pPlayer->hasZoneLevel(pQuest->GetZoneOrSort()))
+    if (!pQuest->IsSpecificQuest())
 		data << uint32(pQuest_slevel);
 	else
 		data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)

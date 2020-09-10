@@ -217,12 +217,12 @@ uint32 Quest::XPValue(Player* pPlayer) const
 int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 {
 	int32 sRewOrReqMoney = RewOrReqMoney;
-	if (pPlayer && pPlayer->hasZoneLevel(GetZoneOrSort()))
+	if (pPlayer)
 	{
 		/* if (RewOrReqMoney <= 0)
 			return RewOrReqMoney; */
 
-		int32 pQuest_slevel = pPlayer->getLevel() + (GetQuestLevel() - GetMinLevel());
+		int32 pQuest_slevel = pPlayer->getZoneLevel(GetZoneOrSort()) + (GetQuestLevel() - GetMinLevel());
 
 		int32 expected_RewOrReqMoney = int32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
 		double difference_RewOrReqMoney = double((double)RewOrReqMoney / (double)expected_RewOrReqMoney);
@@ -235,9 +235,9 @@ int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 
 uint32 Quest::GetRewMoneyMaxLevel(Player *pPlayer) const
 {
-    if (pPlayer && pPlayer->hasZoneLevel(GetZoneOrSort()))
+    if (pPlayer)
 	{
-		uint32 pQuest_slevel = pPlayer->getLevel() + (GetQuestLevel() - GetMinLevel());
+		uint32 pQuest_slevel = pPlayer->getZoneLevel(GetZoneOrSort()) + (GetQuestLevel() - GetMinLevel());
 
 		uint32 expected_RewMoneyMaxLevel = uint32(0.0212 * pow(QuestLevel, 3) - 0.3874 * pow(QuestLevel, 2) + 32.809 * (QuestLevel));
 		float difference_RewMoneyMaxLevel = float((float)RewMoneyMaxLevel / (float)expected_RewMoneyMaxLevel);
