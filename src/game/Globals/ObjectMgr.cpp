@@ -1303,17 +1303,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
     if (owner->IsCreature())
     {
-        if (!player->hasZoneLevel())
-        {
-            uint32 AreaID = player->GetTerrain() ? player->GetZoneId() : 0;
-            if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(AreaID))
-            {
-                uint32 LevelRangeMin = thisZone->LevelRangeMin;
-                uint32 LevelRangeMax = thisZone->LevelRangeMax;
-                p_level = player->getLevel() > LevelRangeMax ? LevelRangeMax : LevelRangeMin;
-            }
-        }
-
+        p_level = player->getZoneLevel();
         p_level += creature->IsWorldBoss() ? sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : v_level;
     }
 
