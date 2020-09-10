@@ -7035,7 +7035,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
             ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
         }
         else
-            ChatHandler(this).PSendSysMessage("Entered %s: (%s for entry %u)", current_zone_name.c_str(), "missing details", newZone);
+            ChatHandler(this).PSendSysMessage("Entered %s: (missing details for entry %u)", current_zone_name.c_str(), newZone);
     }
 
     if (m_areaUpdateId != newArea || force)
