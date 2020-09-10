@@ -1463,6 +1463,8 @@ class Unit : public WorldObject
         void SetLevel(uint32 lvl);
 
         bool hasZoneLevel(uint32 AreaID = 0) const;
+        uint32 getZoneLevel(uint32 AreaID = 0) const;
+
         uint32 getLevel() const { return GetUInt32Value(UNIT_FIELD_LEVEL); }
         uint8 getRace() const { return GetByteValue(UNIT_FIELD_BYTES_0, 0); }
         uint32 getRaceMask() const { return 1 << (getRace() - 1); }

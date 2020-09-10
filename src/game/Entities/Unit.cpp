@@ -9539,6 +9539,22 @@ bool Unit::hasZoneLevel(uint32 AreaID) const
     return true;
 }
 
+uint32 Unit::getZoneLevel(uint32 AreaID) const
+{
+    uint32 Id = AreaID != 0 ? AreaID : GetTerrain() ? GetZoneId() : 0;
+
+    uint32 pLevel = getLevel();
+    if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(Id))
+    {
+        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
+            return pLevel > thisZone->LevelRangeMax ? thisZone->LevelRangeMax : thisZone->LevelRangeMin;
+        else
+            return pLevel;
+    }
+
+    return pLevel;
+}
+
 void Unit::SetHealth(uint32 val)
 {
     uint32 maxHealth = GetMaxHealth();
