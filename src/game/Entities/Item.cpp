@@ -741,7 +741,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 {
 	if (itemid && p)
 	{
-		// We need to make sure we're not replacing a currently needed quest item
+        // We need to make sure we're not replacing a currently needed quest item
 		for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
 		{
 			uint32 quest = p->GetQuestSlotQuestId(slot);
@@ -787,7 +787,10 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 			}
 		}
 
-		return LoadScaledLoot(itemid, p->getLevel());
+        // Checking if player has appropriate level for current zone
+        uint32 p_level = p->getZoneLevel();
+
+		return LoadScaledLoot(itemid, p_level);
 	}
 	return itemid;
 }
