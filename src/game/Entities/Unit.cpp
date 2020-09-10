@@ -1337,26 +1337,32 @@ void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsibl
     // only lootable if it has loot or can drop gold
     victim->PrepareBodyLootState();
 
-	// prepare body for skinning
-	if(uint32 skill = victim->GetCreatureInfo()->GetRequiredLootSkill())
-		if (responsiblePlayer && responsiblePlayer->HasSkill(skill))
-		{
-			uint32 ReqLevel = 10;
-			if (uint16 skillValue = responsiblePlayer->GetSkillValue(skill))
-			{
-				if (skillValue > 100 && skillValue <= 200)
-					ReqLevel = ((skillValue + 100) / 10);
-				else if (skillValue > 200)
-					ReqLevel = skillValue / 5;
+	// prepare body for herbalism | mining | skinning
+    if (uint32 skill = victim->GetCreatureInfo()->GetRequiredLootSkill())
+    {
+        if (responsiblePlayer && responsiblePlayer->HasSkill(skill))
+        {
+            uint32 ReqLevel = 10;
 
-				if (ReqLevel > responsiblePlayer->getLevel())
-					ReqLevel = responsiblePlayer->getLevel();
-			}
+            if (responsiblePlayer->hasZoneLevel())
+            {
+                if (uint16 skillValue = responsiblePlayer->GetSkillValue(skill))
+                {
+                    if (skillValue > 100 && skillValue <= 200)
+                        ReqLevel = ((skillValue + 100) / 10);
+                    else if (skillValue > 200)
+                        ReqLevel = skillValue / 5;
 
-			victim->SetVisibility(VISIBILITY_OFF);
-			victim->SetLevel(ReqLevel);
-			victim->SetVisibility(VISIBILITY_ON);
-		}
+                    if (ReqLevel > responsiblePlayer->getLevel())
+                        ReqLevel = responsiblePlayer->getLevel();
+                }
+
+                victim->SetVisibility(VISIBILITY_OFF);
+                victim->SetLevel(ReqLevel);
+                victim->SetVisibility(VISIBILITY_ON);
+            }
+        }
+    }
 }
 
 void Unit::PetOwnerKilledUnit(Unit* pVictim)
