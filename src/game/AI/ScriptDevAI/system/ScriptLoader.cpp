@@ -27,6 +27,8 @@ extern void AddSC_npcs_special();
 extern void AddSC_quests_scripts();
 extern void AddSC_spell_scripts();
 extern void AddSC_world_map_scripts();
+extern void AddSC_boss_highlord_kruul();
+extern void AddSC_war_effort();
 
 // eastern kingdoms
 extern void AddSC_blackrock_depths();                       // blackrock_depths
@@ -378,6 +380,8 @@ void AddScripts()
     AddSC_quests_scripts();
     AddSC_spell_scripts();
     AddSC_world_map_scripts();
+    AddSC_boss_highlord_kruul();
+    AddSC_war_effort();
 
     // eastern kingdoms
     AddSC_blackrock_depths();                               // blackrock_depths
