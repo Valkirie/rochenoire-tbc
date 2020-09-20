@@ -1280,23 +1280,6 @@ void Aura::TriggerSpell()
                     }
 //                    // Pain Spike
 //                    case 25572: break;
-                    case 26009:                             // Rotate 360
-                    case 26136:                             // Rotate -360
-                    {
-                        float newAngle = target->GetOrientation();
-
-                        if (auraId == 26009)
-                            newAngle += M_PI_F / 40;
-                        else
-                            newAngle -= M_PI_F / 40;
-
-                        newAngle = MapManager::NormalizeOrientation(newAngle);
-
-                        target->SetFacingTo(newAngle);
-
-                        target->CastSpell(target, 26029, TRIGGERED_OLD_TRIGGERED);
-                        return;
-                    }
 //                    // Consume
 //                    case 26196: break;
 //                    // Berserk
@@ -4006,8 +3989,10 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
         if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
             return;
 
+        uint32 itemType = spellInfo->EffectItemType[m_effIndex];
+
         // Soul Shard (target req.)
-        if (spellInfo->EffectItemType[m_effIndex] == 6265)
+        if (itemType == 6265)
         {
             // Only from non-grey units
             if (!((Player*)caster)->isHonorOrXPTarget(victim))
@@ -4015,6 +4000,11 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
             // Only if the creature is tapped by the player or his group
             if (victim->GetTypeId() == TYPEID_UNIT && !((Creature*)victim)->IsTappedBy((Player*)caster))
                 return;
+            // Avoid awarding multiple souls on the same target
+            // 1.11.0: If you cast Drain Soul while shadowburn is on the victim, you will no longer receive two soul shards upon the victim's death.
+            for (auto const& aura : victim->GetAurasByType(SPELL_AURA_CHANNEL_DEATH_ITEM))
+                if (aura != this && caster->GetObjectGuid() == aura->GetCasterGuid() && aura->GetSpellProto()->EffectItemType[aura->GetEffIndex()] == itemType)
+                    return;
         }
 
         // Adding items
@@ -4022,16 +4012,16 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
         uint32 count = m_modifier.m_amount;
 
         ItemPosCountVec dest;
-        InventoryResult msg = ((Player*)caster)->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, spellInfo->EffectItemType[m_effIndex], count, &noSpaceForCount);
+        InventoryResult msg = ((Player*)caster)->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemType, count, &noSpaceForCount);
         if (msg != EQUIP_ERR_OK)
         {
             count -= noSpaceForCount;
-            ((Player*)caster)->SendEquipError(msg, nullptr, nullptr, spellInfo->EffectItemType[m_effIndex]);
+            ((Player*)caster)->SendEquipError(msg, nullptr, nullptr, itemType);
             if (count == 0)
                 return;
         }
 
-        Item* newitem = ((Player*)caster)->StoreNewItem(dest, spellInfo->EffectItemType[m_effIndex], true);
+        Item* newitem = ((Player*)caster)->StoreNewItem(dest, itemType, true);
         ((Player*)caster)->SendNewItem(newitem, count, true, true);
     }
 }

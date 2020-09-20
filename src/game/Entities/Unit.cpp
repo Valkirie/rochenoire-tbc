@@ -5007,7 +5007,8 @@ bool Unit::RemoveNoStackAurasDueToAuraHolder(SpellAuraHolder* holder)
             unique = diminished;
         }
 
-        const bool stackable = sSpellMgr.IsSpellStackableWithSpell(spellProto, existingSpellProto);
+        bool stackable = (own ? sSpellMgr.IsSpellStackableWithSpell(spellProto, existingSpellProto) : sSpellMgr.IsSpellStackableWithSpellForDifferentCasters(spellProto, existingSpellProto));
+
         // Remove only own auras when multiranking
         if (!unique && own && stackable && sSpellMgr.IsSpellAnotherRankOfSpell(spellId, existingSpellId))
         {
@@ -5028,18 +5029,15 @@ bool Unit::RemoveNoStackAurasDueToAuraHolder(SpellAuraHolder* holder)
             if (!unique && triggeredBy && sSpellMgr.IsSpellCanAffectSpell(triggeredBy, existingSpellProto))
                 continue;
 
-            if (!own)
-            {
-                if (personal && stackable)
-                    continue;
+            if (!own && personal && stackable)
+                continue;
 
-                // holder cannot remove higher/stronger rank if it isn't from the same caster
-                if (IsSimilarExistingAuraStronger(holder, existing))
-                    return false;
+            // holder cannot remove higher/stronger rank if it isn't from the same caster
+            if (IsSimilarExistingAuraStronger(holder, existing))
+                return false;
 
-                if (!diminished && sSpellMgr.IsSpellAnotherRankOfSpell(spellId, existingSpellId) && sSpellMgr.IsSpellHigherRankOfSpell(existingSpellId, spellId))
-                    return false;
-            }
+            if (!diminished && sSpellMgr.IsSpellAnotherRankOfSpell(spellId, existingSpellId) && sSpellMgr.IsSpellHigherRankOfSpell(existingSpellId, spellId))
+                return false;
 
             if (personal && stackable)
                 RemoveAurasByCasterSpell(existingSpellId, holder->GetCasterGuid());

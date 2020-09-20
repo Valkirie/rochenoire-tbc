@@ -1573,6 +1573,19 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 26399:                                 // Despawn Tentacles
+                {
+                    if (unitTarget->GetTypeId() == TYPEID_UNIT)
+                        ((Creature*)unitTarget)->ForcedDespawn();
+                    return;
+                }
+                case 26626:                                 // Mana Burn Area
+                {
+                    if (unitTarget->GetTypeId() == TYPEID_UNIT && unitTarget->GetPowerType() == POWER_MANA)
+                        m_caster->CastSpell(unitTarget, 25779, TRIGGERED_OLD_TRIGGERED);
+
+                    return;
+                }
                 case 26899:                                 // Give Friendship Bracers
                 {
                     if ((unitTarget && unitTarget->GetTypeId() == TYPEID_UNIT) || !unitTarget->HasAura(26898)) // Target is not a player or is not heartbroken
@@ -6640,14 +6653,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         return;
 
                     unitTarget->HandleEmote(EMOTE_ONESHOT_CHEER);
-                    return;
-                }
-                case 26137:                                 // Rotate Trigger
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->CastSpell(unitTarget, urand(0, 1) ? 26009 : 26136, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
                 case 26218:                                 // Mistletoe
