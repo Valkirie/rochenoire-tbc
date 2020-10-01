@@ -25,6 +25,7 @@
 #include "Tools/Language.h"
 #include "WorldPacket.h"
 #include "Globals/ObjectMgr.h"
+#include "AI/ScriptDevAI/include/sc_grid_searchers.h"
 
 BattleGroundAV::BattleGroundAV(): m_HonorMapComplete(0), m_RepTowerDestruction(0), m_RepCaptain(0), m_RepBoss(0), m_RepOwnedGrave(0), m_RepOwnedMine(0), m_RepSurviveCaptain(0), m_RepSurviveTower(0)
 {
@@ -556,32 +557,56 @@ void BattleGroundAV::EventPlayerDefendsPoint(Player* player, BG_AV_Nodes node)
     }
 }
 
+enum CreditMarkers
+{
+    NPC_PVP_GRAVEYARD_CREDIT_MARKER = 13756,
+    NPC_PVP_TOWER_CREDIT_MARKER = 13778,
+};
+
 void BattleGroundAV::EventPlayerAssaultsPoint(Player* player, BG_AV_Nodes node)
 {
-    // TODO implement quest 7101, 7081
     PvpTeamIndex teamIdx  = GetTeamIndexByTeamId(player->GetTeam());
     DEBUG_LOG("BattleGroundAV: player assaults node %i", node);
     if (m_Nodes[node].Owner == BattleGroundAVTeamIndex(teamIdx) || BattleGroundAVTeamIndex(teamIdx) == m_Nodes[node].TotalOwner)
         return;
 
+    bool isTower = IsTower(node);
+
     AssaultNode(node, teamIdx);                             // update nodeinfo variables
     UpdateNodeWorldState(node);                             // send mapicon
+    if (!isTower)
+    {
+        // before despawn of GY spirit healer - need to TP players - must be after AssaultNode
+        // opposite team of current player
+        Creature* spiritHealer = nullptr;
+        if (teamIdx == TEAM_INDEX_ALLIANCE)
+            spiritHealer = GetClosestCreatureWithEntry(player, NPC_SPIRIT_GUIDE_H, 100.f);
+        else
+            spiritHealer = GetClosestCreatureWithEntry(player, NPC_SPIRIT_GUIDE_A, 100.f);
+        if (spiritHealer)
+            spiritHealer->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, spiritHealer, spiritHealer);
+    }
     PopulateNode(node);
 
-    if (IsTower(node))
+    if (isTower)
     {
         SendYell2ToAll(LANG_BG_AV_TOWER_ASSAULTED, LANG_UNIVERSAL, GetSingleCreatureGuid(BG_AV_HERALD, 0),
                        GetNodeName(node),
                        (teamIdx == TEAM_INDEX_ALLIANCE) ? LANG_BG_ALLY : LANG_BG_HORDE);
         UpdatePlayerScore(player, SCORE_TOWERS_ASSAULTED, 1);
+        // these markers are spawned on retail on each GY/Tower and then their guid is used
+        // TODO: Add all markers and fetch them for rewardSource instead
+        player->RewardPlayerAndGroupAtEventCredit(NPC_PVP_TOWER_CREDIT_MARKER, player);
     }
     else
     {
+
         SendYell2ToAll(LANG_BG_AV_GRAVE_ASSAULTED, LANG_UNIVERSAL, GetSingleCreatureGuid(BG_AV_HERALD, 0),
                        GetNodeName(node),
                        (teamIdx == TEAM_INDEX_ALLIANCE) ? LANG_BG_ALLY : LANG_BG_HORDE);
         // update the statistic for the assaulting player
         UpdatePlayerScore(player, SCORE_GRAVEYARDS_ASSAULTED, 1);
+        player->RewardPlayerAndGroupAtEventCredit(NPC_PVP_GRAVEYARD_CREDIT_MARKER, player);
     }
 
     PlaySoundToAll((teamIdx == TEAM_INDEX_ALLIANCE) ? BG_AV_SOUND_ALLIANCE_ASSAULTS : BG_AV_SOUND_HORDE_ASSAULTS);

@@ -6561,7 +6561,8 @@ int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 
     }
 
     uint32 currentLevel = getLevel();
-    if (creatureOrQuestLevel <= MaNGOS::XP::GetGrayLevel(currentLevel))
+
+    if (MaNGOS::XP::IsTrivialLevelDifference(currentLevel, creatureOrQuestLevel))
         percent *= minRate;
     else
     {
@@ -20180,7 +20181,8 @@ uint32 Player::GetMaxLevelForBattleGroundBracketId(BattleGroundBracketId bracket
     if (bracket_id >= BG_BRACKET_ID_LAST)
         return 255;                                         // hardcoded max level
 
-    return GetMinLevelForBattleGroundBracketId(bracket_id, bgTypeId) + 10;
+    // for example EOTS - min level 61 but max level for bracket 69
+    return (GetMinLevelForBattleGroundBracketId(bracket_id, bgTypeId) / 10 * 10) + 10;
 }
 
 BattleGroundBracketId Player::GetBattleGroundBracketIdFromLevel(BattleGroundTypeId bgTypeId) const
@@ -20190,7 +20192,8 @@ BattleGroundBracketId Player::GetBattleGroundBracketIdFromLevel(BattleGroundType
     if (getLevel() < bg->GetMinLevel())
         return BG_BRACKET_ID_FIRST;
 
-    uint32 bracket_id = (getLevel() - bg->GetMinLevel()) / 10;
+    // for example EOTS - min level 61 but max level for bracket 69
+    uint32 bracket_id = (getLevel() - (bg->GetMinLevel() / 10 * 10)) / 10;
     if (bracket_id > MAX_BATTLEGROUND_BRACKETS)
         return BG_BRACKET_ID_LAST;
 
@@ -20594,17 +20597,17 @@ uint32 Player::GetResurrectionSpellId() const
 bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
     uint32 v_level = pVictim->GetLevelForTarget(this);
-    uint32 k_grey  = MaNGOS::XP::GetGrayLevel(getLevel());
-
+    uint32 k_grey  = GetLevelForTarget(pVictim);
+	
     // Victim level less gray level
-    if (v_level <= k_grey)
+    if (MaNGOS::XP::IsTrivialLevelDifference(k_grey, v_level))
         return false;
 
     if (pVictim->GetTypeId() == TYPEID_UNIT)
     {
-        if (((Creature*)pVictim)->IsTotem() ||
-                ((Creature*)pVictim)->IsPet() ||
-                ((Creature*)pVictim)->GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NO_XP_AT_KILL)
+        Creature* npc = static_cast<Creature*>(pVictim);
+
+        if (npc->IsTotem() || npc->IsPet() || npc->GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NO_XP_AT_KILL)
             return false;
     }
     return true;
