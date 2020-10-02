@@ -442,82 +442,84 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
 
 int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 {
-	// TODO use ilevel instead of plevel
-	uint32 displayid = loot_level;
+    if (randomPropertyId == 0)
+        return 0;
 
+	uint32 level = loot_level;
     uint32 mLevel = sWorld.GetCurrentMaxLevel();
     ilevel = std::min((float)mLevel, (float)ilevel);
 
 	if (loot_level == 0 || won)
 	{
 		loot_level = ilevel;
-		displayid = ilevel;
+        level = ilevel;
 	}
 
 	if (display)
-		displayid = ilevel;
+        level = ilevel;
 
-	if (randomPropertyId != 0)
-        if (std::find(randomPropertyIdArray.begin(), randomPropertyIdArray.end(), displayid) != randomPropertyIdArray.end())
-			return randomPropertyIdArray[displayid];
+	if (!randomPropertyIdArray.empty())
+        if (randomPropertyIdArray.find(level) != randomPropertyIdArray.end())
+			return randomPropertyIdArray[level];
 
 	return 0;
 }
 
 void LootItem::setRandomPropertyScaled()
 {
-	if (randomPropertyId != 0)
-	{
-		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
-			randomPropertyIdArray.push_back(0);
+    if (randomPropertyId == 0)
+        return;
 
-		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
-		{
-			uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
-			if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid))
-				randomPropertyIdArray[plevel] = rproperty;
-		}
-	}
+    if (!randomPropertyIdArray.empty())
+        return;
+
+    for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+    {
+        uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+        if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid))
+            randomPropertyIdArray[plevel] = rproperty;
+    }
 }
 
 int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
 {
-	// TODO use ilevel instead of plevel
-	uint32 displayid = loot_level;
+    if (randomSuffix == 0)
+        return 0;
 
+	uint32 level = loot_level;
     uint32 mLevel = sWorld.GetCurrentMaxLevel();
     ilevel = std::min((float)mLevel, (float)ilevel);
 
 	if (loot_level == 0 || won)
 	{
 		loot_level = ilevel;
-		displayid = ilevel;
+        level = ilevel;
 	}
 
 	if (display)
-		displayid = ilevel;
+        level = ilevel;
 
-	if (randomSuffix != 0)
-        if (std::find(randomSuffixIdArray.begin(), randomSuffixIdArray.end(), displayid) != randomSuffixIdArray.end())
-			return randomSuffixIdArray[displayid];
+	if (!randomSuffixIdArray.empty())
+        if (randomSuffixIdArray.find(level) != randomSuffixIdArray.end())
+			return randomSuffixIdArray[level];
 
 	return 0;
 }
 
 void LootItem::setRandomSuffixScaled()
 {
-	if (randomSuffix != 0)
-	{
-		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
-			randomSuffixIdArray.push_back(0);
+    if (randomSuffix == 0)
+        return;
 
-		for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
-		{
-			uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
-			if (uint32 rproperty = GenerateEnchSuffixFactor(itemid))
-				randomSuffixIdArray[plevel] = rproperty;
-		}
-	}
+    if (!randomSuffixIdArray.empty())
+        return;
+
+    for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
+    {
+        uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+        if (uint32 rproperty = GenerateEnchSuffixFactor(itemid))
+            randomSuffixIdArray[plevel] = rproperty;
+    }
 }
 
 // Basic checks for player/item compatibility - if false no chance to see the item in the loot
@@ -2405,6 +2407,13 @@ void Loot::GetLootItemsListFor(Player* player, LootItemList& lootList)
 Loot::~Loot()
 {
     SendReleaseForAll();
+
+    for (auto& m_lootItem : m_lootItems)
+    {
+        m_lootItem->setRandomPropertyScaled();
+        m_lootItem->setRandomSuffixScaled();
+    }
+
     for (auto& m_lootItem : m_lootItems)
         delete m_lootItem;
 }

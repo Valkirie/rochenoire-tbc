@@ -504,8 +504,8 @@ void Group::SetTargetIcon(uint8 id, ObjectGuid targetGuid)
 
 static void GetDataForXPAtKill_helper(Player* player, Unit const* victim, uint32& sum_level, Player*& member_with_max_level, Player*& not_gray_member_with_max_level)
 {
-    const uint32 level = player->GetLevelForTarget(pVictim);
-	const uint32 v_level = pVictim->GetLevelForTarget(this);
+    const uint32 level = player->GetLevelForTarget(victim);
+	const uint32 v_level = victim->GetLevelForTarget(player);
 	
     sum_level += level;
 

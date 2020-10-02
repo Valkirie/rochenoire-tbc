@@ -201,8 +201,8 @@ struct LootItem
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
 	bool         isScaled          = false;                         // true if item is scaled
-	std::vector<uint32> randomPropertyIdArray;
-	std::vector<uint32> randomSuffixIdArray;
+    std::map<uint32, uint32> randomPropertyIdArray;
+    std::map<uint32, uint32> randomSuffixIdArray;
 
     // storing item prototype for fast access
     ItemPrototype const* itemProto;
