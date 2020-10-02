@@ -13277,28 +13277,35 @@ Quest const* Player::GetNextQuest(ObjectGuid guid, Quest const* pQuest) const
  */
 bool Player::CanSeeStartQuest(Quest const* pQuest) const
 {
-	uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
-	Unit* pUnit = ((Unit*)this);
-
 	if (SatisfyQuestClass(pQuest, false) && SatisfyQuestRace(pQuest, false) && SatisfyQuestSkill(pQuest, false) && SatisfyQuestCondition(pQuest, false) &&
-            SatisfyQuestExclusiveGroup(pQuest, false) && SatisfyQuestReputation(pQuest, false) &&
-            SatisfyQuestPreviousQuest(pQuest, false) && SatisfyQuestNextChain(pQuest, false) &&
-            SatisfyQuestPrevChain(pQuest, false) && SatisfyQuestDay(pQuest, false) && SatisfyQuestWeek(pQuest) &&
-            SatisfyQuestMonth(pQuest) &&
-            pQuest->IsActive())
-		return
-		(
-			(pQuest->IsSpecificQuest() && getLevel() + highLevelDiff >= pQuest->GetMinLevel()) ||
-			(!pQuest->IsSpecificQuest() && hasZoneLevel(pQuest->GetZoneOrSort()))
-		);
-    /*{
-        int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
+        SatisfyQuestExclusiveGroup(pQuest, false) && SatisfyQuestReputation(pQuest, false) &&
+        SatisfyQuestPreviousQuest(pQuest, false) && SatisfyQuestNextChain(pQuest, false) &&
+        SatisfyQuestPrevChain(pQuest, false) && SatisfyQuestDay(pQuest, false) && SatisfyQuestWeek(pQuest) &&
+        SatisfyQuestMonth(pQuest) &&
+        pQuest->IsActive())
+    {
+        uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
         if (highLevelDiff < 0)
             return true;
-        return getLevel() + uint32(highLevelDiff) >= pQuest->GetMinLevel();
-    }*/
+
+        if (pQuest->IsSpecificQuest())
+            return getLevel() + uint32(highLevelDiff) >= pQuest->GetMinLevel();
+        else
+        {
+            return (hasZoneLevel(pQuest->GetZoneOrSort()) ||
+                (!hasZoneLevel(pQuest->GetZoneOrSort()) && getLevel() + uint32(highLevelDiff) >= GetQuestLevelForPlayer(pQuest)));
+        }
+    }
 
     return false;
+}
+
+uint32 Player::GetQuestLevelForPlayer(Quest const* pQuest) const
+{
+    if (pQuest->IsSpecificQuest())
+        return pQuest && (pQuest->GetQuestLevel() > 0) ? (uint32)pQuest->GetQuestLevel() : getLevel();
+    else
+        return getZoneLevel(pQuest->GetZoneOrSort()) + pQuest->GetQuestRelativeLevel();
 }
 
 bool Player::CanTakeQuest(Quest const* pQuest, bool msg) const
@@ -13949,8 +13956,8 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
-	if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
-        (!qInfo->IsSpecificQuest() && !hasZoneLevel(qInfo->GetZoneOrSort())))
+    if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
+        (!qInfo->IsSpecificQuest() && !hasZoneLevel(qInfo->GetZoneOrSort()) && getLevel() < GetQuestLevelForPlayer(qInfo)))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
