@@ -2797,11 +2797,12 @@ void LootTemplate::Process(Loot& loot, Player const* lootOwner, LootStore const&
 	//Gestion du drop rate pour des groups
 	float f_GroupSize = 1.0f;
 
-	if (Group const* grp = lootOwner->GetGroup())
-		for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
-			if (Player* pl = itr->getSource())
-				if (pl != lootOwner && pl->IsAtGroupRewardDistance(lootOwner))
-					f_GroupSize++;
+    if(lootOwner && lootOwner->GetGroup())
+	    if (Group const* grp = lootOwner->GetGroup())
+		    for (GroupReference const* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
+			    if (Player* pl = itr->getSource())
+				    if (pl != lootOwner && pl->IsAtGroupRewardDistance(lootOwner))
+					    f_GroupSize++;
 
 	if (groupId)                                            // Group reference uses own processing of the group
     {
