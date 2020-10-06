@@ -119,8 +119,8 @@ struct GYMidTrigger : public SpellScript
             if (BattleGround* bg = player->GetBattleGround())
             {
                 // check if it's correct bg
-                if (bg->GetTypeID() == BATTLEGROUND_AV)
-                    bg->EventPlayerClickedOnFlag(player, static_cast<GameObject*>(obj));
+                if (bg->GetTypeId() == BATTLEGROUND_AV)
+                    bg->HandlePlayerClickedOnFlag(player, static_cast<GameObject*>(obj));
                 return;
             }
         }

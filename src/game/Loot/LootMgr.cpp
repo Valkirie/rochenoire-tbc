@@ -25,7 +25,6 @@
 #include "Globals/SharedDefines.h"
 #include "Server/DBCStores.h"
 #include "Server/SQLStorages.h"
-#include "BattleGround/BattleGroundAV.h"
 #include "Entities/ItemEnchantmentMgr.h"
 #include "Tools/Language.h"
 #include "Tools/Formulas.h"
@@ -1904,16 +1903,6 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
     // generate loot only if ready for open and spawned in world
     if (gameObject->GetLootState() == GO_READY && gameObject->IsSpawned())
     {
-        if ((gameObject->GetEntry() == BG_AV_OBJECTID_MINE_N || gameObject->GetEntry() == BG_AV_OBJECTID_MINE_S))
-        {
-            if (BattleGround* bg = player->GetBattleGround())
-                if (bg->GetTypeID() == BATTLEGROUND_AV)
-                    if (!(((BattleGroundAV*)bg)->PlayerCanDoMineQuest(gameObject->GetEntry(), player->GetTeam())))
-                    {
-                        return;
-                    }
-        }
-
         switch (type)
         {
             case LOOT_FISHING_FAIL:
@@ -2058,7 +2047,7 @@ Loot::Loot(Player* player, Corpse* corpse, LootType type) :
          m_lootMethod = NOT_GROUP_TYPE_LOOT;
          m_clientLootType = CLIENT_LOOT_CORPSE;
 
-        if (player->GetBattleGround()->GetTypeID() == BATTLEGROUND_AV)
+        if (player->GetBattleGround()->GetTypeId() == BATTLEGROUND_AV)
             FillLoot(0, LootTemplates_Creature, player, false);
 
         // It may need a better formula
