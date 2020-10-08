@@ -790,8 +790,9 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
     if (victim->AI())
         victim->AI()->DamageTaken(dealer, scaled_damage, damagetype, spellProto);
 
-    if (absorb && originalDamage > damage)
-        *absorb += (originalDamage - damage);
+    // do not use originalDamage (counter scaled value)
+    if (absorb && scaled_damage > damage)
+        *absorb += (scaled_damage - damage);
 }
 
 void Unit::Suicide()
@@ -5845,14 +5846,18 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 	uint32 damage = log->damage;
 	Unit *target = log->target->GetBeneficiary();
 	Unit *caster = log->attacker->GetBeneficiary();
+
 	if (target->IsPlayer() && !log->target->HasCharmer())
 		damage = sObjectMgr.ScaleDamage(caster, target, log->damage, log->isScaled);
+
+    bool invertedScaled = !log->isScaled;
+    uint32 originalDamage = sObjectMgr.ScaleDamage(target, caster, damage, invertedScaled); // inverted owner and target
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
     data << log->attacker->GetPackGUID();
     data << uint32(log->SpellID);
-    data << uint32(damage);                            // damage amount
+    data << uint32(originalDamage);                         // damage amount
     data << uint8(log->schoolMask);                         // damage school
     data << uint32(log->absorb);                            // AbsorbedDamage
     data << int32(log->resist);                             // resist
