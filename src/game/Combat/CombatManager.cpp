@@ -85,10 +85,10 @@ void CombatManager::Update(const uint32 diff)
                     else // if timer ran out and we are far away from homebox, evade
                     {
                         Creature* creatureOwner = static_cast<Creature*>(m_owner);
-                        float x, y, z, o;
-                        creatureOwner->GetCombatStartPosition(x, y, z, o);
+                        Position pos;
+                        creatureOwner->GetCombatStartPosition(pos);
                         // homebox not confirmed on classic
-                        if (creatureOwner->GetDistance2d(x, y) > sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS))
+                        if (creatureOwner->GetDistance2d(pos.GetPositionX(), pos.GetPositionY()) > sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS))
                             creatureOwner->HandleExitCombat();
                     }
                 }
@@ -109,9 +109,9 @@ void CombatManager::Update(const uint32 diff)
                 }
                 else if (creatureOwner->GetCreatureInfo()->Leash) // If creature has set maximum leashing distance
                 {
-                    float x, y, z, o;
-                    creatureOwner->GetCombatStartPosition(x, y, z, o);
-                    if (creatureOwner->GetDistance2d(x, y) > creatureOwner->GetCreatureInfo()->Leash)
+                    Position pos;
+                    creatureOwner->GetCombatStartPosition(pos);
+                    if (creatureOwner->GetDistance2d(pos.GetPositionX(), pos.GetPositionY()) > creatureOwner->GetCreatureInfo()->Leash)
                         creatureOwner->HandleExitCombat();
                 }
             }

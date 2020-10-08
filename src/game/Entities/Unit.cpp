@@ -2902,7 +2902,7 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, 
     return SPELL_MISS_NONE;
 }
 
-SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8 effectMask, bool reflectable, uint32* heartbeatResistChance/* = nullptr*/)
+SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8 effectMask, bool reflectable, bool reflected, uint32* heartbeatResistChance/* = nullptr*/)
 {
     // Dead units can't be missed, can't resist, reflect, etc
     if (!pVictim->IsAlive())
@@ -2916,7 +2916,7 @@ SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8
     // TODO: client not show miss log for this spells - so need find info for this in dbc and use it!
     if (IsPositiveEffectMask(spell, effectMask, this, pVictim))
     {
-        if (pVictim->IsImmuneToSpell(spell, (this == pVictim), effectMask))
+        if (pVictim->IsImmuneToSpell(spell, reflected ? false : (this == pVictim), effectMask))
             return SPELL_MISS_IMMUNE;
 
         return SPELL_MISS_NONE;
@@ -2948,7 +2948,7 @@ SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8
     {
         // TODO: improve for partial application
         // Check for immune
-        if (!wand && pVictim->IsImmuneToSpell(spell, (this == pVictim), effectMask))
+        if (!wand && pVictim->IsImmuneToSpell(spell, reflected ? false : (this == pVictim), effectMask))
             return SPELL_MISS_IMMUNE;
         // Check for immune to damage as hit result if spell hit composed entirely out of damage effects
         if (IsSpellEffectsDamage(*spell, effectMask) && pVictim->IsImmuneToDamage(schoolMask))
@@ -8296,7 +8296,7 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
                 HandleEmoteState(0);
         }
 
-        pCreature->SetCombatStartPosition(GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
+        pCreature->SetCombatStartPosition(GetPosition());
 
         if (!pCreature->CanAggro()) // if creature aggroed during initial ignoration period, clear the state
         {
@@ -9780,7 +9780,7 @@ CharmInfo::CharmInfo(Unit* unit) :
     m_petnumber(0), m_opener(0), m_openerMinRange(0),
     m_openerMaxRange(0), m_unitFieldFlags(0), m_unitFieldBytes2_1(0), m_retreating(false), m_stayPosSet(false),
     m_stayPosX(0), m_stayPosY(0), m_stayPosZ(0),
-    m_stayPosO(0)
+    m_stayPosO(0), m_walk(true)
 {
     for (auto& m_charmspell : m_charmspells)
         m_charmspell.SetActionAndType(0, ACT_DISABLED);
@@ -9805,6 +9805,7 @@ void CharmInfo::SetCharmState(std::string const& ainame, bool withNewThreatList 
     m_unitFieldBytes2_1 = m_unit->GetByteValue(UNIT_FIELD_BYTES_2, 1);
     // Save unit flags
     m_unitFieldFlags = m_unit->GetUInt32Value(UNIT_FIELD_FLAGS);
+    SetWalk(m_unit->IsWalking());
 }
 
 void CharmInfo::ResetCharmState()
@@ -9835,6 +9836,9 @@ void CharmInfo::ResetCharmState()
         m_unit->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
 
     m_unit->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
+
+    if (m_unit->IsCreature())
+        static_cast<Creature*>(m_unit)->SetWalk(GetWalk(), true);
 }
 
 void CharmInfo::InitPetActionBar()
@@ -11454,9 +11458,12 @@ bool Unit::TakePossessOf(Unit* possessed)
     possessed->GetMotionMaster()->MoveIdle();
     possessed->StopMoving(true);
 
+    Position combatStartPosition;
+
     if (possessed->GetTypeId() == TYPEID_UNIT)
     {
         possessedCreature = static_cast<Creature*>(possessed);
+        possessedCreature->GetCombatStartPosition(combatStartPosition);
         possessedCreature->SetFactionTemporary(getFaction(), TEMPFACTION_NONE);
         possessedCreature->SetWalk(IsWalking(), true);
         charmInfo->SetCharmState("PossessedAI");
@@ -11491,6 +11498,8 @@ bool Unit::TakePossessOf(Unit* possessed)
     const bool immuneNPC = IsImmuneToNPC();
     if (possessed->IsImmuneToNPC() != immuneNPC)
         possessed->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+
+    charmInfo->SetCharmStartPosition(combatStartPosition.IsEmpty() ? possessed->GetPosition() : combatStartPosition);
 
     if (!IsInCombat())
     {
@@ -11561,6 +11570,8 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
 
     bool isPossessCharm = IsPossessCharmType(spellId);
 
+    Position combatStartPosition;
+
     if (charmed->GetTypeId() == TYPEID_PLAYER)
     {
         Player* charmedPlayer = static_cast<Player*>(charmed);
@@ -11586,6 +11597,8 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
     else if (charmed->GetTypeId() == TYPEID_UNIT)
     {
         Creature* charmedCreature = static_cast<Creature*>(charmed);
+
+        charmedCreature->GetCombatStartPosition(combatStartPosition);
 
         if (charmed->AI() && charmed->AI()->CanHandleCharm())
             charmInfo->SetCharmState("", false);
@@ -11622,6 +11635,8 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
     const bool immuneNPC = IsImmuneToNPC();
     if (charmed->IsImmuneToNPC() != immuneNPC)
         charmed->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+
+    charmInfo->SetCharmStartPosition(combatStartPosition.IsEmpty() ? charmed->GetPosition() : combatStartPosition);
 
     if (charmerPlayer && advertised)
     {
@@ -11835,12 +11850,17 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
         {
             if (!charmed->IsInCombat())
                 EngageInCombatWithAggressor(charmed);
-            else
+
+            if (charmed->GetTypeId() == TYPEID_UNIT)
+                charmed->AddThreat(this, GetMaxHealth()); // Simulates being charmed
+            this->AddThreat(charmed);
+
+            if (charmed->GetTypeId() == TYPEID_UNIT)
             {
-                if (charmed->GetTypeId() == TYPEID_UNIT)
-                    charmed->AddThreat(this, GetMaxHealth()); // Simulates being charmed
-                this->AddThreat(charmed);
-            }
+                Position const& pos = charmInfo->GetCharmStartPosition();
+                if (!pos.IsEmpty())
+                    static_cast<Creature*>(charmed)->SetCombatStartPosition(pos);
+            }                
         }
     }
     else
