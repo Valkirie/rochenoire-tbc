@@ -5843,21 +5843,17 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
-	uint32 damage = log->damage;
-	Unit *target = log->target->GetBeneficiary();
-	Unit *caster = log->attacker->GetBeneficiary();
+    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, log->scaled);
 
-	if (target->IsPlayer() && !log->target->HasCharmer())
-		damage = sObjectMgr.ScaleDamage(caster, target, log->damage, log->isScaled);
-
-    bool invertedScaled = !log->isScaled;
-    uint32 originalDamage = sObjectMgr.ScaleDamage(target, caster, damage, invertedScaled); // inverted owner and target
+    bool invertedScaled = !log->scaled;
+    if(log->attacker->IsPlayer())
+        damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled); // inverted owner and target
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
     data << log->attacker->GetPackGUID();
     data << uint32(log->SpellID);
-    data << uint32(originalDamage);                         // damage amount
+    data << uint32(damage);                                 // damage amount
     data << uint8(log->schoolMask);                         // damage school
     data << uint32(log->absorb);                            // AbsorbedDamage
     data << int32(log->resist);                             // resist
@@ -5922,12 +5918,7 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Aura* aura = pInfo->aura;
     Modifier* mod = aura->GetModifier();
 
-	uint32 damage = pInfo->damage;
-
-	Unit *target = aura->GetTarget() ? aura->GetTarget()->GetBeneficiary() : aura->GetTarget();
-	Unit *caster = aura->GetCaster() ? aura->GetCaster()->GetBeneficiary() : aura->GetCaster();
-	if (target->IsPlayer() && !aura->GetTarget()->HasCharmer())
-		damage = sObjectMgr.ScaleDamage(caster, target, damage, pInfo->scaled);
+	uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, pInfo->scaled);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
@@ -6103,11 +6094,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
-	uint32 totalDamage = calcDamageInfo->totalDamage;
-	Unit *target = calcDamageInfo->target->GetBeneficiary();
-	Unit *caster = calcDamageInfo->attacker->GetBeneficiary();
-	if (target->IsPlayer() && !calcDamageInfo->target->HasCharmer())
-		totalDamage = sObjectMgr.ScaleDamage(caster, target, calcDamageInfo->totalDamage, isScaled);
+	uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, isScaled);
 
     // Subdamage count:
     uint32 lines = m_weaponDamageInfo.weapon[calcDamageInfo->attackType].lines;
@@ -6126,11 +6113,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
     {
         auto &line = calcDamageInfo->subDamage[i];
 
-		uint32 subDamaged = line.damage;
-		Unit *target = calcDamageInfo->target->GetBeneficiary();
-		Unit *caster = calcDamageInfo->attacker->GetBeneficiary();
-		if (target->IsPlayer() && !calcDamageInfo->target->HasCharmer())
-			subDamaged = sObjectMgr.ScaleDamage(caster, target, line.damage, isScaled);
+		uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, isScaled);
 
         data << uint32(line.damageSchoolMask);
         data << float(subDamaged) / float(totalDamage);   // Float coefficient of subdamage
@@ -7032,10 +7015,7 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
-	Unit *target = pVictim->GetBeneficiary();
-	Unit *caster = ((Unit*)this)->GetBeneficiary();
-	if (target->IsPlayer() && !target->HasCharmer())
-		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
+	Damage = sObjectMgr.ScaleDamage(((Unit*)this), pVictim, Damage, isScaled);
 
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();

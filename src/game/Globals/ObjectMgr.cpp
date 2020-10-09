@@ -990,6 +990,11 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	if (!owner || !target)
 		return false;
 
+    // Mind Controlled creatures should not have scaled damage dealt/received
+    if (owner->IsCreature() && target->IsCreature())
+        if (owner->HasCharmer() || target->HasCharmer())
+            return false;
+
 	owner = owner->GetBeneficiary();
 	target = target->GetBeneficiary();
 
@@ -1397,16 +1402,16 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 	if (isScaled)
 		return olddamage;
 
+    if (!IsScalable(owner, target))
+        return olddamage;
+
     owner = owner ? owner->GetBeneficiary() : owner;
     target = target ? target->GetBeneficiary() : target;
 
     if (!owner || !target)
         return olddamage;
 
-	float damage = olddamage;
-
-    if (!IsScalable(owner, target))
-        return damage;
+    float damage = olddamage;
 
 	Creature* creature;
 	Player* player;
