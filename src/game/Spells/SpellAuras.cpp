@@ -7239,8 +7239,13 @@ void Aura::PeriodicTick()
             }
 
             uint32 heal = pCaster->SpellHealingBonusTaken(pCaster, spellProto, int32(pdamage * multiplier), DOT, GetStackAmount());
+            bool invertedScaled = !m_modifier.m_isScaled;
+            heal = sObjectMgr.ScaleDamage(target, pCaster, heal, invertedScaled);
 
-            int32 gain = pCaster->DealHeal(pCaster, heal, spellProto);
+            int32 gain = pCaster->DealHeal(pCaster, heal, spellProto, false, m_modifier.m_isScaled);
+            invertedScaled = !m_modifier.m_isScaled;
+            gain = sObjectMgr.ScaleDamage(target, pCaster, gain, invertedScaled);
+
             // Health Leech effects do not generate healing aggro
             if (m_modifier.m_auraname == SPELL_AURA_PERIODIC_LEECH)
                 break;
