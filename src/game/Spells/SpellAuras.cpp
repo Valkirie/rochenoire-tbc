@@ -7369,7 +7369,7 @@ void Aura::PeriodicTick()
                 }
             }
 
-			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage);
+			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_modifier.m_isScaled);
             DETAIL_FILTER_LOG(LOG_FILTER_PERIODIC_AFFECTS, "PeriodicTick: %s power leech of %s for %u dmg inflicted by %u",
                               GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId());
 
@@ -7403,7 +7403,7 @@ void Aura::PeriodicTick()
                     modOwner->ApplySpellMod(GetId(), SPELLMOD_MULTIPLE_VALUE, gain_multiplier);
             }
 
-            SpellPeriodicAuraLogInfo pInfo(this, drain_amount, 0, 0, gain_multiplier);
+            SpellPeriodicAuraLogInfo pInfo(this, drain_amount, 0, 0, gain_multiplier, m_modifier.m_isScaled);
             target->SendPeriodicAuraLog(&pInfo);
 
             int32 gainCalculated = int32(drain_amount * gain_multiplier);
