@@ -70,6 +70,10 @@ struct Modifier
     * Set at the beginning so that stack increases dont need to calculate spell values
     */
     int32 m_baseAmount;
+    /**
+    * Is the aura scaled ?
+    */
+    bool m_isScaled = false;
 };
 
 class Unit;
@@ -139,8 +143,6 @@ class SpellAuraHolder
         bool IsRemovedOnShapeLost() const { return m_isRemovedOnShapeLost; }
         bool IsDeleted() const { return m_deleted;}
         bool IsEmptyHolder() const;
-
-		bool isScaled = false;
 
         void SetDeleted() { m_deleted = true; m_spellAuraHolderState = SPELLAURAHOLDER_STATE_REMOVING; }
 

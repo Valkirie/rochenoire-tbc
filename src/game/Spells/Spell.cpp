@@ -1244,7 +1244,6 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, TargetInfo* target, 
         // normally shouldn't happen
         if (!m_spellAuraHolder->IsEmptyHolder())
         {
-			m_spellAuraHolder->isScaled = isScaled;
             int32 duration = m_spellAuraHolder->GetAuraMaxDuration();
             int32 originalDuration = duration;
 
