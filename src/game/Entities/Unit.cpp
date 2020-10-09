@@ -1587,7 +1587,7 @@ uint32 Unit::SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage
     SpellNonMeleeDamage spellDamageInfo(this, pVictim, spellInfo->Id, SpellSchoolMask(spellInfo->SchoolMask), nullptr, isScaled);
     CalculateSpellDamage(&spellDamageInfo, damage, spellInfo);
     spellDamageInfo.target->CalculateAbsorbResistBlock(this, &spellDamageInfo, spellInfo);
-    Unit::DealDamageMods(this, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, nullptr, spellDamageInfo.isScaled);
+    Unit::DealDamageMods(this, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, nullptr, spellDamageInfo.scaled);
     SendSpellNonMeleeDamageLog(&spellDamageInfo);
     DealSpellDamage(&spellDamageInfo, true);
     return spellDamageInfo.damage;

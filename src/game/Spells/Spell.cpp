@@ -1055,10 +1055,12 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
                 spellDamageInfo.damage = caster->CalcArmorReducedDamage(unitTarget, spellDamageInfo.damage);
         }
 
-        spellDamageInfo.isScaled = isScaled;
+        // Save scaling
+        spellDamageInfo.scaled = isScaled;
+
         unitTarget->CalculateAbsorbResistBlock(caster, &spellDamageInfo, m_spellInfo);
 
-        Unit::DealDamageMods(caster, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, m_spellInfo);
+        Unit::DealDamageMods(caster, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, m_spellInfo, spellDamageInfo.scaled);
 
         // Send log damage message to client        
         if (reflectTarget)

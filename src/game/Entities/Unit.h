@@ -870,8 +870,8 @@ inline const char* UnitCombatDieSideText(UnitCombatDieSide side)
 
 struct CleanDamage
 {
-    CleanDamage(uint32 _damage, WeaponAttackType _attackType, MeleeHitOutcome _hitOutCome) :
-        damage(_damage), attackType(_attackType), hitOutCome(_hitOutCome) {}
+    CleanDamage(uint32 _damage, WeaponAttackType _attackType, MeleeHitOutcome _hitOutCome, bool _isScaled = false) :
+        damage(_damage), attackType(_attackType), hitOutCome(_hitOutCome), isScaled(_isScaled) {}
 
     uint32 damage; // only used for rage generation
     bool isScaled;
@@ -910,9 +910,9 @@ struct CalcDamageInfo
 // Spell damage info structure based on structure sending in SMSG_SPELLNONMELEEDAMAGELOG opcode
 struct SpellNonMeleeDamage
 {
-    SpellNonMeleeDamage(Unit* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr, bool _isScaled = false)
+    SpellNonMeleeDamage(Unit* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr, bool _scaled = false)
         : target(_target), attacker(_attacker), SpellID(_SpellID), damage(0), schoolMask(_schoolMask),
-          absorb(0), resist(0), periodicLog(false), unused(false), blocked(0), HitInfo(0), spell(_spell), isScaled(_isScaled)
+          absorb(0), resist(0), periodicLog(false), unused(false), blocked(0), HitInfo(0), spell(_spell), scaled(_scaled)
     {}
 
     Unit*   target;
@@ -927,7 +927,7 @@ struct SpellNonMeleeDamage
     uint32 blocked;
     uint32 HitInfo;
 	Spell *spell;
-	bool isScaled = false;
+	bool scaled;
 };
 
 struct SpellPeriodicAuraLogInfo
