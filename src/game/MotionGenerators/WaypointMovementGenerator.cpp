@@ -378,6 +378,10 @@ static const uint32 PreSendTime     = 1500;
 // build and send path to next node
 void WaypointMovementGenerator<Creature>::SendNextWayPointPath(Creature& creature)
 {
+    // dirty : crashfix
+    if (!i_path)
+        return;
+    
     // make sure to reset spline index as its new path
     m_nodeIndexes.clear();
 
