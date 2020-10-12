@@ -4150,7 +4150,7 @@ void Spell::HandleThreatSpells()
         // positive spells distribute threat among all units that are in combat with target, like healing
         if (positive)
         {
-            target->getHostileRefManager().threatAssist(m_caster /*real_caster ??*/, threat, m_spellInfo, false, false, this->isScaled);
+            target->getHostileRefManager().threatAssist(m_caster /*real_caster ??*/, threat, m_spellInfo, false, false, isScaled);
         }
         // for negative spells threat gets distributed among affected targets
         else
@@ -4158,7 +4158,7 @@ void Spell::HandleThreatSpells()
             if (!target->CanHaveThreatList())
                 continue;
 
-            target->AddThreat(m_caster, threat, false, GetSpellSchoolMask(m_spellInfo), m_spellInfo, this->isScaled);
+            target->AddThreat(m_caster, threat, false, GetSpellSchoolMask(m_spellInfo), m_spellInfo, isScaled);
         }
     }
 

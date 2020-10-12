@@ -6055,7 +6055,7 @@ void Unit::CasterHitTargetWithSpell(Unit* realCaster, Unit* target, SpellEntry c
         if (!spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !spellInfo->HasAttribute(SPELL_ATTR_EX_NO_THREAT) && CanEnterCombat() && target->CanEnterCombat())
         {
             realCaster->SetInCombatWithAssisted(target);
-            target->getHostileRefManager().threatAssist(realCaster, 0.0f, spellInfo, false, false, target);
+            target->getHostileRefManager().threatAssist(realCaster, 0.0f, spellInfo, false, false, false, target);
         }
 
         if (spellInfo->HasAttribute(SPELL_ATTR_EX3_OUT_OF_COMBAT_ATTACK))
