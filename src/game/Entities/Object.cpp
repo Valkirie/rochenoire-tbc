@@ -2800,8 +2800,6 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         }
         else
         {
-            bool value_neg = (value < 0) ? true : false;
-
             if (spell && target && target->GetObjectGuid() != unitCaster->GetObjectGuid())
             {
                 if (value == 0)
@@ -2812,9 +2810,6 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
                 Unit* uTarget = (Unit*)target->GetBeneficiary();
                 Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
-
-                uint32 target_level = uTarget->getLevel();
-                uint32 caster_level = uCaster->getLevel();
 
                 bool canKeep = false;
 
@@ -2835,21 +2830,8 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
                 if (canKeep)
                 {
-                    // Avoid breaking the below calculation
-                    if (value_neg)
-                        value *= -1;
-
-                    float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
-                    float caster_ratio = value / caster_funct;
-
-                    float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
-                    float target_scale = target_value * caster_ratio;
+                    float target_scale = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], true);
                     value = (int)ceil(target_scale);
-
-                    // Restore value sign
-                    if (value_neg)
-                        value *= -1;
-
                 }
             }
         }

@@ -1394,12 +1394,9 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	return armor;
 }
 
-float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled) const
+float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, bool isSpell) const
 {
-	if (olddamage <= 1)
-		return olddamage;
-
-	if (isScaled)
+	if (isScaled || olddamage == 0)
 		return olddamage;
 
     if (!IsScalable(owner, target))
@@ -1412,6 +1409,11 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         return olddamage;
 
     float damage = olddamage;
+    bool value_neg = (olddamage < 0) ? true : false;
+
+    // Avoid breaking the below calculation
+    if (value_neg)
+        damage *= -1;
 
 	Creature* creature;
 	Player* player;
@@ -1445,13 +1447,27 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
 	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
 
-	if (pAggro == 1)
+    if (isSpell)
+    {
+        uint32 target_level = target->getLevel();
+        uint32 caster_level = owner->getLevel();
+
+        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
+        float caster_ratio = damage / caster_funct;
+
+        float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
+        float damage_scaled = target_value * caster_ratio;
+
+        damage = damage_scaled;
+    }
+	else if (pAggro == 1)
 	{
 		uint32 max_health = (float)creature->GetMaxHealth();
-		float scaled_health = 1;
 
 		if (max_health <= 1)
-			return olddamage;
+			return damage;
+
+        float scaled_health = 1;
 
 		if (creature->GetTypeId() == TYPEID_UNIT)
 		{
@@ -1464,19 +1480,13 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 		}
 
 		float scaled_damage_ratio = float((float)max_health / (float)scaled_health);
-		float damage_scaled = scaled_damage_ratio * olddamage;
+		float damage_scaled = scaled_damage_ratio * damage;
 
 		damage = damage_scaled;
 	}
 	else if (pAggro >= 2)
 	{
-        if (Player* pPlayer = player->GetBeneficiaryPlayer())
-            player = pPlayer;
-
-		if (!player)
-			return olddamage;
-
-		PlayerClassLevelInfo target_classInfo;
+        PlayerClassLevelInfo target_classInfo;
 		PlayerClassLevelInfo owner_classInfo;
 
 		float targetBaseHealth = 0.0f;
@@ -1500,13 +1510,18 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 		targetBaseHealth /= incBaseHealth;
 		ownerBaseHealth /= incBaseHealth;
 
-		float damage_percent = olddamage / ownerBaseHealth;
+		float damage_percent = damage / ownerBaseHealth;
 		float damage_scaled = damage_percent * targetBaseHealth;
 
 		damage = damage_scaled;
 	}
 
     isScaled = true;
+
+    // Restore value sign
+    if (value_neg)
+        damage *= -1;
+
 	return ceil(damage);
 }
 

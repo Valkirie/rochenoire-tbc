@@ -3780,8 +3780,8 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
-    int32 original_damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, invertedScaled); // inverted owner and target
     bool invertedScaled = !EffectScaled[eff_idx];
+    int32 original_damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, invertedScaled, true); // inverted owner and target
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &original_damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }

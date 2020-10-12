@@ -808,11 +808,11 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
 	if (cleanDamage)
 	{
         bool cleanDamageScaled = isScaled;
-		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled);
+		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled, spellProto ? true : false);
 		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
 	}
 
-	damage = sObjectMgr.ScaleDamage(dealer, victim, olddamage, isScaled);
+	damage = sObjectMgr.ScaleDamage(dealer, victim, olddamage, isScaled, spellProto ? true : false);
 
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT && damagetype != INSTAKILL)
@@ -1694,8 +1694,7 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage* spellDamageInfo, bool durability
     // Call default DealDamage (send critical in hit info for threat calculation)
     CleanDamage cleanDamage(spellDamageInfo->damage, BASE_ATTACK, spellDamageInfo->HitInfo & SPELL_HIT_TYPE_CRIT ? MELEE_HIT_CRIT : MELEE_HIT_NORMAL);
 
-    bool isScaled = spellDamageInfo->spell ? spellDamageInfo->spell->isScaled : false;
-    DealDamage(this, pVictim, spellDamageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, spellDamageInfo->schoolMask, spellProto, durabilityLoss, spellDamageInfo->spell, isScaled);
+    DealDamage(this, pVictim, spellDamageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, spellDamageInfo->schoolMask, spellProto, durabilityLoss, spellDamageInfo->spell, spellDamageInfo->scaled);
 }
 
 uint32 Unit::GetResilienceRatingDamageReduction(uint32 damage, SpellDmgClass dmgClass, bool periodic/* = false*/, Powers pwrType/* = POWER_HEALtH*/) const
@@ -2386,8 +2385,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
                 break;
         }
 
-		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled);
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
+		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
 
 		// currentAbsorb - damage can be absorbed by shield
 		// If need absorb less damage
@@ -2448,7 +2447,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 		int32 currentAbsorb;
 		int32 s_currentAbsorb;
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
 		if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 		{
 			currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -2457,7 +2456,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 		else
 		{
 			currentAbsorb = RemainingDamage;
-			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
+			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
 		}
 
 		if (float manaMultiplier = (*i)->GetSpellProto()->EffectMultipleValue[(*i)->GetEffIndex()])
@@ -2504,7 +2503,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 			int32 currentAbsorb;
 			int32 s_currentAbsorb;
-			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled);
+			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
 			if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 			{
 				currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -2513,7 +2512,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 			else
 			{
 				currentAbsorb = RemainingDamage;
-				s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
+				s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
 			}
 
             RemainingDamage -= currentAbsorb;
@@ -5845,11 +5844,11 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
-    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, log->scaled);
+    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, log->scaled, true);
 
     bool invertedScaled = !log->scaled;
     if(log->attacker->IsPlayer())
-        damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled); // inverted owner and target
+        damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -5920,7 +5919,7 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Aura* aura = pInfo->aura;
     Modifier* mod = aura->GetModifier();
 
-	uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, pInfo->scaled);
+    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, pInfo->scaled, true);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
@@ -7002,8 +7001,9 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 {
 	Unit *target = pVictim->GetBeneficiary();
 	Unit *caster = this->GetBeneficiary();
-	if (target->IsPlayer() && !pVictim->HasCharmer())
-		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled);
+
+    if (target->IsPlayer() && !pVictim->HasCharmer())
+		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled, true);
 
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
     data << pVictim->GetPackGUID();
@@ -7017,7 +7017,7 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
-	Damage = sObjectMgr.ScaleDamage(((Unit*)this), pVictim, Damage, isScaled);
+    Damage = sObjectMgr.ScaleDamage(((Unit*)this), pVictim, Damage, isScaled, true);
 
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();
