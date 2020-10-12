@@ -9535,7 +9535,10 @@ uint32 Unit::getZoneLevel(uint32 AreaID) const
     uint32 pLevel = getLevel();
     if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(Id))
     {
-        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
+        // should not happen
+        if (thisZone->LevelRangeMin == 0 && thisZone->LevelRangeMax == 0)
+            return pLevel;
+        else if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
             return pLevel > thisZone->LevelRangeMax ? thisZone->LevelRangeMax : thisZone->LevelRangeMin;
         else
             return pLevel;
