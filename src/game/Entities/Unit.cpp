@@ -768,10 +768,8 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         return;
     }
 
-    bool invertedScaled = !isScaled;
-    uint32 scaled_damage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled);
-    uint32 originalDamage = sObjectMgr.ScaleDamage(victim, dealer, damage, invertedScaled); // inverted owner and target
-
+    uint32 scaledDamage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled, spellProto ? true : false);
+    
     if (dealer) // dealer is optional
     {
         // You don't lose health from damage taken from another player while in a sanctuary
@@ -784,15 +782,15 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         }
 
         if (UnitAI* ai = dealer->AI()) // Script Event damage Deal
-            ai->DamageDeal(victim, scaled_damage, damagetype, spellProto);
+            ai->DamageDeal(victim, scaledDamage, damagetype, spellProto);
     }
     // Script Event damage taken
     if (victim->AI())
-        victim->AI()->DamageTaken(dealer, scaled_damage, damagetype, spellProto);
+        victim->AI()->DamageTaken(dealer, scaledDamage, damagetype, spellProto);
 
     // do not use originalDamage (counter scaled value)
-    if (absorb && scaled_damage > damage)
-        *absorb += (scaled_damage - damage);
+    if (absorb && scaledDamage > damage)
+        *absorb += (scaledDamage - damage);
 }
 
 void Unit::Suicide()
