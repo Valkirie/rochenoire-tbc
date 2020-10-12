@@ -2794,7 +2794,8 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             if (spellScaler && casterScaler)
             {
                 value *= casterScaler->ratio / spellScaler->ratio;
-                spell->isScaled = true;
+                if(target && unitCaster && (target->IsPlayer() || unitCaster->IsPlayer()))
+                    spell->isScaled = true;
             }
         }
         else
@@ -2806,19 +2807,19 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                 if (value == 0)
                     return value;
 
+                if (!sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
+                    return value;
+
                 Unit* uTarget = (Unit*)target->GetBeneficiary();
                 Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
-
-                if (!sObjectMgr.IsScalable(uTarget, uCaster))
-                    return value;
 
                 uint32 target_level = uTarget->getLevel();
                 uint32 caster_level = uCaster->getLevel();
 
                 bool canKeep = false;
 
-                if ((uTarget->IsFriend(uCaster)) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
-                    canKeep = uCaster && uCaster->hasZoneLevel();
+                if ((uTarget->IsFriend(uCaster) && uCaster->IsPlayer() && uTarget->IsPlayer()) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
+                    canKeep = uCaster->hasZoneLevel();
                 else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
                     canKeep = true;
                 else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells

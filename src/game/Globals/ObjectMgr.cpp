@@ -1018,7 +1018,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 		creature = (Creature *)target;
 	}
     else if (owner->IsPlayer() && target->IsPlayer())
-        return (IsBattleGround || IsForcePVP);
+        return (IsBattleGround || IsForcePVP || owner->IsFriend(target));
 	else
 		return false;
 
