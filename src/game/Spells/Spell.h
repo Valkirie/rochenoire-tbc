@@ -410,7 +410,8 @@ class Spell
         SpellCastResult CheckPetCast(Unit* target);
 
 		// scaling
-		bool isScaled = false;
+        bool EffectScaled[MAX_EFFECT_INDEX] = { false };
+        bool IsScaled() { for (int i = 0; i < MAX_EFFECT_INDEX; i++) { if (EffectScaled[i]) return true; }  return false; };
 
         // handlers
         void handle_immediate();

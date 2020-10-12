@@ -1024,10 +1024,10 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         m_healing = addhealth; // update value so that script handler has access
         OnHit(); // TODO: After spell damage calc is moved to proper handler - move this before the first if
 
-        int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo, target->isCrit, isScaled);
+        int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo, target->isCrit, IsScaled());
 
         if (real_caster)
-            unitTarget->getHostileRefManager().threatAssist(real_caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo, false, false, isScaled, unitTarget);
+            unitTarget->getHostileRefManager().threatAssist(real_caster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(m_spellInfo), m_spellInfo, false, false, IsScaled(), unitTarget);
 
         // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
@@ -1056,7 +1056,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         }
 
         // Save scaling
-        spellDamageInfo.scaled = isScaled;
+        spellDamageInfo.scaled = IsScaled();
 
         unitTarget->CalculateAbsorbResistBlock(caster, &spellDamageInfo, m_spellInfo);
 
@@ -4150,7 +4150,7 @@ void Spell::HandleThreatSpells()
         // positive spells distribute threat among all units that are in combat with target, like healing
         if (positive)
         {
-            target->getHostileRefManager().threatAssist(m_caster /*real_caster ??*/, threat, m_spellInfo, false, false, isScaled);
+            target->getHostileRefManager().threatAssist(m_caster /*real_caster ??*/, threat, m_spellInfo, false, false, IsScaled());
         }
         // for negative spells threat gets distributed among affected targets
         else
@@ -4158,7 +4158,7 @@ void Spell::HandleThreatSpells()
             if (!target->CanHaveThreatList())
                 continue;
 
-            target->AddThreat(m_caster, threat, false, GetSpellSchoolMask(m_spellInfo), m_spellInfo, isScaled);
+            target->AddThreat(m_caster, threat, false, GetSpellSchoolMask(m_spellInfo), m_spellInfo, IsScaled());
         }
     }
 

@@ -2795,7 +2795,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             {
                 value *= casterScaler->ratio / spellScaler->ratio;
                 if(target && unitCaster && (target->IsPlayer() || unitCaster->IsPlayer()))
-                    spell->isScaled = true;
+                    spell->EffectScaled[effect_index] = true;
             }
         }
         else
@@ -2850,7 +2850,6 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                     if (value_neg)
                         value *= -1;
 
-                    spell->isScaled = true;
                 }
             }
         }
