@@ -927,7 +927,7 @@ struct SpellNonMeleeDamage
     uint32 blocked;
     uint32 HitInfo;
 	Spell *spell;
-	bool scaled;
+    bool scaled = false;
 };
 
 struct SpellPeriodicAuraLogInfo

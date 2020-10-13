@@ -5842,9 +5842,10 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
-    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, log->scaled, true);
+    bool IsScaled = log->scaled;
+    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, true);
 
-    bool invertedScaled = !log->scaled;
+    bool invertedScaled = !IsScaled;
     if(log->attacker->IsPlayer())
         damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
 
@@ -6093,7 +6094,8 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
-	uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, isScaled);
+    bool totalScale = calcDamageInfo->attacker->IsPlayer();
+	uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, totalScale);
 
     // Subdamage count:
     uint32 lines = m_weaponDamageInfo.weapon[calcDamageInfo->attackType].lines;
@@ -6112,7 +6114,8 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
     {
         auto &line = calcDamageInfo->subDamage[i];
 
-		uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, isScaled);
+        bool subScaled = calcDamageInfo->attacker->IsPlayer();
+		uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, subScaled);
 
         data << uint32(line.damageSchoolMask);
         data << float(subDamaged) / float(totalDamage);   // Float coefficient of subdamage
@@ -6149,6 +6152,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
         data << uint32(0);
     }
 
+    isScaled = totalScale;
     SendMessageToSet(data, true);
 }
 
