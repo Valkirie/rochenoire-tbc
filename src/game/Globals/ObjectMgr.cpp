@@ -1449,13 +1449,12 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 
     if (isSpell)
     {
-        uint32 target_level = target->getLevel();
         uint32 caster_level = owner->getLevel();
 
         float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
         float caster_ratio = damage / caster_funct;
 
-        float target_value = (0.0792541 * pow(target_level, 2) + 1.93556 * (target_level)+4.56252);
+        float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level)+4.56252);
         float damage_scaled = target_value * caster_ratio;
 
         damage = damage_scaled;
