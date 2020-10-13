@@ -2829,10 +2829,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                 }
 
                 if (canKeep)
-                {
-                    float target_scale = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], true);
-                    value = (int)ceil(target_scale);
-                }
+                    value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], true);
             }
         }
     }
