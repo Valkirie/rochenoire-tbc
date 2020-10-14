@@ -3440,7 +3440,7 @@ void Spell::finish(bool ok)
 
     // Heal caster for all health leech from all targets
     if (m_healthLeech)
-        m_caster->DealHeal(m_caster, uint32(m_healthLeech), m_spellInfo);
+        m_caster->DealHeal(m_caster, uint32(m_healthLeech), m_spellInfo, IsScaled());
 
     if (m_spellInfo->AttributesEx & SPELL_ATTR_EX_REFUND_POWER)
     {

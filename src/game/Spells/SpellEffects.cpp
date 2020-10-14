@@ -4071,7 +4071,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
         bool invertedScaled = !EffectScaled[eff_idx];
         heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, invertedScaled, true); // inverted owner and target
-        m_caster->DealHeal(m_caster, heal, m_spellInfo);
+        m_caster->DealHeal(m_caster, heal, m_spellInfo, false, EffectScaled[eff_idx]);
     }
 }
 
