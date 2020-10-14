@@ -7292,7 +7292,7 @@ void Aura::PeriodicTick()
                 GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId());
 
             int32 gain = target->ModifyHealth(pdamage);
-            SpellPeriodicAuraLogInfo pInfo(this, pdamage, 0, 0, 0.0f);
+            SpellPeriodicAuraLogInfo pInfo(this, pdamage, 0, 0, 0.0f, IsScaled);
             target->SendPeriodicAuraLog(&pInfo);
 
             // Set trigger flag
@@ -7482,7 +7482,7 @@ void Aura::PeriodicTick()
             if (target->GetMaxPower(power) == 0)
                 break;
 
-            SpellPeriodicAuraLogInfo info(this, pdamage, 0, 0, 0.0f);
+            SpellPeriodicAuraLogInfo info(this, pdamage, 0, 0, 0.0f, IsScaled);
             target->SendPeriodicAuraLog(&info);
 
             int32 gain = target->ModifyPower(power, pdamage);
@@ -7524,7 +7524,7 @@ void Aura::PeriodicTick()
             if (target->GetMaxPower(POWER_MANA) == 0)
                 break;
 
-            SpellPeriodicAuraLogInfo pInfo(this, pdamage, 0, 0, 0.0f);
+            SpellPeriodicAuraLogInfo pInfo(this, pdamage, 0, 0, 0.0f, IsScaled);
             target->SendPeriodicAuraLog(&pInfo);
 
             int32 gain = target->ModifyPower(POWER_MANA, pdamage);

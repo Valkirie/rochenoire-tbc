@@ -5918,7 +5918,8 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Aura* aura = pInfo->aura;
     Modifier* mod = aura->GetModifier();
 
-    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, pInfo->scaled, true);
+    bool IsScaled = pInfo->scaled;
+    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, true);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
@@ -7001,11 +7002,8 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
 
 void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical, bool isScaled)
 {
-	Unit *target = pVictim->GetBeneficiary();
-	Unit *caster = this->GetBeneficiary();
-
-    if (target->IsPlayer() && !pVictim->HasCharmer())
-		Damage = sObjectMgr.ScaleDamage(caster, target, Damage, isScaled, true);
+    if (pVictim->IsPlayer())
+        Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, true);
 
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
     data << pVictim->GetPackGUID();
@@ -7019,7 +7017,7 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
-    Damage = sObjectMgr.ScaleDamage(((Unit*)this), pVictim, Damage, isScaled, true);
+    Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, true);
 
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();
