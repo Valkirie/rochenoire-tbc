@@ -7018,6 +7018,7 @@ void Aura::PeriodicTick()
         return;
 
     SpellEntry const* spellProto = GetSpellProto();
+    bool IsScaled = m_modifier.m_isScaled;
 
     switch (m_modifier.m_auraname)
     {
@@ -7130,12 +7131,12 @@ void Aura::PeriodicTick()
 
             pdamage -= target->GetResilienceRatingDamageReduction(pdamage, SpellDmgClass(spellProto->DmgClass), true);
 
-            target->CalculateDamageAbsorbAndResist(caster, GetSpellSchoolMask(spellProto), DOT, pdamage, &absorb, &resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), false, nullptr, m_modifier.m_isScaled);
+            target->CalculateDamageAbsorbAndResist(caster, GetSpellSchoolMask(spellProto), DOT, pdamage, &absorb, &resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), false, nullptr, IsScaled);
 
             DETAIL_FILTER_LOG(LOG_FILTER_PERIODIC_AFFECTS, "PeriodicTick: %s attacked %s for %u dmg inflicted by %u",
                               GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId());
 
-            Unit::DealDamageMods(caster, target, pdamage, &absorb, DOT, spellProto, m_modifier.m_isScaled);
+            Unit::DealDamageMods(caster, target, pdamage, &absorb, DOT, spellProto, IsScaled);
 
             // Set trigger flag
             uint32 procAttacker = PROC_FLAG_ON_DO_PERIODIC; //  | PROC_FLAG_SUCCESSFUL_HARMFUL_SPELL_HIT;
@@ -7146,14 +7147,14 @@ void Aura::PeriodicTick()
             const uint32 malus = (resist > 0 ? (absorb + uint32(resist)) : absorb);
             pdamage = (pdamage <= malus ? 0 : (pdamage - malus));
 
-            SpellPeriodicAuraLogInfo pInfo(this, pdamage, absorb, resist, 0.0f, m_modifier.m_isScaled);
+            SpellPeriodicAuraLogInfo pInfo(this, pdamage, absorb, resist, 0.0f, IsScaled);
             target->SendPeriodicAuraLog(&pInfo);
 
             if (pdamage)
                 procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
 
             CleanDamage cleanDamage =  CleanDamage(pdamage, BASE_ATTACK, MELEE_HIT_NORMAL);
-            Unit::DealDamage(caster, target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, true, nullptr, m_modifier.m_isScaled);
+            Unit::DealDamage(caster, target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, true, nullptr, IsScaled);
 
             Unit::ProcDamageAndSpell(ProcSystemArguments(caster, target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, BASE_ATTACK, spellProto));
             break;
@@ -7201,7 +7202,7 @@ void Aura::PeriodicTick()
             DETAIL_FILTER_LOG(LOG_FILTER_PERIODIC_AFFECTS, "PeriodicTick: %s health leech of %s for %u dmg inflicted by %u abs is %u",
                               GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId(), absorb);
 
-            Unit::DealDamageMods(pCaster, target, pdamage, &absorb, DOT, spellProto, m_modifier.m_isScaled);
+            Unit::DealDamageMods(pCaster, target, pdamage, &absorb, DOT, spellProto, IsScaled);
 
             pCaster->SendSpellNonMeleeDamageLog(target, GetId(), pdamage, GetSpellSchoolMask(spellProto), absorb, resist, true, 0);
 
@@ -7216,14 +7217,14 @@ void Aura::PeriodicTick()
             const uint32 malus = (resist > 0 ? (absorb + uint32(resist)) : absorb);
             pdamage = (pdamage <= malus ? 0 : (pdamage - malus));
 
-            pdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_modifier.m_isScaled, true);
+            pdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, IsScaled, true);
             pdamage = std::min(pdamage, target->GetHealth());
 
             if (pdamage)
                 procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
 
-            CleanDamage cleanDamage =  CleanDamage(pdamage, BASE_ATTACK, MELEE_HIT_NORMAL, m_modifier.m_isScaled);
-            int32 new_damage = Unit::DealDamage(pCaster, target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, false, nullptr, m_modifier.m_isScaled);
+            CleanDamage cleanDamage =  CleanDamage(pdamage, BASE_ATTACK, MELEE_HIT_NORMAL, IsScaled);
+            int32 new_damage = Unit::DealDamage(pCaster, target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, false, nullptr, IsScaled);
             Unit::ProcDamageAndSpell(ProcSystemArguments(pCaster, target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, BASE_ATTACK, spellProto));
 
             if (!target->IsAlive() && pCaster->IsNonMeleeSpellCasted(false))
@@ -7239,17 +7240,17 @@ void Aura::PeriodicTick()
             }
 
             uint32 heal = pCaster->SpellHealingBonusTaken(pCaster, spellProto, int32(pdamage * multiplier), DOT, GetStackAmount());
-            bool invertedScaled = !m_modifier.m_isScaled;
+            bool invertedScaled = !IsScaled;
             heal = sObjectMgr.ScaleDamage(target, pCaster, heal, invertedScaled, true);
 
-            int32 gain = pCaster->DealHeal(pCaster, heal, spellProto, false, m_modifier.m_isScaled);
-            invertedScaled = !m_modifier.m_isScaled;
+            int32 gain = pCaster->DealHeal(pCaster, heal, spellProto, false, IsScaled);
+            invertedScaled = !IsScaled;
             gain = sObjectMgr.ScaleDamage(target, pCaster, gain, invertedScaled, true);
 
             // Health Leech effects do not generate healing aggro
             if (m_modifier.m_auraname == SPELL_AURA_PERIODIC_LEECH)
                 break;
-            pCaster->getHostileRefManager().threatAssist(pCaster, gain * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, m_modifier.m_isScaled, pCaster);
+            pCaster->getHostileRefManager().threatAssist(pCaster, gain * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, IsScaled, pCaster);
             break;
         }
         case SPELL_AURA_PERIODIC_HEAL:
@@ -7305,7 +7306,7 @@ void Aura::PeriodicTick()
                     bg->UpdatePlayerScore(((Player*)pCaster), SCORE_HEALING_DONE, gain);
 
             if (pCaster->IsInCombat() && !pCaster->IsCrowdControlled())
-                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, m_modifier.m_isScaled, target);
+                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, IsScaled, target);
 
             Unit::ProcDamageAndSpell(ProcSystemArguments(pCaster, target, procAttacker, procVictim, procEx, gain, BASE_ATTACK, spellProto, nullptr, gain));
 
@@ -7320,7 +7321,7 @@ void Aura::PeriodicTick()
                 {
                     pCaster->SendSpellNonMeleeDamageLog(pCaster, GetId(), damage, GetSpellSchoolMask(spellProto), absorb, 0, true, 0, false);
                     CleanDamage cleanDamage = CleanDamage(damage, BASE_ATTACK, MELEE_HIT_NORMAL);
-                    Unit::DealDamage(pCaster, pCaster, damage, &cleanDamage, NODAMAGE, GetSpellSchoolMask(spellProto), spellProto, true, nullptr, m_modifier.m_isScaled);
+                    Unit::DealDamage(pCaster, pCaster, damage, &cleanDamage, NODAMAGE, GetSpellSchoolMask(spellProto), spellProto, true, nullptr, IsScaled);
                 }
                 else
                 {
@@ -7374,7 +7375,7 @@ void Aura::PeriodicTick()
                 }
             }
 
-			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_modifier.m_isScaled, true);
+			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, IsScaled, true);
             DETAIL_FILTER_LOG(LOG_FILTER_PERIODIC_AFFECTS, "PeriodicTick: %s power leech of %s for %u dmg inflicted by %u",
                               GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId());
 
@@ -7408,7 +7409,7 @@ void Aura::PeriodicTick()
                     modOwner->ApplySpellMod(GetId(), SPELLMOD_MULTIPLE_VALUE, gain_multiplier);
             }
 
-            SpellPeriodicAuraLogInfo pInfo(this, drain_amount, 0, 0, gain_multiplier, m_modifier.m_isScaled);
+            SpellPeriodicAuraLogInfo pInfo(this, drain_amount, 0, 0, gain_multiplier, IsScaled);
             target->SendPeriodicAuraLog(&pInfo);
 
             int32 gainCalculated = int32(drain_amount * gain_multiplier);
@@ -7422,7 +7423,7 @@ void Aura::PeriodicTick()
                         if (int32 pet_gain = gainCalculated * petPart->GetModifier()->m_amount / 100)
                             pCaster->CastCustomSpell(pCaster, 32554, &pet_gain, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
 
-                target->AddThreat(pCaster, float(gain) * 0.5f, false, GetSpellSchoolMask(spellProto), spellProto, m_modifier.m_isScaled);
+                target->AddThreat(pCaster, float(gain) * 0.5f, false, GetSpellSchoolMask(spellProto), spellProto, IsScaled);
             }
 
             // Some special cases
@@ -7487,7 +7488,7 @@ void Aura::PeriodicTick()
             int32 gain = target->ModifyPower(power, pdamage);
 
             if (pCaster)
-                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, m_modifier.m_isScaled, target);
+                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, IsScaled, target);
 
             if (GetId() == 25685) // Moam - Energize
                 if (target->GetPower(POWER_MANA) > 24000)
@@ -7529,7 +7530,7 @@ void Aura::PeriodicTick()
             int32 gain = target->ModifyPower(POWER_MANA, pdamage);
 
             if (pCaster)
-                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, m_modifier.m_isScaled, target);
+                target->getHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, IsScaled, target);
             break;
         }
         case SPELL_AURA_POWER_BURN_MANA:
@@ -7598,7 +7599,7 @@ void Aura::PeriodicTick()
 
             int32 gain = target->ModifyHealth(m_modifier.m_amount);
             if (Unit* caster = GetCaster())
-                target->getHostileRefManager().threatAssist(caster, float(gain) * 0.5f  * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, m_modifier.m_isScaled, target);
+                target->getHostileRefManager().threatAssist(caster, float(gain) * 0.5f  * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto, false, true, IsScaled, target);
             break;
         }
         case SPELL_AURA_MOD_POWER_REGEN:
