@@ -614,7 +614,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
         }
 
         if (damage >= 0)
-            m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, damage);
+            m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, damage, EffectScaled[eff_idx]);
     }
 }
 
