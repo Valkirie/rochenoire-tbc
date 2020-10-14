@@ -7109,7 +7109,7 @@ int32 Unit::SpellBonusWithCoeffs(SpellEntry const* spellProto, int32 total, int3
  * Calculates caster part of spell damage bonuses,
  * also includes different bonuses dependent from target auras
  */
-uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
+uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack, bool IsScaled)
 {
     if (!spellProto || !victim || damagetype == DIRECT_DAMAGE)
         return pdamage;
@@ -7714,7 +7714,7 @@ bool Unit::IsImmuneToSchool(SpellEntry const* spellInfo, uint8 effectMask) const
  * Calculates caster part of melee damage bonuses,
  * also includes different bonuses dependent from target auras
  */
-uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat)
+uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat, bool IsScaled)
 {
     if (!victim || pdamage == 0)
         return pdamage;
