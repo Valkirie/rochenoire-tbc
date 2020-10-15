@@ -2383,8 +2383,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
                 break;
         }
 
-		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
+		int32 s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
 
 		// currentAbsorb - damage can be absorbed by shield
 		// If need absorb less damage
@@ -2445,7 +2445,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 		int32 currentAbsorb;
 		int32 s_currentAbsorb;
-		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
+		int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
 		if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 		{
 			currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -2454,7 +2454,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 		else
 		{
 			currentAbsorb = RemainingDamage;
-			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
+			s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
 		}
 
 		if (float manaMultiplier = (*i)->GetSpellProto()->EffectMultipleValue[(*i)->GetEffIndex()])
@@ -2501,7 +2501,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 
 			int32 currentAbsorb;
 			int32 s_currentAbsorb;
-			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage, isScaled, true);
+			int32 s_RemainingDamage = isScaled ? RemainingDamage : sObjectMgr.ScaleDamage(caster, this, RemainingDamage);
 			if (s_RemainingDamage >= (*i)->GetModifier()->m_amount)
 			{
 				currentAbsorb = (*i)->GetModifier()->m_amount;
@@ -2510,7 +2510,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 			else
 			{
 				currentAbsorb = RemainingDamage;
-				s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb, isScaled, true);
+				s_currentAbsorb = isScaled ? currentAbsorb : sObjectMgr.ScaleDamage(caster, this, currentAbsorb);
 			}
 
             RemainingDamage -= currentAbsorb;
