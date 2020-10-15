@@ -6091,12 +6091,11 @@ bool Unit::CanInitiateAttack() const
     return true;
 }
 
-void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) const
+void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
-    bool totalScale = calcDamageInfo->attacker->IsPlayer();
-	uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, totalScale);
+    uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage);
 
     // Subdamage count:
     uint32 lines = m_weaponDamageInfo.weapon[calcDamageInfo->attackType].lines;
@@ -6115,8 +6114,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
     {
         auto &line = calcDamageInfo->subDamage[i];
 
-        bool subScaled = calcDamageInfo->attacker->IsPlayer();
-		uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, subScaled);
+        uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage);
 
         data << uint32(line.damageSchoolMask);
         data << float(subDamaged) / float(totalDamage);   // Float coefficient of subdamage
@@ -6153,7 +6151,6 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled) 
         data << uint32(0);
     }
 
-    isScaled = totalScale;
     SendMessageToSet(data, true);
 }
 

@@ -1914,7 +1914,7 @@ class Unit : public WorldObject
 
         void SendAIReaction(AiReaction reactionType);
 
-        void SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo, bool isScaled = false) const;
+        void SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const;
         void SendAttackStateUpdate(uint32 HitInfo, Unit* target, SpellSchoolMask damageSchoolMask, uint32 Damage, uint32 AbsorbDamage, int32 Resist, VictimState TargetState, uint32 BlockedAmount);
         void SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled = false) const;
         void SendEnvironmentalDamageLog(uint8 type, uint32 damage, uint32 absorb, int32 resist) const;
