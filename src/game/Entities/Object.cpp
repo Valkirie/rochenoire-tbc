@@ -2794,8 +2794,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             if (spellScaler && casterScaler)
             {
                 value *= casterScaler->ratio / spellScaler->ratio;
-                if(target && unitCaster && (target->IsPlayer() || unitCaster->IsPlayer()))
-                    spell->EffectScaled[effect_index] = true;
+                spell->EffectScaled[effect_index] = true;
             }
         }
         else
@@ -2815,9 +2814,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
                 if ((uTarget->IsFriend(uCaster) && uCaster->IsPlayer() && uTarget->IsPlayer()) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
                     canKeep = uCaster->hasZoneLevel();
-                else if (uTarget->IsPlayer() && !uCaster->IsPlayer()) // Creature spells
-                    canKeep = true;
-                else if (uCaster->IsPlayer() && !uTarget->IsPlayer()) // Player spells
+                else if (uCaster->IsPlayer() || uTarget->IsPlayer())
                     canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
 
                 if (canKeep)
