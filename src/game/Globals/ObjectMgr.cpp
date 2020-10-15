@@ -1447,19 +1447,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
 	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
 
-    if (isSpell)
-    {
-        uint32 caster_level = owner->getLevel();
-
-        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
-        float caster_ratio = damage / caster_funct;
-
-        float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level)+4.56252);
-        float damage_scaled = target_value * caster_ratio;
-
-        damage = damage_scaled;
-    }
-	else if (pAggro == 1)
+    if (pAggro == 1)
 	{
 		uint32 max_health = (float)creature->GetMaxHealth();
 
@@ -1485,37 +1473,52 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 	}
 	else if (pAggro >= 2)
 	{
-        PlayerClassLevelInfo target_classInfo;
-		PlayerClassLevelInfo owner_classInfo;
+        if (pAggro == 3 && isSpell)
+        {
+            uint32 caster_level = owner->getLevel();
 
-		float targetBaseHealth = 0.0f;
-		float ownerBaseHealth = 0.0f;
-		int incBaseHealth = 0;
+            float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level)+4.56252);
+            float caster_ratio = damage / caster_funct;
 
-		for (uint32 i = MIN_CLASSES; i < MAX_CLASSES; i++)
-		{
-			if (i == 6 || i == 10)
-				continue;
+            float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level)+4.56252);
+            float damage_scaled = target_value * caster_ratio;
 
-			sObjectMgr.GetPlayerClassLevelInfo(i, scaled_level, &target_classInfo);
-			sObjectMgr.GetPlayerClassLevelInfo(i, origin_level, &owner_classInfo);
+            damage = damage_scaled;
+        }
+        else
+        {
+            PlayerClassLevelInfo target_classInfo;
+            PlayerClassLevelInfo owner_classInfo;
 
-			targetBaseHealth += target_classInfo.basehealth;
-			ownerBaseHealth += owner_classInfo.basehealth;
+            float targetBaseHealth = 0.0f;
+            float ownerBaseHealth = 0.0f;
+            int incBaseHealth = 0;
 
-			incBaseHealth++;
-		}
+            for (uint32 i = MIN_CLASSES; i < MAX_CLASSES; i++)
+            {
+                if (i == 6 || i == 10)
+                    continue;
 
-		targetBaseHealth /= incBaseHealth;
-		ownerBaseHealth /= incBaseHealth;
+                sObjectMgr.GetPlayerClassLevelInfo(i, scaled_level, &target_classInfo);
+                sObjectMgr.GetPlayerClassLevelInfo(i, origin_level, &owner_classInfo);
 
-		float damage_percent = damage / ownerBaseHealth;
-		float damage_scaled = damage_percent * targetBaseHealth;
+                targetBaseHealth += target_classInfo.basehealth;
+                ownerBaseHealth += owner_classInfo.basehealth;
 
-		damage = damage_scaled;
+                incBaseHealth++;
+            }
+
+            targetBaseHealth /= incBaseHealth;
+            ownerBaseHealth /= incBaseHealth;
+
+            float damage_percent = damage / ownerBaseHealth;
+            float damage_scaled = damage_percent * targetBaseHealth;
+
+            damage = damage_scaled;
+        }
 	}
 
-    isScaled = true;
+    isScaled = (damage != olddamage);
 
     // Restore value sign
     if (value_neg)
