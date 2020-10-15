@@ -32,6 +32,7 @@ Patches
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "the_eye.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
+#include "World/World.h"
 
 enum
 {
@@ -204,18 +205,21 @@ struct boss_alarAI : public CombatAI
     }
     
     // UNCOMMENT THIS AREA WHEN PATCH 2.1 HITS - should be done through serverside 41910
-    /* void SummonedCreatureJustDied(Creature* pSummoned) override
+    void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         // drain 2% of boss health when the ember dies
-        if (pSummoned->GetEntry() == NPC_EMBER_OF_ALAR)
+        if (sWorld.GetWowPatch() >= WOW_PATCH_210)
         {
-            // Check first if we have enough health to drain
-            if (m_creature->GetHealth() <= m_creature->GetMaxHealth()*.02f)
-                m_creature->DealDamage(m_creature, m_creature->GetMaxHealth()*.02f, nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
-            else
-                m_creature->DealDamage(m_creature, m_creature->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+            if (pSummoned->GetEntry() == NPC_EMBER_OF_ALAR)
+            {
+                // Check first if we have enough health to drain
+                if (m_creature->GetHealth() > m_creature->GetMaxHealth() * .02f)
+                    m_creature->DealDamage(m_creature, m_creature, m_creature->GetMaxHealth() * .02f, nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+                else
+                    m_creature->DealDamage(m_creature, m_creature, m_creature->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+            }
         }
-    } */
+    }
 
     void EnterEvadeMode() override
     {
@@ -255,11 +259,15 @@ struct boss_alarAI : public CombatAI
     {
         if (summon)
         {
-            // m_creature->CastSpell(nullptr, SPELL_SUMMON_PHOENIX_ADDS, TRIGGERED_OLD_TRIGGERED); - post 2.1
-            if (m_firstPlatform || urand(0, 3) == 0) // pre 2.1
+            if (sWorld.GetWowPatch() >= WOW_PATCH_210)
+                m_creature->CastSpell(nullptr, SPELL_SUMMON_PHOENIX_ADDS, TRIGGERED_OLD_TRIGGERED); // - post 2.1
+            else
             {
-                m_firstPlatform = false;
-                m_creature->CastSpell(nullptr, SPELL_SUMMON_PHOENIX_ADDS_PRENERF, TRIGGERED_OLD_TRIGGERED);
+                if (m_firstPlatform || urand(0, 3) == 0) // pre 2.1
+                {
+                    m_firstPlatform = false;
+                    m_creature->CastSpell(nullptr, SPELL_SUMMON_PHOENIX_ADDS_PRENERF, TRIGGERED_OLD_TRIGGERED);
+                }
             }
         }
         m_creature->GetMotionMaster()->MovePoint(POINT_ID_PLATFORM, aPlatformLocation[m_uiFuturePlatformId].m_fX, aPlatformLocation[m_uiFuturePlatformId].m_fY, aPlatformLocation[m_uiFuturePlatformId].m_fZ);

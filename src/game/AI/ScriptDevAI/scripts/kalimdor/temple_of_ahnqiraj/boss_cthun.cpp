@@ -224,7 +224,7 @@ struct boss_eye_of_cthunAI : public Scripted_NoMovementAI
             if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(target, SPELL_EYE_BEAM) == CAST_OK)
-                    m_uiBeamTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 3 * IN_MILLISECONDS, SPELL_EYE_BEAM));
+                    m_uiBeamTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(2 * IN_MILLISECONDS, 3 * IN_MILLISECONDS), SPELL_EYE_BEAM);
             }
         }
         else

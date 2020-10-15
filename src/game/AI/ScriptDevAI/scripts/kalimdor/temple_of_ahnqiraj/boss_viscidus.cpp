@@ -122,6 +122,12 @@ struct boss_viscidusAI : public CombatAI
     uint8 m_uiPhase;
 
     uint32 m_uiHitCount;
+    uint32 m_uiHitCount_Slow;
+    uint32 m_uiHitCount_SlowMore;
+    uint32 m_uiHitCount_Freeze;
+    uint32 m_uiHitCount_Crack;
+    uint32 m_uiHitCount_Shatter;
+    uint32 m_uiHitCount_Explode;
 
     GuidList m_lGlobesGuidList;
 
@@ -231,16 +237,27 @@ struct boss_viscidusAI : public CombatAI
         }
     }
 
+    void UpdateHitCounts()
+    {
+        m_uiHitCount_Slow = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW);
+        m_uiHitCount_SlowMore = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW_MORE);
+        m_uiHitCount_Freeze = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
+        m_uiHitCount_Crack = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_CRACK);
+        m_uiHitCount_Shatter = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SHATTER);
+        m_uiHitCount_Explode = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
+    }
+
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damagetype, SpellEntry const* spellInfo) override
     {
         if (m_uiPhase == PHASE_FROZEN)
         {
             if (!spellInfo || spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE) // only melee attacks - TODO: do through proc of SPELL_VISCIDUS_FREEZE
             {
+                UpdateHitCounts();
                 ++m_uiHitCount;
 
                 // only count melee attacks
-                if (m_uiHitCount >= HITCOUNT_EXPLODE)
+                if (m_uiHitCount >= m_uiHitCount_Explode)
                 {
                     if (m_creature->GetHealthPercent() <= 5.0f)
                     {
@@ -269,9 +286,9 @@ struct boss_viscidusAI : public CombatAI
                         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
                     }
                 }
-                else if (m_uiHitCount == HITCOUNT_SHATTER)
+                else if (m_uiHitCount == m_uiHitCount_Shatter)
                     DoScriptText(EMOTE_SHATTER, m_creature);
-                else if (m_uiHitCount == HITCOUNT_CRACK)
+                else if (m_uiHitCount == m_uiHitCount_Crack)
                     DoScriptText(EMOTE_CRACK, m_creature);
             }
         }
@@ -286,28 +303,30 @@ struct boss_viscidusAI : public CombatAI
         // only count frost damage
         if (pSpell->SchoolMask == SPELL_SCHOOL_MASK_FROST) // - TODO: do through proc of SPELL_VISCIDUS_WEAKNESS
         {
+            UpdateHitCounts();
+
             ++m_uiHitCount;
 
-            if (m_uiHitCount >= HITCOUNT_FREEZE)
+            if (m_uiHitCount >= m_uiHitCount_Freeze)
             {
                 m_uiPhase = PHASE_FROZEN;
                 m_uiHitCount = 0;
 
-                if (m_uiHitCount == HITCOUNT_FREEZE)
+                if (m_uiHitCount == m_uiHitCount_Freeze)
                     DoScriptText(EMOTE_FROZEN, m_creature);
                 m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_SLOWED_MORE);
                 DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_FREEZE, CAST_TRIGGERED);
             }
-            else if (m_uiHitCount >= HITCOUNT_SLOW_MORE)
+            else if (m_uiHitCount >= m_uiHitCount_SlowMore)
             {
-                if (m_uiHitCount == HITCOUNT_SLOW_MORE)
+                if (m_uiHitCount == m_uiHitCount_SlowMore)
                     DoScriptText(EMOTE_FREEZE, m_creature);
                 m_creature->RemoveAurasDueToSpell(SPELL_VISCIDUS_SLOWED);
                 DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_SLOWED_MORE, CAST_TRIGGERED);
             }
-            else if (m_uiHitCount >= HITCOUNT_SLOW)
+            else if (m_uiHitCount >= m_uiHitCount_Slow)
             {
-                if (m_uiHitCount == HITCOUNT_SLOW)
+                if (m_uiHitCount == m_uiHitCount_Slow)
                     DoScriptText(EMOTE_SLOW, m_creature);
                 DoCastSpellIfCan(m_creature, SPELL_VISCIDUS_SLOWED, CAST_TRIGGERED);
             }
