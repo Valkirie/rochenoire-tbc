@@ -76,6 +76,18 @@ set(SRC_GRP_LOG
     Log.h
 )
 
+set(SRC_GRP_MT
+    Multithreading/Messager.h
+    Multithreading/Messager.cpp
+)
+
+set(SRC_GRP_METRIC
+    Metric/Measurement.cpp
+    Metric/Measurement.h
+    Metric/Metric.cpp
+    Metric/Metric.h
+)
+
 set(SRC_GRP_NETWORK
     Network/PacketBuffer.cpp
     Network/Socket.cpp
@@ -104,8 +116,10 @@ set(LIBRARY_SRCS
     ${SRC_GRP_DATABASE}
     ${SRC_GRP_DATABASE_DBC}
     ${SRC_GRP_LOG}
+    ${SRC_GRP_METRIC}
     ${SRC_GRP_UTIL}
     ${SRC_GRP_NETWORK}
+    ${SRC_GRP_MT}
     Common.cpp
     Common.h
     revision_sql.h
@@ -143,9 +157,24 @@ source_group("Log"
     ${SRC_GRP_LOG}
 )
 
+source_group("Metric"
+  FILES
+    ${SRC_GRP_METRIC}
+)
+
 source_group("Util"
   FILES
     ${SRC_GRP_UTIL}
+)
+
+source_group("SRP"
+  FILES
+    ${SRC_GRP_SRP}
+)
+
+source_group("Multithreading"
+  FILES
+    ${SRC_GRP_MT}
 )
 
 # OS specific files

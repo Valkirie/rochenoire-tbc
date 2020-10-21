@@ -244,6 +244,7 @@ void WorldSession::SendPacket(WorldPacket const& packet, bool forcedSend /*= fal
 /// Add an incoming packet to the queue
 void WorldSession::QueuePacket(std::unique_ptr<WorldPacket> new_packet)
 {
+    sWorld.IncrementOpcodeCounter(new_packet->GetOpcode());
     std::lock_guard<std::mutex> guard(m_recvQueueLock);
     m_recvQueue.push_back(std::move(new_packet));
 }
@@ -608,8 +609,11 @@ void WorldSession::LogoutPlayer()
             group->UpdatePlayerOnlineStatus(_player, false);
 
         ///- Broadcast a logout message to the player's friends
-        sSocialMgr.SendFriendStatus(_player, FRIEND_OFFLINE, _player->GetObjectGuid(), true);
-        sSocialMgr.RemovePlayerSocial(_player->GetGUIDLow());
+        if (_player->GetSocial()) // might not yet be initialized
+        {
+            sSocialMgr.SendFriendStatus(_player, FRIEND_OFFLINE, _player->GetObjectGuid(), true);
+            sSocialMgr.RemovePlayerSocial(_player->GetGUIDLow());
+        }
 
         // GM ticket notification
         sTicketMgr.OnPlayerOnlineState(*_player, false);

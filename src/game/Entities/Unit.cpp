@@ -48,6 +48,7 @@
 #include "Movement/MoveSpline.h"
 #include "Entities/CreatureLinkingMgr.h"
 #include "Tools/Formulas.h"
+#include "Metric/Metric.h"
 
 #include <math.h>
 #include <limits>
@@ -438,6 +439,14 @@ void Unit::Update(const uint32 diff)
     if (!IsInWorld())
         return;
 
+    metric::duration<std::chrono::microseconds> meas("unit.update", {
+        { "entry", std::to_string(GetEntry()) },
+        { "guid", std::to_string(GetGUIDLow()) },
+        { "unit_type", std::to_string(GetGUIDHigh()) },
+        { "map_id", std::to_string(GetMapId()) },
+        { "instance_id", std::to_string(GetInstanceId()) }
+    }, 1000);
+
     /*if(p_time > m_AurasCheck)
     {
     m_AurasCheck = 2000;
@@ -478,7 +487,17 @@ void Unit::Update(const uint32 diff)
     i_motionMaster.UpdateMotion(diff);
 
     if (AI() && IsAlive())
+    {
+        metric::duration<std::chrono::microseconds> meas_ai("unit.update.ai", {
+            { "entry", std::to_string(GetEntry()) },
+            { "guid", std::to_string(GetGUIDLow()) },
+            { "unit_type", std::to_string(GetGUIDHigh()) },
+            { "map_id", std::to_string(GetMapId()) },
+            { "instance_id", std::to_string(GetInstanceId()) }
+        }, 1000);
+
         AI()->UpdateAI(diff);   // AI not react good at real update delays (while freeze in non-active part of map)
+    }
 
     GetCombatManager().Update(diff);
 
@@ -4228,8 +4247,11 @@ void Unit::_UpdateAutoRepeatSpell()
         if (!IsNonMeleeSpellCasted(false, false, true, false, true)) // stricter check to see if we should introduce cooldown or just return
             return;
         // cancel wand shoot
-        if (m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo->Category == 351)
+        if ((m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo->ChannelInterruptFlags & CHANNEL_FLAG_MOVEMENT) != 0)
+        {
             InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
+            return;
+        }
         // set 0.5 second wind-up time.
         m_AutoRepeatFirstCast = true;
         return;
@@ -4314,7 +4336,7 @@ void Unit::SetCurrentCastedSpell(Spell* newSpell)
             if (m_currentSpells[CURRENT_AUTOREPEAT_SPELL])
             {
                 // break autorepeat if not Auto Shot
-                if (m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo->Category == 351)
+                if (m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo->Category == 351) // TODO: figure out what channel interrupt flag corresponds to this
                     InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
         } break;
@@ -4452,7 +4474,7 @@ bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skip
     if (!skipAutorepeat && m_currentSpells[CURRENT_AUTOREPEAT_SPELL])
         return true;
 
-    return false;
+    return forAutoIgnore;
 }
 
 void Unit::InterruptNonMeleeSpells(bool withDelayed, uint32 spell_id)
@@ -8247,7 +8269,8 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
                     controller->AddThreat(enemy);
                     enemy->AddThreat(controller);
                     enemy->SetInCombatWith(controller);
-                    enemy->GetCombatManager().TriggerCombatTimer(controller);
+                    if (PvP || creatureNotInCombat)
+                        enemy->GetCombatManager().TriggerCombatTimer(controller);
                 }
                 else
                     controller->AI()->AttackStart(enemy);
@@ -8263,10 +8286,10 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
 
     if (creatureNotInCombat)
     {
-        Creature* pCreature = (Creature*)this;
+        Creature* creature = static_cast<Creature*>(this);
 
         // clear stand state if set in addon - else script has to do it on its own
-        CreatureDataAddon const* cainfo = pCreature->GetCreatureAddon();
+        CreatureDataAddon const* cainfo = creature->GetCreatureAddon();
         if (cainfo)
         {
             if (getStandState() == cainfo->bytes1)
@@ -8275,23 +8298,24 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
                 HandleEmoteState(0);
         }
 
-        pCreature->SetCombatStartPosition(GetPosition());
+        if (creature->GetCombatStartPosition().IsEmpty())
+            creature->SetCombatStartPosition(GetPosition());
 
-        if (!pCreature->CanAggro()) // if creature aggroed during initial ignoration period, clear the state
+        if (!creature->CanAggro()) // if creature aggroed during initial ignoration period, clear the state
         {
-            pCreature->SetCanAggro(true);
+            creature->SetCanAggro(true);
             AbortAINotifyEvent();
         }
 
-        if (pCreature->AI())
-            pCreature->AI()->EnterCombat(enemy);
+        if (creature->AI())
+            creature->AI()->EnterCombat(enemy);
 
         // Some bosses are set into combat with zone
-        if (GetMap()->IsDungeon() && (pCreature->GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_AGGRO_ZONE) && enemy && enemy->IsControlledByPlayer())
-            pCreature->SetInCombatWithZone();
+        if (GetMap()->IsDungeon() && (creature->GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_AGGRO_ZONE) && enemy && enemy->IsControlledByPlayer())
+            creature->SetInCombatWithZone();
 
         if (InstanceData* mapInstance = GetInstanceData())
-            mapInstance->OnCreatureEnterCombat(pCreature);
+            mapInstance->OnCreatureEnterCombat(creature);
 
         TriggerAggroLinkingEvent(enemy);
     }
@@ -11271,6 +11295,14 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
 
     if (movespline->Finalized())
         return;
+
+    metric::duration<std::chrono::microseconds> meas("unit.updatesplinemovement", {
+        { "entry", std::to_string(GetEntry()) },
+        { "guid", std::to_string(GetGUIDLow()) },
+        { "unit_type", std::to_string(GetGUIDHigh()) },
+        { "map_id", std::to_string(GetMapId()) },
+        { "instance_id", std::to_string(GetInstanceId()) }
+    }, 1000);
 
     movespline->updateState(t_diff);
     bool arrived = movespline->Finalized();
