@@ -6117,7 +6117,8 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
-    uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage);
+    bool s_totalDamage = calcDamageInfo->attacker->IsPlayer();
+    uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, s_totalDamage);
 
     // Subdamage count:
     uint32 lines = m_weaponDamageInfo.weapon[calcDamageInfo->attackType].lines;
@@ -6136,7 +6137,8 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
     {
         auto &line = calcDamageInfo->subDamage[i];
 
-        uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage);
+        bool s_subDamaged = calcDamageInfo->attacker->IsPlayer();
+        uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, s_subDamaged);
 
         data << uint32(line.damageSchoolMask);
         data << float(subDamaged) / float(totalDamage);   // Float coefficient of subdamage
