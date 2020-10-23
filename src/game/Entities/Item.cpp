@@ -800,6 +800,9 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 	if (plevel > sWorld.GetCurrentMaxLevel())
 		plevel = sWorld.GetCurrentMaxLevel();
 
+    if (plevel <= 0)
+        return itemid;
+
 	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
 
 	if (!pProto)
@@ -829,10 +832,8 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 	{
 		uint32 ItemLevel = pProto->ItemLevel;
 
-		if (plevel < 60)
+		if (plevel <= 60)
 			ItemLevel = plevel + 5;
-		else if (plevel == 60)
-			ItemLevel = plevel + 5 + std::max(0, int32(pProto->ItemLevel - 65));
 		else if (plevel > 60 && plevel < 70)
 		{
 			if (pProto->Quality < 3) // gray, white, green
