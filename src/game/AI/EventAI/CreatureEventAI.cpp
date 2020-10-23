@@ -129,8 +129,8 @@ CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
     m_mainSpellCost(0),
     m_mainSpellInfo(nullptr),
     m_mainSpellMinRange(0.f),
-    m_defaultMovement(IDLE_MOTION_TYPE),
-    m_mainAttackMask(SPELL_SCHOOL_MASK_NONE)
+    m_mainAttackMask(SPELL_SCHOOL_MASK_NONE),
+    m_defaultMovement(IDLE_MOTION_TYPE)
 {
     InitAI();
 }

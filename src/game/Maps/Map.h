@@ -402,7 +402,7 @@ class Map : public GridRefManager<NGridType>
         uint32 GetLoadedGridsCount();
         MapEntry const* GetMapEntry() { return i_mapEntry; }
 
-        auto& GetMessager() { return m_messager; }
+        Messager<Map>& GetMessager() { return m_messager; }
 
     private:
         void LoadMapAndVMap(int gx, int gy);
