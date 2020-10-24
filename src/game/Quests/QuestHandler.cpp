@@ -422,6 +422,12 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
 
     DEBUG_LOG("WORLD: Received opcode CMSG_PUSHQUESTTOPARTY quest = %u", questId);
 
+    if (!_player->CanShareQuest(questId))
+    {
+        sLog.outError("Error in CMSG_PUSHQUESTTOPARTY - %s tried to share invalid quest (%u) (probably packet hacking)", _player->GetGuidStr().c_str(), questId);
+        return;
+    }
+
     if (Quest const* pQuest = sObjectMgr.GetQuestTemplate(questId))
     {
         if (Group* pGroup = _player->GetGroup())
@@ -588,10 +594,7 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
 
                     if (pQuest->IsAutoComplete())
                         dialogStatusNew = DIALOG_STATUS_REWARD_REP;
-					else
-						dialogStatusNew = DIALOG_STATUS_AVAILABLE;
-
-                    /* else if (lowLevelDiff < 0 || pPlayer->getLevel() <= pPlayer->GetQuestLevelForPlayer(pQuest) + uint32(lowLevelDiff))
+					else if (lowLevelDiff < 0 || pPlayer->getLevel() <= pPlayer->GetQuestLevelForPlayer(pQuest) + uint32(lowLevelDiff))
                     {
                         if (pQuest->HasQuestFlag(QUEST_FLAGS_DAILY) || pQuest->HasQuestFlag(QUEST_FLAGS_WEEKLY))
                             dialogStatusNew = DIALOG_STATUS_AVAILABLE_REP;
@@ -599,7 +602,7 @@ uint32 WorldSession::getDialogStatus(const Player* pPlayer, const Object* questg
                             dialogStatusNew = DIALOG_STATUS_AVAILABLE;
                     }
                     else
-                        dialogStatusNew = DIALOG_STATUS_CHAT; */
+                        dialogStatusNew = DIALOG_STATUS_CHAT;
                 }
                 else
                     dialogStatusNew = DIALOG_STATUS_UNAVAILABLE;
@@ -641,7 +644,7 @@ bool WorldSession::CanInteractWithQuestGiver(ObjectGuid guid, char const* descr)
             return false;
         }
     }
-    else if (!_player->isAlive())
+    else if (!_player->IsAlive())
     {
         DEBUG_LOG("WORLD: %s - %s is dead, requested guid was %s", descr, _player->GetGuidStr().c_str(), guid.GetString().c_str());
         return false;

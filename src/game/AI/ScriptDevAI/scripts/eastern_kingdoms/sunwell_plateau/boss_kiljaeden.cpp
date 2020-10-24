@@ -21,7 +21,7 @@ SDComment: Sinister Reflection needs AI support.
 SDCategory: Sunwell Plateau
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "sunwell_plateau.h"
 #include "Entities/TemporarySpawn.h"
 
@@ -494,7 +494,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
             if (fAng > 2 * M_PI_F)
                 fAng = fAng - 2 * M_PI_F;
 
-            m_creature->GetNearPoint2D(fX, fY, 25.0f, fAng);
+            m_creature->GetNearPoint2d(fX, fY, 25.0f, fAng);
 
             // Move to new position
             pSummoned->GetMotionMaster()->Clear();
@@ -608,7 +608,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DialogueUpdate(uiDiff);
@@ -695,7 +695,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
 
                 if (m_uiSoulFlyTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SOUL_FLY) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_SOUL_FLY) == CAST_OK)
                         m_uiSoulFlyTimer = urand(3000, 10000);
                 }
                 else
@@ -708,7 +708,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
                     {
                         // Get some random coords for the Orb
                         float fX, fY;
-                        m_creature->GetNearPoint2D(fX, fY, 25.0f, frand(0, 2 * M_PI_F));
+                        m_creature->GetNearPoint2d(fX, fY, 25.0f, frand(0, 2 * M_PI_F));
                         float fZ = frand(35.0f, 45.0f);
 
                         m_creature->SummonCreature(NPC_SHIELD_ORB, fX, fY, fZ, 0, TEMPSPAWN_CORPSE_DESPAWN, 0);
@@ -782,7 +782,7 @@ struct npc_shield_orbAI : public ScriptedAI
             if (fAng > 2 * M_PI_F)
                 fAng = fAng - 2 * M_PI_F;
 
-            pSummoner->GetNearPoint2D(fX, fY, 25.0f, fAng);
+            pSummoner->GetNearPoint2d(fX, fY, 25.0f, fAng);
 
             // Move to new position
             m_creature->GetMotionMaster()->Clear();

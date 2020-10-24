@@ -14,7 +14,7 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 
 enum
@@ -91,11 +91,11 @@ struct boss_rage_winterchillAI : public ScriptedAI
     {
         switch (action)
         {
-            case WINTERCHILL_ACTION_FROST_ARMOR: return urand(30000, 45000);
-            case WINTERCHILL_ACTION_ICEBOLT: return urand(9000, 15000);
-            case WINTERCHILL_ACTION_FROST_NOVA: return urand(19000, 26000);
-            case WINTERCHILL_ACTION_DEATH_AND_DECAY: return 45000;
-            case WINTERCHILL_ACTION_ENRAGE: return 300000;
+            case WINTERCHILL_ACTION_FROST_ARMOR: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_FROST_ARMOR);
+            case WINTERCHILL_ACTION_ICEBOLT: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(9000, 15000), SPELL_ICEBOLT);
+            case WINTERCHILL_ACTION_FROST_NOVA: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(19000, 26000), SPELL_FROST_NOVA);
+            case WINTERCHILL_ACTION_DEATH_AND_DECAY: return sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, SPELL_DEATH_AND_DECAY);
+            case WINTERCHILL_ACTION_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 300000u, SPELL_ENRAGE);
             default: return 0; // never occurs but for compiler
         }
     }
@@ -226,7 +226,7 @@ struct boss_rage_winterchillAI : public ScriptedAI
 
     void UpdateAI(const uint32 diff)
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         UpdateTimers(diff);

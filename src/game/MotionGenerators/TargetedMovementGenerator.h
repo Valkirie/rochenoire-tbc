@@ -44,7 +44,7 @@ class TargetedMovementGeneratorMedium
             TargetedMovementGeneratorBase(target),
             i_recheckDistance(0),
             i_offset(offset), i_angle(angle),
-            m_speedChanged(false), i_targetReached(false),
+            i_speedChanged(false), i_targetReached(false),
             i_faceTarget(true), i_path(nullptr)
         {
         }
@@ -59,10 +59,9 @@ class TargetedMovementGeneratorMedium
         float GetOffset() const { return i_offset; }
         float GetAngle() const { return i_angle; }
 
-        virtual void UnitSpeedChanged() override { m_speedChanged = true; }
+        virtual void UnitSpeedChanged() override { i_speedChanged = true; }
 
     protected:
-        void _setTargetLocation(T&, bool updateDestination);
         virtual bool RequiresNewPosition(T& owner, float x, float y, float z) const;
         virtual float GetDynamicTargetDistance(T& /*owner*/, bool /*forRangeCheck*/) const { return i_offset; }
         virtual bool ShouldFaceTarget() const { return i_faceTarget; }
@@ -70,11 +69,15 @@ class TargetedMovementGeneratorMedium
         virtual void HandleFinalizedMovement(T& owner) = 0;
         virtual void HandleMovementFailure(T& owner) = 0;
 
+        virtual bool _hasUnitStateNotMove(Unit& owner) = 0;
+        virtual void _clearUnitStateMove(Unit& owner) = 0;
+        virtual void _addUnitStateMove(Unit& owner) = 0;
+
         ShortTimeTracker i_recheckDistance;
         float i_offset;
         float i_angle;
-        G3D::Vector3 m_prevTargetPos;
-        bool m_speedChanged : 1;
+        G3D::Vector3 i_lastTargetPos;
+        bool i_speedChanged : 1;
         bool i_targetReached : 1;
         bool i_faceTarget : 1;
 
@@ -105,8 +108,8 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
     public:
         ChaseMovementGenerator(Unit& target, float offset, float angle, bool moveFurther = true, bool walk = false, bool combat = true)
             : TargetedMovementGeneratorMedium<Unit, ChaseMovementGenerator >(target, offset, angle),
-              m_moveFurther(moveFurther), m_walk(walk), m_combat(combat), m_reachable(true),
-              m_closenessAndFanningTimer(0), m_closenessExpired(false), m_currentMode(CHASE_MODE_NORMAL) {}
+            m_moveFurther(moveFurther), m_walk(walk), m_combat(combat), m_reachable(true),
+            m_fanningEnabled(true), m_closenessAndFanningTimer(0), m_closenessExpired(false), m_currentMode(CHASE_MODE_NORMAL) {}
         ~ChaseMovementGenerator() {}
 
         MovementGeneratorType GetMovementGeneratorType() const override { return CHASE_MOTION_TYPE; }
@@ -119,8 +122,6 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         void DistanceYourself(Unit& owner, float distance);
         void FanOut(Unit& owner);
 
-        static void _clearUnitStateMove(Unit& u);
-        static void _addUnitStateMove(Unit& u);
         bool EnableWalking() const { return m_walk;}
         bool _lostTarget(Unit& u) const;
         void _reachTarget(Unit&);
@@ -138,8 +139,15 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         void HandleFinalizedMovement(Unit& owner) override;
         bool RequiresNewPosition(Unit& owner, float x, float y, float z) const override;
 
+        bool _hasUnitStateNotMove(Unit& u) override;
+        void _clearUnitStateMove(Unit& u) override;
+        void _addUnitStateMove(Unit& u) override;
+
     private:
-        bool DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath);
+        virtual bool _getLocation(Unit& owner, float& x, float& y, float& z) const;
+        virtual void _setLocation(Unit& owner);
+
+        bool DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath, bool target = false);
         void CutPath(Unit& owner, PointsArray& path);
         void Backpedal(Unit& owner);
 
@@ -147,6 +155,7 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         bool m_walk;
         bool m_combat;
         bool m_reachable;
+        bool m_fanningEnabled;
 
         uint32 m_closenessAndFanningTimer;
         bool m_closenessExpired;
@@ -154,42 +163,65 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         ChaseMovementMode m_currentMode;
 };
 
-template<class T>
-class FollowMovementGenerator : public TargetedMovementGeneratorMedium<T, FollowMovementGenerator<T> >
+class FollowMovementGenerator : public TargetedMovementGeneratorMedium<Unit, FollowMovementGenerator>
 {
     public:
-        FollowMovementGenerator(Unit& target)
-            : TargetedMovementGeneratorMedium<T, FollowMovementGenerator<T> >(target) {}
         FollowMovementGenerator(Unit& target, float offset, float angle, bool main)
-            : TargetedMovementGeneratorMedium<T, FollowMovementGenerator<T> >(target, offset, angle), m_main(main) {}
+            : TargetedMovementGeneratorMedium<Unit, FollowMovementGenerator>(target, offset, angle), m_main(main),
+            m_targetMoving(false), m_targetFaced(false)
+        {
+            i_faceTarget = (angle == 0.0f);
+        }
         ~FollowMovementGenerator() {}
 
         MovementGeneratorType GetMovementGeneratorType() const override { return FOLLOW_MOTION_TYPE; }
 
-        void Initialize(T&);
-        void Finalize(T&);
-        void Interrupt(T&);
-        void Reset(T&);
+        void Initialize(Unit& owner) override;
+        void Finalize(Unit& owner) override;
+        void Interrupt(Unit& owner) override;
+        void Reset(Unit& owner) override;
 
-        static void _clearUnitStateMove(T& u);
-        static void _addUnitStateMove(T& u);
-        bool EnableWalking() const;
-        bool _lostTarget(T&) const { return false; }
-        void _reachTarget(T&) {}
+        bool GetResetPosition(Unit& owner, float& x, float& y, float& z, float& o) const override;
 
-        void HandleMovementFailure(T& owner) override;
+        virtual bool EnableWalking() const;
+
+        bool _lostTarget(Unit& owner) const;
+        void _reachTarget(Unit& owner);
+
+        void HandleMovementFailure(Unit& owner) override;
 
         virtual bool IsRemovedOnDirectExpire() const override { return !m_main; }
 
+    protected:
+        float GetDynamicTargetDistance(Unit& owner, bool forRangeCheck) const override;
+        void HandleTargetedMovement(Unit& owner, const uint32& time_diff) override;
+        void HandleFinalizedMovement(Unit& owner) override;
+
+        bool _hasUnitStateNotMove(Unit& owner) override;
+        void _clearUnitStateMove(Unit& owner) override;
+        void _addUnitStateMove(Unit& owner) override;
+
+        virtual float GetSpeed(Unit& owner) const;
+
+        virtual bool IsBoostAllowed(Unit& owner) const;
+        virtual bool IsUnstuckAllowed(Unit& owner) const;
+
+        virtual bool Move(Unit& owner, float x, float y, float z);
+
     private:
-        void _updateSpeed(T& u);
-        void HandleTargetedMovement(T& owner, const uint32& time_diff) override;
-        void HandleFinalizedMovement(T& owner) override;
+        virtual bool _getOrientation(Unit& owner, float& o) const;
+        virtual bool _getLocation(Unit& owner, float& x, float& y, float& z, bool movingNow) const;
+        virtual void _setOrientation(Unit& owner);
+        virtual void _setLocation(Unit& owner, bool movingNow);
+
+        static inline uint32 _getPollRateBase() { return 250; }
+        static inline uint32 _getPollRateMax() { return 1000; }
+        virtual uint32 _getPollRateMultiplier(Unit& owner, bool targetMovingNow, bool targetMovedBefore = true) const;
+        virtual uint32 _getPollRate(Unit& owner, bool movingNow, bool movingBefore = true) const;
 
         bool m_main;
-
-    protected:
-        float GetDynamicTargetDistance(T& owner, bool forRangeCheck) const override;
+        bool m_targetMoving;
+        bool m_targetFaced;
 };
 
 #endif

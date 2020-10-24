@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 
 enum
@@ -102,13 +102,13 @@ struct boss_hakkarAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_uiBloodSiphonTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BLOOD_SIPHON) == CAST_OK)
-                m_uiBloodSiphonTimer = 90000;
+                m_uiBloodSiphonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 90000, SPELL_BLOOD_SIPHON);
         }
         else
             m_uiBloodSiphonTimer -= uiDiff;
@@ -119,7 +119,7 @@ struct boss_hakkarAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_CORRUPTED_BLOOD) == CAST_OK)
-                    m_uiCorruptedBloodTimer = urand(30000, 45000);
+                    m_uiCorruptedBloodTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_CORRUPTED_BLOOD);
             }
         }
         else
@@ -130,11 +130,13 @@ struct boss_hakkarAI : public ScriptedAI
         {
             if (m_creature->getThreatManager().getThreatList().size() > 1)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CAUSE_INSANITY) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CAUSE_INSANITY) == CAST_OK)
                     m_uiCauseInsanityTimer = urand(10000, 15000);
             }
             else // Solo case, check again later
                 m_uiCauseInsanityTimer = urand(35000, 43000);
+
+            m_uiCauseInsanityTimer = sObjectMgr.GetScaleSpellTimer(m_creature, m_uiCauseInsanityTimer, SPELL_CAUSE_INSANITY);
         }
         else
             m_uiCauseInsanityTimer -= uiDiff;
@@ -149,6 +151,8 @@ struct boss_hakkarAI : public ScriptedAI
             }
             else // solo attempt, try again later
                 m_uiWillOfHakkarTimer = 25000;
+
+            m_uiWillOfHakkarTimer = sObjectMgr.GetScaleSpellTimer(m_creature, m_uiWillOfHakkarTimer, SPELL_WILL_OF_HAKKAR);
         }
         else
             m_uiWillOfHakkarTimer -= uiDiff;
@@ -156,7 +160,7 @@ struct boss_hakkarAI : public ScriptedAI
         if (m_uiEnrageTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
-                m_uiEnrageTimer = 10 * MINUTE * IN_MILLISECONDS;
+                m_uiEnrageTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 10 * MINUTE * IN_MILLISECONDS, SPELL_ENRAGE);
         }
         else
             m_uiEnrageTimer -= uiDiff;
@@ -190,7 +194,7 @@ struct boss_hakkarAI : public ScriptedAI
         {
             if (m_uiAspectOfMarliTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ASPECT_OF_MARLI) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ASPECT_OF_MARLI) == CAST_OK)
                     m_uiAspectOfMarliTimer = 10000;
             }
             else
@@ -214,7 +218,7 @@ struct boss_hakkarAI : public ScriptedAI
         {
             if (m_uiAspectOfArlokkTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ASPECT_OF_ARLOKK) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_ASPECT_OF_ARLOKK) == CAST_OK)
                 {
                     DoResetThreat();
                     m_uiAspectOfArlokkTimer = urand(10000, 15000);

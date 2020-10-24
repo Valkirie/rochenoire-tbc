@@ -21,7 +21,7 @@ SDComment: Mind Control not working because of core bug. Shades invisible is rem
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 
 enum
@@ -88,14 +88,14 @@ struct boss_jindoAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         // Brain Wash Totem Timer
         if (m_uiBrainWashTotemTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BRAINWASH_TOTEM) == CAST_OK)
-                m_uiBrainWashTotemTimer = urand(18000, 26000);
+                m_uiBrainWashTotemTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(18000, 26000), SPELL_BRAINWASH_TOTEM);
         }
         else
             m_uiBrainWashTotemTimer -= uiDiff;
@@ -115,8 +115,8 @@ struct boss_jindoAI : public ScriptedAI
         // Hex Timer
         if (m_uiHexTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_HEX) == CAST_OK)
-                m_uiHexTimer = urand(12000, 20000);
+            if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_HEX) == CAST_OK)
+                m_uiHexTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 20000), SPELL_HEX);
         }
         else
             m_uiHexTimer -= uiDiff;
@@ -127,7 +127,7 @@ struct boss_jindoAI : public ScriptedAI
             // random target except the tank
             Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
             if (!pTarget)
-                pTarget = m_creature->getVictim();
+                pTarget = m_creature->GetVictim();
 
             if (DoCastSpellIfCan(pTarget, SPELL_DELUSIONS_OF_JINDO) == CAST_OK)
             {
@@ -136,7 +136,7 @@ struct boss_jindoAI : public ScriptedAI
                 if (Creature* pSummoned = m_creature->SummonCreature(NPC_SHADE_OF_JINDO, fX, fY, fZ, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000))
                     pSummoned->CastSpell(pSummoned, SPELL_SHADE_OF_JINDO_PASSIVE, TRIGGERED_OLD_TRIGGERED);
 
-                m_uiDelusionsTimer = urand(4000, 12000);
+                m_uiDelusionsTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 12000), SPELL_DELUSIONS_OF_JINDO);
             }
         }
         else
@@ -149,9 +149,9 @@ struct boss_jindoAI : public ScriptedAI
             {
                 DoTeleportPlayer(pTarget, aPitTeleportLocs[0], aPitTeleportLocs[1], aPitTeleportLocs[2], aPitTeleportLocs[3]);
 
-                // summon 9 skeletons in the pit at random points
+                // summon skeletons in the pit at random points
                 float fX, fY, fZ;
-                for (uint8 i = 0; i < MAX_SKELETONS; ++i)
+                for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_SKELETONS); ++i)
                 {
                     m_creature->GetRandomPoint(aPitTeleportLocs[0], aPitTeleportLocs[1], aPitTeleportLocs[2], 4.0f, fX, fY, fZ);
                     if (Creature* pSummoned = m_creature->SummonCreature(NPC_SACRIFICED_TROLL, fX, fY, fZ, 0.0f, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000))
@@ -189,7 +189,7 @@ struct mob_healing_wardAI : public ScriptedAI
         if (m_uiHealTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature, SPELL_HEALING_WARD_HEAL);
-            m_uiHealTimer = 3000;
+            m_uiHealTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 3000, SPELL_HEALING_WARD_HEAL);
         }
         else
             m_uiHealTimer -= uiDiff;

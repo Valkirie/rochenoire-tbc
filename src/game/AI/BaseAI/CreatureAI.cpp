@@ -17,6 +17,9 @@
 */
 
 #include "AI/BaseAI/CreatureAI.h"
+#include "Grids/GridNotifiers.h"
+#include "Grids/GridNotifiersImpl.h"
+#include "Grids/CellImpl.h"
 #include "World/World.h"
 #include "Entities/Creature.h"
 
@@ -51,9 +54,7 @@ void CreatureAI::AttackStart(Unit* who)
 
     if (m_creature->Attack(who, m_meleeEnabled))
     {
-        m_creature->AddThreat(who);
-        m_creature->SetInCombatWith(who);
-        who->SetInCombatWith(m_creature);
+        m_creature->EngageInCombatWith(who);
 
         // Cast "Spawn Guard" to help Civilian
         if (m_creature->IsCivilian())
@@ -99,6 +100,54 @@ void CreatureAI::DoFakeDeath(uint32 spellId)
 
     if (spellId)
         DoCastSpellIfCan(nullptr, spellId, CAST_INTERRUPT_PREVIOUS);
+}
+
+void CreatureAI::RetreatingArrived()
+{
+    m_creature->SetNoCallAssistance(false);
+    m_creature->CallAssistance();
+}
+
+void CreatureAI::RetreatingEnded()
+{
+    if (GetAIOrder() != ORDER_RETREATING)
+        return; // prevent stack overflow by cyclic calls - TODO: remove once Motion Master is human again
+    SetAIOrder(ORDER_NONE);
+    SetCombatScriptStatus(false);
+    if (!m_creature->IsAlive())
+        return;
+    DoStartMovement(m_creature->GetVictim());
+}
+
+bool CreatureAI::DoRetreat()
+{
+    Unit* victim = m_creature->GetVictim();
+    if (!victim)
+        return false;
+
+    float radius = sWorld.getConfig(CONFIG_FLOAT_CREATURE_FAMILY_FLEE_ASSISTANCE_RADIUS);
+    if (radius <= 0)
+        return false;
+
+    Creature* ally = nullptr;
+
+    MaNGOS::NearestAssistCreatureInCreatureRangeCheck check(m_creature, victim, radius);
+    MaNGOS::CreatureLastSearcher<MaNGOS::NearestAssistCreatureInCreatureRangeCheck> searcher(ally, check);
+    Cell::VisitGridObjects(m_creature, searcher, radius);
+
+    // Check if an ally to call for was found
+    if (!ally)
+        return false;
+
+    uint32 delay = sWorld.getConfig(CONFIG_UINT32_CREATURE_FAMILY_ASSISTANCE_DELAY);
+
+    WorldLocation pos;
+    ally->GetFirstCollisionPosition(pos, ally->GetCombatReach(), ally->GetAngle(m_creature));
+    m_creature->GetMotionMaster()->MoveRetreat(pos.coord_x, pos.coord_y, pos.coord_z, ally->GetAngle(victim), delay);
+
+    SetAIOrder(ORDER_RETREATING);
+    SetCombatScriptStatus(true);
+    return true;
 }
 
 void CreatureAI::DoCallForHelp(float radius)

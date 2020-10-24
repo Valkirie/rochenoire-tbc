@@ -42,7 +42,7 @@ GroupMemberStatus GetGroupMemberStatus(const Player* member = nullptr)
     uint8 flags = MEMBER_STATUS_ONLINE;
     if (member->IsPvP())
         flags |= MEMBER_STATUS_PVP;
-    if (member->isDead())
+    if (member->IsDead())
         flags |= MEMBER_STATUS_DEAD;
     if (member->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         flags |= MEMBER_STATUS_GHOST;
@@ -504,13 +504,18 @@ void Group::SetTargetIcon(uint8 id, ObjectGuid targetGuid)
 
 static void GetDataForXPAtKill_helper(Player* player, Unit const* victim, uint32& sum_level, Player*& member_with_max_level, Player*& not_gray_member_with_max_level)
 {
-    sum_level += player->getLevel();
-    if (!member_with_max_level || member_with_max_level->getLevel() < player->getLevel())
+    const uint32 level = player->GetLevelForTarget(victim);
+	const uint32 v_level = victim->GetLevelForTarget(player);
+	
+    sum_level += level;
+
+    if (!member_with_max_level || member_with_max_level->getLevel() < level)
         member_with_max_level = player;
 
-    uint32 gray_level = MaNGOS::XP::GetGrayLevel(player->getLevel());
-    if (victim->getLevel() > gray_level && (!not_gray_member_with_max_level
-                                            || not_gray_member_with_max_level->getLevel() < player->getLevel()))
+    if (MaNGOS::XP::IsTrivialLevelDifference(level, v_level))
+        return;
+
+    if (!not_gray_member_with_max_level || not_gray_member_with_max_level->getLevel() < level)
         not_gray_member_with_max_level = player;
 }
 
@@ -519,7 +524,7 @@ void Group::GetDataForXPAtKill(Unit const* victim, uint32& count, uint32& sum_le
     for (GroupReference const* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
     {
         Player* member = itr->getSource();
-        if (!member || !member->isAlive())                  // only for alive
+        if (!member || !member->IsAlive())                  // only for alive
             continue;
 
         // will proccesed later
@@ -977,9 +982,17 @@ void Group::_updateMembersOnRosterChanged(Player* changed)
             target->CallForAllControlledUnits(forcehp, (CONTROLLED_MINIPET | CONTROLLED_PET | CONTROLLED_TOTEMS | CONTROLLED_GUARDIANS | CONTROLLED_CHARM));
         }
 
-        // [XFACTION]: Prepare to alter faction if detected crossfaction group interaction:
-        if (xfaction && !pov->HasCharmer() && !pov->CanCooperate(target))
+        // [XFACTION]: Prepare to alter object fields if detected crossfaction group interaction:
+        if (xfaction && !pov->CanCooperate(target))
+        {
             target->ForceValuesUpdateAtIndex(UNIT_FIELD_FACTIONTEMPLATE);
+
+            if (target->GetTypeId() == TYPEID_PLAYER)
+            {
+                if (Corpse* corpse = static_cast<Player*>(target)->GetCorpse())
+                    corpse->ForceValuesUpdateAtIndex(CORPSE_FIELD_BYTES_1);
+            }
+        }
     };
 
     for (GroupReference* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -1405,7 +1418,7 @@ void Group::_homebindIfInstance(Player* player) const
 static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 count, bool PvP, float group_rate, uint32 sum_level, bool is_dungeon, Player* not_gray_member_with_max_level, Player* member_with_max_level, uint32 xp)
 {
     // honor can be in PvP and !PvP (racial leader) cases (for alive)
-    if (pGroupGuy->isAlive())
+    if (pGroupGuy->IsAlive())
         pGroupGuy->RewardHonor(pVictim, count);
 
     // xp and reputation only in !PvP case
@@ -1421,7 +1434,7 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
 			pGroupGuy->RewardReputation(creatureVictim, is_dungeon ? 1.0f : 1.0f / count);
 
             // XP updated only for alive group member
-			if (pGroupGuy->isAlive() && not_gray_member_with_max_level)// && pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
+			if (pGroupGuy->IsAlive() && not_gray_member_with_max_level && pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
 			{
 				float itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? xp * rate : (xp * rate * 0.5f) + 1.0f;
 
@@ -1435,7 +1448,7 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
             }
 
             // quest objectives updated only for alive group member or dead but with not released body
-            if (pGroupGuy->isAlive() || !pGroupGuy->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+            if (pGroupGuy->IsAlive() || !pGroupGuy->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
             {
                 // normal creature (not pet/etc) can be only in !PvP case
                 if (creatureVictim->GetTypeId() == TYPEID_UNIT)

@@ -21,7 +21,7 @@ SDComment: Enlarge for small spiders NYI
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 
 enum
@@ -108,7 +108,7 @@ struct boss_marliAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         // Troll phase
@@ -117,7 +117,7 @@ struct boss_marliAI : public ScriptedAI
             if (m_uiPoisonVolleyTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_POISON_VOLLEY) == CAST_OK)
-                    m_uiPoisonVolleyTimer = urand(10000, 20000);
+                    m_uiPoisonVolleyTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_POISON_VOLLEY);
             }
             else
                 m_uiPoisonVolleyTimer -= uiDiff;
@@ -127,7 +127,7 @@ struct boss_marliAI : public ScriptedAI
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
                     if (DoCastSpellIfCan(pTarget, SPELL_DRAIN_LIFE) == CAST_OK)
-                        m_uiDrainLifeTimer = urand(20000, 50000);
+                        m_uiDrainLifeTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 50000), SPELL_DRAIN_LIFE);
                 }
             }
             else
@@ -144,7 +144,7 @@ struct boss_marliAI : public ScriptedAI
                             DoScriptText(SAY_SPIDER_SPAWN, m_creature);
 
                         pEgg->Use(m_creature);
-                        m_uiSpawnSpiderTimer = 60000;
+                        m_uiSpawnSpiderTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 60000, SPELL_SPIDER_EGG);
                     }
                 }
             }
@@ -158,7 +158,7 @@ struct boss_marliAI : public ScriptedAI
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_ENVELOPING_WEBS) == CAST_OK)
                 {
-                    m_uiWebsTimer = urand(15000, 20000);
+                    m_uiWebsTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_ENVELOPING_WEBS);
                     m_uiChargeTimer = 1000;
                 }
             }
@@ -188,7 +188,7 @@ struct boss_marliAI : public ScriptedAI
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
                     if (DoCastSpellIfCan(pTarget, SPELL_CORROSIVE_POISON) == CAST_OK)
-                        m_uiCorrosivePoisonTimer = urand(25000, 35000);
+                        m_uiCorrosivePoisonTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 35000), SPELL_CORROSIVE_POISON);
                 }
             }
             else
@@ -225,8 +225,8 @@ struct boss_marliAI : public ScriptedAI
 
         if (m_uiTrashTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_TRASH) == CAST_OK)
-                m_uiTrashTimer = urand(10000, 20000);
+            if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TRASH) == CAST_OK)
+                m_uiTrashTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_TRASH);
         }
         else
             m_uiTrashTimer -= uiDiff;

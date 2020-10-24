@@ -105,9 +105,10 @@ static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell
 
 	uint32 spellLevel = 0;
 
-	// mount spells
+	// default value
+	uint32 spellCost = tSpell->spellCost;
 
-	uint32 spellCost = 0;
+	// mount spells
 	switch (tSpell->spell)
 	{
 		case 33388: // Riding
@@ -210,7 +211,7 @@ void WorldSession::SendTrainerList(ObjectGuid guid) const
             if (!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell, &reqLevel))
                 continue;
 
-            if (tSpell->conditionId && !sObjectMgr.IsPlayerMeetToCondition(tSpell->conditionId, GetPlayer(), unit->GetMap(), unit, CONDITION_FROM_TRAINER))
+            if (tSpell->conditionId && !sObjectMgr.IsConditionSatisfied(tSpell->conditionId, GetPlayer(), unit->GetMap(), unit, CONDITION_FROM_TRAINER))
                 continue;
 
             reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
@@ -233,7 +234,7 @@ void WorldSession::SendTrainerList(ObjectGuid guid) const
             if (!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell, &reqLevel))
                 continue;
 
-            if (tSpell->conditionId && !sObjectMgr.IsPlayerMeetToCondition(tSpell->conditionId, GetPlayer(), unit->GetMap(), unit, CONDITION_FROM_TRAINER))
+            if (tSpell->conditionId && !sObjectMgr.IsConditionSatisfied(tSpell->conditionId, GetPlayer(), unit->GetMap(), unit, CONDITION_FROM_TRAINER))
                 continue;
 
             reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
@@ -461,7 +462,7 @@ void WorldSession::SendSpiritResurrect() const
                 _player->GetPositionX(), _player->GetPositionY(), _player->GetPositionZ(), _player->GetMapId(), _player->GetTeam());
 
         if (corpseGrave != ghostGrave)
-            _player->TeleportTo(corpseGrave->map_id, corpseGrave->x, corpseGrave->y, corpseGrave->z, _player->GetOrientation());
+            _player->TeleportTo(corpseGrave->map_id, corpseGrave->x, corpseGrave->y, corpseGrave->z, corpseGrave->o);
         // or update at original position
         else
         {
@@ -482,7 +483,7 @@ void WorldSession::HandleBinderActivateOpcode(WorldPacket& recv_data)
     ObjectGuid npcGuid;
     recv_data >> npcGuid;
 
-    if (!GetPlayer()->IsInWorld() || !GetPlayer()->isAlive())
+    if (!GetPlayer()->IsInWorld() || !GetPlayer()->IsAlive())
         return;
 
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(npcGuid, UNIT_NPC_FLAG_INNKEEPER);
@@ -547,7 +548,7 @@ void WorldSession::SendStablePet(ObjectGuid guid) const
     PetSaveMode firstSlot = PET_SAVE_FIRST_STABLE_SLOT;     // have to be changed to PET_SAVE_AS_CURRENT if pet is currently temp unsummoned
 
     // not let move dead pet in slot
-    if (pet && pet->isAlive() && pet->getPetType() == HUNTER_PET)
+    if (pet && pet->IsAlive() && pet->getPetType() == HUNTER_PET)
     {
         data << uint32(pet->GetCharmInfo()->GetPetNumber());
         data << uint32(pet->GetEntry());
@@ -654,7 +655,7 @@ void WorldSession::HandleStablePet(WorldPacket& recv_data)
 
     recv_data >> npcGUID;
 
-    if (!GetPlayer()->isAlive())
+    if (!GetPlayer()->IsAlive())
     {
         SendStableResult(STABLE_ERR_STABLE);
         return;
@@ -672,7 +673,7 @@ void WorldSession::HandleStablePet(WorldPacket& recv_data)
     if (pet)
     {
         bool stop = false;
-        if (!pet->isAlive())
+        if (!pet->IsAlive())
         {
             _player->SendPetTameFailure(PETTAME_DEAD);
             stop = true;
@@ -803,7 +804,7 @@ void WorldSession::HandleUnstablePet(WorldPacket& recv_data)
     if (pet)
     {
         bool stop = false;
-        if (!pet->isAlive())
+        if (!pet->IsAlive())
         {
             _player->SendPetTameFailure(PETTAME_DEAD);
             stop = true;
@@ -926,7 +927,7 @@ void WorldSession::HandleStableSwapPet(WorldPacket& recv_data)
     if (pet)
     {
         bool stop = false;
-        if (!pet->isAlive())
+        if (!pet->IsAlive())
         {
             _player->SendPetTameFailure(PETTAME_DEAD);
             stop = true;

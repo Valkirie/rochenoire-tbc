@@ -243,18 +243,12 @@ Item::Item()
     m_container = nullptr;
     mb_in_trade = false;
     m_lootState = ITEM_LOOT_NONE;
-    m_enchantEffectModifier = nullptr;
+    m_enchantmentModifier = 0;
 }
 
 Item::~Item()
 {
-    if (m_enchantEffectModifier)
-    {
-        if (Player* owner = GetOwner())
-            owner->AddSpellMod(m_enchantEffectModifier, false);
-        else
-            delete m_enchantEffectModifier; // on logout/DC player is mid deletion and will be nullptr
-    }
+
 }
 
 bool Item::Create(uint32 guidlow, uint32 itemid, Player const* owner)
@@ -382,7 +376,7 @@ void Item::SaveToDB()
         stmt.PExecute(GetGUIDLow());
     }
 
-    if (loot && (m_lootState == ITEM_LOOT_NEW || m_lootState == ITEM_LOOT_CHANGED))
+    if (m_loot && (m_lootState == ITEM_LOOT_NEW || m_lootState == ITEM_LOOT_CHANGED))
     {
         if (Player* owner = GetOwner())
         {
@@ -390,17 +384,17 @@ void Item::SaveToDB()
             static SqlStatementID saveLoot ;
 
             // save money as 0 itemid data
-            if (loot->GetGoldAmount())
+            if (m_loot->GetGoldAmount())
             {
                 SqlStatement stmt = CharacterDatabase.CreateStatement(saveGold, "INSERT INTO item_loot (guid,owner_guid,itemid,amount,suffix,property) VALUES (?, ?, 0, ?, 0, 0)");
-                stmt.PExecute(GetGUIDLow(), owner->GetGUIDLow(), loot->GetGoldAmount());
+                stmt.PExecute(GetGUIDLow(), owner->GetGUIDLow(), m_loot->GetGoldAmount());
             }
 
             SqlStatement stmt = CharacterDatabase.CreateStatement(saveLoot, "INSERT INTO item_loot (guid,owner_guid,itemid,amount,suffix,property) VALUES (?, ?, ?, ?, ?, ?)");
 
             // save items and quest items (at load its all will added as normal, but this not important for item loot case)
             LootItemList lootList;
-            loot->GetLootItemsListFor(owner, lootList);
+            m_loot->GetLootItemsListFor(owner, lootList);
             for (LootItemList::const_iterator lootItr = lootList.begin(); lootItr != lootList.end(); ++lootItr)
             {
                 LootItem* lootItem = *lootItr;
@@ -532,7 +526,7 @@ void Item::LoadLootFromDB(Field* fields)
     // money value special case
     if (item_id == 0)
     {
-        loot->SetGoldAmount(item_amount);
+        m_loot->SetGoldAmount(item_amount);
         SetLootState(ITEM_LOOT_UNCHANGED);
         return;
     }
@@ -547,7 +541,7 @@ void Item::LoadLootFromDB(Field* fields)
         return;
     }
 
-    loot->AddItem(item_id, item_amount, item_suffix, item_propid);
+    m_loot->AddItem(item_id, item_amount, item_suffix, item_propid);
 
     SetLootState(ITEM_LOOT_UNCHANGED);
 }
@@ -727,18 +721,16 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 	if (!pProto)
 		return itemid;
 
-	if (pProto->Class == 0 || pProto->Class == 15)
+	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
-		ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid);
-		if (sItem)
+		if (ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid))
 			return sItem->ItemId;
 	}
 	else
 	{
 		uint32 scaleid = std::floor((itemid - 41000 - 1)/(2 * 180));
 
-		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
-		if (pProtoScale)
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
 			return scaleid;
 	}
 
@@ -749,7 +741,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 {
 	if (itemid && p)
 	{
-		// We need to make sure we're not replacing a currently needed quest item
+        // We need to make sure we're not replacing a currently needed quest item
 		for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
 		{
 			uint32 quest = p->GetQuestSlotQuestId(slot);
@@ -795,7 +787,10 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 			}
 		}
 
-		return LoadScaledLoot(itemid, p->getLevel());
+        // Checking if player has appropriate level for current zone
+        uint32 p_level = p->getZoneLevel();
+
+		return LoadScaledLoot(itemid, p_level);
 	}
 	return itemid;
 }
@@ -805,6 +800,9 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 	if (plevel > sWorld.GetCurrentMaxLevel())
 		plevel = sWorld.GetCurrentMaxLevel();
 
+    if (plevel <= 0)
+        return itemid;
+
 	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
 
 	if (!pProto)
@@ -812,7 +810,7 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
-		// Junk | Consumables
+		// look for an item below player level
 		for (uint32 j = 0; j < plevel; j++)
 		{
 			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel - j);
@@ -820,16 +818,22 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
 		}
+
+		// look for the closest item above player level
+		for (uint32 j = plevel; j < sWorld.GetCurrentMaxLevel(); j++)
+		{
+			std::string s = std::to_string(itemid) + ":" + std::to_string(j);
+
+			if (ItemLootScale const* sItem = sObjectMgr.GetItemLootScale(s))
+				return sItem->ReplacementId;
+		}
 	}
 	else
 	{
-		// Weapons | Armors
 		uint32 ItemLevel = pProto->ItemLevel;
 
-		if (plevel < 60)
+		if (plevel <= 60)
 			ItemLevel = plevel + 5;
-		else if (plevel == 60)
-			ItemLevel = plevel + 5 + std::max(0, int32(pProto->ItemLevel - 65));
 		else if (plevel > 60 && plevel < 70)
 		{
 			if (pProto->Quality < 3) // gray, white, green
@@ -847,10 +851,9 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 				ItemLevel = 120;
 		}
 
-		uint32 scaleid = (41000 + itemid * 2 * 180 /* + 0 Bonus Quality  * 180 */ + ItemLevel);
+		uint32 scaleid = (41000 + itemid * 2 * 180 + ItemLevel);
 
-		ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid);
-		if (pProtoScale)
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
 			return scaleid;
 	}
 
@@ -1205,13 +1208,6 @@ bool Item::IsLimitedToAnotherMapOrZone(uint32 cur_mapId, uint32 cur_zoneId) cons
     return proto && ((proto->Map && proto->Map != cur_mapId) || (proto->Area && proto->Area != cur_zoneId));
 }
 
-void Item::SetEnchantmentModifier(SpellModifier* mod)
-{
-    if (m_enchantEffectModifier)
-        GetOwner()->AddSpellMod(m_enchantEffectModifier, false);
-    m_enchantEffectModifier = mod;
-}
-
 // Though the client has the information in the item's data field,
 // we have to send SMSG_ITEM_TIME_UPDATE to display the remaining
 // time.
@@ -1331,9 +1327,9 @@ bool ItemRequiredTarget::IsFitToRequirements(Unit* pUnitTarget) const
     switch (m_uiType)
     {
         case ITEM_TARGET_TYPE_CREATURE:
-            return pUnitTarget->isAlive();
+            return pUnitTarget->IsAlive();
         case ITEM_TARGET_TYPE_DEAD:
-            return !pUnitTarget->isAlive();
+            return !pUnitTarget->IsAlive();
         default:
             return false;
     }

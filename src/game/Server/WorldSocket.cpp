@@ -35,6 +35,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include "World/WorldState.h"
 
 #include <boost/asio.hpp>
 #include <utility>
@@ -54,6 +55,11 @@ struct ServerPktHeader
 #else
 #pragma pack(pop)
 #endif
+
+std::deque<uint32> WorldSocket::GetOpcodeHistory()
+{
+    return m_opcodeHistory;
+}
 
 WorldSocket::WorldSocket(boost::asio::io_service& service, std::function<void (Socket*)> closeHandler) : Socket(service, std::move(closeHandler)), m_lastPingTime(std::chrono::system_clock::time_point::min()), m_overSpeedPings(0), m_existingHeader(),
     m_useExistingHeader(false), m_session(nullptr), m_seed(urand())
@@ -85,6 +91,10 @@ void WorldSocket::SendPacket(const WorldPacket& pct, bool immediate)
 
     if (immediate)
         ForceFlushOut();
+
+    m_opcodeHistory.push_front(uint32(pct.GetOpcode()));
+    if (m_opcodeHistory.size() > 50)
+        m_opcodeHistory.resize(20);
 }
 
 bool WorldSocket::Open()
@@ -306,8 +316,6 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
 
     Field* fields = result->Fetch();
 
-    uint8 expansion = ((sWorld.getConfig(CONFIG_UINT32_EXPANSION) > fields[7].GetUInt8()) ? fields[7].GetUInt8() : sWorld.getConfig(CONFIG_UINT32_EXPANSION));
-
     N.SetHexStr("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
     g.SetDword(7);
 
@@ -345,6 +353,15 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     if (security > SEC_ADMINISTRATOR)                       // prevent invalid security settings in DB
         security = SEC_ADMINISTRATOR;
 
+    uint8 maxServerExpansion = sWorld.getConfig(CONFIG_UINT32_EXPANSION);
+    uint8 currentServerExpansion = sWorldState.GetExpansion();
+    uint8 playerAddonLevel = fields[7].GetUInt8();
+    uint8 expansion;
+    if (security >= SEC_GAMEMASTER)
+        expansion = std::min(playerAddonLevel, maxServerExpansion);
+    else
+        expansion = std::min(playerAddonLevel, currentServerExpansion);
+
     K.SetHexStr(fields[2].GetString());
 
     time_t mutetime = time_t (fields[8].GetUInt64());
@@ -359,9 +376,9 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
 
     // Re-check account ban (same check as in realmd)
     QueryResult* banresult =
-        LoginDatabase.PQuery("SELECT 1 FROM account_banned WHERE id = %u AND active = 1 AND (unbandate > UNIX_TIMESTAMP() OR unbandate = bandate)"
+        LoginDatabase.PQuery("SELECT 1 FROM account_banned WHERE account_id = %u AND active = 1 AND (expires_at > UNIX_TIMESTAMP() OR expires_at = banned_at)"
                              "UNION "
-                             "SELECT 1 FROM ip_banned WHERE (unbandate = bandate OR unbandate > UNIX_TIMESTAMP()) AND ip = '%s'",
+                             "SELECT 1 FROM ip_banned WHERE (expires_at = banned_at OR expires_at > UNIX_TIMESTAMP()) AND ip = '%s'",
                              id, GetRemoteAddress().c_str());
 
     if (banresult) // if account banned

@@ -21,7 +21,7 @@ SDComment: TODO: 2.2 patch - grip of the legion cant hit someone with air burst
 SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 #include "Maps/MapManager.h"
 
@@ -179,13 +179,13 @@ struct boss_archimondeAI : public ScriptedAI
     {
         switch (action)
         {
-            case ARCHIMONDE_ACTION_HAND_OF_DEATH: return 1000;
-            case ARCHIMONDE_ACTION_GRIP_OF_THE_LEGION: return urand(5000, 25000);
-            case ARCHIMONDE_ACTION_AIR_BURST: return 30000;
-            case ARCHIMONDE_ACTION_FEAR: return urand(42000, 50000);
-            case ARCHIMONDE_ACTION_DOOMFIRE: return urand(10000, 15000);
-            case ARCHIMONDE_ACTION_FINGER_OF_DEATH_COOLUP: return 10000;
-            case ARCHIMONDE_ACTION_SOUL_CHARGE: return 10000;
+            case ARCHIMONDE_ACTION_HAND_OF_DEATH: return sObjectMgr.GetScaleSpellTimer(m_creature, 1000u, SPELL_HAND_OF_DEATH);
+            case ARCHIMONDE_ACTION_GRIP_OF_THE_LEGION: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(5000, 25000), SPELL_GRIP_OF_THE_LEGION);
+            case ARCHIMONDE_ACTION_AIR_BURST: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_AIR_BURST);
+            case ARCHIMONDE_ACTION_FEAR: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(42000, 50000), SPELL_FEAR);
+            case ARCHIMONDE_ACTION_DOOMFIRE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_DOOMFIRE_STRIKE);
+            case ARCHIMONDE_ACTION_FINGER_OF_DEATH_COOLUP: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_FINGER_OF_DEATH_COOLUP);
+            case ARCHIMONDE_ACTION_SOUL_CHARGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, SPELL_SOUL_CHARGE_GREEN);
             default: return 0; // never occurs but for compiler
         }
     }
@@ -461,10 +461,11 @@ struct boss_archimondeAI : public ScriptedAI
         {
             if (m_leashCheckTimer <= diff)
             {
-                float x, y, z, o;
-                m_creature->GetCombatStartPosition(x, y, z, o);
+                Position pos;
+                m_creature->GetCombatStartPosition(pos);
                 // Range stuff here
-                if (m_creature->GetDistance2d(x, y) >= 200.f || (x < 5534.752f && x > 5381.371f && y < -3507.099f && y > -3587.244f))
+                if (m_creature->GetDistance2d(pos.GetPositionX(), pos.GetPositionY()) >= 200.f || (pos.GetPositionX() < 5534.752f && pos.GetPositionX() > 5381.371f &&
+                    pos.GetPositionY() < -3507.099f && pos.GetPositionY() > -3587.244f))
                 {
                     m_actionReadyStatus[ARCHIMONDE_ACTION_HAND_OF_DEATH] = true;
                     m_leashCheckTimer = 0;
@@ -500,7 +501,7 @@ struct boss_archimondeAI : public ScriptedAI
                 m_drainNordrassilTimer -= diff;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (!m_phase) // Phase 1

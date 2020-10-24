@@ -177,14 +177,11 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid, Playe
         QuestMenuItem const& qItem = mQuestMenu.GetItem(iI);
         uint32 questID = qItem.m_qId;
         Quest const* pQuest = sObjectMgr.GetQuestTemplate(questID);
-		uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+        uint32 pQuest_slevel = pPlayer ? pPlayer->GetQuestLevelForPlayer(pQuest) : pQuest->GetQuestLevel();
 
         data << uint32(questID);
         data << uint32(qItem.m_qIcon);
-		if (!pQuest->IsSpecificQuest())
-			data << uint32(pQuest_slevel);
-		else
-			data << uint32(pQuest->GetQuestLevel());
+		data << uint32(pQuest_slevel);
 
         int loc_idx = GetMenuSession()->GetSessionDbLocaleIndex();
         std::string title = pQuest->GetTitle();
@@ -247,93 +244,6 @@ void PlayerMenu::SendPointOfInterest(uint32 poi_id) const
 
     GetMenuSession()->SendPacket(data);
     // DEBUG_LOG("WORLD: Sent SMSG_GOSSIP_POI");
-}
-
-void PlayerMenu::SendTalking(uint32 textID) const
-{
-    GossipText const* pGossip = sObjectMgr.GetGossipText(textID);
-
-    WorldPacket data(SMSG_NPC_TEXT_UPDATE, 100);            // guess size
-    data << textID;                                         // can be < 0
-
-    if (!pGossip)
-    {
-        for (uint32 i = 0; i < 8; ++i)
-        {
-            data << float(0);
-            data << "Greetings $N";
-            data << "Greetings $N";
-            data << uint32(0);
-            data << uint32(0);
-            data << uint32(0);
-            data << uint32(0);
-            data << uint32(0);
-            data << uint32(0);
-            data << uint32(0);
-        }
-    }
-    else
-    {
-        std::string Text_0[MAX_GOSSIP_TEXT_OPTIONS], Text_1[MAX_GOSSIP_TEXT_OPTIONS];
-        for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; ++i)
-        {
-            Text_0[i] = pGossip->Options[i].Text_0;
-            Text_1[i] = pGossip->Options[i].Text_1;
-        }
-
-        int loc_idx = GetMenuSession()->GetSessionDbLocaleIndex();
-
-        sObjectMgr.GetNpcTextLocaleStringsAll(textID, loc_idx, &Text_0, &Text_1);
-
-        for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; ++i)
-        {
-            data << pGossip->Options[i].Probability;
-
-            if (Text_0[i].empty())
-                data << Text_1[i];
-            else
-                data << Text_0[i];
-
-            if (Text_1[i].empty())
-                data << Text_0[i];
-            else
-                data << Text_1[i];
-
-            data << pGossip->Options[i].Language;
-
-            for (auto Emote : pGossip->Options[i].Emotes)
-            {
-                data << Emote._Delay;
-                data << Emote._Emote;
-            }
-        }
-    }
-    GetMenuSession()->SendPacket(data);
-
-    DEBUG_LOG("WORLD: Sent SMSG_NPC_TEXT_UPDATE ");
-}
-
-void PlayerMenu::SendTalking(char const* title, char const* text) const
-{
-    WorldPacket data(SMSG_NPC_TEXT_UPDATE, 50);             // guess size
-    data << uint32(0);
-    for (uint32 i = 0; i < 8; ++i)
-    {
-        data << float(0);
-        data << title;
-        data << text;
-        data << uint32(0);
-        data << uint32(0);
-        data << uint32(0);
-        data << uint32(0);
-        data << uint32(0);
-        data << uint32(0);
-        data << uint32(0);
-    }
-
-    GetMenuSession()->SendPacket(data);
-
-    DEBUG_LOG("WORLD: Sent SMSG_NPC_TEXT_UPDATE ");
 }
 
 /*********************************************************/
@@ -402,14 +312,11 @@ void PlayerMenu::SendQuestGiverQuestList(QEmote eEmote, const std::string& Title
             std::string title = pQuest->GetTitle();
             sObjectMgr.GetQuestLocaleStrings(questID, loc_idx, &title);
 
-			uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+            uint32 pQuest_slevel = pPlayer ? pPlayer->GetQuestLevelForPlayer(pQuest) : pQuest->GetQuestLevel();
 
             data << uint32(questID);
             data << uint32(qmi.m_qIcon);
-			if (!pQuest->IsSpecificQuest())
-				data << uint32(pQuest_slevel);
-			else
-				data << uint32(pQuest->GetQuestLevel());
+            data << uint32(pQuest_slevel);
             data << title;
         }
     }
@@ -567,14 +474,11 @@ void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQue
     }
 
     WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size
-	uint32 pQuest_slevel = pPlayer->getLevel() + (pQuest->GetQuestLevel() - pQuest->GetMinLevel());
+    uint32 pQuest_slevel = pPlayer ? pPlayer->GetQuestLevelForPlayer(pQuest) : pQuest->GetQuestLevel();
 
     data << uint32(pQuest->GetQuestId());                   // quest id
     data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
-	if (!pQuest->IsSpecificQuest())
-		data << uint32(pQuest_slevel);
-	else
-		data << int32(pQuest->GetQuestLevel());                 // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
+    data << int32(pQuest_slevel);                           // may be -1, static data, in other cases must be used dynamic level: Player::GetQuestLevelForPlayer (0 is not known, but assuming this is no longer valid for quest intended for client)
     data << uint32(pQuest->GetZoneOrSort());                // zone or sort to display in quest log
 
     data << uint32(pQuest->GetType());                      // quest type
@@ -654,7 +558,7 @@ void PlayerMenu::SendQuestQueryResponse(Player const* pPlayer, Quest const* pQue
             data << uint32(pQuest->ReqCreatureOrGOId[iI]);
         }
         data << uint32(pQuest->ReqCreatureOrGOCount[iI]);
-        data << uint32(pQuest->ReqItemId[iI]);
+		data << uint32(pPlayer->HasScaledItemCount(pQuest->ReqItemId[iI], pQuest->ReqItemCount[iI]));
         data << uint32(pQuest->ReqItemCount[iI]);
     }
 
@@ -808,12 +712,16 @@ void PlayerMenu::SendQuestGiverRequestItems(Player const* pPlayer, Quest const* 
     data << uint32(pQuest->GetRewOrReqMoney((Player*)pPlayer) < 0 ? -pQuest->GetRewOrReqMoney((Player*)pPlayer) : 0);
 
     data << uint32(pQuest->GetReqItemsCount());
+
+	ItemPrototype const* pItem;
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
     {
         if (!pQuest->ReqItemId[i])
             continue;
-        ItemPrototype const* pItem = ObjectMgr::GetItemPrototype(pQuest->ReqItemId[i]);
-        data << uint32(pQuest->ReqItemId[i]);
+
+		uint32 ReqItemId = pPlayer->HasScaledItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i]);
+		pItem = ObjectMgr::GetItemPrototype(ReqItemId);
+		data << uint32(ReqItemId);
         data << uint32(pQuest->ReqItemCount[i]);
 
         if (pItem)

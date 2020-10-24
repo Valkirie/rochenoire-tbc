@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
@@ -91,10 +91,10 @@ struct boss_maiden_of_virtueAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case MAIDEN_ACTION_REPENTANCE: return urand(28000, 36000);
-            case MAIDEN_ACTION_HOLY_FIRE: return urand(12000, 20000);
-            case MAIDEN_ACTION_HOLY_WRATH: return urand(25000, 35000);
-            case MAIDEN_ACTION_HOLY_GROUND: return 2000;
+            case MAIDEN_ACTION_REPENTANCE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(28000, 36000), SPELL_REPENTANCE);
+            case MAIDEN_ACTION_HOLY_FIRE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 20000), SPELL_HOLYFIRE);
+            case MAIDEN_ACTION_HOLY_WRATH: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 35000), SPELL_HOLYWRATH);
+            case MAIDEN_ACTION_HOLY_GROUND: return sObjectMgr.GetScaleSpellTimer(m_creature, 2000, SPELL_HOLYGROUND);
             default: return 0; // never occurs but for compiler
         }
     }
@@ -180,10 +180,10 @@ struct boss_maiden_of_virtueAI : public ScriptedAI, public CombatActions
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
-        UpdateTimers(uiDiff, m_creature->isInCombat());
+        UpdateTimers(uiDiff, m_creature->IsInCombat());
         ExecuteActions();
 
         DoMeleeAttackIfReady();

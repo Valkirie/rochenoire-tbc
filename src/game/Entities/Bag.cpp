@@ -188,6 +188,9 @@ uint32 Bag::GetItemCount(uint32 item, Item* eItem) const
 	item = Item::LoadScaledParent(item);
 	uint32 count = 0;
 
+    if (GetEntry() == item)
+        ++count;
+
     for (uint32 i = 0; i < GetBagSize(); ++i)
         if (m_bagslot[i])
             if (m_bagslot[i] != eItem && Item::LoadScaledParent(m_bagslot[i]->GetEntry()) == item)

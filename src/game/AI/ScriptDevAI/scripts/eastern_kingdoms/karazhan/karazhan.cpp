@@ -21,7 +21,7 @@ SDComment: Instance Script for Karazhan to help in various encounters.
 SDCategory: Karazhan
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "karazhan.h"
 
 /*
@@ -46,6 +46,8 @@ instance_karazhan::instance_karazhan(Map* pMap) : ScriptedInstance(pMap),
     m_uiChessEndingTimer(0),
     m_uiAllianceStalkerCount(0),
     m_uiHordeStalkerCount(0),
+    m_sBasementMobs(0),
+    m_sBasementMobsCount(0),
     m_bFriendlyGame(false),
     m_bBasementBossReady(false)
 {
@@ -189,6 +191,7 @@ void instance_karazhan::OnObjectCreate(GameObject* pGo)
         case GO_MASTERS_TERRACE_DOOR_1:
         case GO_MASTERS_TERRACE_DOOR_2:
         case GO_BLACKENED_URN:
+        case GO_CHESSBOARD:
             break;
 
         // Opera event backgrounds
@@ -222,7 +225,7 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
                 // Respawn Midnight on Fail
                 if (Creature* pMidnight = GetSingleCreatureFromStorage(NPC_MIDNIGHT))
                 {
-                    if (!pMidnight->isAlive())
+                    if (!pMidnight->IsAlive())
                         pMidnight->Respawn();
                 }
             }
@@ -331,7 +334,11 @@ void instance_karazhan::SetData64(uint32 uiData, uint64 uiGuid)
 
         // only allow the event to progress when all mobs are spawned
         if (m_sBasementMobsSet.size() >= MIN_BASEMENT_MOBS)
+        {
             m_bBasementBossReady = true;
+            m_sBasementMobsCount = m_sBasementMobsSet.size();
+            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+        }
     }
 }
 
@@ -377,7 +384,7 @@ void instance_karazhan::OnCreatureEvade(Creature* creature)
         case NPC_LORD_ROBIN_DARIS:
         {
             if (Creature* moroes = GetSingleCreatureFromStorage(NPC_MOROES, true))
-                if (moroes->isAlive() && moroes->isInCombat())
+                if (moroes->IsAlive() && moroes->IsInCombat())
                     moroes->AI()->EnterEvadeMode();
             break;
         }
@@ -398,8 +405,8 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
             {
                 if (Creature* pCrone = pCreature->SummonCreature(NPC_CRONE, afChroneSpawnLoc[0], afChroneSpawnLoc[1], afChroneSpawnLoc[2], afChroneSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0))
                 {
-                    if (pCreature->getVictim())
-                        pCrone->AI()->AttackStart(pCreature->getVictim());
+                    if (pCreature->GetVictim())
+                        pCrone->AI()->AttackStart(pCreature->GetVictim());
                 }
             }
             break;
@@ -411,6 +418,9 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
         case NPC_SHADOWBEAST:
         case NPC_COLDMIST_STALKER:
         case NPC_COLDMIST_WIDOW:
+            // update the amount of creature each time one is killed
+            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+
             // avoid exploiting the event
             if (!m_bBasementBossReady)
                 break;
@@ -420,7 +430,7 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
                 m_sBasementMobsSet.erase(pCreature->GetObjectGuid());
 
                 // spawn boss when empty
-                if (m_sBasementMobsSet.empty())
+                if (m_sBasementMobsSet.empty() || (m_sBasementMobsCount - m_sBasementMobsSet.size() >= m_sBasementMobs))
                 {
                     uint8 uiIndex = urand(0, 2);
                     m_bBasementBossReady = false;
@@ -478,13 +488,9 @@ void instance_karazhan::DoPrepareChessEvent()
         }
     }
 
-    // add silence debuff
-    Map::PlayerList const& players = instance->GetPlayers();
-    for (const auto& player : players)
-    {
-        if (Player* pPlayer = player.getSource())
-            pPlayer->CastSpell(pPlayer, SPELL_GAME_IN_SESSION, TRIGGERED_OLD_TRIGGERED);
-    }
+    if (GameObject* chessboard = GetSingleGameObjectFromStorage(GO_CHESSBOARD))
+        if (GameObjectAI* ai = chessboard->AI())
+            ai->ReceiveAIEvent(AI_EVENT_CUSTOM_A, uint32(true));
 
     m_uiAllianceStalkerCount = 0;
     m_uiHordeStalkerCount = 0;
@@ -583,13 +589,9 @@ void instance_karazhan::DoFailChessEvent()
         pMedivh->CastSpell(pMedivh, SPELL_CLEAR_BOARD, TRIGGERED_OLD_TRIGGERED);
     }
 
-    // remove silence debuff
-    Map::PlayerList const& players = instance->GetPlayers();
-    for (const auto& player : players)
-    {
-        if (Player* pPlayer = player.getSource())
-            pPlayer->RemoveAurasDueToSpell(SPELL_GAME_IN_SESSION);
-    }
+    if (GameObject* chessboard = GetSingleGameObjectFromStorage(GO_CHESSBOARD))
+        if (GameObjectAI* ai = chessboard->AI())
+            ai->ReceiveAIEvent(AI_EVENT_CUSTOM_A, uint32(false));
 
     // chess figures stop attacking
     for (ObjectGuid guid : m_lChessPiecesAlliance)
@@ -645,13 +647,9 @@ void instance_karazhan::DoFinishChessEvent()
         pMedivh->CastSpell(pMedivh, SPELL_CLEAR_BOARD, TRIGGERED_OLD_TRIGGERED);
     }    
 
-    // remove silence debuff
-    Map::PlayerList const& players = instance->GetPlayers();
-    for (const auto& player : players)
-    {
-        if (Player* pPlayer = player.getSource())
-            pPlayer->RemoveAurasDueToSpell(SPELL_GAME_IN_SESSION);
-    }
+    if (GameObject* chessboard = GetSingleGameObjectFromStorage(GO_CHESSBOARD))
+        if (GameObjectAI* ai = chessboard->AI())
+            ai->ReceiveAIEvent(AI_EVENT_CUSTOM_A, uint32(false));
 
     // chess figures stop attacking
     for (ObjectGuid guid : m_lChessPiecesAlliance)

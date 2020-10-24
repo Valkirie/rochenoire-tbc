@@ -14,7 +14,7 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "hyjal.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
@@ -115,10 +115,10 @@ struct boss_anetheronAI : public ScriptedAI, public CombatActions
     {
         switch (action)
         {
-            case ANETHERON_ACTION_CARRION_SWARM: return urand(10000, 15000);
-            case ANETHERON_ACTION_SLEEP: return urand(35000, 48000);
-            case ANETHERON_ACTION_INFERNO: return urand(50000, 55000);
-            case ANETHERON_ACTION_ENRAGE: return 300000;
+            case ANETHERON_ACTION_CARRION_SWARM: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 15000), SPELL_CARRION_SWARM);
+            case ANETHERON_ACTION_SLEEP: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 48000), SPELL_SLEEP);
+            case ANETHERON_ACTION_INFERNO: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(50000, 55000), SPELL_INFERNO);
+            case ANETHERON_ACTION_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 300000u, SPELL_ENRAGE);
             default: return 0; // never occurs but for compiler
         }
     }
@@ -243,9 +243,9 @@ struct boss_anetheronAI : public ScriptedAI, public CombatActions
 
     void UpdateAI(const uint32 diff)
     {
-        UpdateTimers(diff, m_creature->isInCombat());
+        UpdateTimers(diff, m_creature->IsInCombat());
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         ExecuteActions();

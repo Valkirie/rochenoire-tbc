@@ -29,7 +29,7 @@ npc_apprentice_mirveda
 npc_infused_crystal
 EndContentData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/base/escort_ai.h"
 #include "Entities/TemporarySpawn.h"
 #include <inttypes.h>
@@ -167,14 +167,14 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
             if (m_uiCheckAliveStateTimer < uiDiff)
             {
                 Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
-                if (!pPlayer || !pPlayer->isAlive() || pPlayer->GetDistance(m_creature) > 100.f)
+                if (!pPlayer || !pPlayer->IsAlive() || pPlayer->GetDistance(m_creature) > 100.f)
                 {
                     Reset();
                     return;
                 }
 
                 Creature* pChallenger = m_creature->GetMap()->GetCreature(m_aChallengerGuids[m_uiChallengerCount]);
-                if (pChallenger && !pChallenger->isAlive())
+                if (pChallenger && !pChallenger->IsAlive())
                 {
                     ++m_uiChallengerCount;
 
@@ -197,7 +197,7 @@ struct npc_kelerun_bloodmournAI : public ScriptedAI
                 if (m_uiEngageTimer <= uiDiff)
                 {
                     Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
-                    if (!pPlayer || !pPlayer->isAlive())
+                    if (!pPlayer || !pPlayer->IsAlive())
                     {
                         Reset();
                         return;
@@ -286,10 +286,10 @@ struct npc_prospector_anvilwardAI : public npc_escortAI
 
         switch (uiPointId)
         {
-            case 0:
+            case 1:
                 DoScriptText(SAY_ANVIL1, m_creature, pPlayer);
                 break;
-            case 6:
+            case 7:
                 DoScriptText(SAY_ANVIL2, m_creature, pPlayer);
                 m_creature->GetMotionMaster()->Clear(false, true);
                 m_creature->GetMotionMaster()->MoveIdle();
@@ -402,7 +402,8 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned) override
     {
-        pSummoned->AI()->AttackStart(m_creature);
+        pSummoned->SetWalk(false);
+        pSummoned->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
         m_summons.push_back(pSummoned->GetObjectGuid());
         ++m_uiMobCount;
     }
@@ -446,7 +447,7 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
             sLog.outCustomLog("Questgiver flag: %s",  m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER) ? "true" : "false");
             for (ObjectGuid& guid : m_summons)
                 if (Creature* creature = m_creature->GetMap()->GetCreature(guid))
-                    if (creature->isAlive())
+                    if (creature->IsAlive())
                         sLog.outCustomLog("%s Entry: %u is alive", creature->GetName(), creature->GetEntry());
         }
 
@@ -454,11 +455,9 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
         m_playerGuid = pPlayer->GetObjectGuid();
 
-        m_creature->SummonCreature(NPC_GHARSUL,    8778.208f, -7109.625f, 35.42597f, 3.816502f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
-        m_creature->SummonCreature(NPC_ANGERSHADE, 8756.398f, -7122.784f, 35.32643f, 3.925692f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
-        m_creature->SummonCreature(NPC_ANGERSHADE, 8788.446f, -7112.482f, 35.42597f, 3.664015f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
-        // third is not sniffed due to no longer spawning on retail - guesswork
-        m_creature->SummonCreature(NPC_ANGERSHADE, 8789.f,    -7115.f, 36.46296f, 3.8f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
+        m_creature->SummonCreature(NPC_ANGERSHADE, 8756.952f, -7124.688f, 35.227f, 3.925692f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
+        m_creature->SummonCreature(NPC_GHARSUL,	   8756.182f, -7130.453f, 35.227f, 3.816502f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
+        m_creature->SummonCreature(NPC_ANGERSHADE, 8761.380f, -7132.638f, 35.696f, 3.664015f, TEMPSPAWN_TIMED_OOC_OR_CORPSE_DESPAWN, 60000, true);
 
         m_creature->SetActiveObjectState(true);
     }
@@ -466,12 +465,12 @@ struct npc_apprentice_mirvedaAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff) override
     {
         // Return since we have no target
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_uiFireballTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_FIREBALL) == CAST_OK)
                 m_uiFireballTimer = urand(4000, 6000);
         }
         else

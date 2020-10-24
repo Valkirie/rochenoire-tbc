@@ -41,7 +41,8 @@ class HostileRefManager : public RefManager<Unit, ThreatManager>
         // send threat to all my hateres for the pVictim
         // The pVictim is hated than by them as well
         // use for buffs and healing threat functionality
-        void threatAssist(Unit* victim, float threat, SpellEntry const* threatSpell = nullptr, bool singleTarget = false, bool isScaled = false, Unit *pSpellTarget = nullptr);
+        void threatAssist(Unit* victim, float threat, SpellEntry const* threatSpell = nullptr, bool singleTarget = false, bool ignoreTimer = false, bool isScaled = false, Unit *pSpellTarget = nullptr);
+
         void threatTemporaryFade(Unit* victim, float threat, bool apply);
 
         void addThreatPercent(int32 threatPercent);

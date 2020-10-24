@@ -21,7 +21,7 @@ SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "zulgurub.h"
 
 enum
@@ -98,7 +98,7 @@ struct boss_venoxisAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         // Troll phase
@@ -107,7 +107,7 @@ struct boss_venoxisAI : public ScriptedAI
             if (m_uiDispellTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_DISPELL) == CAST_OK)
-                    m_uiDispellTimer = urand(15000, 30000);
+                    m_uiDispellTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_DISPELL);
             }
             else
                 m_uiDispellTimer -= uiDiff;
@@ -115,15 +115,15 @@ struct boss_venoxisAI : public ScriptedAI
             if (m_uiRenewTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_RENEW) == CAST_OK)
-                    m_uiRenewTimer = urand(20000, 30000);
+                    m_uiRenewTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 30000), SPELL_RENEW);
             }
             else
                 m_uiRenewTimer -= uiDiff;
 
             if (m_uiHolyWrathTimer < uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_WRATH) == CAST_OK)
-                    m_uiHolyWrathTimer = urand(15000, 25000);
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_HOLY_WRATH) == CAST_OK)
+                    m_uiHolyWrathTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 25000), SPELL_HOLY_WRATH);
             }
             else
                 m_uiHolyWrathTimer -= uiDiff;
@@ -153,7 +153,7 @@ struct boss_venoxisAI : public ScriptedAI
                         DoCastSpellIfCan(pTarget, SPELL_HOLY_FIRE);
                 }
 
-                m_uiHolySpellTimer = urand(4000, 8000);
+                m_uiHolySpellTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(4000, 8000), SPELL_HOLY_NOVA);
             }
             else
                 m_uiHolySpellTimer -= uiDiff;
@@ -176,7 +176,7 @@ struct boss_venoxisAI : public ScriptedAI
             if (m_uiPoisonCloudTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_POISON_CLOUD) == CAST_OK)
-                    m_uiPoisonCloudTimer = 15000;
+                    m_uiPoisonCloudTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 15000, SPELL_POISON_CLOUD);
             }
             else
                 m_uiPoisonCloudTimer -= uiDiff;
@@ -186,7 +186,7 @@ struct boss_venoxisAI : public ScriptedAI
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
                     if (DoCastSpellIfCan(pTarget, SPELL_VENOMSPIT) == CAST_OK)
-                        m_uiVenomSpitTimer = urand(15000, 20000);
+                        m_uiVenomSpitTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 20000), SPELL_VENOMSPIT);
                 }
             }
             else
@@ -195,8 +195,8 @@ struct boss_venoxisAI : public ScriptedAI
 
         if (m_uiTrashTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_TRASH) == CAST_OK)
-                m_uiTrashTimer = urand(10000, 20000);
+            if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TRASH) == CAST_OK)
+                m_uiTrashTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_TRASH);
         }
         else
             m_uiTrashTimer -= uiDiff;

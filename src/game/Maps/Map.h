@@ -34,6 +34,7 @@
 #include "DBScripts/ScriptMgr.h"
 #include "Entities/CreatureLinkingMgr.h"
 #include "vmap/DynamicTree.h"
+#include "Multithreading/Messager.h"
 
 #include <bitset>
 #include <functional>
@@ -126,22 +127,12 @@ class Map : public GridRefManager<NGridType>
         static void DeleteFromWorld(Player* pl);        // player object will deleted at call
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
-        
-		// Flexible Raid
-		uint16 COMPTEUR[40000];
 
-		void UpdateFlexibleRaid(bool ForceRefresh = false, uint32 ForcedSize = 0);
-		void GetScaleRatio(float NT, float Nadds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer);
-		float GetFactorNHT(float Nmax, float Np, float f_softness);
-		float GetFactorNHR(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
-		float GetFactorHP(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
-		float GetFactorNDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness);
-		float GetFactorDPS(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT);
-		float GetFactorAdds(float Nmax, float Np, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float MinAddShrinkDPS);
-		float GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio);
-		uint32 GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT);
-		uint32 GetCreaturesCount(uint32 entry, bool IsInCombat = false, bool IsAlive = false);
-		uint32 GetCreaturesPackSize(uint32 pack);
+		void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
+        void ShuffleFlexibleCore();
+		uint32 GetFinalNAdds(float NT, float Nadds) const;
+		uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
+		uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
 		uint32 GetPlayersCount() const;
 		
 		virtual void Update(const uint32&);
@@ -213,6 +204,8 @@ class Map : public GridRefManager<NGridType>
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
         uint32 GetMaxPlayers() const;
 		uint32 GetMinPlayers() const;
+        uint32 GetCurPlayers() const;
+        void SetCurPlayers(const uint32 nbr) { u_nbr_players = nbr; };
         uint32 GetMaxResetDelay() const;
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
@@ -286,6 +279,55 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
 
+        // Flexible Core
+        struct CreatureRatio
+        {
+            bool treated = false;
+            bool added = false;
+            bool removed = false;
+
+            float ratio_c1 = 0.85f;		// difficulty coefficient when raid size is close to min size raid
+            float ratio_c2 = 1.0f;		// difficulty coefficient when raid size is close to max size raid
+            float ratio_c0 = 1.0f;		// used to compute c1 and c2
+            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+
+            uint32 nbr_tank = 2;        // number of tanks needed for that encounter
+            uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
+            uint32 nbr_adds;
+            uint32 nbr_adds_scaled;
+            uint32 nbr_adds_alive;
+            float  nbr_adds_keep;
+
+            uint32 instance_size;
+            uint32 pool_size;
+
+            uint32 packid;
+
+            float r_health;
+            float r_dps;
+            float r_dmg;
+            float r_attack;
+
+            float m_health;
+            float m_power;
+
+            uint32 m_faction;
+            uint32 m_reactstate;
+            uint32 m_flags;
+        };
+
+        std::map<uint32, uint32> m_poolsStore;
+        std::map<uint32, uint8> m_displayStore;
+        typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
+        CreatureRatioMap m_creaturesRatio;
+        typedef std::unordered_map<uint32, Creature*> CreatureMap;
+        CreatureMap m_creaturesStore;
+        CreatureMap m_creaturesStore_buffer;
+
+        uint32 u_TmpPlayer = 40;       // store the temporary number of players
+        uint32 u_nbr_players = 40;       // store the current group size
+        uint32 u_GroupSize = 0;        // store the last known group size
+
         void AddUpdateObject(Object* obj)
         {
             i_objectsToClientUpdate.insert(obj);
@@ -296,13 +338,9 @@ class Map : public GridRefManager<NGridType>
             i_objectsToClientUpdate.erase(obj);
         }
 
-		void InsertCreature(Creature* cr) {
-			if (cr) m_creaturesStore.insert(cr);
-		}
-
-		void EraseCreature(Creature* cr) {
-			if (cr) m_creaturesStore.erase(cr);
-		}
+        void UpdateCreature(uint32 guid, Creature* cr, bool erased = false);
+        void InsertCreature(uint32 guid, Creature* cr);
+        void EraseCreature(uint32 guid, Creature* cr);
 
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
@@ -346,20 +384,14 @@ class Map : public GridRefManager<NGridType>
         void SetWeather(uint32 zoneId, WeatherType type, float grade, bool permanently);
 
         // Random on map generation
-        bool GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius) const;
-        bool GetReachableRandomPointOnGround(float& x, float& y, float& z, float radius) const;
-        bool GetRandomPointInTheAir(float& x, float& y, float& z, float radius) const;
-        bool GetRandomPointUnderWater(float& x, float& y, float& z, float radius, GridMapLiquidData& liquid_status) const;
-
-        void AddMessage(const std::function<void(Map*)>& message);
+        bool GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius, bool randomRange = true) const;
+        bool GetReachableRandomPointOnGround(float& x, float& y, float& z, float radius, bool randomRange = true) const;
+        bool GetRandomPointInTheAir(float& x, float& y, float& z, float radius, bool randomRange = true) const;
+        bool GetRandomPointUnderWater(float& x, float& y, float& z, float radius, GridMapLiquidData& liquid_status, bool randomRange = true) const;
 
         uint32 SpawnedCountForEntry(uint32 entry);
         void AddToSpawnCount(const ObjectGuid& guid);
         void RemoveFromSpawnCount(const ObjectGuid& guid);
-
-        uint32 GetUpdateTimeMin() { return m_updateTimeMin; }
-        uint32 GetUpdateTimeMax() { return m_updateTimeMax; }
-        uint32 GetUpdateTimeAvg() { return uint32(m_updateTimeTotal / m_cycleCounter); }
 
         uint32 GetCurrentMSTime() const;
         TimePoint GetCurrentClockTime() const;
@@ -368,6 +400,9 @@ class Map : public GridRefManager<NGridType>
         void CreatePlayerOnClient(Player* player);
 
         uint32 GetLoadedGridsCount();
+        MapEntry const* GetMapEntry() { return i_mapEntry; }
+
+        Messager<Map>& GetMessager() { return m_messager; }
 
     private:
         void LoadMapAndVMap(int gx, int gy);
@@ -420,16 +455,13 @@ class Map : public GridRefManager<NGridType>
         ActiveNonPlayers m_activeNonPlayers;
         ActiveNonPlayers::iterator m_activeNonPlayersIter;
         MapStoredObjectTypesContainer m_objectsStore;
-		std::set<Creature*> m_creaturesStore;
         std::map<uint32, uint32> m_tempCreatures;
         std::map<uint32, uint32> m_tempPets;
-
-        std::vector<std::function<void(Map*)>> m_messageVector;
-        std::mutex m_messageMutex;
 
         WorldObjectSet m_onEventNotifiedObjects;
         WorldObjectSet::iterator m_onEventNotifiedIter;
 
+        Messager<Map> m_messager;
     private:
         time_t i_gridExpiry;
 
@@ -443,7 +475,7 @@ class Map : public GridRefManager<NGridType>
 
         WorldObjectSet i_objectsToRemove;
 
-        typedef std::multimap<time_t, ScriptAction> ScriptScheduleMap;
+        typedef std::multimap<TimePoint, ScriptAction> ScriptScheduleMap;
         ScriptScheduleMap m_scriptSchedule;
 
         InstanceData* i_data;
@@ -471,12 +503,6 @@ class Map : public GridRefManager<NGridType>
         WeatherSystem* m_weatherSystem;
 
         std::unordered_map<uint32, std::set<ObjectGuid>> m_spawnedCount;
-
-        // Map update performance logging
-        std::atomic<uint32> m_cycleCounter;
-        std::atomic<uint32> m_updateTimeMin;
-        std::atomic<uint32> m_updateTimeMax;
-        std::atomic<uint64> m_updateTimeTotal;
 };
 
 class WorldMap : public Map
@@ -508,10 +534,6 @@ class DungeonMap : public Map
         void SetResetSchedule(bool on);
 
         Team GetInstanceTeam() { return m_team; };
-
-		// flexible map
-		uint32 GetSetPlayers() const;
-		uint32 GetPoolSize() const;
 
         // can't be nullptr for loaded map
         DungeonPersistentState* GetPersistanceState() const;

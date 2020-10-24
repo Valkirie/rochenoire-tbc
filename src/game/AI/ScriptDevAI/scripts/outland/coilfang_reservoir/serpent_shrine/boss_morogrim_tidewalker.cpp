@@ -21,8 +21,9 @@ SDComment: Water Globule script is not complete - requires additional research.
 SDCategory: Coilfang Resevoir, Serpent Shrine Cavern
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "serpent_shrine.h"
+#include "AI/ScriptDevAI/base/TimerAI.h"
 
 enum
 {
@@ -86,6 +87,16 @@ enum
 
 static const uint32 m_auiSpellWateryGraveTeleport[] = { SPELL_WATERY_GRAVE_TELEPORT_1, SPELL_WATERY_GRAVE_TELEPORT_2, SPELL_WATERY_GRAVE_TELEPORT_3, SPELL_WATERY_GRAVE_TELEPORT_4 };
 static const uint32 m_auiSpellSummonGlobule[] = { SPELL_SUMMON_GLOBULE_1, SPELL_SUMMON_GLOBULE_2, SPELL_SUMMON_GLOBULE_3, SPELL_SUMMON_GLOBULE_4 };
+static const uint32 m_auiSpellSummonMurloc[] = { SPELL_SUMMON_MURLOC_A1, SPELL_SUMMON_MURLOC_B1,
+SPELL_SUMMON_MURLOC_A2, SPELL_SUMMON_MURLOC_B2,
+SPELL_SUMMON_MURLOC_A3, SPELL_SUMMON_MURLOC_B3,
+SPELL_SUMMON_MURLOC_A4, SPELL_SUMMON_MURLOC_B4,
+SPELL_SUMMON_MURLOC_A5, SPELL_SUMMON_MURLOC_B5,
+SPELL_SUMMON_MURLOC_A6, SPELL_SUMMON_MURLOC_B6,
+SPELL_SUMMON_MURLOC_A7, SPELL_SUMMON_MURLOC_B7,
+SPELL_SUMMON_MURLOC_A8, SPELL_SUMMON_MURLOC_B8,
+SPELL_SUMMON_MURLOC_A9, SPELL_SUMMON_MURLOC_B9,
+SPELL_SUMMON_MURLOC_A10, SPELL_SUMMON_MURLOC_B10 };
 
 struct boss_morogrim_tidewalkerAI : public ScriptedAI
 {
@@ -177,7 +188,7 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         if (m_uiEarthquakeTimer <= uiDiff)
@@ -187,23 +198,12 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
                 DoScriptText(EMOTE_EARTHQUAKE, m_creature);
                 DoScriptText(urand(0, 1) ? SAY_SUMMON1 : SAY_SUMMON2, m_creature);
 
-                // summon murlocs - north
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A1, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A3, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A5, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A7, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A9, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_A10, CAST_TRIGGERED);
+                // summon murlocs - north / south
+                uint32 m_auiSpellSummonMurlocKeep = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 12);
+                for (uint8 i = 0; i < m_auiSpellSummonMurlocKeep; ++i)
+                    DoCastSpellIfCan(m_creature, m_auiSpellSummonMurloc[i], CAST_TRIGGERED);
 
-                // summon murlocs - south
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B2, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B4, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B6, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B8, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B9, CAST_TRIGGERED);
-                DoCastSpellIfCan(m_creature, SPELL_SUMMON_MURLOC_B10, CAST_TRIGGERED);
-
-                m_uiEarthquakeTimer = 50000; 
+                m_uiEarthquakeTimer = 50000;
             }
         }
         else
@@ -212,7 +212,7 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
         if (m_uiTidalWaveTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_TIDAL_WAVE) == CAST_OK)
-                m_uiTidalWaveTimer = urand(20000, 25000);
+                m_uiTidalWaveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(20000, 25000), SPELL_TIDAL_WAVE);
         }
         else
             m_uiTidalWaveTimer -= uiDiff;
@@ -225,7 +225,7 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
                 if (DoCastSpellIfCan(m_creature, SPELL_WATERY_GRAVE) == CAST_OK)
                 {
                     DoScriptText(EMOTE_WATERY_GRAVE, m_creature);
-                    m_uiWateryGraveTimer = 30000;
+                    m_uiWateryGraveTimer = sObjectMgr.GetScaleSpellTimer(m_creature, 30000, SPELL_WATERY_GRAVE);
                     m_uiGraveIndex = 0;
                 }
             }
@@ -240,7 +240,8 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
         {
             if (m_uiWateryGlobulesTimer <= uiDiff)
             {
-                for (uint8 i = 0; i < 4; ++i)
+                uint32 m_auiSpellSummonGlobuleKeep = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
+                for (uint8 i = 0; i < m_auiSpellSummonGlobuleKeep; ++i)
                 {
                     Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER);
                     if (pTarget)
@@ -260,38 +261,60 @@ struct boss_morogrim_tidewalkerAI : public ScriptedAI
     }
 };
 
-struct mob_water_globuleAI : public ScriptedAI
+struct mob_water_globuleAI : public ScriptedAI, public TimerManager
 {
-    mob_water_globuleAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
-
-    void Reset() override {}
-
-    void EnterCombat(Unit* /*who*/) override { }
-
-    void MoveInLineOfSight(Unit* pWho) override
+    mob_water_globuleAI(Creature* pCreature) : ScriptedAI(pCreature), m_initialAggro(false)
     {
-        if (m_creature->CanAttack(pWho) && m_creature->IsWithinDist(pWho, 5.f))
+        SetReactState(REACT_DEFENSIVE);
+        AddCustomAction(1, 2000u, [&]() { AcquireNewTarget(); });
+    }
+
+    bool m_initialAggro;
+
+    void Reset() override
+    {
+        ResetAllTimers();
+    }
+
+    void JustRespawned() override
+    {
+        ScriptedAI::JustRespawned();
+        m_creature->SetInCombatWithZone();
+        AttackClosestEnemy();
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (m_creature->CanAttack(who) && m_creature->IsWithinDist(who, 5.f))
         {
-            DoCastSpellIfCan(pWho, SPELL_WATER_GLOBULE_EXPLODE, TRIGGERED_OLD_TRIGGERED);
+            DoCastSpellIfCan(who, SPELL_WATER_GLOBULE_EXPLODE, TRIGGERED_OLD_TRIGGERED);
             m_creature->ForcedDespawn();
         }
     }
 
-    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell) override
+    void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
-        if (pSpell->Id == SPELL_WATER_GLOBULE_NEW_TARGET)
+        if (spellInfo->Id == SPELL_WATER_GLOBULE_NEW_TARGET)
         {
-            m_creature->AddThreat(pTarget, 20000.0f);
-            m_creature->GetMotionMaster()->MoveChase(pTarget);
-            m_creature->SelectHostileTarget(); // properly sets getVictim
+            m_creature->AddThreat(target, 3000000.0f);
+            DoStartMovement(target);
         }
     }
 
-    void UpdateAI(const uint32 /*uiDiff*/) override
+    void AcquireNewTarget()
     {
-        if (!m_creature->getVictim())
+        DoResetThreat();
+        m_creature->CastSpell(nullptr, SPELL_WATER_GLOBULE_NEW_TARGET, TRIGGERED_NONE);
+        ResetTimer(1, urand(7000, 10000));
+    }
+
+    void UpdateAI(const uint32 diff) override
+    {
+        UpdateTimers(diff);
+        m_creature->SelectHostileTarget();
+        if (!m_creature->GetVictim() && m_initialAggro)
         {
-            m_creature->CastSpell(nullptr, SPELL_WATER_GLOBULE_NEW_TARGET, TRIGGERED_NONE);
+            AcquireNewTarget();
             return;
         }
     }

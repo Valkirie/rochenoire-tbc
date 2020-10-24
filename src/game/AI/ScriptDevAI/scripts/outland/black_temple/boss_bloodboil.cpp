@@ -21,7 +21,7 @@ SDComment: Timers may need adjustments.
 SDCategory: Black Temple
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
@@ -145,12 +145,12 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
     {
         switch (id)
         {
-            case GURTOGG_ACTION_CHANGE_PHASE: if (m_phase1) return 60000; else return 30000;
-            case GURTOGG_ACTION_BLOODBOIL: return 11000;
-            case GURTOGG_ACTION_ARCING_SMASH: return 10000;
-            case GURTOGG_ACTION_FEL_ACID: return urand(7000, 23000);
-            case GURTOGG_ACTION_BEWILDERING_STRIKE: return 20000;
-            case GURTOGG_ACTION_EJECT: return 15000;
+        case GURTOGG_ACTION_CHANGE_PHASE: return m_phase1 ? 60000 : 30000;
+            case GURTOGG_ACTION_BLOODBOIL: return sObjectMgr.GetScaleSpellTimer(m_creature, 11000u, SPELL_BLOODBOIL);
+            case GURTOGG_ACTION_ARCING_SMASH: return sObjectMgr.GetScaleSpellTimer(m_creature, 10000u, m_phase1 ? SPELL_ARCING_SMASH_1 : SPELL_ARCING_SMASH_2);
+            case GURTOGG_ACTION_FEL_ACID: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(7000, 23000), m_phase1 ? SPELL_FEL_ACID_1 : SPELL_FEL_ACID_2);
+            case GURTOGG_ACTION_BEWILDERING_STRIKE: return sObjectMgr.GetScaleSpellTimer(m_creature, 20000u, SPELL_BEWILDERING_STRIKE);
+            case GURTOGG_ACTION_EJECT: return sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, m_phase1 ? SPELL_EJECT_1 : SPELL_EJECT_2);
             default: return 0;
         }
     }
@@ -204,10 +204,21 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                 DoScriptText(urand(0, 1) ? SAY_SPECIAL1 : SAY_SPECIAL2, m_creature);
 
                 // Debuff player
-                DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_1, CAST_TRIGGERED);
-                DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_2, CAST_TRIGGERED);
-                DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_3, CAST_TRIGGERED);
-                DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_4, CAST_TRIGGERED);
+                uint32 m_auiSpellRage = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
+
+                switch (m_auiSpellRage)
+                {
+                case 4:
+                    DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_4, CAST_TRIGGERED);
+                case 3:
+                    DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_3, CAST_TRIGGERED);
+                case 2:
+                    DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_2, CAST_TRIGGERED);
+                case 1:
+                    DoCastSpellIfCan(target, SPELL_FEL_RAGE_PLAYER_1, CAST_TRIGGERED);
+                    break;
+                }
+
                 // Allow player to taunt Gurtogg
                 target->CastSpell(m_creature, SPELL_TAUNT_GURTOGG, TRIGGERED_OLD_TRIGGERED);
 
@@ -222,7 +233,7 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                 m_phase1 = false;
                 DisableCombatAction(GURTOGG_ACTION_BLOODBOIL);
                 DisableCombatAction(GURTOGG_ACTION_BEWILDERING_STRIKE);
-                ResetTimer(GURTOGG_ACTION_ARCING_SMASH, 10000);
+                ResetTimer(GURTOGG_ACTION_ARCING_SMASH, GetSubsequentActionTimer(GURTOGG_ACTION_ARCING_SMASH));
             }
         }
         else
@@ -232,11 +243,11 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
             m_phase1 = true;
             DoCastSpellIfCan(nullptr, SPELL_ACIDIC_WOUND, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
             m_creature->CastSpell(nullptr, SPELL_FEL_GEYSER, TRIGGERED_OLD_TRIGGERED);
-            ResetTimer(GURTOGG_ACTION_BLOODBOIL, 12000);
-            ResetTimer(GURTOGG_ACTION_ARCING_SMASH, 10000);
-            ResetTimer(GURTOGG_ACTION_FEL_ACID, GetInitialActionTimer(GURTOGG_ACTION_FEL_ACID));
-            ResetTimer(GURTOGG_ACTION_BEWILDERING_STRIKE, 28000);
-            ResetTimer(GURTOGG_ACTION_EJECT, 30000);
+            ResetTimer(GURTOGG_ACTION_BLOODBOIL, GetSubsequentActionTimer(GURTOGG_ACTION_BLOODBOIL));
+            ResetTimer(GURTOGG_ACTION_ARCING_SMASH, GetSubsequentActionTimer(GURTOGG_ACTION_ARCING_SMASH));
+            ResetTimer(GURTOGG_ACTION_FEL_ACID, GetSubsequentActionTimer(GURTOGG_ACTION_FEL_ACID));
+            ResetTimer(GURTOGG_ACTION_BEWILDERING_STRIKE, GetSubsequentActionTimer(GURTOGG_ACTION_BEWILDERING_STRIKE));
+            ResetTimer(GURTOGG_ACTION_EJECT, GetSubsequentActionTimer(GURTOGG_ACTION_EJECT));
             if (Unit* felRageTarget = m_creature->GetMap()->GetCreature(m_felRageTarget))
                 m_creature->getThreatManager().modifyThreatPercent(felRageTarget, -100);
         }
@@ -297,7 +308,7 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                             flags |= SELECT_FLAG_SKIP_TANK;
                             exclusionCount = 2;
                         }
-                        Unit* target = m_phase1 ? m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, exclusionCount, SPELL_FEL_ACID_1, flags) : m_creature->getVictim();
+                        Unit* target = m_phase1 ? m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, exclusionCount, SPELL_FEL_ACID_1, flags) : m_creature->GetVictim();
                         if (target)
                         {
                             if (DoCastSpellIfCan(target, m_phase1 ? SPELL_FEL_ACID_1 : SPELL_FEL_ACID_2) == CAST_OK)
@@ -311,7 +322,7 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                     }
                     case GURTOGG_ACTION_BEWILDERING_STRIKE:
                     {
-                        if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BEWILDERING_STRIKE) == CAST_OK)
+                        if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_BEWILDERING_STRIKE) == CAST_OK)
                         {
                             ResetTimer(i, GetSubsequentActionTimer(GurtoggActions(i)));
                             SetActionReadyStatus(i, false);
@@ -321,7 +332,7 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                     }
                     case GURTOGG_ACTION_EJECT:
                     {
-                        if (DoCastSpellIfCan(m_creature->getVictim(), m_phase1 ? SPELL_EJECT_1 : SPELL_EJECT_2) == CAST_OK)
+                        if (DoCastSpellIfCan(m_creature->GetVictim(), m_phase1 ? SPELL_EJECT_1 : SPELL_EJECT_2) == CAST_OK)
                         {
                             ResetTimer(i, GetSubsequentActionTimer(GurtoggActions(i)));
                             SetActionReadyStatus(i, false);
@@ -336,9 +347,9 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
 
     void UpdateAI(const uint32 diff) override
     {
-        UpdateTimers(diff, m_creature->isInCombat());
+        UpdateTimers(diff, m_creature->IsInCombat());
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         EnterEvadeIfOutOfCombatArea(diff);

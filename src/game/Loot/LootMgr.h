@@ -170,15 +170,16 @@ struct LootStoreItem
     bool    needs_quest : 1;                                // quest drop (negative ChanceOrQuestChance in DB)
     uint8   maxcount    : 8;                                // max drop count for the item (mincountOrRef positive) or Ref multiplicator (mincountOrRef negative)
     uint16  conditionId : 16;                               // additional loot condition Id
+	uint32  qualityId = 0;                                  // used by smart loot
 
     // Constructor, converting ChanceOrQuestChance -> (chance, needs_quest)
     // displayid is filled in IsValid() which must be called after
-    LootStoreItem(uint32 _itemid, float _chanceOrQuestChance, int8 _group, uint16 _conditionId, int32 _mincountOrRef, uint8 _maxcount)
+    LootStoreItem(uint32 _itemid, float _chanceOrQuestChance, int8 _group, uint16 _conditionId, int32 _mincountOrRef, uint8 _maxcount, uint32 _qualityId)
         : itemid(_itemid), chance(fabs(_chanceOrQuestChance)), mincountOrRef(_mincountOrRef),
-          group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId)
+          group(_group), needs_quest(_chanceOrQuestChance < 0), maxcount(_maxcount), conditionId(_conditionId), qualityId(_qualityId)
     {}
 
-    bool Roll(bool rate, float f_GroupSize, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)
+    bool Roll(bool rate, Player const* lootOwner) const;                             // Checks if the entry takes it's chance (at loot generation)
     bool IsValid(LootStore const& store, uint32 entry) const;
     // Checks correctness of values
 };
@@ -199,8 +200,9 @@ struct LootItem
     bool         isUnderThreshold  : 1;
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
-	
-	std::vector<uint32> randomPropertyIdArray;
+	bool         isScaled          = false;                         // true if item is scaled
+    std::map<uint32, uint32> randomPropertyIdArray;
+    std::map<uint32, uint32> randomSuffixIdArray;
 
     // storing item prototype for fast access
     ItemPrototype const* itemProto;
@@ -211,8 +213,10 @@ struct LootItem
 
     LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot);
 
-	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false);
+	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomPropertyScaled();
+	int32 getRandomSuffixScaled(uint32 ilevel, bool won = false, bool display = true);
+	void setRandomSuffixScaled();
 	uint32 loot_level = 0;
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot

@@ -95,7 +95,9 @@ class ChatHandler
         bool ParseCommands(const char* text);
         ChatCommand const* FindCommand(char const* text);
 
-        bool isValidChatMessage(const char* message) const;
+        static bool HasEscapeSequences(const char* message);
+        static bool CheckEscapeSequences(const char* message);
+
         bool HasSentErrorMessage() const { return sentErrorMessage;}
 
         /**
@@ -199,15 +201,12 @@ class ChatHandler
         bool HandleAccountSetGmLevelCommand(char* args);
         bool HandleAccountSetPasswordCommand(char* args);
 
-        bool HandleAHBotItemsAmountCommand(char* args);
-        template <int Q>
-        bool HandleAHBotItemsAmountQualityCommand(char* args);
-        bool HandleAHBotItemsRatioCommand(char* args);
-        template <int H>
-        bool HandleAHBotItemsRatioHouseCommand(char* args);
+#ifdef BUILD_AHBOT
         bool HandleAHBotRebuildCommand(char* args);
         bool HandleAHBotReloadCommand(char* args);
         bool HandleAHBotStatusCommand(char* args);
+        bool HandleAHBotItemCommand(char* args);
+#endif
 
         bool HandleAuctionAllianceCommand(char* args);
         bool HandleAuctionGoblinCommand(char* args);
@@ -215,6 +214,8 @@ class ChatHandler
         bool HandleAuctionItemCommand(char* args);
         bool HandleAuctionCommand(char* args);
 
+        bool HandleWarnCharacterCommand(char* args);
+        bool HandleAddCharacterNoteCommand(char* args);
         bool HandleBanAccountCommand(char* args);
         bool HandleBanCharacterCommand(char* args);
         bool HandleBanIPCommand(char* args);
@@ -241,6 +242,9 @@ class ChatHandler
         bool HandleCharacterReputationCommand(char* args);
         bool HandleCharacterTitlesCommand(char* args);
 
+        bool HandleChannelListCommand(char* args);
+        bool HandleChannelStaticCommand(char* args);
+
         bool HandleDebugAnimCommand(char* args);
         bool HandleDebugArenaCommand(char* args);
         bool HandleDebugBattlegroundCommand(char* args);
@@ -265,11 +269,12 @@ class ChatHandler
         bool HandleDebugMoveflags(char* args);
         bool HandleDebugLootDropStats(char* args);
         bool HandleDebugOverflowCommand(char* args);
+        bool HandleDebugChatFreezeCommand(char* args);
 
+        bool HandleDebugObjectFlags(char* args);
         bool HandleDebugHaveAtClientCommand(char* args);
         bool HandleDebugIsVisibleCommand(char* args);
 
-        bool HandleDebugMaps(char* args);
         bool HandleShowTemporarySpawnList(char* args);
         bool HandleGridsLoadedCount(char* args);
 
@@ -292,6 +297,10 @@ class ChatHandler
         bool HandleDebugSendSpellFailCommand(char* args);
         bool HandleDebugSendWorldState(char* args);
 
+        bool HandleDebugFlyCommand(char* args);
+
+        bool HandleDebugPacketHistory(char* args);
+
         bool HandleSD2HelpCommand(char* args);
         bool HandleSD2ScriptCommand(char* args);
 
@@ -309,12 +318,14 @@ class ChatHandler
         bool HandleGameObjectTargetCommand(char* args);
         bool HandleGameObjectTurnCommand(char* args);
         bool HandleGameObjectActivateCommand(char* args);
+        bool HandleGameObjectRespawnCommand(char* args);
 
         bool HandleGMCommand(char* args);
         bool HandleGMChatCommand(char* args);
         bool HandleGMFlyCommand(char* args);
         bool HandleGMListFullCommand(char* args);
         bool HandleGMListIngameCommand(char* args);
+        bool HandleGMMountUpCommand(char* args);
         bool HandleGMVisibleCommand(char* args);
 
         bool HandleGoCommand(char* args);
@@ -342,6 +353,8 @@ class ChatHandler
         bool HandleInstanceUnbindCommand(char* args);
         bool HandleInstanceStatsCommand(char* args);
         bool HandleInstanceSaveDataCommand(char* args);
+        bool HandleInstanceRescaleCommand(char* args);
+        bool HandleInstanceListPacksCommand(char* args);
 
         bool HandleLearnCommand(char* args);
         bool HandleLearnAllCommand(char* args);
@@ -399,6 +412,31 @@ class ChatHandler
         bool HandleModifyRepCommand(char* args);
         bool HandleModifyArenaCommand(char* args);
         bool HandleModifyGenderCommand(char* args);
+        bool HandleModifyStrengthCommand(char* args);
+        bool HandleModifyAgilityCommand(char* args);
+        bool HandleModifyStaminaCommand(char* args);
+        bool HandleModifyIntellectCommand(char* args);
+        bool HandleModifySpiritCommand(char* args);
+        bool HandleModifyArmorCommand(char* args);
+        bool HandleModifyHolyCommand(char* args);
+        bool HandleModifyFireCommand(char* args);
+        bool HandleModifyNatureCommand(char* args);
+        bool HandleModifyFrostCommand(char* args);
+        bool HandleModifyShadowCommand(char* args);
+        bool HandleModifyArcaneCommand(char* args);
+        bool HandleModifyMeleeApCommand(char* args);
+        bool HandleModifyRangedApCommand(char* args);
+        bool HandleModifySpellPowerCommand(char* args);
+        bool HandleModifyMeleeCritCommand(char* args);
+        bool HandleModifySpellCritCommand(char* args);
+        bool HandleModifyMeleeHasteCommand(char* args);
+        bool HandleModifyRangedHasteCommand(char* args);
+        bool HandleModifySpellHasteCommand(char* args);
+        bool HandleModifyBlockCommand(char* args);
+        bool HandleModifyDodgeCommand(char* args);
+        bool HandleModifyParryCommand(char* args);
+        bool ModifyMountCommandHelper(Player* target, char* args);
+        bool ModifyStatCommandHelper(char* args, char const* statName, uint32 spellId);
 
         //-----------------------Npc Commands-----------------------
         bool HandleNpcAddCommand(char* args);
@@ -435,6 +473,8 @@ class ChatHandler
         bool HandleNpcSubNameCommand(char* args);
 
 		bool HandleNpcChangePackCommand(char* args);
+        bool HandleNpcSetScaleCommand(char* args);
+        bool HandleNpcSetLevelVarCommand(char* args);
         //----------------------------------------------------------
 
         bool HandlePDumpLoadCommand(char* args);
@@ -493,7 +533,7 @@ class ChatHandler
         bool HandleReloadItemEnchantementsCommand(char* args);
         bool HandleReloadItemRequiredTragetCommand(char* args);
 		bool HandleReloadCreatureFlexCommand(char* args);
-		bool HandleReloadSpellFlexCommand(char* args);
+        bool HandleReloadZoneFlexCommand(char* args);
 		bool HandleReloadLootScaleCommand(char* args);
         bool HandleReloadLocalesCreatureCommand(char* args);
         bool HandleReloadLocalesGameobjectCommand(char* args);
@@ -554,6 +594,7 @@ class ChatHandler
         bool HandleResetStatsCommand(char* args);
         bool HandleResetTalentsCommand(char* args);
         bool HandleResetTaxiNodesCommand(char* args);
+        bool HandleResetModsCommand(char* args);
 
         bool HandleSendItemsCommand(char* args);
         bool HandleSendMailCommand(char* args);
@@ -639,7 +680,6 @@ class ChatHandler
         bool HandleCooldownClearCommand(char* args);
         bool HandleCooldownClearClientSideCommand(char* args);
         bool HandleCooldownClearArenaCommand(char* args);
-		bool HandleRescaleCommand(char* args);
         bool HandleUnLearnCommand(char* args);
         bool HandleGetDistanceCommand(char* args);
         bool HandleGetLosCommand(char* args);
@@ -663,8 +703,21 @@ class ChatHandler
         bool HandleChangeWeatherCommand(char* args);
         bool HandleKickPlayerCommand(char* args);
 
+        bool HandleTicketDiscardCommand(char* args);
+        bool HandleTicketEscalateCommand(char* args);
+        bool HandleTicketGoCommand(char* args);
+        bool HandleTicketGoNameCommand(char* args);
+        bool HandleTicketNoteCommand(char* args);
+        bool HandleTicketReadCommand(char* args);
+        bool HandleTicketResolveCommand(char* args);
+        bool HandleTicketSortCommand(char* args);
+        bool HandleTicketWhisperCommand(char* args);
         bool HandleTicketCommand(char* args);
-        bool HandleDelTicketCommand(char* args);
+
+        bool HandleTicketsListCommand(char* args);
+        bool HandleTicketsQueueCommand(char* args);
+        bool HandleTicketsCommand(char* args);
+
         bool HandleMaxSkillCommand(char* args);
         bool HandleSetSkillCommand(char* args);
         bool HandleRespawnCommand(char* args);
@@ -695,6 +748,10 @@ class ChatHandler
         bool HandleLinkToggleCommand(char* args);
         bool HandleLinkCheckCommand(char* args);
 
+        // worldstate
+        bool HandleWarEffortCommand(char* args);
+        bool HandleExpansionRelease(char* args);
+
         //! Development Commands
         bool HandleSaveAllCommand(char* args);
 
@@ -719,7 +776,6 @@ class ChatHandler
         bool ShowPlayerListHelper(QueryResult* result, uint32* limit = nullptr, bool title = true, bool error = true);
         void ShowSpellListHelper(Player* target, SpellEntry const* spellInfo, LocaleConstant loc);
         void ShowPoolListHelper(uint16 pool_id);
-        void ShowTicket(GMTicket const* ticket);
         void ShowTriggerListHelper(AreaTriggerEntry const* atEntry);
         void ShowTriggerTargetListHelper(uint32 id, AreaTrigger const* at, bool subpart = false);
         bool LookupPlayerSearchCommand(QueryResult* result, uint32* limit = nullptr);

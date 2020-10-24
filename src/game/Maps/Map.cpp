@@ -21,9 +21,13 @@
 #include "Entities/Player.h"
 #include "Grids/GridNotifiers.h"
 #include "Log.h"
+#include "Grids/ObjectGridLoader.h"
+#include "Metric/Metric.h"
 #include "Grids/CellImpl.h"
-#include "Maps/InstanceData.h"
+#include "GridDefines.h"
 #include "Grids/GridNotifiersImpl.h"
+#include "Maps/InstanceData.h"
+#include "Maps/MapPersistentStateMgr.h"
 #include "Entities/Transports.h"
 #include "Globals/ObjectAccessor.h"
 #include "Globals/ObjectMgr.h"
@@ -31,12 +35,10 @@
 #include "Groups/Group.h"
 #include "MapRefManager.h"
 #include "Server/DBCEnums.h"
-#include "Maps/MapPersistentStateMgr.h"
 #include "VMapFactory.h"
 #include "MotionGenerators/MoveMap.h"
 #include "Chat/Chat.h"
 #include "Weather/Weather.h"
-#include "Grids/ObjectGridLoader.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 #include "Tools/Language.h"
 
@@ -94,8 +96,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
       m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE), m_persistentState(nullptr),
       m_activeNonPlayersIter(m_activeNonPlayers.end()), m_onEventNotifiedIter(m_onEventNotifiedObjects.end()),
       i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id)),
-      i_data(nullptr), i_script_id(0),
-      m_cycleCounter(0), m_updateTimeMin(INT_MAX), m_updateTimeMax(0), m_updateTimeTotal(0)
+      i_data(nullptr), i_script_id(0)
 {
     m_weatherSystem = new WeatherSystem(this);
 }
@@ -116,7 +117,7 @@ void Map::Initialize(bool loadInstanceData /*= true*/)
     }
 
     // lets initialize visibility distance for map
-    Map::InitVisibilityDistance();
+    InitVisibilityDistance();
 
     // add reference for TerrainData object
     m_TerrainData->AddRef();
@@ -417,7 +418,7 @@ void Map::MessageBroadcast(Player const* player, WorldPacket const& msg, bool to
 
     MaNGOS::MessageDeliverer post_man(*player, msg, to_self);
     TypeContainerVisitor<MaNGOS::MessageDeliverer, WorldTypeMapContainer > message(post_man);
-    cell.Visit(p, message, *this, *player, GetVisibilityDistance());
+    cell.Visit(p, message, *this, *player, player->GetVisibilityData().GetVisibilityDistance());
 }
 
 void Map::MessageBroadcast(WorldObject const* obj, WorldPacket const& msg)
@@ -440,7 +441,7 @@ void Map::MessageBroadcast(WorldObject const* obj, WorldPacket const& msg)
     // we have alot of blinking mobs because monster move packet send is broken...
     MaNGOS::ObjectMessageDeliverer post_man(msg);
     TypeContainerVisitor<MaNGOS::ObjectMessageDeliverer, WorldTypeMapContainer > message(post_man);
-    cell.Visit(p, message, *this, *obj, GetVisibilityDistance());
+    cell.Visit(p, message, *this, *obj, obj->GetVisibilityData().GetVisibilityDistance());
 }
 
 void Map::MessageDistBroadcast(Player const* player, WorldPacket const& msg, float dist, bool to_self, bool own_team_only)
@@ -584,61 +585,63 @@ void Map::VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::Obje
 
 void Map::Update(const uint32& t_diff)
 {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    metric::duration<std::chrono::milliseconds> meas("map.update", {
+        { "map_id", std::to_string(i_id) },
+        { "instance_id", std::to_string(i_InstanceId) }
+        });
+
+    uint64 count = 0;
 
     m_dyn_tree.update(t_diff);
 
-    /// update worldsessions for existing players
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* plr = m_mapRefIter->getSource();
-        if (plr && plr->IsInWorld())
-        {
-            WorldSession* pSession = plr->GetSession();
-            MapSessionFilter updater(pSession);
+    GetMessager().Execute(this);
 
-            pSession->Update(t_diff, updater);
-        }
-    }
+    /// update worldsessions for existing players
+	if(HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* plr = m_mapRefIter->getSource();
+			if (plr && plr->IsInWorld())
+			{
+				WorldSession* pSession = plr->GetSession();
+				MapSessionFilter updater(pSession);
+
+				pSession->Update(t_diff, updater);
+			}
+		}
 
     /// update players at tick
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* plr = m_mapRefIter->getSource();
-        if (plr && plr->IsInWorld())
-            plr->Update(t_diff);
-    }
+	if (HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* plr = m_mapRefIter->getSource();
+			if (plr && plr->IsInWorld())
+				plr->Update(t_diff);
+		}
 
     /// update active cells around players and active objects
     resetMarkedCells();
 
-    {
-        std::lock_guard<std::mutex> guard(m_messageMutex);
-        for (auto& message : m_messageVector)
-            message(this);
-
-        m_messageVector.clear();
-    }
-
     WorldObjectUnSet objToUpdate;
-    MaNGOS::ObjectUpdater obj_updater(objToUpdate);
+    MaNGOS::ObjectUpdater obj_updater(objToUpdate, t_diff);
     TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer  > grid_object_update(obj_updater);    // For creature
     TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer > world_object_update(obj_updater);   // For pets
 
     // the player iterator is stored in the map object
     // to make sure calls to Map::Remove don't invalidate it
-    for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-    {
-        Player* player = m_mapRefIter->getSource();
-        if (!player->IsInWorld() || !player->IsPositionValid())
-            continue;
+	if (HavePlayers())
+		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+		{
+			Player* player = m_mapRefIter->getSource();
+			if (!player->IsInWorld() || !player->IsPositionValid())
+				continue;
 
-        VisitNearbyCellsOf(player, grid_object_update, world_object_update);
+			VisitNearbyCellsOf(player, grid_object_update, world_object_update);
 
-        // If player is using far sight, visit that object too
-        if (WorldObject* viewPoint = GetWorldObject(player->GetFarSightGuid()))
-            VisitNearbyCellsOf(viewPoint, grid_object_update, world_object_update);
-    }
+			// If player is using far sight, visit that object too
+			if (WorldObject* viewPoint = GetWorldObject(player->GetFarSightGuid()))
+				VisitNearbyCellsOf(viewPoint, grid_object_update, world_object_update);
+		}
 
     // non-player active objects
     if (!m_activeNonPlayers.empty())
@@ -681,7 +684,12 @@ void Map::Update(const uint32& t_diff)
 
     // update all objects
     for (auto wObj : objToUpdate)
+    {
         wObj->Update(t_diff);
+        ++count;
+    }
+
+    meas.add_field("count", std::to_string(static_cast<int32>(count)));
 
     // Send world objects and item update field changes
     SendObjectUpdates();
@@ -707,18 +715,6 @@ void Map::Update(const uint32& t_diff)
     if (i_data)
         i_data->Update(t_diff);
 
-    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-    long long duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    if (duration < m_updateTimeMin)
-        m_updateTimeMin = duration;
-
-    if (duration > m_updateTimeMax)
-        m_updateTimeMax = duration;
-
-    m_updateTimeTotal += duration;
-    ++m_cycleCounter;
-
     m_weatherSystem->UpdateWeathers(t_diff);
 }
 
@@ -726,328 +722,353 @@ void Map::Update(const uint32& t_diff)
 float f_ratio_heal_dps = 0.2f;  // store the ratio heal vs dps (between 0.2 and 0.3)
 uint32 lastKnownGroupSize = 0;	// store the last known group size
 uint32 lastKnownPoolSize = 0;	// store the number of creatures in the raid
-uint32 lastKnownForceSize = 0;	// store the forced raid size
-uint32 u_MaxPlayer = 40;		// store the maximum number of players
-uint32 u_MinPlayer = 20;		// store the minimum number of players
-uint32 u_TmpPlayer = 40;		// store the temporary number of players
-uint32 u_nbr_players = 40;		// store the current group size
-uint32 u_GroupSize = 0;			// store the last known group size
+uint32 lastKnownRefreshSize = 0;	// store the forced raid size
 
 float f_max_red_boss = 0.8f;	// store the maximum percentage of damage reduction (boss / trash)
 float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction (adds)
 float f_min_red_health = 0.7f;	// store the maximum percentage of damage reduction before reducing adds number
 float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
 
-float Map::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness)
+uint32 Map::GetFinalNAdds(float NT, float Nadds) const
 {
-	return 2 + 1 / (std::exp((0.7375 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1) + 1 / (std::exp((0.5125 * u_MaxPlayer - u_nbr_players) / f_softness * 100) + 1);
+	return sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
 }
 
-float Map::GetFactorNHR(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
-{
-	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness);
-	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
-	return u_nbr_players - NHT - NT - NDPS;
-}
-
-float Map::GetFactorNDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
-{
-	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
-	return (u_nbr_players - NHT - NT) / (1 + f_ratio_heal_dps);
-}
-
-float Map::GetFactorHP(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness)
-{
-	return GetFactorNDPS(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness) / GetFactorNDPS(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness);
-}
-
-float Map::GetFactorDPS(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Ratio_Bascule_HR_HT)
-{
-	return (GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) / (GetFactorNHT(u_MaxPlayer, u_MaxPlayer, f_softness) + Ratio_Bascule_HR_HT * GetFactorNHR(u_MaxPlayer, u_MaxPlayer, NT, f_ratio_heal_dps, f_softness));
-}
-
-float Map::GetFactorAdds(float u_MaxPlayer, float u_nbr_players, float NT, float f_ratio_heal_dps, float f_softness, float Nadds, float f_min_red_health)
-{
-	float FinalNAdds = Nadds;
-
-	while (((GetFactorHP(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness)) * Nadds / FinalNAdds < f_min_red_health) && FinalNAdds > 1)
-		FinalNAdds = FinalNAdds - 1;
-
-	return FinalNAdds;
-}
-
-uint32 Map::GetFinalNAdds(float NT, float Nadds, float Ratio_Bascule_HR_HT)
-{
-	return GetFactorAdds(u_MaxPlayer, u_nbr_players, NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
-}
-
-void Map::GetScaleRatio(float NbrTank, float NbrAdds, float Ratio_Bascule_HR_HT, float CoeffSpellRatio, float& RatioHp, float& FinalNAdds, float& Ratio_DPS, float& Ratio_Damage, float& Ratio_AttSpeed, float& Ratio_SpellTimer, float& Ratio_AddsHp, float& Ratio_Adds_DPS, float& Ratio_Adds_Damage, float& Ratio_Adds_AttSpeed, float& Ratio_Add_SpellTimer)
-{
-	float NHT = GetFactorNHT(u_MaxPlayer, u_nbr_players, f_softness);
-	float NDPS = GetFactorNDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
-	float NHR = GetFactorNHR(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
-
-	Ratio_DPS *= GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT);
-	RatioHp *= GetFactorHP(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness);
-	FinalNAdds *= GetFactorAdds(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, NbrAdds, f_min_red_health);
-	Ratio_Damage *= 1 - (1 - f_max_red_boss) * (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) / (1 - GetFactorDPS(u_MaxPlayer, u_MinPlayer, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT));
-	Ratio_AttSpeed *= Ratio_DPS / Ratio_Damage;
-	Ratio_SpellTimer *= 1 - (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) * CoeffSpellRatio;
-	Ratio_AddsHp *= GetFactorHP(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness) * NbrAdds / FinalNAdds;
-	Ratio_Adds_DPS *= GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT) * NbrAdds / FinalNAdds;
-	Ratio_Adds_Damage *= (1 - (1 - f_max_red_adds) * (1 - GetFactorDPS(u_MaxPlayer, u_nbr_players, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT)) / (1 - GetFactorDPS(u_MaxPlayer, u_MinPlayer, NbrTank, f_ratio_heal_dps, f_softness, Ratio_Bascule_HR_HT))) * NbrAdds / FinalNAdds;
-	Ratio_Adds_AttSpeed *= Ratio_Adds_DPS / Ratio_Adds_Damage;
-	Ratio_Add_SpellTimer *= GetScaleSpellTimer(Ratio_DPS, NbrAdds, FinalNAdds, CoeffSpellRatio);
-}
-
-float Map::GetScaleSpellTimer(float Ratio_DPS, float Nadds, float FinalNAdds, float CoeffSpellRatio)
-{
-	return 1 - (1 - Ratio_DPS * Nadds / FinalNAdds) * CoeffSpellRatio;
-}
-
-uint32 Map::GetCreaturesCount(uint32 entry, bool IsInCombat, bool IsAlive)
+uint32 Map::GetCreaturesCount(uint32 entry, bool IsScaled) const
 {
 	uint32 output = 0;
-	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+    for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
 	{
-		Creature* creature = ((Creature*)* it);
+        if (Creature* creature = ((Creature*)it->second))
+        {
+            uint32 guid = creature->GetGUIDLow();
+            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+            uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-		if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
-			if (cinfo->Entry == entry && (!IsAlive || (IsAlive && creature->isAlive())))
-			{
-				//if (IsInCombat || (!IsInCombat && !creature->isInCombat()))
-				output++;
-			}
+            if (packId != 0)
+                continue; // skip if in a pack
+
+            if (creature->IsTemporarySummon())
+                continue; // skip if is summoned
+
+            if (creature->GetEntry() == entry && ((IsScaled && creature->isScaled()) || !IsScaled))
+                output++;
+        }
 	}
 	return output;
 }
 
-uint32 Map::GetCreaturesPackSize(uint32 pack)
+uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
 {
-	if (pack == 0)
-		return 1;
-
 	uint32 output = 0;
-	for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
-	{
-		if(Creature* creature = ((Creature*)* it))
-		{
-			uint32 packid = creature->getPackId();
-			if(packid == pack)
-				output++;
-		}
+    for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+    {
+        if (Creature* creature = ((Creature*)it->second))
+        {
+            uint32 guid = creature->GetGUIDLow();
+            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+            uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+            if (packId == pack && ((IsScaled && creature->isScaled()) || !IsScaled))
+                output++;
+        }
 	}
 	return output;
 }
 
-void Map::UpdateFlexibleRaid(bool ForceRefresh, uint32 ForcedSize)
+void Map::ShuffleFlexibleCore()
 {
-	if (ForcedSize != 0)
-		lastKnownForceSize = ForcedSize;
-	else
-		lastKnownForceSize = 0;
+    if (m_creaturesStore.size() == 0)
+        return;
+
+    std::vector<CreatureMap::key_type> v(m_creaturesStore.size());
+    std::transform(m_creaturesStore.begin(), m_creaturesStore.end(), v.begin(),
+        [](const CreatureMap::value_type& x) {
+            return x.first;
+        });
+    std::srand(time(0));
+    auto n = m_creaturesStore.size();
+    for (auto i = n - 1; i > 0; --i) {
+        CreatureMap::size_type r = (double(rand()) / RAND_MAX) * (i + 1);
+        std::swap(m_creaturesStore[v[i]], m_creaturesStore[v[r]]);
+    }
+}
+
+enum FlexibleCore
+{
+    SPELL_CHANNEL_VISUAL_RED = 32839,
+    SPELL_CHANNEL_VISUAL_BLUE = 32840,
+
+    DISPLAY_DEFAULT = 0,
+    DISPLAY_INVISIBLE = 1,
+    DISPLAY_VISIBLE = 2
+};
+
+void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
+{
+	if (RefreshSize != 0)
+		lastKnownRefreshSize = RefreshSize > GetMaxPlayers() ? GetMaxPlayers() : RefreshSize;
 
 	u_GroupSize = GetPlayersCount();
 
-	if (u_GroupSize > 0)
-	{
-		u_TmpPlayer = lastKnownForceSize > u_GroupSize ? lastKnownForceSize : u_GroupSize;
+    if (u_GroupSize > 0)
+    {
+        u_TmpPlayer = lastKnownRefreshSize > u_GroupSize ? lastKnownRefreshSize : u_GroupSize;
 
-		if (lastKnownGroupSize != u_GroupSize || lastKnownPoolSize != m_creaturesStore.size() || ForceRefresh)
+        if (lastKnownGroupSize != u_GroupSize)
+        {
+            isRefresh = true;
+
+            if (lastKnownGroupSize != 0)
+            {
+                for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
+                {
+                    Player* plr = m_mapRefIter->getSource();
+                    if (u_GroupSize > lastKnownGroupSize)
+                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_CORE_INC, GetMapName());
+                    else if (u_GroupSize < lastKnownGroupSize)
+                        plr->GetSession()->SendNotification(LANG_FLEXIBLE_CORE_DEC, GetMapName());
+                }
+            }
+
+            lastKnownGroupSize = u_GroupSize;
+        }
+        else if (lastKnownPoolSize != m_creaturesStore.size())
+        {
+            isRefresh = true;
+            lastKnownPoolSize = m_creaturesStore.size();
+        }
+
+		if (isRefresh)
 		{
-			for (int i = 0; i < 40000; i++) // has to be improved ! supposed to be the biggest known creature entry in the db
-				COMPTEUR[i] = 0;
+            // clear the counter
+            m_poolsStore.clear();
 
-			if (lastKnownGroupSize != 0)
-			{
-				for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
-				{
-					Player* plr = m_mapRefIter->getSource();
-					if (u_GroupSize > lastKnownGroupSize)
-						plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_INC, GetMapName());
-					else if (u_GroupSize < lastKnownGroupSize)
-						plr->GetSession()->SendNotification(LANG_FLEXIBLE_RAID_DEC, GetMapName());
-				}
-			}
+            SetCurPlayers(u_TmpPlayer < GetMinPlayers() ? GetMinPlayers() : u_TmpPlayer);
 
-			lastKnownGroupSize = u_GroupSize;
-			lastKnownPoolSize = m_creaturesStore.size();
+            for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+            {
+                uint32 guid = it->first;
+                Creature* creature = it->second;
 
-			u_MaxPlayer = GetMaxPlayers();
-			u_MinPlayer = GetMinPlayers();
-
-			u_nbr_players = u_TmpPlayer < u_MinPlayer ? u_MinPlayer : u_TmpPlayer;
-
-			for (std::set<Creature*>::iterator it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
-			{
-				Creature* creature = ((Creature*)* it);
-
-				if (!creature)									// skip if no creature found
-					continue;
-
-				if (creature->u_nbr_players == u_nbr_players)	// skip if creature is already scaled for current raid size
-					continue;
+                if (!creature->IsInWorld())
+                    continue;
 
 				CreatureInfo const* cinfo = creature->GetCreatureInfo();
 
 				if (!cinfo)										// skip if we can't read creature's info
 					continue;
 
+                if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+                uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+                std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
+                CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
+                // Store once values
+                if (!cdata.m_health)
+                    cdata.m_health = creature->GetMaxHealth();
+                if (!cdata.m_power)
+                    cdata.m_power = creature->GetMaxPower(creature->HasMana() ? POWER_MANA : POWER_ENERGY);
+                if (!cdata.m_reactstate)
+                    cdata.m_reactstate = (int)creature->AI()->GetReactState();
+                if (!cdata.m_flags)
+                    cdata.m_flags = creature->GetUInt32Value(UNIT_FIELD_FLAGS);
+
 				float MeleeBaseAttackTime	= (float)cinfo->MeleeBaseAttackTime;
 				float RangedBaseAttackTime	= (float)cinfo->RangedBaseAttackTime;
 				float MinMeleeDmg			= (float)cinfo->MinMeleeDmg;
 				float MaxMeleeDmg			= (float)cinfo->MaxMeleeDmg;
-				float MaxHealth				= (float)creature->GetMaxHealth();
+                float MaxHealth             = (float)cdata.m_health;
+                float MaxPower              = (float)cdata.m_power;
 
-				// Flexible Raid Values
-				float f_nbr_fadds = 1.0f;					// store the number of adds (to keep)
-				float f_ratio_health = 1.0f;				// store the HP ratio
-				float f_ratio_health_adds = 1.0f;
-				float f_ratio_dps = 1.0f;					// store the dps ratio
-				float f_ratio_dps_adds = 1.0f;
-				float f_ratio_damage = 1.0f;				// store the damage ratio
-				float f_ratio_damage_adds = 1.0f;
-				float f_ratio_attacktime = 1.0f;			// store the attack speed ratio
-				float f_ratio_attacktime_adds = 1.0f;
-				float f_ratio_spelltimer = 1.0f;			// store the spell speed ratio
-				float f_ratio_spelltimer_adds = 1.0f;
+                uint32 leftAlive            = 0;
+                uint32 leftMulti            = 1;
 
-				// Creature based values
-				bool	f_is_flex = false;		// determine if the number of creature has to be alterated
-				uint32	u_nbr_tank = 2;			// number of tanks needed for that encounter
-				uint32	u_nbr_pack = 1;			// number of creatures commonly encountered in one pack
-				float	f_ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
-				float	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
-				float	f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
-				float	f_ratio_c0 = 1.0f;		// used to compute c1 and c2
+                if (cdata.instance_size != GetCurPlayers())
+                    cdata.treated = false;
+                else if (cdata.pool_size != lastKnownPoolSize)
+                {
+                    cdata.pool_size = lastKnownPoolSize;
 
-				uint32 packEntry = creature->getPackId();	// store the creature pack entry
-				uint32 u_nbr_adds = 0;											// store the number of creatures (all)
+                    if (m_creaturesStore_buffer.find(cinfo->Entry) != m_creaturesStore_buffer.end())
+                        cdata.treated = false;
+                    else
+                        continue;
+                }
 
-				float factorProbaSpwan;
-				float factorTimeSpawn;
+                if (!cdata.treated)
+                {
+                    std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(GetId());
+                    if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+                    {
+                        cdata.nbr_tank = f_values->nb_tank;
+                        cdata.nbr_pack = f_values->nb_pack;
+                        cdata.ratio_hrht = f_values->ratio_hrht;
+                        cdata.ratio_c1 = f_values->ratio_c1;
+                        cdata.ratio_c2 = f_values->ratio_c2;
+                        cdata.ratio_c0 = GetCurPlayers() * (cdata.ratio_c2 - cdata.ratio_c1) / (GetMaxPlayers() - GetMinPlayers()) + (GetMaxPlayers() * cdata.ratio_c1 - GetMinPlayers() * cdata.ratio_c2) / (GetMaxPlayers() - GetMinPlayers());
+                    }
+                    else
+                    {
+                        switch (GetMaxPlayers())
+                        {
+                            case 40: cdata.nbr_tank = 3; break;
+                            case 25: cdata.nbr_tank = 2; break;
+                            case 20: cdata.nbr_tank = 2; break;
+                            case 10: cdata.nbr_tank = 2; break;
+                            case 5: cdata.nbr_tank = 1; break;
+                        }
+                    }
 
-				uint32 u_nbr_adds_alive = 0;		// store the number of creatures (alive)
-				uint16 u_adds_compteur = 0;			// used to split creatures pack
-				uint16 u_adds_multiplicity = 1;		// used to split creatures pack
+                    cdata.r_health = 1.0f * sObjectMgr.GetFactorHP(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness);
+                    cdata.r_dps = 1.0f * sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht);
+                    cdata.r_dmg = 1.0f * (1 - (1 - f_max_red_boss) * (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)) / (1 - sObjectMgr.GetFactorDPS(GetMaxPlayers(), GetMinPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.ratio_hrht)));
+                    cdata.r_attack = 1.0f * cdata.r_dps / cdata.r_dmg;
+                    cdata.instance_size = GetCurPlayers();
 
-				std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(this->GetId());
-				if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+                    // Temporary calculations
+                    MaxHealth *= cdata.r_health / cdata.ratio_c0;
+                    MaxPower *= cdata.r_health / cdata.ratio_c0;
+                    MinMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
+                    MaxMeleeDmg *= cdata.r_dmg / cdata.ratio_c0;
+                    MeleeBaseAttackTime /= cdata.r_attack;
+                    RangedBaseAttackTime /= cdata.r_attack;
+                }
+
+                // default behavior
+                if (packId == 0 && !cdata.treated)
+                {
+                    cdata.nbr_adds = GetCreaturesCount(cinfo->Entry);
+                    cdata.nbr_adds_scaled = GetCreaturesCount(cinfo->Entry, true);
+                    cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
+                    cdata.packid = cinfo->Entry;
+                }
+                else if(packId != 0)
+                {
+                    if (!cdata.treated)
+                    {
+                        cdata.nbr_pack = GetCreaturesPackSize(packId);
+                        cdata.nbr_adds = cdata.nbr_pack;
+                    }
+
+                    cdata.nbr_adds_keep = 1.0f * sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness, cdata.nbr_adds, f_min_red_health);
+                    cdata.nbr_adds_scaled = GetCreaturesPackSize(packId, true);
+                    cdata.packid = packId;
+                }
+
+                cdata.nbr_adds_alive = cdata.nbr_adds - cdata.nbr_adds_scaled;
+
+                if (!cdata.treated)
+                    cdata.treated = true;
+
+                if (m_poolsStore.find(cdata.packid) == m_poolsStore.end())
+                    m_poolsStore[cdata.packid] = 0;
+
+                // Applying values
+                creature->SetMaxHealth((uint32)MaxHealth);
+                creature->SetMaxPower(creature->HasMana() ? POWER_MANA : POWER_ENERGY, (uint32)MaxPower);
+                creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, MinMeleeDmg);
+                creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, MaxMeleeDmg);
+                creature->SetAttackTime(BASE_ATTACK, (uint32)MeleeBaseAttackTime);
+                creature->SetAttackTime(OFF_ATTACK, (uint32)MeleeBaseAttackTime);
+                creature->SetAttackTime(RANGED_ATTACK, (uint32)RangedBaseAttackTime);
+
+                // Storing values for remote calls
+                creature->SetInstanceHealth(cdata.r_health);
+                creature->SetInstanceDps(cdata.r_dps);
+                creature->SetInstanceDmg(cdata.r_dmg);
+                creature->SetInstanceAttackTime(cdata.r_attack);
+
+                // Computing instance size (stored for optimisation purposes)
+                creature->SetInstanceSize(cdata.instance_size);
+                creature->SetInstanceAdds(cdata.nbr_pack);
+                creature->SetInstanceTanks(cdata.nbr_tank);
+
+                if (cdata.nbr_pack > 1 && cdata.nbr_adds_alive != cdata.nbr_adds_keep)
 				{
-					u_nbr_tank = f_values->nb_tank;
+                    creature->SetInstanceAddsKeep(cdata.nbr_adds_keep);
+					creature->SetInstanceDps(cdata.r_dps * cdata.nbr_pack / cdata.nbr_adds_keep);
 
-					u_nbr_pack = GetCreaturesPackSize(packEntry) != 1 ? GetCreaturesPackSize(packEntry) : f_values->nb_pack;
+                    leftAlive = floor(cdata.nbr_adds_keep / cdata.nbr_adds * cdata.nbr_pack);
 
-					f_ratio_hrht = f_values->ratio_hrht;
-					f_ratio_c1 = f_values->ratio_c1;
-					f_ratio_c2 = f_values->ratio_c2;
-					f_is_flex = u_nbr_pack > 1;
-					f_ratio_c0 = u_nbr_players * (f_ratio_c2 - f_ratio_c1) / (u_MaxPlayer - u_MinPlayer) + (u_MaxPlayer * f_ratio_c1 - u_MinPlayer * f_ratio_c2) / (u_MaxPlayer - u_MinPlayer);
-				}
+                    if (m_poolsStore[cdata.packid] >= cdata.nbr_pack)
+                        m_poolsStore[cdata.packid] = 0;
 
-				switch (cinfo->Entry)
-				{
-				case 12416: // Razorgore adds
-				case 12420:
-				case 12422:
-					factorProbaSpwan = 2.3 + 0.6 / (std::exp((0.825 * u_MaxPlayer - u_nbr_players) / 2) + 1) + 1.1 / (std::exp((0.65 * u_MaxPlayer - u_nbr_players) / 2) + 1);
-					factorTimeSpawn = -0.015 * u_nbr_players + 1.6;
-					f_ratio_health = 4 * factorTimeSpawn / factorProbaSpwan;
-					f_ratio_attacktime = 4 * factorTimeSpawn / factorProbaSpwan;
-					f_ratio_damage = 4 * f_ratio_health / factorProbaSpwan;
-					break;
-				case 12463:
-				case 12464:
-				case 12465:
-					packEntry = 12463;
-					u_adds_multiplicity = 2;
-					u_nbr_adds += GetCreaturesCount(12463);
-					u_nbr_adds += GetCreaturesCount(12464);
-					u_nbr_adds += GetCreaturesCount(12465);
-					u_nbr_adds_alive += GetCreaturesCount(12463, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(12464, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(12465, false, true);
-					f_min_red_health = 1.0f;
-					break;
-				case 14022:
-				case 14023:
-				case 14024:
-				case 14025:
-					packEntry = 14022;
-					u_adds_multiplicity = 3;
-					u_nbr_adds += GetCreaturesCount(14022);
-					u_nbr_adds += GetCreaturesCount(14023);
-					u_nbr_adds += GetCreaturesCount(14024);
-					u_nbr_adds += GetCreaturesCount(14025);
-					u_nbr_adds_alive += GetCreaturesCount(14022, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14023, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14024, false, true);
-					u_nbr_adds_alive += GetCreaturesCount(14025, false, true);
-					f_min_red_health = 1.0f;
-					break;
-				default:
-					u_nbr_adds = GetCreaturesCount(cinfo->Entry);
-					u_nbr_adds_alive = GetCreaturesCount(cinfo->Entry, false, true);
-					f_min_red_health = 0.7f;
-					break;
-				}
-
-				// Argument 4: CoefSpellRatio
-				GetScaleRatio(u_nbr_tank, u_nbr_adds, f_ratio_hrht, 1, f_ratio_health, f_nbr_fadds, f_ratio_dps, f_ratio_damage, f_ratio_attacktime, f_ratio_spelltimer, f_ratio_health_adds, f_ratio_dps_adds, f_ratio_attacktime_adds, f_ratio_attacktime_adds, f_ratio_spelltimer_adds);
-
-				// Default treatment
-				creature->f_ratio_dps = f_ratio_dps;
-				creature->f_nbr_adds = u_nbr_adds;
-				creature->f_nbr_fadds = f_nbr_fadds;
-				creature->f_ratio_damage = f_ratio_damage;
-				creature->f_ratio_health = f_ratio_health;
-				creature->f_ratio_attacktime = f_ratio_attacktime;
-				creature->u_nbr_players = u_nbr_players;
-
-				if (f_is_flex)
-				{
-					creature->f_ratio_dps = f_ratio_dps_adds;
-
-					int l_alive = floor(f_nbr_fadds / u_nbr_adds * u_nbr_pack);
-
-					if (COMPTEUR[packEntry] >= u_nbr_pack)
+					if (cdata.nbr_adds_alive > cdata.nbr_adds_keep)
 					{
-						COMPTEUR[packEntry] = 0;
-						u_adds_compteur = 0;
+                        if (m_poolsStore[packId] >= leftAlive && m_poolsStore[packId] % leftMulti == 0)
+                            if ((!creature->isScaled() /* && !creature->IsInCombat() */ && creature->IsAlive()) || (RefreshSize != 0))
+                            {
+                                m_displayStore[guid] = DISPLAY_INVISIBLE;
+                                creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
+                            }
+					}
+					else if (cdata.nbr_adds_alive < cdata.nbr_adds_keep)
+					{
+                        if (m_poolsStore[packId] <= leftAlive)
+						    if ((creature->isScaled() && creature->IsAlive()) || (RefreshSize != 0))
+                            {
+                                m_displayStore[guid] = DISPLAY_VISIBLE;
+                                creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
+                            }
 					}
 
-					if (u_nbr_adds_alive > f_nbr_fadds)
-					{
-						if (COMPTEUR[packEntry] >= l_alive && u_adds_compteur % u_adds_multiplicity == 0)
-							if (!creature->isInCombat() || ForceRefresh)
-								creature->ForcedDespawn(0, false, true);
-					}
-
-					if (u_nbr_adds_alive < f_nbr_fadds)
-					{
-						if (COMPTEUR[packEntry] < l_alive)
-							if ((creature->isDead() && creature->isScaled()) || ForceRefresh)
-								creature->Respawn();
-					}
-
-					COMPTEUR[packEntry]++;
+                    m_poolsStore[packId] += 1;
 				}
-
-				// Temporary calculations
-				MaxHealth = f_ratio_health * MaxHealth / f_ratio_c0;
-				MinMeleeDmg = f_ratio_damage * MinMeleeDmg / f_ratio_c0;
-				MaxMeleeDmg = f_ratio_damage * MaxMeleeDmg / f_ratio_c0;
-				MeleeBaseAttackTime = MeleeBaseAttackTime / f_ratio_attacktime;
-				RangedBaseAttackTime = RangedBaseAttackTime / f_ratio_attacktime;
-
-				// Set values
-				creature->SetMaxHealth((uint32)MaxHealth);
-				creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, MinMeleeDmg);
-				creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, MaxMeleeDmg);
-				creature->SetAttackTime(BASE_ATTACK, (uint32)MeleeBaseAttackTime);
-				creature->SetAttackTime(OFF_ATTACK, (uint32)MeleeBaseAttackTime);
-				creature->SetAttackTime(RANGED_ATTACK, (uint32)RangedBaseAttackTime);
 			}
+
+            // clear the buffer
+            m_creaturesStore_buffer.clear();
+
+            for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
+            {
+                Creature* creature = it->second;
+
+                if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
+                    if (cinfo->CreatureType == CREATURE_TYPE_CRITTER)
+                        continue;
+
+                uint32 guid = creature->GetGUIDLow();
+                if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+                uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+                std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
+                CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
+                uint8 displayStatus = m_displayStore[guid];
+                if (displayStatus == DISPLAY_VISIBLE)
+                {
+                    // Restore FIELD_FLAGS
+                    creature->SetUInt32Value(UNIT_FIELD_FLAGS, cdata.m_flags);
+
+                    // Restore creature combat mode
+                    creature->AI()->SetReactState(ReactStates(cdata.m_reactstate));
+
+                    if (creature->HasAura(SPELL_CHANNEL_VISUAL_RED))
+                        creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_RED);
+                    else if (creature->HasAura(SPELL_CHANNEL_VISUAL_BLUE))
+                        creature->RemoveAurasDueToSpell(SPELL_CHANNEL_VISUAL_BLUE);
+
+                    creature->SetVisibility(VISIBILITY_ON);
+                }
+                else if (displayStatus == DISPLAY_INVISIBLE)
+                {
+                    creature->SetVisibility(VISIBILITY_OFF);
+
+                    // Update FIELD_FLAGS
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
+
+                    // Update creature combat mode
+                    creature->AI()->SetReactState(REACT_PASSIVE);
+                    creature->CombatStop();
+
+                    if (creature->IsTemporarySummon())
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_RED, TRIGGERED_OLD_TRIGGERED);
+                    else
+                        creature->CastSpell(creature, SPELL_CHANNEL_VISUAL_BLUE, TRIGGERED_OLD_TRIGGERED);
+                }
+            }
 		}
 	}
 }
@@ -1306,17 +1327,41 @@ void Map::UnloadAll(bool pForce)
     }
 }
 
+static eConfigUInt32Values const mapTypeToMinSize[5] =
+{
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_COMMON,                       // MAP_COMMON
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_INSTANCE,                     // MAP_INSTANCE
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_RAID,                         // MAP_RAID
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_BATTLEGROUND,                 // MAP_BATTLEGROUND
+    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_ARENA,                        // MAP_ARENA
+};
+
 uint32 Map::GetMaxPlayers() const
 {
-    InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId());
-    if (!iTemplate)
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+    if (mapType < MAP_RAID)
+        return 5;
+
+    if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
+        return iTemplate->maxPlayers;
+    else
         return 0;
-    return iTemplate->maxPlayers;
 }
 
 uint32 Map::GetMinPlayers() const
 {
-	return GetMaxPlayers() / sWorld.getConfig(CONFIG_UINT32_SCALE_RAIDS_RATIO);
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+    float mapRatio = (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_FLEXIBLE_CORE_RATIO));
+    switch (GetMaxPlayers())
+    {
+        case 25: return 8;
+        default: return std::max((float)sWorld.getConfig(mapTypeToMinSize[mapType]), (float)mapRatio);
+    }
+}
+
+uint32 Map::GetCurPlayers() const
+{
+    return u_GroupSize == 0 ? GetPlayersCount() : u_nbr_players;
 }
 
 uint32 Map::GetMaxResetDelay() const
@@ -1334,7 +1379,7 @@ void Map::UpdateObjectVisibility(WorldObject* obj, Cell cell, const CellPair& ce
     cell.SetNoCreate();
     MaNGOS::VisibleChangesNotifier notifier(*obj);
     TypeContainerVisitor<MaNGOS::VisibleChangesNotifier, WorldTypeMapContainer > player_notifier(notifier);
-    cell.Visit(cellpair, player_notifier, *this, *obj, GetVisibilityDistance());
+    cell.Visit(cellpair, player_notifier, *this, *obj, obj->GetVisibilityData().GetVisibilityDistance());
 }
 
 void Map::SendInitSelf(Player* player) const
@@ -1763,9 +1808,6 @@ DungeonMap::DungeonMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnM
 {
     MANGOS_ASSERT(i_mapEntry->IsDungeon());
 
-    // lets initialize visibility distance for dungeons
-    DungeonMap::InitVisibilityDistance();
-
     // the timer is started by default, and stopped when the first player joins
     // this make sure it gets unloaded if for some reason no player joins
     m_unloadTimer = std::max(sWorld.getConfig(CONFIG_UINT32_INSTANCE_UNLOAD_DELAY), (uint32)MIN_UNLOAD_DELAY);
@@ -1901,6 +1943,9 @@ bool DungeonMap::Add(Player* player)
     // this will acquire the same mutex so it cannot be in the previous block
     Map::Add(player);
 
+    //if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
+        //ShuffleFlexibleCore();
+
     return true;
 }
 
@@ -1908,9 +1953,10 @@ void DungeonMap::Update(const uint32& t_diff)
 {
     Map::Update(t_diff);
 
-	// Refresh and update Raid datas for Flexible implementation
-	if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
-		UpdateFlexibleRaid();
+	// Refresh and update flexible core
+    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
+	if (mapType > 0 && mapType <= sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+		UpdateFlexibleCore();
 }
 
 void DungeonMap::Remove(Player* player, bool remove)
@@ -2028,16 +2074,6 @@ void DungeonMap::SetResetSchedule(bool on)
     }
 }
 
-uint32 DungeonMap::GetSetPlayers() const
-{
-	return u_nbr_players > GetMinPlayers() ? u_nbr_players : GetMinPlayers();
-}
-
-uint32 DungeonMap::GetPoolSize() const
-{
-	return m_creaturesStore.size();
-}
-
 DungeonPersistentState* DungeonMap::GetPersistanceState() const
 {
     return (DungeonPersistentState*)Map::GetPersistentState();
@@ -2049,8 +2085,6 @@ DungeonPersistentState* DungeonMap::GetPersistanceState() const
 BattleGroundMap::BattleGroundMap(uint32 id, time_t expiry, uint32 InstanceId)
     : Map(id, expiry, InstanceId, REGULAR_DIFFICULTY)
 {
-    // lets initialize visibility distance for BG/Arenas
-    BattleGroundMap::InitVisibilityDistance();
 }
 
 BattleGroundMap::~BattleGroundMap()
@@ -2136,8 +2170,8 @@ bool Map::ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* sourc
     MANGOS_ASSERT(source);
 
     ///- Find the script map
-    ScriptMapMap::const_iterator s = scripts.second.find(id);
-    if (s == scripts.second.end())
+    ScriptMapMap::const_iterator scriptInfoMapMapItr = scripts.second.find(id);
+    if (scriptInfoMapMapItr == scripts.second.end())
         return false;
 
     // prepare static data
@@ -2160,13 +2194,30 @@ bool Map::ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* sourc
     }
 
     ///- Schedule script execution for all scripts in the script map
-    ScriptMap const* s2 = &(s->second);
-    for (const auto& iter : *s2)
+    ScriptMap const& scriptMap = scriptInfoMapMapItr->second;
+
+    // first handle all scripts with 0 delay
+    auto scriptInfoItr = scriptMap.begin();
+    while (scriptInfoItr != scriptMap.end())
     {
-        ScriptAction sa(scripts.first, this, sourceGuid, targetGuid, ownerGuid, &iter.second);
+        auto const& scriptInfo = scriptInfoItr->second;
+        if (scriptInfo.delay > 0)
+            break;
 
-        m_scriptSchedule.insert(ScriptScheduleMap::value_type(time_t(sWorld.GetGameTime() + iter.first), sa));
+        // fire script with 0 delay directly
+        ScriptAction sa(scripts.first, this, sourceGuid, targetGuid, ownerGuid, &scriptInfo);
+        if (sa.HandleScriptStep())
+            return true;                    // script failed we should not continue further (command 31 or any error occured)
 
+        ++scriptInfoItr;
+    }
+
+    // add delayed script to script scheduler
+    for (; scriptInfoItr != scriptMap.end(); ++scriptInfoItr)
+    {
+        auto const& scriptInfo = scriptInfoItr->second;
+        ScriptAction sa(scripts.first, this, sourceGuid, targetGuid, ownerGuid, &scriptInfo);
+        m_scriptSchedule.emplace(GetCurrentClockTime() + std::chrono::milliseconds(scriptInfoItr->first), sa);
         sScriptMgr.IncreaseScheduledScriptsCount();
     }
 
@@ -2184,9 +2235,13 @@ void Map::ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* sou
 
     ScriptAction sa("Internal Activate Command used for spell", this, sourceGuid, targetGuid, ownerGuid, &script);
 
-    m_scriptSchedule.insert(ScriptScheduleMap::value_type(time_t(sWorld.GetGameTime() + delay), sa));
-
-    sScriptMgr.IncreaseScheduledScriptsCount();
+    if (delay)
+    {
+        m_scriptSchedule.emplace(GetCurrentClockTime() + std::chrono::milliseconds(delay), sa);
+        sScriptMgr.IncreaseScheduledScriptsCount();
+    }
+    else
+        sa.HandleScriptStep();
 }
 
 /// Process queued scripts
@@ -2198,7 +2253,7 @@ void Map::ScriptsProcess()
     ///- Process overdue queued scripts
     ScriptScheduleMap::iterator iter = m_scriptSchedule.begin();
     // ok as multimap is a *sorted* associative container
-    while (!m_scriptSchedule.empty() && (iter->first <= sWorld.GetGameTime()))
+    while (!m_scriptSchedule.empty() && (iter->first <= GetCurrentClockTime()))
     {
         if (iter->second.HandleScriptStep())
         {
@@ -2377,6 +2432,39 @@ void Map::SendObjectUpdates()
     }
 }
 
+void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
+{
+    uint32 mapId = GetId() * 1000;
+    if (cr->IsTemporarySummon()) guid += mapId;
+    uint32 packId = sObjectMgr.GetCreaturePool(guid);
+
+    std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
+    CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
+    if (erased)
+        cdata.removed = true;
+    else
+        cdata.added = true;
+
+    m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
+}
+
+void Map::InsertCreature(uint32 guid, Creature* cr)
+{
+    UpdateCreature(guid, cr, false);
+
+    if (m_creaturesStore.find(guid) == m_creaturesStore.end())
+        m_creaturesStore.insert(std::make_pair(guid, cr));
+}
+
+void Map::EraseCreature(uint32 guid, Creature* cr)
+{
+    UpdateCreature(guid, cr, true);
+
+    if (m_creaturesStore.find(guid) != m_creaturesStore.end())
+        m_creaturesStore.erase(guid);
+}
+
 uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)
 {
     // TODO: for map local guid counters possible force reload map instead shutdown server at guid counter overflow
@@ -2501,7 +2589,7 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/) const
 bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float destY, float destZ, bool ignoreM2Model) const
 {
     return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetId(), srcX, srcY, srcZ, destX, destY, destZ, ignoreM2Model)
-           && m_dyn_tree.isInLineOfSight(srcX, srcY, srcZ, destX, destY, destZ);
+           && m_dyn_tree.isInLineOfSight(srcX, srcY, srcZ, destX, destY, destZ, ignoreM2Model);
 }
 
 /**
@@ -2613,10 +2701,10 @@ bool Map::ContainsGameObjectModel(const GameObjectModel& mdl) const
 }
 
 // This will generate a random point to all directions in water for the provided point in radius range.
-bool Map::GetRandomPointUnderWater(float& x, float& y, float& z, float radius, GridMapLiquidData& liquid_status) const
+bool Map::GetRandomPointUnderWater(float& x, float& y, float& z, float radius, GridMapLiquidData& liquid_status, bool randomRange/* = true*/) const
 {
     const float angle = rand_norm_f() * (M_PI_F * 2.0f);
-    const float range = rand_norm_f() * radius;
+    const float range = (randomRange ? rand_norm_f() : 1.f) * radius;
 
     float i_x = x + range * cos(angle);
     float i_y = y + range * sin(angle);
@@ -2647,10 +2735,10 @@ bool Map::GetRandomPointUnderWater(float& x, float& y, float& z, float radius, G
 }
 
 // This will generate a random point to all directions in air for the provided point in radius range.
-bool Map::GetRandomPointInTheAir(float& x, float& y, float& z, float radius) const
+bool Map::GetRandomPointInTheAir(float& x, float& y, float& z, float radius, bool randomRange/* = true*/) const
 {
     const float angle = rand_norm_f() * (M_PI_F * 2.0f);
-    const float range = rand_norm_f() * radius;
+    const float range = (randomRange ? rand_norm_f() : 1.f) * radius;
 
     float i_x = x + range * cos(angle);
     float i_y = y + range * sin(angle);
@@ -2673,11 +2761,11 @@ bool Map::GetRandomPointInTheAir(float& x, float& y, float& z, float radius) con
 }
 
 // supposed to be used for not big radius, usually less than 20.0f
-bool Map::GetReachableRandomPointOnGround(float& x, float& y, float& z, float radius) const
+bool Map::GetReachableRandomPointOnGround(float& x, float& y, float& z, float radius, bool randomRange/* = true*/) const
 {
     // Generate a random range and direction for the new point
     const float angle = rand_norm_f() * (M_PI_F * 2.0f);
-    const float range = rand_norm_f() * radius;
+    const float range = (randomRange ? rand_norm_f() : 1.f) * radius;
 
     float i_x = x + range * cos(angle);
     float i_y = y + range * sin(angle);
@@ -2720,7 +2808,7 @@ bool Map::GetReachableRandomPointOnGround(float& x, float& y, float& z, float ra
 }
 
 // Get random point by handling different situation depending of if the unit is flying/swimming/walking
-bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius) const
+bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, float radius, bool randomRange/* = true*/) const
 {
     float i_x = x;
     float i_y = y;
@@ -2749,7 +2837,7 @@ bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, f
     bool newDestAssigned;   // used to check if new random destination is found
     if (isFlying)
     {
-        newDestAssigned = GetRandomPointInTheAir(i_x, i_y, i_z, radius);
+        newDestAssigned = GetRandomPointInTheAir(i_x, i_y, i_z, radius, randomRange);
         /*if (newDestAssigned)
         sLog.outString("Generating air random point for %s", GetGuidStr().c_str());*/
     }
@@ -2759,13 +2847,13 @@ bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, f
         GridMapLiquidStatus res = m_TerrainData->getLiquidStatus(i_x, i_y, i_z, MAP_ALL_LIQUIDS, &liquid_status);
         if (isSwimming && (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER)))
         {
-            newDestAssigned = GetRandomPointUnderWater(i_x, i_y, i_z, radius, liquid_status);
+            newDestAssigned = GetRandomPointUnderWater(i_x, i_y, i_z, radius, liquid_status, randomRange);
             /*if (newDestAssigned)
             sLog.outString("Generating swim random point for %s", GetGuidStr().c_str());*/
         }
         else
         {
-            newDestAssigned = GetReachableRandomPointOnGround(i_x, i_y, i_z, radius);
+            newDestAssigned = GetReachableRandomPointOnGround(i_x, i_y, i_z, radius, randomRange);
             /*if (newDestAssigned)
             sLog.outString("Generating ground random point for %s", GetGuidStr().c_str());*/
         }
@@ -2780,12 +2868,6 @@ bool Map::GetReachableRandomPosition(Unit* unit, float& x, float& y, float& z, f
     }
 
     return false;
-}
-
-void Map::AddMessage(const std::function<void(Map*)>& message)
-{
-    std::lock_guard<std::mutex> guard(m_messageMutex);
-    m_messageVector.push_back(message);
 }
 
 bool Map::IsMountAllowed() const

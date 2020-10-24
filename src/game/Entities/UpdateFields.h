@@ -148,9 +148,7 @@ enum EUnitFields
     UNIT_FIELD_POWER_COST_MULTIPLIER          = OBJECT_END + 0x00DB, // Size: 7, Type: FLOAT, Flags: PRIVATE, OWNER_ONLY
     UNIT_FIELD_MAXHEALTHMODIFIER              = OBJECT_END + 0x00E2, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER_ONLY
     UNIT_FIELD_PADDING                        = OBJECT_END + 0x00E3, // Size: 1, Type: INT, Flags: NONE
-	UNIT_FIELD_ILEVEL                         = OBJECT_END + 0x00E1, // Size: 1, Type: INT, Flags: NONE
-	UNIT_FIELD_PACK                           = OBJECT_END + 0x00E0, // Size: 1, Type: INT, Flags: NONE
-	UNIT_END                                  = OBJECT_END + 0x00E4,
+    UNIT_END                                  = OBJECT_END + 0x00E4,
 
     PLAYER_DUEL_ARBITER                       = UNIT_END + 0x0000, // Size: 2, Type: LONG, Flags: PUBLIC
     PLAYER_FLAGS                              = UNIT_END + 0x0002, // Size: 1, Type: INT, Flags: PUBLIC

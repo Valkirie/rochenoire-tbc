@@ -21,7 +21,7 @@ SDComment: Some adjustments may be required once the Shade Soul Channel stacking
 SDCategory: Black Temple
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/TimerAI.h"
 
@@ -293,8 +293,8 @@ struct npc_akamaAI : public ScriptedAI, public CombatActions, private DialogueHe
             if (m_instance)
             {
                 // Reset the shade
-                if (Creature* pShade = m_instance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
-                    pShade->ForcedDespawn();
+                if (Creature* shade = m_instance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
+                    shade->ForcedDespawn();
             }
         }
     }
@@ -435,7 +435,7 @@ struct npc_akamaAI : public ScriptedAI, public CombatActions, private DialogueHe
                     }
                     case AKAMA_ACTION_DESTRUCTIVE_POISON:
                     {
-                        if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DESTRUCTIVE_POISON) == CAST_OK)
+                        if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_DESTRUCTIVE_POISON) == CAST_OK)
                         {
                             ResetTimer(i, GetSubsequentActionTimer(AkamaActions(i)));
                             SetActionReadyStatus(i, false);
@@ -445,7 +445,7 @@ struct npc_akamaAI : public ScriptedAI, public CombatActions, private DialogueHe
                     }
                     case AKAMA_ACTION_CHAIN_LIGHTNING:
                     {
-                        if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CHAIN_LIGHTNING) == CAST_OK)
+                        if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_CHAIN_LIGHTNING) == CAST_OK)
                         {
                             ResetTimer(i, GetSubsequentActionTimer(AkamaActions(i)));
                             SetActionReadyStatus(i, false);
@@ -460,7 +460,7 @@ struct npc_akamaAI : public ScriptedAI, public CombatActions, private DialogueHe
 
     void UpdateAI(const uint32 diff) override
     {
-        UpdateTimers(diff, m_creature->isInCombat());
+        UpdateTimers(diff, m_creature->IsInCombat());
 
         switch (m_phase)
         {
@@ -469,7 +469,7 @@ struct npc_akamaAI : public ScriptedAI, public CombatActions, private DialogueHe
                 break;
             case PHASE_COMBAT:
 
-                if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+                if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
                     return;
 
                 ExecuteActions();
@@ -547,7 +547,7 @@ struct boss_shade_of_akamaAI : public ScriptedAI
 
     void CorpseRemoved(uint32& respawnDelay) override
     {
-        // Resapwn after 5 min
+        // Respawn after 5 min
         if (m_instance->GetData(TYPE_SHADE) == FAIL)
             respawnDelay = 5 * MINUTE;
     }
@@ -590,7 +590,7 @@ struct boss_shade_of_akamaAI : public ScriptedAI
 
     void UpdateAI(const uint32 /*diff*/) override
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -637,8 +637,11 @@ struct mob_ashtongue_channelerAI : public ScriptedAI
         {
             if (m_uiBanishTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL))
-                    m_uiBanishTimer = 0;
+                if (m_creature->isScaled())
+                    m_creature->InterruptNonMeleeSpells(false, SPELL_SHADE_SOUL_CHANNEL);
+                else
+                    DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL);
+                m_uiBanishTimer = 5000;
             }
             else
                 m_uiBanishTimer -= uiDiff;
@@ -693,7 +696,7 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
     npc_creature_generatorAI(Creature* creature) : ScriptedAI(creature), m_spawn(false), m_left(creature->GetPositionY() > 400.f)
     {
         m_instance = static_cast<instance_black_temple*>(creature->GetInstanceData());
-        AddCustomAction(0, true, [&] { m_spawn = true; });
+        AddCustomAction(0, true, [&] { m_spawn = true; m_uiSpawnTimer = 0; });
     }
 
     bool m_spawn;
@@ -701,9 +704,11 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
     GuidVector m_summoned;
     instance_black_temple* m_instance;
 
+    uint32 m_uiSpawnTimer;
+
     void Reset() override
     {
-
+        m_uiSpawnTimer = 0;
     }
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* /*invoker*/, uint32 /*miscValue*/) override
@@ -737,8 +742,18 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
                     return;
 
         if (m_creature->IsSpellReady(SPELL_ASHTONGUE_WAVE_B))
-            if (DoCastSpellIfCan(nullptr, SPELL_ASHTONGUE_WAVE_B) == CAST_OK)
-                return;
+        {
+            /* Note: normally handled by SPELL_ASHTONGUE_WAVE_B(summon 3 adds)
+                NPC_ASH_ELEMENTAL = 23523
+                NPC_ASH_ROGUE = 23318
+                NPC_ASH_SPIRITBIND = 23524 */
+            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 3); ++i)
+            {
+                m_creature->SummonCreature(auiRandSpawnEntry[i], m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+            }
+            /* if (DoCastSpellIfCan(nullptr, SPELL_ASHTONGUE_WAVE_B) == CAST_OK)
+                return; */
+        }
 
         if (m_left)
             if (m_creature->IsSpellReady(SPELL_SUMMON_DEFENDER))
@@ -778,11 +793,7 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
             default:
                 summoned->SetInCombatWithZone();
                 if (Creature* akama = m_instance->GetSingleCreatureFromStorage(NPC_AKAMA_SHADE))
-                {
-                    m_creature->AddThreat(akama);
-                    m_creature->SetInCombatWith(akama);
-                    akama->SetInCombatWith(m_creature);
-                }
+                    summoned->AI()->AttackStart(akama);
                 break;
         }
     }
@@ -799,11 +810,7 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
                 summoned->AI()->SetReactState(REACT_AGGRESSIVE);
                 summoned->SetInCombatWithZone();
                 if (Creature* akama = m_instance->GetSingleCreatureFromStorage(NPC_AKAMA_SHADE))
-                {
-                    m_creature->AddThreat(akama);
-                    m_creature->SetInCombatWith(akama);
-                    akama->SetInCombatWith(m_creature);
-                }
+                    summoned->AI()->AttackStart(akama);
                 break;
             }
         }
@@ -814,7 +821,15 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
         UpdateTimers(diff);
 
         if (m_spawn)
-            TrySummoning();
+        {
+            if (m_uiSpawnTimer < diff)
+            {
+                TrySummoning();
+                m_uiSpawnTimer = 35000;
+            }
+            else
+                m_uiSpawnTimer -= diff;
+        }
     }
 };
 
