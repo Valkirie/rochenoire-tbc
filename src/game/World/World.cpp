@@ -603,6 +603,24 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_FOGOFWAR_STATS, "Visibility.FogOfWar.Stats", 0);
 
 	setConfig(CONFIG_BOOL_SCALE_FORCE_PVP, "Rochenoire.Scaling.PvP.Enabled", false);
+
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_CONSUMABLE, "Rochenoire.Scaling.Vendor.Consumable", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_CONTAINER, "Rochenoire.Scaling.Vendor.Container", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_WEAPON, "Rochenoire.Scaling.Vendor.Weapon", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_GEM, "Rochenoire.Scaling.Vendor.Gem", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_ARMOR, "Rochenoire.Scaling.Vendor.Armor", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_REAGENT, "Rochenoire.Scaling.Vendor.Reagent", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_PROJECTILE, "Rochenoire.Scaling.Vendor.Projectile", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_TRADE_GOODS, "Rochenoire.Scaling.Vendor.TradeGoods", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_GENERIC, "Rochenoire.Scaling.Vendor.Generic", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_RECIPE, "Rochenoire.Scaling.Vendor.Recipe", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_MONEY, "Rochenoire.Scaling.Vendor.Money", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_QUIVER, "Rochenoire.Scaling.Vendor.Quiver", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_QUEST, "Rochenoire.Scaling.Vendor.Quest", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_KEY, "Rochenoire.Scaling.Vendor.Key", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_PERMANENT, "Rochenoire.Scaling.Vendor.Permanent", false);
+    setConfig(CONFIG_BOOL_SCALE_VENDOR_MISC, "Rochenoire.Scaling.Vendor.Misc", false);
+
 	setConfig(CONFIG_BOOL_SMART_LOOT, "Rochenoire.SmartLoot.Enabled", true);
     setConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT, "Rochenoire.SmartLoot.Amount", 4);
 

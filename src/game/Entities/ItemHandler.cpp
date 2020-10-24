@@ -726,6 +726,26 @@ void WorldSession::HandleListInventoryOpcode(WorldPacket& recv_data)
     SendListInventory(guid);
 }
 
+static eConfigBoolValues const TypeToScale[16] =
+{
+    CONFIG_BOOL_SCALE_VENDOR_CONSUMABLE,
+    CONFIG_BOOL_SCALE_VENDOR_CONTAINER,
+    CONFIG_BOOL_SCALE_VENDOR_WEAPON,
+    CONFIG_BOOL_SCALE_VENDOR_GEM,
+    CONFIG_BOOL_SCALE_VENDOR_ARMOR,
+    CONFIG_BOOL_SCALE_VENDOR_REAGENT,
+    CONFIG_BOOL_SCALE_VENDOR_PROJECTILE,
+    CONFIG_BOOL_SCALE_VENDOR_TRADE_GOODS,
+    CONFIG_BOOL_SCALE_VENDOR_GENERIC,
+    CONFIG_BOOL_SCALE_VENDOR_RECIPE,
+    CONFIG_BOOL_SCALE_VENDOR_MONEY,
+    CONFIG_BOOL_SCALE_VENDOR_QUIVER,
+    CONFIG_BOOL_SCALE_VENDOR_QUEST,
+    CONFIG_BOOL_SCALE_VENDOR_KEY,
+    CONFIG_BOOL_SCALE_VENDOR_PERMANENT,
+    CONFIG_BOOL_SCALE_VENDOR_MISC,
+};
+
 void WorldSession::SendListInventory(ObjectGuid vendorguid) const
 {
     DEBUG_LOG("WORLD: Sent SMSG_LIST_INVENTORY");
@@ -778,6 +798,15 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
             ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemId);
             if (pProto)
             {
+                if (sWorld.getConfig(TypeToScale[pProto->Class]))
+                {
+                    if (pProto->RequiredLevel == 0)
+                        break;
+
+                    itemId = Item::LoadScaledLoot(crItem->item, _player);
+                    pProto = ObjectMgr::GetItemPrototype(itemId);
+                }
+
                 if (!_player->isGameMaster())
                 {
                     // class wrong item skip only for bindable case
