@@ -810,16 +810,20 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
+        // skip if correct
+        if (abs((int)plevel - (int)pProto->RequiredLevel) < 5)
+            return itemid;
+
 		// look for an item below player level
-		for (uint32 j = 0; j < plevel; j++)
+		for (uint32 j = plevel; j > 0; j--)
 		{
-			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel - j);
+			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel);
 
 			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
 		}
 
-		// look for the closest item above player level
+		// look for the closest item above player level (backup)
 		for (uint32 j = plevel; j < sWorld.GetCurrentMaxLevel(); j++)
 		{
 			std::string s = std::to_string(itemid) + ":" + std::to_string(j);
