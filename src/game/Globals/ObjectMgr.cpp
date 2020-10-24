@@ -1313,16 +1313,27 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 		return target->getLevel();
 
 	uint32 p_level = player->getLevel();
-	int v_level   = creature->GetLevelVar();
 
     if (owner->IsCreature())
     {
         p_level = player->getZoneLevel();
-        p_level += creature->IsWorldBoss() ? sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF) : v_level;
-    }
 
-	if (p_level > sWorld.GetCurrentMaxLevel())
-        p_level = sWorld.GetCurrentMaxLevel();
+        if (creature->IsWorldBoss())
+            p_level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+        else
+        {
+            int v_level = creature->GetLevelVar();
+
+            // skip negative level
+            if ((int)p_level + v_level <= 0)
+                return 1;
+            // skip anything above 70
+            else if ((int)p_level + v_level > sWorld.GetCurrentMaxLevel())
+                return p_level;
+            
+            p_level += v_level;
+        }
+    }
 
 	return p_level;
 }
