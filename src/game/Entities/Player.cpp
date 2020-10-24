@@ -18944,6 +18944,9 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     if (!IsAlive())
         return false;
 
+    // get the parent item
+    uint32 p_item = Item::LoadScaledParent(item);
+
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(item);
     if (!pProto)
     {
@@ -18970,9 +18973,9 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     uint32 vCount = vItems ? vItems->GetItemCount() : 0;
     uint32 tCount = tItems ? tItems->GetItemCount() : 0;
 
-    size_t vendorslot = vItems ? vItems->FindItemSlot(item) : vCount;
+    size_t vendorslot = vItems ? vItems->FindItemSlot(p_item) : vCount;
     if (vendorslot >= vCount)
-        vendorslot = vCount + (tItems ? tItems->FindItemSlot(item) : tCount);
+        vendorslot = vCount + (tItems ? tItems->FindItemSlot(p_item) : tCount);
 
     if (vendorslot >= vCount + tCount)
     {
@@ -18981,7 +18984,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     }
 
     VendorItem const* crItem = vendorslot < vCount ? vItems->GetItem(vendorslot) : tItems->GetItem(vendorslot - vCount);
-    if (!crItem || crItem->item != item)                    // store diff item (cheating)
+    if (!crItem || crItem->item != p_item)                    // store diff item (cheating)
     {
         SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, item, 0);
         return false;

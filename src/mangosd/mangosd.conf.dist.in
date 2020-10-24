@@ -263,7 +263,27 @@ MaxWhoListReturns = 49
 #                 0  (1.2)
 #
 #    Rochenoire.Scaling.PvP.Enabled
-#        Enable/Disable PvP level downscaling
+#        Enable/Disable PvP level scaling
+#        Default: 0 (disable)
+#                 1 (enable)
+#
+#    Rochenoire.Scaling.Vendor.Consumable
+#    Rochenoire.Scaling.Vendor.Container
+#    Rochenoire.Scaling.Vendor.Weapon
+#    Rochenoire.Scaling.Vendor.Gem
+#    Rochenoire.Scaling.Vendor.Armor
+#    Rochenoire.Scaling.Vendor.Reagent
+#    Rochenoire.Scaling.Vendor.Projectile
+#    Rochenoire.Scaling.Vendor.TradeGoods
+#    Rochenoire.Scaling.Vendor.Generic
+#    Rochenoire.Scaling.Vendor.Recipe
+#    Rochenoire.Scaling.Vendor.Money
+#    Rochenoire.Scaling.Vendor.Quiver
+#    Rochenoire.Scaling.Vendor.Quest
+#    Rochenoire.Scaling.Vendor.Key
+#    Rochenoire.Scaling.Vendor.Permanent
+#    Rochenoire.Scaling.Vendor.Misc
+#        Enable/Disable Vendor item scaling
 #        Default: 0 (disable)
 #                 1 (enable)
 #
@@ -323,6 +343,22 @@ MaxWhoListReturns = 49
 
 WowPatch = 15
 Rochenoire.Scaling.PvP.Enabled = 0
+Rochenoire.Scaling.Vendor.Consumable = 0
+Rochenoire.Scaling.Vendor.Container = 0
+Rochenoire.Scaling.Vendor.Weapon = 1
+Rochenoire.Scaling.Vendor.Gem = 0
+Rochenoire.Scaling.Vendor.Armor = 1
+Rochenoire.Scaling.Vendor.Reagent = 0
+Rochenoire.Scaling.Vendor.Projectile = 0
+Rochenoire.Scaling.Vendor.TradeGoods = 0
+Rochenoire.Scaling.Vendor.Generic = 0
+Rochenoire.Scaling.Vendor.Recipe = 0
+Rochenoire.Scaling.Vendor.Money = 0
+Rochenoire.Scaling.Vendor.Quiver = 0
+Rochenoire.Scaling.Vendor.Quest = 0
+Rochenoire.Scaling.Vendor.Key = 0
+Rochenoire.Scaling.Vendor.Permanent = 0
+Rochenoire.Scaling.Vendor.Misc = 0
 Rochenoire.Rate.Drop.Item.Group = 0.5
 Rochenoire.Rate.XP.Group = 0.5
 Rochenoire.Flexible.Core.MapType = 2
