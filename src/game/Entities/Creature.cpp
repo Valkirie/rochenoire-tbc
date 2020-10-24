@@ -1273,26 +1273,31 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
 
 	if (CreatureDataAddon const* cainfo = GetCreatureAddon())
 	{
+        int lvar = 0;
 		if (cainfo->lvar != 0)
-			SetLevelVar(cainfo->lvar);
-		else
-		{
-            // keep relative difficulty
-            if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
+            lvar = cainfo->lvar;
+		
+        // keep relative difficulty
+        if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
+        {
+            if (minlevel > DEFAULT_VAN_MAX_LEVEL && data->patch_min <= WOW_PATCH_112)
+                lvar += (minlevel - DEFAULT_VAN_MAX_LEVEL);
+            else if (minlevel > DEFAULT_TBC_MAX_LEVEL && data->patch_min > WOW_PATCH_112)
+                lvar += (minlevel - DEFAULT_TBC_MAX_LEVEL);
+            else
             {
-                if (minlevel > DEFAULT_VAN_MAX_LEVEL && data->patch_min <= WOW_PATCH_112)
-                    SetLevelVar(minlevel - DEFAULT_VAN_MAX_LEVEL);
-                else if (minlevel > DEFAULT_TBC_MAX_LEVEL && data->patch_min > WOW_PATCH_112)
-                    SetLevelVar(minlevel - DEFAULT_TBC_MAX_LEVEL);
+                if (rand() % 2 == 0)
+                    lvar += (maxlevel - level);
                 else
-                {
-                    if (rand() % 2 == 0)
-                        SetLevelVar(maxlevel - level);
-                    else
-                        SetLevelVar(minlevel - level);
-                }
+                    lvar += (minlevel - level);
             }
-		}
+        }
+
+        // temporary
+        lvar = std::max(-3, lvar);
+        lvar = std::min(3, lvar);
+
+        SetLevelVar(lvar);
 	}
 
     SetLevel(level);
