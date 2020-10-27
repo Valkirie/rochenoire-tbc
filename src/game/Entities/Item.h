@@ -322,7 +322,7 @@ class Item : public Object
         bool UpdateItemSuffixFactor();
         static int32 GenerateItemRandomPropertyId(uint32 item_id);
 
-		static uint32 LoadScaledLoot(uint32 itemid, Player *p);
+		static uint32 LoadScaledLoot(uint32 itemid, Player *pPlayer);
 		static uint32 LoadScaledLoot(uint32 itemid, uint32 plevel);
 		static uint32 LoadScaledParent(uint32 itemid);
 		static uint32 ComputeRequiredLevel(uint32 quality, uint32 ilevel);

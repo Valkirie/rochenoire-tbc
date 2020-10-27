@@ -737,14 +737,24 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 	return itemid;
 }
 
-uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
+uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer)
 {
-	if (itemid && p)
+	if (ItemId && pPlayer)
 	{
+        // Checking if player has appropriate level for current zone
+        uint32 pLevel = pPlayer->getZoneLevel();
+
+        // Filter specific items
+        switch (ItemId)
+        {
+            // Badge of Justice
+            case 29434: if (pPlayer->getLevel() > pLevel) return 0; break;
+        }
+
         // We need to make sure we're not replacing a currently needed quest item
 		for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
 		{
-			uint32 quest = p->GetQuestSlotQuestId(slot);
+			uint32 quest = pPlayer->GetQuestSlotQuestId(slot);
 
 			if (!quest)
 				continue;
@@ -759,13 +769,13 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 				if (!pQuest->ReqItemId[i])
 					continue;
 
-				if (pQuest->ReqItemId[i] == itemid)
-					return itemid;
+				if (pQuest->ReqItemId[i] == ItemId)
+					return ItemId;
 			}
 		}
 
 		// We need to make sure we're not replacing a currently needed reagent
-		PlayerSpellMap spells = p->GetSpellMap();
+		PlayerSpellMap spells = pPlayer->GetSpellMap();
 		for (PlayerSpellMap::iterator itr = spells.begin(); itr != spells.end(); ++itr)
 		{
 			if (itr->second.state == PLAYERSPELL_REMOVED || itr->second.disabled)
@@ -779,20 +789,17 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 				if (spellInfo->Reagent[x] <= 0)
 					continue;
 
-				uint32 r_itemid = spellInfo->Reagent[x];
-				uint32 r_itemcount = spellInfo->ReagentCount[x];
+				uint32 s_Reagent = spellInfo->Reagent[x];
+				uint32 s_ReagentCount = spellInfo->ReagentCount[x];
 
-				if (r_itemid == itemid)
-					return itemid;
+				if (s_Reagent == ItemId)
+					return ItemId;
 			}
 		}
 
-        // Checking if player has appropriate level for current zone
-        uint32 p_level = p->getZoneLevel();
-
-		return LoadScaledLoot(itemid, p_level);
+		return LoadScaledLoot(ItemId, pLevel);
 	}
-	return itemid;
+	return ItemId;
 }
 
 uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
