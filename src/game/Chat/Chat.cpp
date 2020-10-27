@@ -3383,6 +3383,33 @@ std::string ChatHandler::GetNameLink(Player* chr) const
     return playerLink(chr->GetName());
 }
 
+std::string ChatHandler::GetLocalItemLink(Item* pItem) const
+{
+    // |cff1eff00|Hitem:15211:0:584:0|h[Militant Shortsword of the Monkey]|h|r
+    ItemPrototype const* pProto = pItem->GetProto();
+
+    if (pProto)
+    {
+        std::string Name;
+        Name = pProto->Name1;
+
+        int loc_idx = m_session->GetSessionDbLocaleIndex();
+        if (loc_idx >= 0)
+        {
+            ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId);
+            if (il)
+            {
+                if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
+                    Name = il->Name[loc_idx];
+            }
+        }
+
+        return m_session ? "|cffffffff|Hitem:" + std::to_string(pProto->ItemId) + ":0:" + std::to_string(pItem->GetItemRandomPropertyId()) + ":0|h[" + Name + "]|h|r" : Name;
+    }
+
+    return "";
+}
+
 bool ChatHandler::needReportToTarget(Player* chr) const
 {
     Player* pl = m_session->GetPlayer();
