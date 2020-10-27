@@ -2396,7 +2396,7 @@ enum
     BLACKMARKET_SAY2 = -1901061,
     BLACKMARKET_SAY3 = -1901062,
 
-    BLACKMARKET_TOKEN = 29434 // temp
+    BLACKMARKET_TOKEN = 29434
 };
 
 UnitAI* GetAI_npc_BlackMarket(Creature* pCreature)
@@ -2570,9 +2570,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         {
             uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, i);
 
-            std::string Name = getLocalItemName(pProto, pPlayer);
-            Name += " [" + std::to_string(i) + "]";
-
+            std::string Name = getLocalItemName(pProto, pPlayer) + " [" + std::to_string(i) + "]";
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, Name.c_str(), GOSSIP_SENDER_MAIN, 20000000 + s_ItemId);
         }
 
