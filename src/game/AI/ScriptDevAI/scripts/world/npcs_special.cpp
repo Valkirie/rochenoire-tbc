@@ -2490,14 +2490,12 @@ bool GossipHello_BlackMarket(Player* pPlayer, Creature* pCreature)
 
 std::string getLocalItemName(ItemPrototype const* pProto, Player* pPlayer)
 {
-    std::string Name;
-    Name = pProto->Name1;
+    std::string Name = pProto->Name1;
 
     int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
     if (loc_idx >= 0)
     {
-        ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId);
-        if (il)
+        if (ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId))
         {
             if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
                 Name = il->Name[loc_idx];
