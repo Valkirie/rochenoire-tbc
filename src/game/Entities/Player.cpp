@@ -8667,6 +8667,40 @@ Item* Player::GetItemByGuid(ObjectGuid guid) const
     return nullptr;
 }
 
+Item* Player::GetItemByEntry(uint32 item) const
+{
+    for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+        if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            if (pItem->GetProto()->ItemId == item)
+                return pItem;
+
+    /* for (int i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
+        if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            if (pItem->GetProto()->ItemId == item)
+                return pItem;
+
+    for (int i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+        if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+                if (Item* pItem = pBag->GetItemByPos(j))
+                    if (pItem->GetProto()->ItemId == item)
+                        return pItem;
+
+    for (int i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_END; ++i)
+        if (Item* pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            if (pItem->GetProto()->ItemId == item)
+                return pItem;
+
+    for (int i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
+        if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+                if (Item* pItem = pBag->GetItemByPos(j))
+                    if (pItem->GetProto()->ItemId == item)
+                        return pItem; */
+
+    return NULL;
+}
+
 Item* Player::GetItemByPos(uint16 pos) const
 {
     uint8 bag = pos >> 8;
@@ -9050,7 +9084,7 @@ bool Player::HasItemOrGemWithIdEquipped(uint32 item, uint32 count, uint8 except_
     return false;
 }
 
-InventoryResult Player::_CanTakeMoreSimilarItems(uint32 entry, uint32 count, Item* pItem, uint32* no_space_count) const
+InventoryResult Player::_CanTakeMoreSimilarItems(uint32 entry, uint32 count, Item* pItem, uint32* no_space_count, bool swap) const
 {
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(entry);
     if (!pProto)
@@ -9065,7 +9099,7 @@ InventoryResult Player::_CanTakeMoreSimilarItems(uint32 entry, uint32 count, Ite
     {
         uint32 curcount = GetItemCount(pProto->ItemId, true, pItem);
 
-        if (curcount + count > uint32(pProto->MaxCount))
+        if (curcount + count > uint32(pProto->MaxCount) && !swap)
         {
             if (no_space_count)
                 *no_space_count = count + curcount - pProto->MaxCount;
@@ -9104,6 +9138,36 @@ bool Player::HasItemTotemCategory(uint32 TotemCategory) const
             }
         }
     }
+    return false;
+}
+
+bool Player::HasItemCategory(uint32 ItemCategory, uint32 ItemSubCategory) const
+{
+    Item* pItem;
+    for (uint8 i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
+    {
+        pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+        if (pItem && pItem->GetProto()->Class == ItemCategory && pItem->GetProto()->SubClass == ItemSubCategory)
+            return true;
+    }
+    /*for (uint8 i = KEYRING_SLOT_START; i < KEYRING_SLOT_END; ++i)
+    {
+        pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+        if (pItem && pItem->GetProto()->Class == ItemCategory && pItem->GetProto()->SubClass == ItemSubCategory)
+            return true;
+    }
+    for (uint8 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+    {
+        if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+        {
+            for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+            {
+                pItem = GetItemByPos(i, j);
+                if (pItem && pItem->GetProto()->Class == ItemCategory && pItem->GetProto()->SubClass == ItemSubCategory)
+                    return true;
+            }
+        }
+    }*/
     return false;
 }
 
@@ -9319,7 +9383,7 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
 
     // check count of items (skip for auto move for same player from bank)
     uint32 no_similar_count = 0;                            // can't store this amount similar items
-    InventoryResult res = _CanTakeMoreSimilarItems(entry, count, pItem, &no_similar_count);
+    InventoryResult res = _CanTakeMoreSimilarItems(entry, count, pItem, &no_similar_count, swap);
     if (res != EQUIP_ERR_OK)
     {
         if (count == no_similar_count)

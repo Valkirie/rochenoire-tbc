@@ -159,6 +159,8 @@ class ChatHandler
         bool ExtractPlayerTarget(char** args, Player** player, ObjectGuid* player_guid = nullptr, std::string* player_name = nullptr);
 
         Player* GetPlayer();
+
+        std::string GetLocalItemLink(Item* pItem) const;
     protected:
         explicit ChatHandler() : m_session(nullptr), sentErrorMessage(false)
         {}      // for CLI subclass

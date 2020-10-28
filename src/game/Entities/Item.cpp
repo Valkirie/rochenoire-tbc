@@ -737,14 +737,24 @@ uint32 Item::LoadScaledParent(uint32 itemid)
 	return itemid;
 }
 
-uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
+uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer)
 {
-	if (itemid && p)
+	if (ItemId && pPlayer)
 	{
+        // Checking if player has appropriate level for current zone
+        uint32 pLevel = pPlayer->getZoneLevel();
+
+        // Filter specific items
+        switch (ItemId)
+        {
+            // Badge of Justice
+            case 29434: if (pPlayer->getLevel() > pLevel) return 0; break;
+        }
+
         // We need to make sure we're not replacing a currently needed quest item
 		for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
 		{
-			uint32 quest = p->GetQuestSlotQuestId(slot);
+			uint32 quest = pPlayer->GetQuestSlotQuestId(slot);
 
 			if (!quest)
 				continue;
@@ -759,13 +769,13 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 				if (!pQuest->ReqItemId[i])
 					continue;
 
-				if (pQuest->ReqItemId[i] == itemid)
-					return itemid;
+				if (pQuest->ReqItemId[i] == ItemId)
+					return ItemId;
 			}
 		}
 
 		// We need to make sure we're not replacing a currently needed reagent
-		PlayerSpellMap spells = p->GetSpellMap();
+		PlayerSpellMap spells = pPlayer->GetSpellMap();
 		for (PlayerSpellMap::iterator itr = spells.begin(); itr != spells.end(); ++itr)
 		{
 			if (itr->second.state == PLAYERSPELL_REMOVED || itr->second.disabled)
@@ -779,54 +789,51 @@ uint32 Item::LoadScaledLoot(uint32 itemid, Player *p)
 				if (spellInfo->Reagent[x] <= 0)
 					continue;
 
-				uint32 r_itemid = spellInfo->Reagent[x];
-				uint32 r_itemcount = spellInfo->ReagentCount[x];
+				uint32 s_Reagent = spellInfo->Reagent[x];
+				uint32 s_ReagentCount = spellInfo->ReagentCount[x];
 
-				if (r_itemid == itemid)
-					return itemid;
+				if (s_Reagent == ItemId)
+					return ItemId;
 			}
 		}
 
-        // Checking if player has appropriate level for current zone
-        uint32 p_level = p->getZoneLevel();
-
-		return LoadScaledLoot(itemid, p_level);
+		return LoadScaledLoot(ItemId, pLevel);
 	}
-	return itemid;
+	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
+uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel)
 {
-	if (plevel > sWorld.GetCurrentMaxLevel())
-		plevel = sWorld.GetCurrentMaxLevel();
+	if (pLevel > sWorld.GetCurrentMaxLevel())
+		pLevel = sWorld.GetCurrentMaxLevel();
 
-    if (plevel <= 0)
-        return itemid;
+    if (pLevel <= 0)
+        return ItemId;
 
-	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
+	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(ItemId);
 
 	if (!pProto)
-		return itemid;
+		return ItemId;
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
         // skip if correct
-        if (abs((int)plevel - (int)pProto->RequiredLevel) < 5)
-            return itemid;
+        if (abs((int)pLevel - (int)pProto->RequiredLevel) < 5)
+            return ItemId;
 
 		// look for an item below player level
-		for (uint32 j = plevel; j > 0; j--)
+		for (uint32 j = pLevel; j > 0; j--)
 		{
-			std::string s = std::to_string(itemid) + ":" + std::to_string(plevel);
+			std::string s = std::to_string(ItemId) + ":" + std::to_string(j);
 
 			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
 		}
 
 		// look for the closest item above player level (backup)
-		for (uint32 j = plevel; j < sWorld.GetCurrentMaxLevel(); j++)
+		for (uint32 j = pLevel; j < sWorld.GetCurrentMaxLevel(); j++)
 		{
-			std::string s = std::to_string(itemid) + ":" + std::to_string(j);
+			std::string s = std::to_string(ItemId) + ":" + std::to_string(j);
 
 			if (ItemLootScale const* sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
@@ -836,18 +843,18 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 	{
 		uint32 ItemLevel = pProto->ItemLevel;
 
-		if (plevel <= 60)
-			ItemLevel = plevel + 5;
-		else if (plevel > 60 && plevel < 70)
+		if (pLevel <= 60)
+			ItemLevel = pLevel + 5;
+		else if (pLevel > 60 && pLevel < 70)
 		{
 			if (pProto->Quality < 3) // gray, white, green
-				ItemLevel = (plevel - 60) * 3 + 90;
+				ItemLevel = (pLevel - 60) * 3 + 90;
 			else if (pProto->Quality == 3) // blue
-				ItemLevel = (plevel - 60) * 3 + 85;
+				ItemLevel = (pLevel - 60) * 3 + 85;
 			else if (pProto->Quality > 3) // purple, yellow, orange
-				ItemLevel = (uint32)round((plevel - 10) / 0.6f);
+				ItemLevel = (uint32)round((pLevel - 10) / 0.6f);
 		}
-		else if (plevel == 70)
+		else if (pLevel == 70)
 		{
 			if (pProto->Quality >= 3)
 				ItemLevel = 115 + std::max(0, int32(pProto->ItemLevel - 115));
@@ -855,13 +862,13 @@ uint32 Item::LoadScaledLoot(uint32 itemid, uint32 plevel)
 				ItemLevel = 120;
 		}
 
-		uint32 scaleid = (41000 + itemid * 2 * 180 + ItemLevel);
+		uint32 ScaleId = (41000 + ItemId * 2 * 180 + ItemLevel);
 
-		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
-			return scaleid;
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
+			return ScaleId;
 	}
 
-	return itemid;
+	return ItemId;
 }
 
 void Item::SetItemRandomProperties(int32 randomPropId)
