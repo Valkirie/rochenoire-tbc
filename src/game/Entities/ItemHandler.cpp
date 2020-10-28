@@ -800,11 +800,11 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
             {
                 if (sWorld.getConfig(TypeToScale[pProto->Class]))
                 {
-                    if (pProto->RequiredLevel == 0)
-                        break;
-
-                    itemId = Item::LoadScaledLoot(crItem->item, _player);
-                    pProto = ObjectMgr::GetItemPrototype(itemId);
+                    if (pProto->RequiredLevel != 0)
+                    {
+                        itemId = Item::LoadScaledLoot(crItem->item, _player);
+                        pProto = ObjectMgr::GetItemPrototype(itemId);
+                    }
                 }
 
                 if (!_player->isGameMaster())

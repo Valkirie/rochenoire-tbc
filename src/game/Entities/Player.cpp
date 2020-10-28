@@ -71,6 +71,7 @@
 #endif
 
 #include <cmath>
+#include <Entities\ItemHandler.cpp>
 
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
@@ -18944,9 +18945,6 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     if (!IsAlive())
         return false;
 
-    // get the parent item
-    uint32 p_item = Item::LoadScaledParent(item);
-
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(item);
     if (!pProto)
     {
@@ -18972,6 +18970,24 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
     uint32 vCount = vItems ? vItems->GetItemCount() : 0;
     uint32 tCount = tItems ? tItems->GetItemCount() : 0;
+
+    uint32 p_item = item;
+
+    if (sWorld.getConfig(TypeToScale[pProto->Class]))
+    {
+        if (pProto->RequiredLevel != 0)
+        {
+            for (int i = 0; i < vItems->GetItemCount(); i++)
+            {
+                uint32 s_item = Item::LoadScaledLoot(vItems->m_items[i]->item, this);
+                if (s_item == item)
+                {
+                    p_item = vItems->m_items[i]->item;
+                    break;
+                }
+            }
+        }
+    }
 
     size_t vendorslot = vItems ? vItems->FindItemSlot(p_item) : vCount;
     if (vendorslot >= vCount)
