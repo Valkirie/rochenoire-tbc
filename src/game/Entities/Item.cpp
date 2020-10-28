@@ -824,7 +824,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel)
 		// look for an item below player level
 		for (uint32 j = pLevel; j > 0; j--)
 		{
-			std::string s = std::to_string(ItemId) + ":" + std::to_string(pLevel);
+			std::string s = std::to_string(ItemId) + ":" + std::to_string(j);
 
 			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
 				return sItem->ReplacementId;
