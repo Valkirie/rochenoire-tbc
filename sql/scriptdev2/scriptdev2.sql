@@ -664,7 +664,6 @@ UPDATE creature_template SET ScriptName='boss_krosh_firehand' WHERE entry=18832;
 UPDATE creature_template SET ScriptName='boss_the_maker' WHERE entry=17381;
 UPDATE creature_template SET ScriptName='boss_broggok' WHERE entry=17380;
 UPDATE creature_template SET ScriptName='boss_kelidan_the_breaker' WHERE entry=17377;
-UPDATE creature_template SET ScriptName='mob_broggok_poisoncloud' WHERE entry=17662;
 UPDATE creature_template SET ScriptName='mob_shadowmoon_channeler' WHERE entry=17653;
 UPDATE gameobject_template SET ScriptName='go_prison_cell_lever' WHERE entry=181982;
 UPDATE instance_template SET ScriptName='instance_blood_furnace' WHERE map=542;
@@ -717,6 +716,8 @@ UPDATE creature_template SET ScriptName='npc_maghar_escort' WHERE entry=17417;
 DELETE FROM scripted_event_id WHERE id=10745;
 INSERT INTO scripted_event_id VALUES(10745,'npc_vindicator_sedai');
 UPDATE gameobject_template SET ScriptName='go_kaliri_nest' WHERE entry IN(181582);
+UPDATE gameobject_template SET ScriptName='go_smoke_beacon' WHERE entry=184661;
+UPDATE creature_template SET ScriptName='npc_credit_marker_they_must_burn' WHERE entry=21173;
 
 /* HILLSBRAD FOOTHILLS */
 
@@ -749,11 +750,8 @@ UPDATE creature_template SET ScriptName='boss_netherspite' WHERE entry=15689;
 UPDATE creature_template SET ScriptName='boss_malchezaar' WHERE entry=15690;
 UPDATE creature_template SET ScriptName='boss_nightbane' WHERE entry=17225;
 UPDATE creature_template SET ScriptName='boss_bigbadwolf' WHERE entry=17521;
-UPDATE creature_template SET ScriptName='mob_demon_chain' WHERE entry=17248;
 UPDATE creature_template SET ScriptName='npc_fiendish_portal' WHERE entry=17265;
-UPDATE creature_template SET ScriptName='npc_shade_of_aran_blizzard' WHERE entry=17161;
 UPDATE creature_template SET ScriptName='npc_netherspite_portal' WHERE entry IN (17367,17368,17369);
-UPDATE creature_template SET ScriptName='npc_infernal_target' WHERE entry=17644;
 UPDATE creature_template SET ScriptName='npc_barnes' WHERE entry=16812;
 UPDATE creature_template SET ScriptName='npc_grandmother' WHERE entry=17603;
 UPDATE creature_template SET ScriptName='npc_image_of_medivh' WHERE entry=17651;
@@ -774,7 +772,6 @@ UPDATE creature_template SET ScriptName='npc_orc_necrolyte' WHERE entry=21747;
 INSERT INTO scripted_event_id VALUES
 (10591,'event_spell_summon_nightbane'),
 (10951,'event_spell_medivh_journal');
-UPDATE creature_template SET ScriptName='npc_infernal_relay' WHERE entry=17645;
 UPDATE gameobject_template SET ScriptName='go_chessboard' WHERE entry IN(185324);
 
 /* LOCH MODAN */
@@ -1111,6 +1108,7 @@ UPDATE creature_template SET ScriptName='npc_mist' WHERE entry=3568;
 
 /* THE MECHANAR */
 UPDATE creature_template SET ScriptName='boss_mechano_lord_capacitus' WHERE entry = 19219;
+UPDATE creature_template SET ScriptName='mob_nether_charge' WHERE entry IN(20405);
 UPDATE creature_template SET ScriptName='boss_nethermancer_sepethrea' WHERE entry=19221;
 UPDATE creature_template SET ScriptName='boss_pathaleon_the_calculator' WHERE entry=19220;
 UPDATE creature_template SET ScriptName='mob_nether_wraith' WHERE entry=21062;
@@ -1818,7 +1816,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,broadc
 ('-1000495','Khadgar himself is showing you around? You must have made a good impression, $n.','0','0','0','0','0','SAY_KHAD_HAGGARD'),
 
 ('-1000496','%s lifts its head into the air, as if listening for something.','0','2','0','0','0','ancestral wolf EMOTE_WOLF_LIFT_HEAD'),
-('-1000497','%s lets out a howl that rings across the mountains to the north and motions for you to follow.','0','2','0','0','0','ancestral wolf EMOTE_WOLF_HOWL'),
+('-1000497','%s lets out a howl that rings across the mountains to the north and motions for you to follow.','9036','2','0','0','0','ancestral wolf EMOTE_WOLF_HOWL'),
 ('-1000498','Welcome, kind spirit. What has brought you to us?','0','0','0','0','0','ancestral wolf SAY_WOLF_WELCOME'),
 
 ('-1000499','Puny $r wanna fight %s? Me beat you! Me boss here!','0','0','1','0','0','morokk SAY_MOR_CHALLENGE'),
@@ -1859,13 +1857,13 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,broadc
 
 ('-1000532','At your command, my liege...','0','0','0','0','0','torloth TORLOTH_DIALOGUE1'),
 ('-1000533','As you desire, Lord Illidan.','0','0','0','0','0','torloth TORLOTH_DIALOGUE2'),
-('-1000534','Yes, Lord Illidan, I would sacrifice to you this magnificent physique. On this day you will fall - another victim of Torloth...','0','0','0','0','0','torloth TORLOTH_DIALOGUE3'),
+('-1000534','For Lord Illidan, I would sacrifice even this magnificent physique. On this day, you will fall - another victim of Torloth...','0','0','0','25','0','torloth TORLOTH_DIALOGUE3'),
 ('-1000535','Destroy them, Torloth. Let loose their blood like a river upon this hallowed ground.','0','0','0','0','0','lordillidan ILLIDAN_DIALOGUE'),
 ('-1000536','What manner of fool dares stand before Illidan Stormrage? Soldiers, destroy these insects!','0','1','0','0','0','lordillidan ILLIDAN_SUMMON1'),
 ('-1000537','You are no challenge for the Crimson Sigil. Mind breakers, end this nonsense.','0','1','0','0','0','lordillidan ILLIDAN_SUMMON2'),
 ('-1000538','Run while you still can. The highlords come soon...','0','1','0','0','0','lordillidan ILLIDAN_SUMMON3'),
-('-1000539','Torloth your master calls!','0','1','0','0','0','lordillidan ILLIDAN_SUMMON4'),
-('-1000540','So you have defeated the Crimson Sigil. You now seek to challenge my rule? Not even Arthas could defeat me, yet you dare to even harbor such thoughts? Then I say to you, come! Come $N! The Black Temple awaits...','0','1','0','0','0','lordillidan EVENT_COMPLETED'),
+('-1000539','Torloth, your master calls!','0','1','0','0','0','lordillidan ILLIDAN_SUMMON4'),
+('-1000540','So you have defeated the Crimson Sigil. You now seek to challenge my rule? Not even Arthas could defeat me, yet you dare to even harbor such thoughts? Then I say to you, come! Come $n! The Black Temple awaits...','0','1','0','0','0','lordillidan EVENT_COMPLETED'),
 
 ('-1000541','%s jumps into the moonwell and goes underwater...','0','2','0','0','0','kitten EMOTE_SAB_JUMP'),
 ('-1000542','%s follows $n obediently.','0','2','0','0','0','kitten EMOTE_SAB_FOLLOW'),
@@ -2651,7 +2649,8 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,broadc
 
 ('-1015100','Mooooo...','0','0','0','0','18179','bessy SAY_ESCORT_1'),
 ('-1015101','Moooooooooo!','0','0','0','0','18180','bessy SAY_ESCORT_2'),
-('-1015102','Bessy, you''re home. Thank the Light!','0','0','0','0','18181','bessy SAY_THADELL');
+('-1015102','Bessy, you''re home. Thank the Light!','0','0','0','0','18181','bessy SAY_THADELL'),
+('-1015103','Quickly, get to the middle of the platform! Illidan''s fury is soon to be unleashed!','0','4','0','0','0','Marcus Auralion - On Accept');
 
 -- -1 020 000 WOTLK texts
 

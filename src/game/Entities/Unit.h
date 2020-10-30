@@ -1835,7 +1835,7 @@ class Unit : public WorldObject
         void EngageInCombatWith(Unit* enemy);
         void EngageInCombatWithAggressor(Unit* aggressor);
         void ClearInCombat();
-        void HandleExitCombat();
+        void HandleExitCombat(bool pvpCombat = false);
 
         SpellAuraHolderBounds GetSpellAuraHolderBounds(uint32 spell_id)
         {
@@ -2520,8 +2520,6 @@ class Unit : public WorldObject
         virtual UnitAI* AI() { return nullptr; }
         virtual CombatData* GetCombatData() { return m_combatData; }
 
-        virtual void AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* itemProto = nullptr, bool permanent = false, uint32 forcedDuration = 0) override;
-
         virtual void SetBaseWalkSpeed(float speed) { m_baseSpeedWalk = speed; }
         virtual void SetBaseRunSpeed(float speed) { m_baseSpeedRun = speed; }
         float GetBaseRunSpeed() { return m_baseSpeedRun; }
@@ -2556,6 +2554,9 @@ class Unit : public WorldObject
 
         void RegisterScalingAura(Aura* aura, bool apply);
         void UpdateScalingAuras();
+
+        uint32 GetDamageDoneByOthers() { return m_damageByOthers; }
+        uint32 GetModifierXpBasedOnDamageReceived(uint32 xp);
 
     protected:
 
@@ -2735,6 +2736,8 @@ class Unit : public WorldObject
 
         ObjectGuid m_comboTargetGuid;
         int8 m_comboPoints;
+
+        uint32 m_damageByOthers;
 
     private:                                                // Error traps for some wrong args using
         // this will catch and prevent build for any cases when all optional args skipped and instead triggered used non boolean type

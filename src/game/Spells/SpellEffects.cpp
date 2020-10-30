@@ -1706,7 +1706,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!m_caster || m_caster->GetTypeId() != TYPEID_PLAYER)
                         return;
                     static constexpr uint32 AshbringerSounds[12] = { 8906,8907,8908,8920,8921,8922,8923,8924,8925,8926,8927,8928 };
-                    m_caster->PlayDirectSound(AshbringerSounds[urand(0, 11)]);
+                    m_caster->PlayDirectSound(AshbringerSounds[urand(0, 11)], PlayPacketParameters(PLAY_TARGET, (Player*)m_caster));
                     return;
                 }
                 case 28697:                                 // Forgiveness
@@ -1769,33 +1769,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     return;
                 }
-                case 29969:                                 // Summon Blizzard
-                {
-                    if (unitTarget)
-                        unitTarget->CastSpell(nullptr, 29952, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_caster->GetObjectGuid());
-
-                    return;
-                }
-                case 29970:                                 // Dispel Blizzard
-                {
-                    if (unitTarget)
-                        unitTarget->RemoveAurasDueToSpell(29952);
-                    return;
-                }
-                case 29979:                                 // Massive Magnetic Pull
-                {
-                    if (unitTarget)
-                        m_caster->CastSpell(unitTarget, 30010, TRIGGERED_OLD_TRIGGERED);
-
-                    return;
-                }
-                case 30004:                                 // Flame Wreath
-                {
-                    if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER)
-                        m_caster->CastSpell(unitTarget, 29946, TRIGGERED_OLD_TRIGGERED);
-
-                    return;
-                }
                 case 30023:                                 // Periodic Trigger Dummy - triggered by many spells
                 {
                     switch (m_triggeredByAuraSpell->Id)
@@ -1805,6 +1778,11 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         {
                             // Cast explosion debuff
                             unitTarget->CastSpell(unitTarget, 29949, TRIGGERED_NONE);
+                            return;
+                        }
+                        case 37589: // Shriveling gaze
+                        {
+                            unitTarget->RemoveAuraStack(m_triggeredByAuraSpell->Id);
                             return;
                         }
                         case 40250: // Improved Duration - Anzu spirits
@@ -1919,6 +1897,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
                         return;
 
+                    unitTarget->CastSpell(nullptr, 32614, TRIGGERED_OLD_TRIGGERED);
                     ((Creature*)unitTarget)->ForcedDespawn(1000);
                     return;
                 }
@@ -3632,7 +3611,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
     else if (gameObjTarget)
         m_targets.setGOTarget(gameObjTarget);
     else
-        m_targets.setDestination(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ);
+        m_targets.setDestination(m_targets.m_destPos.x, m_targets.m_destPos.y, m_targets.m_destPos.z);
     m_caster->CastSpell(m_targets, spellInfo, TRIGGERED_OLD_TRIGGERED, m_CastItem, nullptr, m_originalCasterGUID, m_spellInfo);
 }
 
@@ -3653,15 +3632,21 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)   // TODO - Use target
         return;
     }
     // Init dest coordinates
-    float x = m_targets.m_destX;
-    float y = m_targets.m_destY;
-    float z = m_targets.m_destZ;
-    float orientation = unitTarget->GetOrientation();
+    Position position = m_targets.getDestination();
+    float orientation = m_targets.m_destPos.o;
+    if (orientation == 0.f) // not filled in spell targeting
+    {
+        if (m_caster != unitTarget)
+            orientation = position.GetAngle(m_caster->GetPositionX(), m_caster->GetPositionY());
+        else
+            orientation = unitTarget->GetOrientation();
+    }
+    
     // Teleport
     if (m_targets.m_mapId == UINT32_MAX || m_targets.m_mapId == unitTarget->GetMapId())
-        unitTarget->NearTeleportTo(x, y, z, orientation, unitTarget == m_caster);
+        unitTarget->NearTeleportTo(position.x, position.y, position.z, orientation, unitTarget == m_caster);
     else if (unitTarget->GetTypeId() == TYPEID_PLAYER)
-        ((Player*)unitTarget)->TeleportTo(m_targets.m_mapId, x, y, z, m_targets.m_destOri, unitTarget == m_caster ? TELE_TO_SPELL : 0);
+        ((Player*)unitTarget)->TeleportTo(m_targets.m_mapId, position.x, position.y, position.z, orientation, unitTarget == m_caster ? TELE_TO_SPELL : 0);
 
     // post effects for TARGET_LOCATION_DATABASE
     switch (m_spellInfo->Id)
@@ -4200,28 +4185,28 @@ void Spell::EffectCreateItem(SpellEffectIndex eff_idx)
 
 void Spell::EffectPersistentAA(SpellEffectIndex eff_idx)
 {
-    Unit* pCaster = GetAffectiveCaster();
+    Unit* caster = GetAffectiveCaster();
     // FIXME: in case wild GO will used wrong affective caster (target in fact) as dynobject owner
-    if (!pCaster)
-        pCaster = m_caster;
+    if (!caster)
+        caster = m_caster;
 
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
 
-    if (Player* modOwner = pCaster->GetSpellModOwner())
-        modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_RADIUS, radius);
+    if (Player* modOwner = caster->GetSpellModOwner())
+        modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_RADIUS, radius, this);
 
     SpellTarget target = SpellTarget(m_spellInfo->EffectImplicitTargetB[eff_idx] ? m_spellInfo->EffectImplicitTargetB[eff_idx] : m_spellInfo->EffectImplicitTargetA[eff_idx]);
 
     DynamicObject* dynObj = new DynamicObject;
-    if (!dynObj->Create(pCaster->GetMap()->GenerateLocalLowGuid(HIGHGUID_DYNAMICOBJECT), pCaster, m_spellInfo->Id,
-                        eff_idx, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_duration, radius, DYNAMIC_OBJECT_AREA_SPELL, target, damage, m_currentBasePoints[eff_idx]))
+    if (!dynObj->Create(caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_DYNAMICOBJECT), caster, m_spellInfo->Id,
+        eff_idx, m_targets.m_destPos.x, m_targets.m_destPos.y, m_targets.m_destPos.z, m_duration, radius, DYNAMIC_OBJECT_AREA_SPELL, target, damage, m_currentBasePoints[eff_idx]))
     {
         delete dynObj;
         return;
     }
 
-    pCaster->AddDynObject(dynObj);
-    pCaster->GetMap()->Add(dynObj);
+    caster->AddDynObject(dynObj);
+    caster->GetMap()->Add(dynObj);
 
     // Potential Hack - at the time of channel start Dynamic Object is not created yet, so have to do it here
     // Sent in next Object Update so for client its the same
@@ -4904,7 +4889,7 @@ bool Spell::DoSummonPet(SpellEffectIndex eff_idx)
     }
 
     // Summon in dest location
-    CreatureCreatePos pos(m_caster->GetMap(), m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, -m_caster->GetOrientation());
+    CreatureCreatePos pos(m_caster->GetMap(), m_targets.m_destPos.x, m_targets.m_destPos.y, m_targets.m_destPos.z, -m_caster->GetOrientation());
 
     if (!(m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
     {
@@ -5176,7 +5161,7 @@ void Spell::EffectDistract(SpellEffectIndex /*eff_idx*/)
     if (unitTarget->GetTypeId() == TYPEID_UNIT)
         unitTarget->GetMotionMaster()->MoveDistract(damage * IN_MILLISECONDS);
 
-    float orientation = unitTarget->GetAngle(m_targets.m_destX, m_targets.m_destY);
+    float orientation = unitTarget->GetAngle(m_targets.m_destPos.x, m_targets.m_destPos.y);
     unitTarget->SetFacingTo(orientation);
     // This is needed to change the facing server side as well (and it must be after the MoveDistract call)
     unitTarget->SetOrientation(orientation);
@@ -5264,7 +5249,7 @@ void Spell::EffectAddFarsight(SpellEffectIndex eff_idx)
 
     // set radius to 0: spell not expected to work as persistent aura
     if (!dynObj->Create(m_caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_DYNAMICOBJECT), m_caster,
-                        m_spellInfo->Id, eff_idx, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_duration, 0, DYNAMIC_OBJECT_FARSIGHT_FOCUS, TARGET_NONE, damage, m_currentBasePoints[eff_idx]))
+                        m_spellInfo->Id, eff_idx, m_targets.m_destPos.x, m_targets.m_destPos.y, m_targets.m_destPos.z, m_duration, 0, DYNAMIC_OBJECT_FARSIGHT_FOCUS, TARGET_NONE, damage, m_currentBasePoints[eff_idx]))
     {
         delete dynObj;
         return;
@@ -5300,11 +5285,11 @@ bool Spell::DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry co
                 {
                     summon->SelectLevel(level); // needs to have casters level
                     // Enslave demon effect, without mana cost and cooldown
-                    summon->CastSpell(summon, 22707, TRIGGERED_OLD_TRIGGERED);  // short root spell on infernal from sniffs
+                    summon->CastSpell(nullptr, 22707, TRIGGERED_OLD_TRIGGERED);  // short root spell on infernal from sniffs
                     m_caster->CastSpell(summon, 20882, TRIGGERED_OLD_TRIGGERED);
                     summon->CastSpell(nullptr, 22699, TRIGGERED_NONE);  // Inferno effect
                     summon->CastSpell(itr->x, itr->y, itr->z, 20310, TRIGGERED_NONE);  // Stun
-                    summon->CastSpell(nullptr, 19483, TRIGGERED_NONE); // Immolation - needs to be cast after level update
+                    summon->AI()->DoCastSpellIfCan(nullptr, 19483, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
                     break;
                 }
             }
@@ -6963,66 +6948,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 30542, TRIGGERED_OLD_TRIGGERED);
                     break;
                 }
-                case 30469:                                 // Nether Beam - Netherspite
-                {
-                    if (!unitTarget)
-                        return;
-
-                    // The player and boss spells are different
-                    if (unitTarget->GetTypeId() == TYPEID_PLAYER)
-                    {
-                        switch (m_caster->GetEntry())
-                        {
-                            case 17367:
-                                if (unitTarget->HasAura(38638))
-                                    return;
-
-                                unitTarget->CastSpell(unitTarget, 30422, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30401))
-                                    m_caster->CastSpell(unitTarget, 30401, TRIGGERED_NONE);
-                                break;
-                            case 17368:
-                                if (unitTarget->HasAura(38639))
-                                    return;
-
-                                unitTarget->CastSpell(unitTarget, 30423, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30402))
-                                    m_caster->CastSpell(unitTarget, 30402, TRIGGERED_NONE);
-                                break;
-                            case 17369:
-                                if (unitTarget->HasAura(38637))
-                                    return;
-
-                                unitTarget->CastSpell(unitTarget, 30421, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30400))
-                                    m_caster->CastSpell(unitTarget, 30400, TRIGGERED_NONE);
-                                break;
-                        }
-                    }
-                    // target boss
-                    else if (unitTarget->GetEntry() == 15689)
-                    {
-                        switch (m_caster->GetEntry())
-                        {
-                            case 17367:
-                                unitTarget->CastSpell(unitTarget, 30467, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30464))
-                                    m_caster->CastSpell(unitTarget, 30464, TRIGGERED_NONE);
-                                break;
-                            case 17368:
-                                unitTarget->CastSpell(unitTarget, 30468, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30463))
-                                    m_caster->CastSpell(unitTarget, 30463, TRIGGERED_NONE);
-                                break;
-                            case 17369:
-                                unitTarget->CastSpell(unitTarget, 30466, TRIGGERED_OLD_TRIGGERED);
-                                if (!unitTarget->HasAura(30465))
-                                    m_caster->CastSpell(unitTarget, 30465, TRIGGERED_NONE);
-                                break;
-                        }
-                    }
-                    return;
-                }
                 case 30572:                                 // Quake - Magtheridon
                 {
                     unitTarget->RemoveAurasDueToSpell(30657);   // Remove quake from all triggers
@@ -7072,7 +6997,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
-                    unitTarget->CastSpell(unitTarget->GetPositionX(), unitTarget->GetPositionY(), unitTarget->GetPositionZ(), 30953, TRIGGERED_NONE); // cast explosion
+                    unitTarget->CastSpell(nullptr, 30953, TRIGGERED_NONE); // cast explosion
                     break;
                 }
                 case 37142:                                 // Karazhan - Chess NPC Action: Melee Attack: Conjured Water Elemental

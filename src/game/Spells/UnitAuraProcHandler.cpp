@@ -959,7 +959,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 {
                     // Cast finish spell at last charge
                     if (triggeredByAura->GetHolder()->GetAuraCharges() > 1)
-                        return SPELL_AURA_PROC_FAILED;
+                        return SPELL_AURA_PROC_OK;
 
                     target = this;
                     triggered_spell_id = 33494;
@@ -2098,6 +2098,12 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
                     trigger_spell_id = 33926;
                     basepoints[0] = GetTotalAttackPowerValue(BASE_ATTACK) * 30 / 100;
                     target = this;
+                    break;
+                }
+                case 31073:                                // Conflagrate Self Proc
+                {
+                    if (procSpell->SchoolMask != SPELL_SCHOOL_MASK_FIRE)
+                        return SPELL_AURA_PROC_FAILED;
                     break;
                 }
                 // case 24949: break;                       // Defensive State 2 (DND)

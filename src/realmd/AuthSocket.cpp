@@ -29,6 +29,8 @@
 #include "RealmList.h"
 #include "AuthSocket.h"
 #include "AuthCodes.h"
+#include "SRP6/SRP6.h"
+#include "CommonDefines.h"
 
 #include <openssl/md5.h>
 #include <ctime>
@@ -84,12 +86,6 @@ typedef struct AUTH_LOGON_PIN_DATA_C
     uint8 salt[16];
     uint8 hash[20];
 } sAuthLogonPinData_C;
-
-typedef struct AUTH_LOGON_AUTHENTICATOR_DATA_C
-{
-    uint8 unk; // Has to be 0x01
-    uint8 keys[6]; // Valid code must be 6 digits
-} sAuthLogonAuthenticatorData_C;
 
 // typedef sAuthLogonChallenge_C sAuthReconnectChallenge_C;
 /*
@@ -404,7 +400,7 @@ bool AuthSocket::_HandleLogonChallenge()
     {
         ///- Get the account details from the account table
         // No SQL injection (escaped user name)
-        QueryResult* result = LoginDatabase.PQuery("SELECT sha_pass_hash,id,locked,last_ip,gmlevel,v,s,token FROM account WHERE username = '%s'", _safelogin.c_str());
+        QueryResult* result = LoginDatabase.PQuery("SELECT sha_pass_hash,id,locked,lockedIp,gmlevel,v,s,token FROM account WHERE username = '%s'", _safelogin.c_str());
         if (result)
         {
             Field* fields = result->Fetch();
@@ -641,16 +637,24 @@ bool AuthSocket::_HandleLogonProof()
     {
         if (lp.securityFlags & SECURITY_FLAG_AUTHENTICATOR || !_token.empty())
         {
-            sAuthLogonAuthenticatorData_C authData{};
-            if (!Read((char*) &authData, sizeof(sAuthLogonAuthenticatorData_C)))
+            uint8 pinCount;
+            if (!Read((char*)&pinCount, sizeof(uint8)))
             {
                 const char data[4] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0};
                 Write(data, sizeof(data));
                 return true;
             }
+            std::vector<uint8> keys(pinCount);
+            if (!Read((char*)keys.data(), sizeof(uint8) * pinCount))
+            {
+                const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0 };
+                Write(data, sizeof(data));
+                return true;
+            }
+
 
             auto ServerToken = generateToken(_token.c_str());
-            auto clientToken = atoi((const char*) authData.keys);
+            auto clientToken = atoi((const char*)keys.data());
             if (ServerToken != clientToken)
             {
                 BASIC_LOG("[AuthChallenge] Account %s tried to login with wrong pincode! Given %u Expected %u", _login.c_str(), clientToken, ServerToken);
@@ -672,10 +676,12 @@ bool AuthSocket::_HandleLogonProof()
 
         BASIC_LOG("User '%s' successfully authenticated", _login.c_str());
 
-        ///- Update the sessionkey, last_ip, last login time and reset number of failed logins in the account table for this account
+        ///- Update the sessionkey, current ip and login time and reset number of failed logins in the account table for this account
         // No SQL injection (escaped user name) and IP address as received by socket
         const char* K_hex = K.AsHexStr();
-        LoginDatabase.PExecute("UPDATE account SET sessionkey = '%s', last_ip = '%s', last_login = NOW(), locale = '%u', failed_logins = 0 WHERE username = '%s'", K_hex, m_address.c_str(), GetLocaleByName(_localizationName), _safelogin.c_str());
+        LoginDatabase.PExecute("UPDATE account SET sessionkey = '%s', last_login = NOW(), locale = '%u', failed_logins = 0 WHERE username = '%s'", K_hex, GetLocaleByName(_localizationName), _safelogin.c_str());
+		if (QueryResult* loginfail = LoginDatabase.PQuery("SELECT id FROM account WHERE username = '%s'", _safelogin.c_str()))
+            LoginDatabase.PExecute("INSERT INTO account_logons(accountId,ip,loginTime,loginSource) VALUES('%u','%s',NOW(),'%u')", loginfail->Fetch()[0].GetUInt32(), m_address.c_str(), LOGIN_TYPE_REALMD);
         OPENSSL_free((void*)K_hex);
 
         ///- Finish SRP6 and send the final result to the client

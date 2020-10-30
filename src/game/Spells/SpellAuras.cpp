@@ -1520,9 +1520,10 @@ void Aura::TriggerSpell()
                         break;
                     }
 //                    // They Must Burn Bomb Aura
-//                    case 36344: break;
-//                    // They Must Burn Bomb Aura (self)
-//                    case 36350: break;
+//                    case 36344: break;        
+                    case 36350:                             // They Must Burn Bomb Aura (self)
+                        trigger_spell_id = 36325;           // They Must Burn Bomb Drop (DND)
+                        break;
 //                    // Stolen Ravenous Ravager Egg
 //                    case 36401: break;
 //                    // Activated Cannon
@@ -3897,6 +3898,19 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             // creature case, need to update equipment if additional provided
             if (cInfo && target->GetTypeId() == TYPEID_UNIT)
                 ((Creature*)target)->LoadEquipment(cInfo->EquipmentTemplateId, false);
+
+            // Earth/Fire Totem Transform
+            if (GetId() == 32184 || GetId() == 32186)
+            {
+                Unit* owner = target->GetOwner();
+                if (owner && owner->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (((Player*)owner)->GetTeam() == HORDE)
+                    {
+                        m_modifier.m_amount = cInfo->ModelId[1];
+                    }
+                }
+            }
         }
 
         target->SetDisplayId(m_modifier.m_amount);
@@ -4109,13 +4123,6 @@ void Aura::HandleAuraModScale(bool apply, bool /*Real*/)
 {
     int32 value = GetTarget()->GetTotalAuraModifier(SPELL_AURA_MOD_SCALE);
     int32 otherValue = GetTarget()->GetTotalAuraModifier(SPELL_AURA_MOD_SCALE_2);
-    if (!apply)
-    {
-        if (GetSpellProto()->EffectApplyAuraName[GetEffIndex()] == SPELL_AURA_MOD_SCALE)
-            value -= m_modifier.m_amount;
-        else
-            otherValue -= m_modifier.m_amount;
-    }
     float scale = std::max(0.1f, float(100 + value) / 100.f * float(100 + otherValue) / 100.f);
     GetTarget()->SetObjectScale(scale);
     GetTarget()->UpdateModelData();
@@ -4277,6 +4284,9 @@ void Aura::HandleModCharm(bool apply, bool Real)
     {
         switch (GetId())
         {
+            case 30019: // Control Piece
+                caster->RemoveAurasDueToSpell(30019);
+                break;
             case 32830: // Possess
                 target->CastSpell(target, 13360, TRIGGERED_OLD_TRIGGERED);
                 if (caster->GetTypeId() == TYPEID_UNIT)
@@ -5323,9 +5333,6 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
                 if (Unit* pCaster = GetCaster())
                     pCaster->FixateTarget(nullptr);
                 return;
-            case 37670:                                     // Nether Charge Timer
-                target->CastSpell(nullptr, GetSpellProto()->EffectTriggerSpell[m_effIndex], TRIGGERED_OLD_TRIGGERED);
-                break;
             case 39828:                                     // Light of the Naaru
                 target->CastSpell(nullptr, 39831, TRIGGERED_NONE);
                 target->CastSpell(nullptr, 39832, TRIGGERED_NONE);
@@ -8230,6 +8237,7 @@ SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit* target, Wor
         case 26464:                                         // Mercurial Shield
         case 32065:                                         // Fungal Decay
         case 36659:                                         // Tail Sting
+        case 37589:                                         // Shriveling Gaze
         case 40157:                                         // Spirit Lance
             m_stackAmount = m_spellProto->StackAmount;
             break;

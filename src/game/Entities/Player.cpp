@@ -613,7 +613,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     time_inn_enter = 0;
     inn_trigger_id = 0;
     m_rest_bonus = 0;
-    rest_type = REST_TYPE_NO;
+    m_restType = REST_TYPE_NO;
     //////////////////// Rest System/////////////////////
 
     m_mailsUpdated = false;
@@ -17978,7 +17978,10 @@ void Player::RemovePet(PetSaveMode mode)
         // TODO: Only edit pet in DB and reward reagent if necessary
         Pet* NewPet = new Pet;
         if (!NewPet->LoadPetFromDB(this, 0, m_temporaryUnsummonedPetNumber, true, 0, false, true))
+        {
             delete NewPet;
+            NewPet = nullptr;
+        }
 
         m_temporaryUnsummonedPetNumber = 0;
         if (NewPet)
@@ -20773,7 +20776,7 @@ bool Player::IsAtGroupRewardDistance(WorldObject const* pRewardSource) const
     if (!corpse)
         return false;
 
-    return corpse->IsInWorld() && pRewardSource->GetMap() == corpse->GetMap() && (GetMap()->IsDungeon() || pRewardSource->IsWithinDistInMap(corpse, sWorld.getConfig(CONFIG_FLOAT_GROUP_XP_DISTANCE)));
+    return corpse->IsInWorld() && pRewardSource->GetMap() == corpse->GetMap() && (corpse->GetMap()->IsDungeon() || pRewardSource->IsWithinDistInMap(corpse, sWorld.getConfig(CONFIG_FLOAT_GROUP_XP_DISTANCE)));
 }
 
 uint32 Player::GetBaseWeaponSkillValue(WeaponAttackType attType) const
@@ -21820,9 +21823,8 @@ Object* Player::GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask)
 
 void Player::SetRestType(RestType n_r_type, uint32 areaTriggerId /*= 0*/)
 {
-    rest_type = n_r_type;
-
-    if (rest_type == REST_TYPE_NO)
+    m_restType = n_r_type;
+    if (m_restType == REST_TYPE_NO)
     {
         RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING);
 
@@ -21832,6 +21834,9 @@ void Player::SetRestType(RestType n_r_type, uint32 areaTriggerId /*= 0*/)
     }
     else
     {
+        if (getLevel() < GetMaxAttainableLevel() && time_inn_enter == 0 || time(nullptr) - time_inn_enter > 180)
+            SetByteValue(PLAYER_BYTES_2, 3, REST_STATE_RESTED);
+
         SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING);
 
         inn_trigger_id = areaTriggerId;

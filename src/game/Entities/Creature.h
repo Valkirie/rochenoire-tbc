@@ -235,7 +235,7 @@ struct CreatureData
     bool  is_dead;
     uint8 movementType;
     uint8 spawnMask;
-    uint16 gameEvent;
+    int16 gameEvent;
     uint16 GuidPoolId;
     uint16 EntryPoolId;
     uint16 OriginalZoneId;
@@ -404,8 +404,10 @@ enum SelectFlags
 
 enum RegenStatsFlags
 {
-    REGEN_FLAG_HEALTH               = 0x001,
-    REGEN_FLAG_POWER                = 0x002,
+    REGEN_FLAG_HEALTH_IN_COMBAT     = 0x001, // placeholder for future
+    REGEN_FLAG_HEALTH               = 0x002,
+    REGEN_FLAG_POWER_IN_COMBAT      = 0x004,
+    REGEN_FLAG_POWER                = 0x008,
 };
 
 // Vendors
@@ -816,7 +818,7 @@ class Creature : public Unit
 
         GridReference<Creature>& GetGridRef() { return m_gridRef; }
         bool IsRegeneratingHealth() const { return (GetCreatureInfo()->RegenerateStats & REGEN_FLAG_HEALTH) != 0; }
-        bool IsRegeneratingPower() const { return (GetCreatureInfo()->RegenerateStats & REGEN_FLAG_POWER) != 0; }
+        bool IsRegeneratingPower() const;
         virtual uint8 GetPetAutoSpellSize() const { return CREATURE_MAX_SPELLS; }
         virtual uint32 GetPetAutoSpellOnPos(uint8 pos) const
         {
@@ -879,6 +881,8 @@ class Creature : public Unit
         void SetNoLoot(bool state) { m_noLoot = state; }
         bool IsNoReputation() { return m_noReputation; }
         void SetNoReputation(bool state) { m_noReputation = state; }
+
+        virtual void AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* itemProto = nullptr, bool permanent = false, uint32 forcedDuration = 0) override;
 
         // spell scripting persistency
         bool HasBeenHitBySpell(uint32 spellId);

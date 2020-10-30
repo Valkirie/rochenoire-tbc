@@ -150,6 +150,40 @@ struct AshbringerItemAura : public AuraScript
     }
 };
 
+enum
+{
+    SPELL_PARACHUTE = 37897,
+};
+
+struct X52RocketHelmetAura : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const
+    {
+        if (!apply)
+        {
+            Unit* target = aura->GetTarget();
+            target->CastSpell(target, SPELL_PARACHUTE, TRIGGERED_OLD_TRIGGERED);
+        }
+    }
+};
+
+enum
+{
+    SPELL_LIMITLESS_POWER = 45044,
+};
+
+struct PowerCircleAura : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const
+    {
+        Unit* target = aura->GetTarget();
+        if (apply)
+            target->CastSpell(target, SPELL_LIMITLESS_POWER, TRIGGERED_OLD_TRIGGERED);
+        else
+            target->RemoveAurasDueToSpell(SPELL_LIMITLESS_POWER);
+    }
+};
+
 void AddSC_item_scripts()
 {
     Script* pNewScript = new Script;
@@ -173,4 +207,6 @@ void AddSC_item_scripts()
     pNewScript->RegisterSelf();
 
     RegisterAuraScript<AshbringerItemAura>("spell_ashbringer_item");
+    RegisterAuraScript<X52RocketHelmetAura>("spell_to_infinity_and_above");
+    RegisterAuraScript<PowerCircleAura>("spell_power_circle");
 }

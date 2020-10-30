@@ -637,25 +637,21 @@ Player* Pet::GetSpellModOwner() const
 void Pet::SetDeathState(DeathState s)                       // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
 {
     Creature::SetDeathState(s);
-    if (GetDeathState() == CORPSE)
+    if (GetDeathState() == CORPSE) // will despawn at corpse despawning (Pet::Update code)
     {
-        // remove summoned pet (no corpse)
-        if (getPetType() == SUMMON_PET)
-            Unsummon(PET_SAVE_NOT_IN_SLOT);
-        // other will despawn at corpse desppawning (Pet::Update code)
-        else
-        {
-            // pet corpse non lootable and non skinnable
-            SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
-            RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
+        // pet corpse non lootable and non skinnable
+        SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
 
+        if (getPetType() != SUMMON_PET)
+        {
             // lose happiness when died and not in BG/Arena
             MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
             if (!mapEntry || (mapEntry->map_type != MAP_ARENA && mapEntry->map_type != MAP_BATTLEGROUND))
                 ModifyPower(POWER_HAPPINESS, -HAPPINESS_LEVEL_SIZE);
-
-            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         }
+
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
     }
     else if (GetDeathState() == ALIVE)
     {
@@ -1431,13 +1427,16 @@ void Pet::InitStatsForLevel(uint32 petlevel)
 
 void Pet::InitPetScalingAuras()
 {
+    if (getPetType() == HUNTER_PET)
+    {
+        CastSpell(nullptr, 34902, TRIGGERED_NONE);
+        CastSpell(nullptr, 34903, TRIGGERED_NONE);
+        CastSpell(nullptr, 34904, TRIGGERED_NONE);
+        return;
+    }
+
     switch (GetUInt32Value(UNIT_CREATED_BY_SPELL))
     {
-        case 13481: // Tame Beast - Hunter
-            CastSpell(nullptr, 34902, TRIGGERED_NONE);
-            CastSpell(nullptr, 34903, TRIGGERED_NONE);
-            CastSpell(nullptr, 34904, TRIGGERED_NONE);
-            break;
         case 688: // Imp - Warlock
         case 691: // Felhunter
         case 697: // Voidwalker
@@ -2502,6 +2501,9 @@ bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* ci
 
     if (getPetType() == MINI_PET)                           // always non-attackable
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+    if (getPetType() == SUMMON_PET)
+        SetCorpseDelay(5);
 
     return true;
 }

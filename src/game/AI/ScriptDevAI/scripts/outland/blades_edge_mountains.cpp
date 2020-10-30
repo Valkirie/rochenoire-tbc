@@ -1442,8 +1442,8 @@ struct npc_bird_spiritAI : public ScriptedAI
 
     void JustRespawned() override
     {
-        Creature* taskmaster = GetClosestCreatureWithEntry(m_creature, NPC_TASKMASTER, 15.f);
-        if (taskmaster) // should always be valid - spell checks for it
+        Creature* taskmaster = GetClosestCreatureWithEntry(m_creature, NPC_TASKMASTER, 45.f);
+        if (taskmaster)
         {
             m_creature->SetWalk(false, true);
             m_taskmasterGuid = taskmaster->GetObjectGuid();
@@ -1530,7 +1530,7 @@ struct npc_bloodmaul_dire_wolfAI : public ScriptedAI
     void Reset() override
     {
         m_uiUnfriendlyTimer = 0;
-        m_uiRendTimer       = urand(3000, 6000);
+        m_uiRendTimer = urand(8000, 10000);
     }
 
     void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* /*pInvoker*/, uint32 /*uiMiscValue*/) override
@@ -1556,7 +1556,7 @@ struct npc_bloodmaul_dire_wolfAI : public ScriptedAI
         if (m_uiRendTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_REND) == CAST_OK)
-                m_uiRendTimer = urand(8000, 13000);
+                m_uiRendTimer = urand(34000, 36000);
         }
         else
             m_uiRendTimer -= uiDiff;
@@ -1832,6 +1832,8 @@ enum
     SPELL_FEL_CANNON_BLAST = 36242,
     SPELL_UNSTABLE_FEL_IMP_TRANSFORM = 39227, // cast in acid
     SPELL_UNSTABLE_EXPLOSION = 39266, // cast in acid
+
+    SPELL_VOID_HOUND_TRANSFORM      = 39275, // TODO: Script should also spawn void hounds
 
     SPELL_GO_SMALL_FIRE = 49910, // serverside spells for spawning GOs - TODO: Remove and substitute with pre-spawned gos
     SPELL_GO_SMOKE = 49911,
@@ -3996,7 +3998,7 @@ struct EtherealRingSignalFlare : public SpellScript
 {
     void OnDestTarget(Spell* spell) const override
     {
-        spell->m_targets.m_destZ = 342.9485f; // confirmed with sniffs
+        spell->m_targets.m_destPos.z = 342.9485f; // confirmed with sniffs
     }
 };
 
@@ -4196,4 +4198,5 @@ void AddSC_blades_edge_mountains()
 
     RegisterSpellScript<EtherealRingSignalFlare>("spell_ethereal_ring_signal_flare");
     RegisterSpellScript<ExorcismFeather>("spell_exorcism_feather");
+    RegisterSpellScript<KoiKoiDeath>("spell_koi_koi_death");
 }

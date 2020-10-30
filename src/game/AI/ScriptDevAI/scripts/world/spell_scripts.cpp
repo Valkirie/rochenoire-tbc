@@ -535,14 +535,12 @@ struct GreaterInvisibilityMob : public AuraScript
         std::list<Unit*> nearbyTargets;
         MaNGOS::AnyUnitInObjectRangeCheck u_check(invisible, float(invisible->GetDetectionRange()));
         MaNGOS::UnitListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(nearbyTargets, u_check);
-        Cell::VisitGridObjects(invisible, searcher, invisible->GetDetectionRange());
+        Cell::VisitWorldObjects(invisible, searcher, invisible->GetDetectionRange());
         for (Unit* nearby : nearbyTargets)
         {
             if (invisible->CanAttackOnSight(nearby))
             {
                 invisible->AI()->AttackStart(nearby);
-                if (SpellAuraHolder* holder = aura->GetHolder())
-                    invisible->RemoveSpellAuraHolder(holder);
                 return;
             }
         }
@@ -580,6 +578,15 @@ struct AstralBite : public SpellScript
     }
 };
 
+struct FelInfusion : public SpellScript
+{
+    void OnInit(Spell* spell) const override
+    {
+        spell->SetMaxAffectedTargets(1);
+        spell->SetFilteringScheme(EFFECT_INDEX_0, true, SCHEME_CLOSEST);
+    }
+};
+
 void AddSC_spell_scripts()
 {
     Script* pNewScript = new Script;
@@ -597,6 +604,7 @@ void AddSC_spell_scripts()
     RegisterAuraScript<GreaterInvisibilityMob>("spell_greater_invisibility_mob");
     RegisterAuraScript<InebriateRemoval>("spell_inebriate_removal");
     RegisterSpellScript<AstralBite>("spell_astral_bite");
+    RegisterSpellScript<FelInfusion>("spell_fel_infusion");
     RegisterSpellScript<spell_battleground_banner_trigger>("spell_battleground_banner_trigger");
     RegisterSpellScript<spell_outdoor_pvp_banner_trigger>("spell_outdoor_pvp_banner_trigger");
 }

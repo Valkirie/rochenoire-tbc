@@ -57,9 +57,28 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 
 -- TBC
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(32811,'spell_greater_invisibility_mob'),
+(29969,'spell_summon_blizzard'),
+(29970,'spell_dispel_blizzard'),
+(29979,'spell_massive_magnetic_pull'),
+(30004,'spell_flame_wreath'),
+(29770,'spell_midnight_mount'),
 (29883,'spell_blink_arcane_anomaly'),
 (29907,'spell_astral_bite'),
 (29690,'spell_inebriate_removal'),
+(31702,'spell_someone_grab_me'),
+(31703,'spell_magnetic_pull'),
+(31704,'spell_levitate'),
+(30425,'spell_portal_attunement'),
+(30469,'spell_nether_beam'),
+(38546,'spell_face_random_target'),
+(30659,'spell_fel_infusion'),
+(35150,'spell_nether_charge_passive'),
+(37670,'spell_nether_charge_timer'),
+(30843,'spell_enfeeble'),
+(41624,'spell_enfeeble_removal'),
+(34874,'spell_despawn_underbog_mushrooms'),
+(36374,'spell_summon_smoke_beacon'),
 (37591,'spell_inebriate_removal'),
 (30926,'spell_vazruden_liquid_fire_script'),
 (33793,'spell_vazruden_liquid_fire_script'),
@@ -69,13 +88,24 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (36921,'spell_vazruden_liquid_fire_script'),
 (30700,'spell_face_highest_threat'),
 (36153,'spell_soulbind'),
-(37851,'spell_tag_greater_felfire_diemetradon'),
+(36460,'spell_ultra_deconsolodation_zapper'),
+(37851,'spell_tag_for_single_use'),
+(33985,'spell_tag_for_single_use'),
+(37896,'spell_to_infinity_and_above'),
 (38606,'spell_exorcism_feather'),
+(38640,'spell_koi_koi_death'),
 (38915,'spell_mental_interference'),
 (40186,'spell_summon_blossom_move_target'),
 (40251,'spell_shadow_of_death'),
 (41289,'spell_ethereal_ring_signal_flare'),
 (41999,'spell_shadow_of_death_remove'),
+(33040,'spell_wota_main_cast_and_jump'),
+(33049,'spell_wota_main_cast_and_jump'),
+(33045,'spell_wota_dot'),
+(33048,'spell_wota_search'),
+(33229,'spell_wota_remove'),
+(42783,'spell_wrath_of_the_astromancer'),
+(45043,'spell_power_circle'),
 (44006,'spell_teleport_self_akilzon'),
 (43681,'spell_inactive');
 
@@ -159,7 +189,18 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (36189,'spell_infernal_pet_scaling_3'),
 (36190,'spell_infernal_pet_scaling_4');
 
+-- Warrior
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(5308,'spell_warrior_execute'),
+(20658,'spell_warrior_execute'),
+(20660,'spell_warrior_execute'),
+(20661,'spell_warrior_execute'),
+(20662,'spell_warrior_execute'),
+(25234,'spell_warrior_execute'),
+(25236,'spell_warrior_execute');
+
 -- Battleground and Outdoor PvP
+-- Alterac Valley
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
 -- Arathi basin
 (23936,'spell_battleground_banner_trigger'),

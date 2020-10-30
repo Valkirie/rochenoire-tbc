@@ -284,6 +284,7 @@ struct Position
     float GetPositionZ() const { return z; }
     float GetPositionO() const { return o; }
     bool IsEmpty() const { return x == 0.f && y == 0.f && z == 0.f; }
+    float GetAngle(const float x, const float y) const;
 };
 
 struct WorldLocation
@@ -773,7 +774,7 @@ class WorldObject : public Object
         }
         bool IsWithinDist3d(float x, float y, float z, float dist2compare) const;
         bool IsWithinDist2d(float x, float y, float dist2compare) const;
-        bool _IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D) const;
+        virtual bool _IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D) const;
         bool _IsWithinCombatDist(WorldObject const* obj, float dist2compare, bool is3D) const;
 
         // use only if you will sure about placing both object at same map

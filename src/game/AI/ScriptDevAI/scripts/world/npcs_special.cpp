@@ -1247,6 +1247,7 @@ enum npc_burster_worm
     SPELL_SANDWORM_SUBMERGE_VISUAL      = 33928,
     SPELL_SUBMERGED                     = 37751,
     SPELL_STAND                         = 37752,
+    SPELL_CRUST_BURST                   = 33922,
 
     // combat spells
     SPELL_POISON                        = 31747,
@@ -1378,6 +1379,7 @@ struct npc_burster_wormAI : public CombatAI
         m_chaseStage = 0;
         m_rangeCheckState = -1;
 
+        SetCombatMovement(false);
         SetMeleeEnabled(false);
 
         Submerge(true);
@@ -1387,7 +1389,7 @@ struct npc_burster_wormAI : public CombatAI
     {
         m_creature->CastSpell(nullptr, SPELL_SUBMERGED, TRIGGERED_NONE);
         if (passive)
-            m_creature->CastSpell(m_creature, m_uiBorePassive, TRIGGERED_NONE);
+            DoCastSpellIfCan(nullptr, m_uiBorePassive, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
     }
 
@@ -1397,10 +1399,9 @@ struct npc_burster_wormAI : public CombatAI
             AttackStart(target);
     }
 
-    void JustRespawned() override
+    void JustReachedHome() override
     {
-        CombatAI::JustRespawned();
-        Reset();
+        DoCastSpellIfCan(nullptr, m_uiBorePassive, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
     void Aggro(Unit* /*who*/) override
@@ -1412,7 +1413,10 @@ struct npc_burster_wormAI : public CombatAI
         SetRootSelf(true, true);
 
         if (DoCastSpellIfCan(nullptr, SPELL_STAND) == CAST_OK)
+        {
+            m_creature->CastSpell(nullptr, SPELL_CRUST_BURST, TRIGGERED_OLD_TRIGGERED);
             ResetTimer(BURSTER_BIRTH_DELAY, 2000);
+        }
     }
 
     // function to check for bone worms
@@ -1537,11 +1541,20 @@ enum npc_aoe_damage_trigger
     SPELL_CONSUMPTION_NPC_20570 = 35952,
 };
 
-struct npc_aoe_damage_triggerAI : public Scripted_NoMovementAI
+struct npc_aoe_damage_triggerAI : public ScriptedAI, public TimerManager
 {
-    npc_aoe_damage_triggerAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature), m_uiAuraPassive(SetAuraPassive()) { }
+    npc_aoe_damage_triggerAI(Creature* pCreature) : ScriptedAI(pCreature), m_uiAuraPassive(SetAuraPassive())
+    {
+        AddCustomAction(1, GetTimer(), [&]() {CastConsumption(); });
+        SetReactState(REACT_PASSIVE);
+    }
 
     uint32 m_uiAuraPassive;
+
+    inline uint32 GetTimer()
+    {
+        return 2500; // adjust in future if other void zones are different this is for NPC_VOID_ZONE
+    }
 
     inline uint32 SetAuraPassive()
     {
@@ -1558,14 +1571,17 @@ struct npc_aoe_damage_triggerAI : public Scripted_NoMovementAI
         }
     }
 
-    void Reset() override
+    void CastConsumption()
     {
         DoCastSpellIfCan(m_creature, m_uiAuraPassive, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
-    void AttackStart(Unit* /*pWho*/) override { }
-    void MoveInLineOfSight(Unit* /*pWho*/) override { }
-    void UpdateAI(const uint32 /*uiDiff*/) override {}
+    void Reset() override {}
+
+    void UpdateAI(const uint32 diff) override
+    {
+        UpdateTimers(diff);
+    }
 };
 
 UnitAI* GetAI_npc_aoe_damage_trigger(Creature* pCreature)
@@ -2037,6 +2053,7 @@ struct npc_fire_nova_totemAI : public ScriptedAI, public TimerManager
             case SPELL_FIRE_NOVA_TOTEM_1: m_fireNovaSpell = SPELL_FIRE_NOVA_1; m_fireNovaTimer = 4000; break;
             case SPELL_FIRE_NOVA_TOTEM_2: m_fireNovaSpell = SPELL_FIRE_NOVA_2; m_fireNovaTimer = 6000; break;
             case SPELL_FIRE_NOVA_TOTEM_3: m_fireNovaSpell = SPELL_FIRE_NOVA_3; m_fireNovaTimer = 4000; break;
+            default: return;
         }
         ResetTimer(1, m_fireNovaTimer);
     }

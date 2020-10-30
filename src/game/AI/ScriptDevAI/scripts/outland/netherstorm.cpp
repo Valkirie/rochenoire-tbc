@@ -1414,7 +1414,10 @@ struct npc_zeppitAI : public ScriptedPetAI
 {
     npc_zeppitAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
 
-    void Reset() override { }
+    void Reset() override
+    {
+        SetReactState(REACT_PASSIVE);
+    }
 
     void OwnerKilledUnit(Unit* pVictim) override
     {
@@ -3930,6 +3933,21 @@ struct Soulbind : public SpellScript
     }
 };
 
+struct UltraDeconsolodationZapper : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx != EFFECT_INDEX_2)
+            return;
+
+        Unit* target = spell->GetUnitTarget();
+        if (!target)
+            return;
+
+        target->CastSpell(nullptr, 34427, TRIGGERED_OLD_TRIGGERED); // Ethereal Teleport
+    }
+};
+
 void AddSC_netherstorm()
 {
     Script* pNewScript = new Script;
@@ -4051,4 +4069,5 @@ void AddSC_netherstorm()
     pNewScript->RegisterSelf();
 
     RegisterSpellScript<Soulbind>("spell_soulbind");
+    RegisterSpellScript<UltraDeconsolodationZapper>("spell_ultra_deconsolodation_zapper");
 }

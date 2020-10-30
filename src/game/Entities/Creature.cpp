@@ -776,7 +776,7 @@ void Creature::RegeneratePower(float timerMultiplier)
                     float intellect = GetStat(STAT_INTELLECT);
                     addValue = sqrt(intellect) * OCTRegenMPPerSpirit() * ManaIncreaseRate / 5.f * timerMultiplier;
                     if (!IsPet() && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && addValue == 0.f)
-                        addValue = 17.f * ManaIncreaseRate / 5.f * timerMultiplier;
+                        addValue = (GetMaxPower(POWER_MANA) / 20) / 5.f * timerMultiplier;
                 }
             }
             else
@@ -1694,6 +1694,13 @@ bool Creature::HasInvolvedQuest(uint32 quest_id) const
             return true;
     }
     return false;
+}
+
+bool Creature::IsRegeneratingPower() const
+{
+    if (IsInCombat())
+        return (GetCreatureInfo()->RegenerateStats & REGEN_FLAG_POWER_IN_COMBAT) != 0;
+    return (GetCreatureInfo()->RegenerateStats & REGEN_FLAG_POWER) != 0;
 }
 
 
@@ -3136,4 +3143,37 @@ void Creature::RegisterHitBySpell(uint32 spellId)
 void Creature::ResetSpellHitCounter()
 {
     m_hitBySpells.clear();
+}
+
+void Creature::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* /*itemProto*/, bool /*permanent*/, uint32 forcedDuration)
+{
+    uint32 recTime = forcedDuration ? forcedDuration : spellEntry.RecoveryTime;
+    if (recTime || spellEntry.CategoryRecoveryTime)
+    {
+        uint32 categoryRecTime = spellEntry.CategoryRecoveryTime;
+        if (Player* modOwner = GetSpellModOwner())
+        {
+            if (recTime)
+                modOwner->ApplySpellMod(spellEntry.Id, SPELLMOD_COOLDOWN, recTime);
+            else if (spellEntry.Category && categoryRecTime)
+                modOwner->ApplySpellMod(spellEntry.Id, SPELLMOD_COOLDOWN, categoryRecTime);
+        }
+
+        m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, recTime, spellEntry.Category, categoryRecTime);
+    }
+    else if (uint32 cooldown = sObjectMgr.GetCreatureCooldown(GetCreatureInfo()->Entry, spellEntry.Id))
+    {
+        m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, cooldown, 0, 0);
+        Player const* player = GetClientControlling();
+        if (player)
+        {
+            // send to client
+            WorldPacket data(SMSG_SPELL_COOLDOWN, 8 + 1 + 4);
+            data << GetObjectGuid();
+            data << uint8(1);
+            data << uint32(spellEntry.Id);
+            data << uint32(cooldown);
+            player->GetSession()->SendPacket(data);
+        }
+    }
 }

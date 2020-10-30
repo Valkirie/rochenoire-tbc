@@ -508,28 +508,6 @@ void Unit::Update(const uint32 diff)
     }
 }
 
-void Unit::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* /*itemProto*/, bool /*permanent*/, uint32 forcedDuration)
-{
-    uint32 recTimeDuration = forcedDuration ? forcedDuration : spellEntry.RecoveryTime;
-    if (recTimeDuration || spellEntry.CategoryRecoveryTime)
-        m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, recTimeDuration, spellEntry.Category, spellEntry.CategoryRecoveryTime);
-    else if (uint32 cooldown = sObjectMgr.GetCreatureCooldown(GetEntry(), spellEntry.Id))
-    {
-        m_cooldownMap.AddCooldown(GetMap()->GetCurrentClockTime(), spellEntry.Id, cooldown, 0, 0);
-        Player const* player = GetClientControlling();
-        if (player)
-        {
-            // send to client
-            WorldPacket data(SMSG_SPELL_COOLDOWN, 8 + 1 + 4);
-            data << GetObjectGuid();
-            data << uint8(1);
-            data << uint32(spellEntry.Id);
-            data << uint32(cooldown);
-            player->GetSession()->SendPacket(data);
-        }
-    }
-}
-
 void Unit::TriggerAggroLinkingEvent(Unit* enemy)
 {
     if (IsLinkingEventTrigger())
@@ -657,7 +635,7 @@ bool Unit::UpdateMeleeAttackingState()
 
 void Unit::SendHeartBeat()
 {
-    m_movementInfo.UpdateTime(WorldTimer::getMSTime());
+    m_movementInfo.UpdateTime(GetMap()->GetCurrentMSTime());
     WorldPacket data(MSG_MOVE_HEARTBEAT, 64);
     data << GetPackGUID();
     data << m_movementInfo;
@@ -917,9 +895,23 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
         }
 
         if (victim->GetTypeId() == TYPEID_UNIT)
+        {
             if (Creature* creatureVictim = static_cast<Creature*>(victim))
+            {
                 if (!creatureVictim->IsPet() && !creatureVictim->HasLootRecipient())
                     creatureVictim->SetLootRecipient(dealer);
+
+                if (creatureVictim->HasLootRecipient())
+                {
+                    if (Player* player = creatureVictim->GetLootRecipient())
+                    {
+                        // Note: there is evidence that pre-mop this was split between player/nonplayer instead of group/nongroup
+                        if (!dealer->IsInGroup(player))
+                            victim->m_damageByOthers += damage;
+                    }
+                }
+            }
+        }
     }
 
     if (health <= damage)
@@ -5401,6 +5393,8 @@ void Unit::RemoveNotOwnTrackedTargetAuras()
 
 void Unit::RemoveSpellAuraHolder(SpellAuraHolder* holder, AuraRemoveMode mode)
 {
+    MANGOS_ASSERT(!holder->IsDeleted());
+
     // Statue unsummoned at holder remove
     SpellEntry const* AurSpellInfo = holder->GetSpellProto();
     Totem* statue = nullptr;
@@ -6362,11 +6356,7 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
         MeleeAttackStart(m_attacking);
 
     if (AI())
-    {
         SendAIReaction(AI_REACTION_HOSTILE);
-        if (GetTypeId() == TYPEID_UNIT)
-            ((Creature*)this)->CallAssistance();
-    }
 
     return true;
 }
@@ -8290,6 +8280,8 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     {
         Creature* creature = static_cast<Creature*>(this);
 
+        m_damageByOthers = 0;
+
         // clear stand state if set in addon - else script has to do it on its own
         CreatureDataAddon const* cainfo = creature->GetCreatureAddon();
         if (cainfo)
@@ -8349,12 +8341,12 @@ void Unit::ClearInCombat()
         static_cast<Player*>(this)->pvpInfo.inPvPCombat = false;
 }
 
-void Unit::HandleExitCombat()
+void Unit::HandleExitCombat(bool pvpCombat)
 {
     if (AI() && !IsClientControlled())
         AI()->EnterEvadeMode();
     else
-        CombatStop();
+        CombatStop(false, !pvpCombat);
 
     CallForAllControlledUnits([](Unit* unit) { unit->HandleExitCombat(); }, CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_TOTEMS);
 }
@@ -8647,7 +8639,7 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
             break;
         case MOVE_RUN:
         {
-            if (IsMounted()) // Use on mount auras
+            if (IsMounted() && !IsTaxiFlying()) // Use on mount auras
             {
                 main_speed_mod  = GetMaxPositiveAuraModifier(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED);
                 stack_bonus     = GetTotalAuraMultiplier(SPELL_AURA_MOD_MOUNTED_SPEED_ALWAYS);
@@ -8672,7 +8664,7 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
             return;
         case MOVE_FLIGHT:
         {
-            if (IsMounted()) // Use on mount auras
+            if (IsMounted() && !IsTaxiFlying()) // Use on mount auras
             {
                 main_speed_mod  = GetMaxPositiveAuraModifier(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
                 stack_bonus     = GetTotalAuraMultiplier(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED_STACKING);
@@ -12209,3 +12201,16 @@ void Unit::UpdateScalingAuras()
         aura->UpdateAuraScaling();
 }
 
+uint32 Unit::GetModifierXpBasedOnDamageReceived(uint32 xp)
+{
+    if (xp && IsCreature() && GetDamageDoneByOthers())
+    {
+        uint32 health = GetMaxHealth();
+        float percentageHp = float(GetDamageDoneByOthers()) / health;
+        if (percentageHp >= 1.f)
+            xp = 0;
+        else
+            xp *= percentageHp;
+    }
+    return xp;
+}
