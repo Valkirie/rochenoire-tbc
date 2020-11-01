@@ -2549,7 +2549,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                     uint32 p_ItemId = Item::LoadScaledParent(ItemId);
                     uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, pPlayer->getLevel());
                     uint32 RequiredLevel = pItem->GetProto()->RequiredLevel;
-                    bool canScale = (ItemId != s_ItemId) && RequiredLevel >= 10;
+                    bool canScale = (ItemId != s_ItemId) && RequiredLevel >= 10 && RequiredLevel <= pPlayer->getLevel();
 
                     if (canScale)
                     {
