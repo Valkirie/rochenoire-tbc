@@ -16,9 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/** \file
-    \ingroup realmd
-*/
+ /** \file
+     \ingroup realmd
+ */
 
 #include "Common.h"
 #include "Auth/HMACSHA1.h"
@@ -29,7 +29,7 @@
 #include "RealmList.h"
 #include "AuthSocket.h"
 #include "AuthCodes.h"
-// #include "SRP6/SRP6.h"
+ // #include "SRP6/SRP6.h"
 #include "CommonDefines.h"
 
 #include <openssl/md5.h>
@@ -42,16 +42,16 @@ extern DatabaseType LoginDatabase;
 
 enum AccountFlags
 {
-    ACCOUNT_FLAG_GM         = 0x00000001,
-    ACCOUNT_FLAG_TRIAL      = 0x00000008,
-    ACCOUNT_FLAG_PROPASS    = 0x00800000,
+    ACCOUNT_FLAG_GM = 0x00000001,
+    ACCOUNT_FLAG_TRIAL = 0x00000008,
+    ACCOUNT_FLAG_PROPASS = 0x00800000,
 };
 
 enum SecurityFlags
 {
-    SECURITY_FLAG_NONE          = 0x00,
-    SECURITY_FLAG_PIN           = 0x01,
-    SECURITY_FLAG_UNK           = 0x02,
+    SECURITY_FLAG_NONE = 0x00,
+    SECURITY_FLAG_PIN = 0x01,
+    SECURITY_FLAG_UNK = 0x02,
     SECURITY_FLAG_AUTHENTICATOR = 0x04
 };
 
@@ -164,7 +164,7 @@ typedef struct AuthHandler
 {
     eAuthCmd cmd;
     uint32 status;
-    bool (AuthSocket::*handler)(void);
+    bool (AuthSocket::* handler)(void);
 } AuthHandler;
 
 // GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some paltform
@@ -177,20 +177,11 @@ typedef struct AuthHandler
 std::array<uint8, 16> VersionChallenge = { { 0xBA, 0xA3, 0x1E, 0x99, 0xA0, 0x0B, 0x21, 0x57, 0xFC, 0x37, 0x3F, 0xB3, 0x69, 0xCD, 0xD2, 0xF1 } };
 
 /// Constructor - set the N and g values for SRP6
-AuthSocket::AuthSocket(boost::asio::io_service& service, std::function<void (Socket*)> closeHandler)
-    : Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER), m_timeoutTimer(service)
+AuthSocket::AuthSocket(boost::asio::io_service& service, std::function<void(Socket*)> closeHandler)
+    : Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER)
 {
-    m_timeoutTimer.expires_from_now(boost::posix_time::seconds(30));
-    m_timeoutTimer.async_wait([&] (const boost::system::error_code& error)
-    {
-        // Timer was not cancelled, take necessary action.
-        if (error == boost::asio::error::operation_aborted)
-            return;
-
-        // Close socket if timer runs out
-        if (!IsClosed())
-            Close();
-    });
+    N.SetHexStr("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
+    g.SetDword(7);
 }
 
 /// Read the packet from the client
@@ -250,10 +241,9 @@ bool AuthSocket::ProcessIncomingData()
             DEBUG_LOG("[Auth] Got unknown packet %u", cmd);
             return false;
         }
-    }
 
-    // if we reach here, it means that a valid opcode was found and the handler completed successfully
-    m_timeoutTimer.cancel();
+        // if we reach here, it means that a valid opcode was found and the handler completed successfully
+    }
 
     return true;
 }
@@ -292,38 +282,38 @@ void AuthSocket::SendProof(Sha1Hash sha)
 {
     switch (_build)
     {
-        case 5875:                                          // 1.12.1
-        case 6005:                                          // 1.12.2
-        case 6141:                                          // 1.12.3
-        {
-            sAuthLogonProof_S_BUILD_6005 proof{};
-            memcpy(proof.M2, sha.GetDigest(), 20);
-            proof.cmd = CMD_AUTH_LOGON_PROOF;
-            proof.error = 0;
-            proof.LoginFlags = 0x00;
+    case 5875:                                          // 1.12.1
+    case 6005:                                          // 1.12.2
+    case 6141:                                          // 1.12.3
+    {
+        sAuthLogonProof_S_BUILD_6005 proof{};
+        memcpy(proof.M2, sha.GetDigest(), 20);
+        proof.cmd = CMD_AUTH_LOGON_PROOF;
+        proof.error = 0;
+        proof.LoginFlags = 0x00;
 
-            Write((const char*)&proof, sizeof(proof));
-            break;
-        }
-        case 8606:                                          // 2.4.3
-        case 10505:                                         // 3.2.2a
-        case 11159:                                         // 3.3.0a
-        case 11403:                                         // 3.3.2
-        case 11723:                                         // 3.3.3a
-        case 12340:                                         // 3.3.5a
-        default:                                            // or later
-        {
-            sAuthLogonProof_S proof{};
-            memcpy(proof.M2, sha.GetDigest(), 20);
-            proof.cmd = CMD_AUTH_LOGON_PROOF;
-            proof.error = 0;
-            proof.accountFlags = ACCOUNT_FLAG_PROPASS;
-            proof.surveyId = 0x00000000;
-            proof.unkFlags = 0x0000;
+        Write((const char*)&proof, sizeof(proof));
+        break;
+    }
+    case 8606:                                          // 2.4.3
+    case 10505:                                         // 3.2.2a
+    case 11159:                                         // 3.3.0a
+    case 11403:                                         // 3.3.2
+    case 11723:                                         // 3.3.3a
+    case 12340:                                         // 3.3.5a
+    default:                                            // or later
+    {
+        sAuthLogonProof_S proof{};
+        memcpy(proof.M2, sha.GetDigest(), 20);
+        proof.cmd = CMD_AUTH_LOGON_PROOF;
+        proof.error = 0;
+        proof.accountFlags = ACCOUNT_FLAG_PROPASS;
+        proof.surveyId = 0x00000000;
+        proof.unkFlags = 0x0000;
 
-            Write((const char*)&proof, sizeof(proof));
-            break;
-        }
+        Write((const char*)&proof, sizeof(proof));
+        break;
+    }
     }
 }
 
@@ -393,13 +383,13 @@ bool AuthSocket::_HandleLogonChallenge()
     _safelogin = _login;
     LoginDatabase.escape_string(_safelogin);
 
-    pkt << (uint8) CMD_AUTH_LOGON_CHALLENGE;
-    pkt << (uint8) 0x00;
+    pkt << (uint8)CMD_AUTH_LOGON_CHALLENGE;
+    pkt << (uint8)0x00;
 
     ///- Verify that this IP is not in the ip_banned table
     // No SQL injection possible (paste the IP address as passed by the socket)
     std::unique_ptr<QueryResult> ip_banned_result(LoginDatabase.PQuery("SELECT expires_at FROM ip_banned "
-            "WHERE (expires_at = banned_at OR expires_at > UNIX_TIMESTAMP()) AND ip = '%s'", m_address.c_str()));
+        "WHERE (expires_at = banned_at OR expires_at > UNIX_TIMESTAMP()) AND ip = '%s'", m_address.c_str()));
 
     if (ip_banned_result)
     {
@@ -424,7 +414,7 @@ bool AuthSocket::_HandleLogonChallenge()
                 if (strcmp(fields[3].GetString(), m_address.c_str()))
                 {
                     DEBUG_LOG("[AuthChallenge] Account IP differs");
-                    pkt << (uint8) WOW_FAIL_SUSPENDED;
+                    pkt << (uint8)WOW_FAIL_SUSPENDED;
                     locked = true;
                 }
                 else
@@ -437,17 +427,17 @@ bool AuthSocket::_HandleLogonChallenge()
             {
                 ///- If the account is banned, reject the logon attempt
                 QueryResult* banresult = LoginDatabase.PQuery("SELECT banned_at,expires_at FROM account_banned WHERE "
-                                         "account_id = %u AND active = 1 AND (expires_at > UNIX_TIMESTAMP() OR expires_at = banned_at)", fields[1].GetUInt32());
+                    "account_id = %u AND active = 1 AND (expires_at > UNIX_TIMESTAMP() OR expires_at = banned_at)", fields[1].GetUInt32());
                 if (banresult)
                 {
                     if ((*banresult)[0].GetUInt64() == (*banresult)[1].GetUInt64())
                     {
-                        pkt << (uint8) WOW_FAIL_BANNED;
+                        pkt << (uint8)WOW_FAIL_BANNED;
                         BASIC_LOG("[AuthChallenge] Banned account %s tries to login!", _login.c_str());
                     }
                     else
                     {
-                        pkt << (uint8) WOW_FAIL_SUSPENDED;
+                        pkt << (uint8)WOW_FAIL_SUSPENDED;
                         BASIC_LOG("[AuthChallenge] Temporarily banned account %s tries to login!", _login.c_str());
                     }
 
@@ -533,7 +523,7 @@ bool AuthSocket::_HandleLogonChallenge()
             delete result;
         }
         else                                                // no account
-            pkt << (uint8) WOW_FAIL_UNKNOWN_ACCOUNT;
+            pkt << (uint8)WOW_FAIL_UNKNOWN_ACCOUNT;
     }
 
     Write((const char*)pkt.contents(), pkt.size());
@@ -557,22 +547,22 @@ bool AuthSocket::_HandleLogonProof()
     {
         // no patch found
         ByteBuffer pkt;
-        pkt << (uint8) CMD_AUTH_LOGON_CHALLENGE;
-        pkt << (uint8) 0x00;
-        pkt << (uint8) WOW_FAIL_VERSION_INVALID;
-
-        BASIC_LOG("[AuthChallenge] Account %s tried to login with invalid client version %u!", _login.c_str(), _build);
+        pkt << (uint8)CMD_AUTH_LOGON_CHALLENGE;
+        pkt << (uint8)0x00;
+        pkt << (uint8)WOW_FAIL_VERSION_INVALID;
+        DEBUG_LOG("[AuthChallenge] %u is not a valid client version!", _build);
         Write((const char*)pkt.contents(), pkt.size());
         return true;
     }
     /// </ul>
 
     ///- Continue the SRP6 calculation based on data received from the client
-    if(!srp.CalculateSessionKey(lp.A, 32))
-    {
-        BASIC_LOG("[AuthChallenge] Session calculation failed for account %s!", _login.c_str());
+    BigNumber A;
+    A.SetBinary(lp.A, 32);
+
+    // SRP safeguard: abort if A==0
+    if (A.isZero())
         return false;
-    }
 
     if ((A % N).isZero())
         return false;
@@ -650,11 +640,11 @@ bool AuthSocket::_HandleLogonProof()
             uint8 pinCount;
             if (!Read((char*)&pinCount, sizeof(uint8)))
             {
-                const char data[4] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0};
+                const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0 };
                 Write(data, sizeof(data));
                 return true;
             }
-            std::vector<uint8> keys(pinCount + 1);
+            std::vector<uint8> keys(pinCount);
             if (!Read((char*)keys.data(), sizeof(uint8) * pinCount))
             {
                 const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0 };
@@ -662,14 +652,14 @@ bool AuthSocket::_HandleLogonProof()
                 return true;
             }
 
-            keys[pinCount] = '\0';
+
             auto ServerToken = generateToken(_token.c_str());
             auto clientToken = atoi((const char*)keys.data());
             if (ServerToken != clientToken)
             {
-                BASIC_LOG("[AuthChallenge] Account %s tried to login with wrong pincode! Given %u Expected %u Pin Count: %u", _login.c_str(), clientToken, ServerToken, pinCount);
+                BASIC_LOG("[AuthChallenge] Account %s tried to login with wrong pincode! Given %u Expected %u", _login.c_str(), clientToken, ServerToken);
 
-                const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 0, 0};
+                const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 0, 0 };
                 Write(data, sizeof(data));
                 return true;
             }
@@ -708,16 +698,15 @@ bool AuthSocket::_HandleLogonProof()
     {
         if (_build > 6005)                                  // > 1.12.2
         {
-            const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 0, 0};
+            const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 0, 0 };
             Write(data, sizeof(data));
         }
         else
         {
             // 1.x not react incorrectly at 4-byte message use 3 as real error
-            const char data[2] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT};
+            const char data[2] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT };
             Write(data, sizeof(data));
         }
-
         BASIC_LOG("[AuthChallenge] account %s tried to login with wrong password!", _login.c_str());
 
         uint32 MaxWrongPassCount = sConfig.GetIntDefault("WrongPass.MaxCount", 0);
@@ -740,19 +729,19 @@ bool AuthSocket::_HandleLogonProof()
                     {
                         uint32 acc_id = fields[0].GetUInt32();
                         LoginDatabase.PExecute("INSERT INTO account_banned(account_id, banned_at, expires_at, banned_by, reason, active)"
-                                               "VALUES ('%u',UNIX_TIMESTAMP(),UNIX_TIMESTAMP()+'%u','MaNGOS realmd','Failed login autoban',1)",
-                                               acc_id, WrongPassBanTime);
+                            "VALUES ('%u',UNIX_TIMESTAMP(),UNIX_TIMESTAMP()+'%u','MaNGOS realmd','Failed login autoban',1)",
+                            acc_id, WrongPassBanTime);
                         BASIC_LOG("[AuthChallenge] account %s got banned for '%u' seconds because it failed to authenticate '%u' times",
-                                  _login.c_str(), WrongPassBanTime, failed_logins);
+                            _login.c_str(), WrongPassBanTime, failed_logins);
                     }
                     else
                     {
                         std::string current_ip = m_address;
                         LoginDatabase.escape_string(current_ip);
                         LoginDatabase.PExecute("INSERT INTO ip_banned VALUES ('%s',UNIX_TIMESTAMP(),UNIX_TIMESTAMP()+'%u','MaNGOS realmd','Failed login autoban')",
-                                               current_ip.c_str(), WrongPassBanTime);
+                            current_ip.c_str(), WrongPassBanTime);
                         BASIC_LOG("[AuthChallenge] IP %s got banned for '%u' seconds because account %s failed to authenticate '%u' times",
-                                  current_ip.c_str(), WrongPassBanTime, _login.c_str(), failed_logins);
+                            current_ip.c_str(), WrongPassBanTime, _login.c_str(), failed_logins);
                     }
                 }
                 delete loginfail;
@@ -824,8 +813,8 @@ bool AuthSocket::_HandleReconnectChallenge()
 
     ///- Sending response
     ByteBuffer pkt;
-    pkt << (uint8)  CMD_AUTH_RECONNECT_CHALLENGE;
-    pkt << (uint8)  0x00;
+    pkt << (uint8)CMD_AUTH_RECONNECT_CHALLENGE;
+    pkt << (uint8)0x00;
     _reconnectProof.SetRand(16 * 8);
     pkt.append(_reconnectProof.AsByteArray(16), 16);        // 16 bytes random
     pkt.append(VersionChallenge.data(), VersionChallenge.size());
@@ -869,9 +858,9 @@ bool AuthSocket::_HandleReconnectProof()
         }
         ///- Sending response
         ByteBuffer pkt;
-        pkt << (uint8)  CMD_AUTH_RECONNECT_PROOF;
-        pkt << (uint8)  WOW_SUCCESS;
-        pkt << (uint16) 0x00;                               // 2 bytes zeros
+        pkt << (uint8)CMD_AUTH_RECONNECT_PROOF;
+        pkt << (uint8)WOW_SUCCESS;
+        pkt << (uint16)0x00;                               // 2 bytes zeros
         Write((const char*)pkt.contents(), pkt.size());
 
         ///- Set _status to authed!
@@ -915,7 +904,7 @@ bool AuthSocket::_HandleRealmList()
     LoadRealmlist(pkt, id);
 
     ByteBuffer hdr;
-    hdr << (uint8) CMD_REALM_LIST;
+    hdr << (uint8)CMD_REALM_LIST;
     hdr << (uint16)pkt.size();
     hdr.append(pkt);
 
@@ -927,128 +916,128 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
 {
     switch (_build)
     {
-        case 5875:                                          // 1.12.1
-        case 6005:                                          // 1.12.2
-        case 6141:                                          // 1.12.3
+    case 5875:                                          // 1.12.1
+    case 6005:                                          // 1.12.2
+    case 6141:                                          // 1.12.3
+    {
+        pkt << uint32(0);                               // unused value
+        pkt << uint8(sRealmList.size());
+
+        for (const auto& i : sRealmList)
         {
-            pkt << uint32(0);                               // unused value
-            pkt << uint8(sRealmList.size());
+            uint8 AmountOfCharacters;
 
-            for (const auto& i : sRealmList)
+            // No SQL injection. id of realm is controlled by the database.
+            QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
+            if (result)
             {
-                uint8 AmountOfCharacters;
+                Field* fields = result->Fetch();
+                AmountOfCharacters = fields[0].GetUInt8();
+                delete result;
+            }
+            else
+                AmountOfCharacters = 0;
 
-                // No SQL injection. id of realm is controlled by the database.
-                QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
-                if (result)
-                {
-                    Field* fields = result->Fetch();
-                    AmountOfCharacters = fields[0].GetUInt8();
-                    delete result;
-                }
-                else
-                    AmountOfCharacters = 0;
+            bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
 
-                bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
+            RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
+            if (!buildInfo)
+                buildInfo = &i.second.realmBuildInfo;
 
-                RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
-                if (!buildInfo)
-                    buildInfo = &i.second.realmBuildInfo;
+            RealmFlags realmflags = i.second.realmflags;
 
-                RealmFlags realmflags = i.second.realmflags;
-
-                // 1.x clients not support explicitly REALM_FLAG_SPECIFYBUILD, so manually form similar name as show in more recent clients
-                std::string name = i.first;
-                if (realmflags & REALM_FLAG_SPECIFYBUILD)
-                {
-                    char buf[20];
-                    snprintf(buf, 20, " (%u,%u,%u)", buildInfo->major_version, buildInfo->minor_version, buildInfo->bugfix_version);
-                    name += buf;
-                }
-
-                // Show offline state for unsupported client builds and locked realms (1.x clients not support locked state show)
-                if (!ok_build || (i.second.allowedSecurityLevel > _accountSecurityLevel))
-                    realmflags = RealmFlags(realmflags | REALM_FLAG_OFFLINE);
-
-                pkt << uint32(i.second.icon);              // realm type
-                pkt << uint8(realmflags);                   // realmflags
-                pkt << name;                                // name
-                pkt << i.second.address;                   // address
-                pkt << float(i.second.populationLevel);
-                pkt << uint8(AmountOfCharacters);
-                pkt << uint8(i.second.timezone);           // realm category
-                pkt << uint8(0x00);                         // unk, may be realm number/id?
+            // 1.x clients not support explicitly REALM_FLAG_SPECIFYBUILD, so manually form similar name as show in more recent clients
+            std::string name = i.first;
+            if (realmflags & REALM_FLAG_SPECIFYBUILD)
+            {
+                char buf[20];
+                snprintf(buf, 20, " (%u,%u,%u)", buildInfo->major_version, buildInfo->minor_version, buildInfo->bugfix_version);
+                name += buf;
             }
 
-            pkt << uint16(0x0002);                          // unused value (why 2?)
-            break;
+            // Show offline state for unsupported client builds and locked realms (1.x clients not support locked state show)
+            if (!ok_build || (i.second.allowedSecurityLevel > _accountSecurityLevel))
+                realmflags = RealmFlags(realmflags | REALM_FLAG_OFFLINE);
+
+            pkt << uint32(i.second.icon);              // realm type
+            pkt << uint8(realmflags);                   // realmflags
+            pkt << name;                                // name
+            pkt << i.second.address;                   // address
+            pkt << float(i.second.populationLevel);
+            pkt << uint8(AmountOfCharacters);
+            pkt << uint8(i.second.timezone);           // realm category
+            pkt << uint8(0x00);                         // unk, may be realm number/id?
         }
 
-        case 8606:                                          // 2.4.3
-        case 10505:                                         // 3.2.2a
-        case 11159:                                         // 3.3.0a
-        case 11403:                                         // 3.3.2
-        case 11723:                                         // 3.3.3a
-        case 12340:                                         // 3.3.5a
-        default:                                            // and later
+        pkt << uint16(0x0002);                          // unused value (why 2?)
+        break;
+    }
+
+    case 8606:                                          // 2.4.3
+    case 10505:                                         // 3.2.2a
+    case 11159:                                         // 3.3.0a
+    case 11403:                                         // 3.3.2
+    case 11723:                                         // 3.3.3a
+    case 12340:                                         // 3.3.5a
+    default:                                            // and later
+    {
+        pkt << uint32(0);                               // unused value
+        pkt << uint16(sRealmList.size());
+
+        for (const auto& i : sRealmList)
         {
-            pkt << uint32(0);                               // unused value
-            pkt << uint16(sRealmList.size());
+            uint8 AmountOfCharacters;
 
-            for (const auto& i : sRealmList)
+            // No SQL injection. id of realm is controlled by the database.
+            QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
+            if (result)
             {
-                uint8 AmountOfCharacters;
-
-                // No SQL injection. id of realm is controlled by the database.
-                QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
-                if (result)
-                {
-                    Field* fields = result->Fetch();
-                    AmountOfCharacters = fields[0].GetUInt8();
-                    delete result;
-                }
-                else
-                    AmountOfCharacters = 0;
-
-                bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
-
-                RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
-                if (!buildInfo)
-                    buildInfo = &i.second.realmBuildInfo;
-
-                uint8 lock = (i.second.allowedSecurityLevel > _accountSecurityLevel) ? 1 : 0;
-
-                RealmFlags realmFlags = i.second.realmflags;
-
-                // Show offline state for unsupported client builds
-                if (!ok_build)
-                    realmFlags = RealmFlags(realmFlags | REALM_FLAG_OFFLINE);
-
-                //if (!buildInfo) // always false since updated 10 lines above if null. ToDo: fix
-                //    realmFlags = RealmFlags(realmFlags & ~REALM_FLAG_SPECIFYBUILD);
-
-                pkt << uint8(i.second.icon);               // realm type (this is second column in Cfg_Configs.dbc)
-                pkt << uint8(lock);                         // flags, if 0x01, then realm locked
-                pkt << uint8(realmFlags);                   // see enum RealmFlags
-                pkt << i.first;                            // name
-                pkt << i.second.address;                   // address
-                pkt << float(i.second.populationLevel);
-                pkt << uint8(AmountOfCharacters);
-                pkt << uint8(i.second.timezone);           // realm category (Cfg_Categories.dbc)
-                pkt << uint8(0x2C);                         // unk, may be realm number/id?
-
-                if (realmFlags & REALM_FLAG_SPECIFYBUILD)
-                {
-                    pkt << uint8(buildInfo->major_version);
-                    pkt << uint8(buildInfo->minor_version);
-                    pkt << uint8(buildInfo->bugfix_version);
-                    pkt << uint16(_build);
-                }
+                Field* fields = result->Fetch();
+                AmountOfCharacters = fields[0].GetUInt8();
+                delete result;
             }
+            else
+                AmountOfCharacters = 0;
 
-            pkt << uint16(0x0010);                          // unused value (why 10?)
-            break;
+            bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
+
+            RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
+            if (!buildInfo)
+                buildInfo = &i.second.realmBuildInfo;
+
+            uint8 lock = (i.second.allowedSecurityLevel > _accountSecurityLevel) ? 1 : 0;
+
+            RealmFlags realmFlags = i.second.realmflags;
+
+            // Show offline state for unsupported client builds
+            if (!ok_build)
+                realmFlags = RealmFlags(realmFlags | REALM_FLAG_OFFLINE);
+
+            //if (!buildInfo) // always false since updated 10 lines above if null. ToDo: fix
+            //    realmFlags = RealmFlags(realmFlags & ~REALM_FLAG_SPECIFYBUILD);
+
+            pkt << uint8(i.second.icon);               // realm type (this is second column in Cfg_Configs.dbc)
+            pkt << uint8(lock);                         // flags, if 0x01, then realm locked
+            pkt << uint8(realmFlags);                   // see enum RealmFlags
+            pkt << i.first;                            // name
+            pkt << i.second.address;                   // address
+            pkt << float(i.second.populationLevel);
+            pkt << uint8(AmountOfCharacters);
+            pkt << uint8(i.second.timezone);           // realm category (Cfg_Categories.dbc)
+            pkt << uint8(0x2C);                         // unk, may be realm number/id?
+
+            if (realmFlags & REALM_FLAG_SPECIFYBUILD)
+            {
+                pkt << uint8(buildInfo->major_version);
+                pkt << uint8(buildInfo->minor_version);
+                pkt << uint8(buildInfo->bugfix_version);
+                pkt << uint16(_build);
+            }
         }
+
+        pkt << uint16(0x0010);                          // unused value (why 10?)
+        break;
+    }
     }
 }
 
