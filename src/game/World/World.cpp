@@ -149,7 +149,7 @@ World::~World()
 /// Cleanups before world stop
 void World::CleanupsBeforeStop()
 {
-    KickAll();                                       // save and kick all players
+    KickAll(true);                                   // save and kick all players
     UpdateSessions(1);                               // real players unload required UpdateSessions call
     sBattleGroundMgr.DeleteAllBattleGrounds();       // unload battleground templates before different singletons destroyed
     sMapMgr.UnloadAll();                             // unload all grids (including locked in memory)
@@ -891,6 +891,8 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_PATH_FIND_OPTIMIZE, "PathFinder.OptimizePath", true);
     setConfig(CONFIG_BOOL_PATH_FIND_NORMALIZE_Z, "PathFinder.NormalizeZ", false);
+
+    setConfig(CONFIG_BOOL_ACCOUNT_DATA, "AccountData", false);
 
     sLog.outString();
 }
@@ -1940,13 +1942,13 @@ void World::SendDefenseMessageBroadcastText(uint32 zoneId, uint32 textId)
 }
 
 /// Kick (and save) all players
-void World::KickAll()
+void World::KickAll(bool save)
 {
     m_QueuedSessions.clear();                               // prevent send queue update packet and login queued sessions
 
     // session not removed at kick and will removed in next update tick
     for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
-        itr->second->KickPlayer();
+        itr->second->KickPlayer(save, true);
 }
 
 /// Kick (and save) all players with security level less `sec`
@@ -2170,12 +2172,14 @@ void World::UpdateSessions(uint32 diff)
 {
     ///- Add new sessions
     {
-        std::lock_guard<std::mutex> guard(m_sessionAddQueueLock);
+        std::deque<WorldSession*> sessionQueueCopy;
+        {
+            std::lock_guard<std::mutex> guard(m_sessionAddQueueLock);
+            std::swap(m_sessionAddQueue, sessionQueueCopy);
+        }
 
-        for (auto const& session : m_sessionAddQueue)
+        for (auto const& session : sessionQueueCopy)
             AddSession_(session);
-
-        m_sessionAddQueue.clear();
     }
 
     ///- Then send an update signal to remaining ones
@@ -2764,11 +2768,4 @@ void World::GeneratePacketMetrics()
     meas_players.add_field("mage", std::to_string(GetOnlineClassPlayers(CLASS_MAGE)));
     meas_players.add_field("warlock", std::to_string(GetOnlineClassPlayers(CLASS_WARLOCK)));
     meas_players.add_field("druid", std::to_string(GetOnlineClassPlayers(CLASS_DRUID)));
-}
-
-void World::UpdateSessionExpansion(uint8 expansion)
-{
-    for (auto& data : m_sessions)
-        if (data.second->GetSecurity() < SEC_GAMEMASTER)
-            data.second->SetExpansion(expansion);
 }

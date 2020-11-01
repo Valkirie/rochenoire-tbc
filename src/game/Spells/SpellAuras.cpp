@@ -825,6 +825,17 @@ void PersistentAreaAura::Update(uint32 diff)
     Aura::Update(diff);
 }
 
+bool Aura::IsSaveToDbAura() const
+{
+    if (IsAreaAura() && GetHolder()->GetCasterGuid() != GetTarget()->GetObjectGuid())
+        return false;
+
+    if (IsPersistent())
+        return false;
+
+    return true;
+}
+
 void Aura::ApplyModifier(bool apply, bool Real)
 {
     AuraType aura = m_modifier.m_auraname;
@@ -994,7 +1005,7 @@ void Aura::ReapplyAffectedPassiveAuras()
                     ReapplyAffectedPassiveAuras(member, false);
 }
 
-void Aura::PickTargetsForSpellTrigger(Unit *& triggerCaster, Unit *& triggerTarget, WorldObject *& triggerTargetObject, SpellEntry const* spellInfo)
+void Aura::PickTargetsForSpellTrigger(Unit*& triggerCaster, Unit*& triggerTarget, WorldObject*& triggerTargetObject, SpellEntry const* spellInfo)
 {
     // automatic caster - target resolution
     switch (spellInfo->EffectImplicitTargetA[0])
@@ -1004,6 +1015,8 @@ void Aura::PickTargetsForSpellTrigger(Unit *& triggerCaster, Unit *& triggerTarg
         case TARGET_UNIT:
         case TARGET_UNIT_CHANNEL_TARGET: // Electrified net
             triggerCaster = GetCaster();
+            if (!triggerCaster)
+                triggerCaster = triggerTarget;
             triggerTarget = triggerCaster->GetTarget(); // This will default to channel target for channels
             break;
         case TARGET_UNIT_FRIEND: // Abolish Disease / Poison confirms this
@@ -1013,8 +1026,9 @@ void Aura::PickTargetsForSpellTrigger(Unit *& triggerCaster, Unit *& triggerTarg
             break;
         case TARGET_LOCATION_DYNOBJ_POSITION:
             triggerTargetObject = GetTarget()->GetDynObject(GetId());
-        case TARGET_LOCATION_CASTER_DEST:
         case TARGET_LOCATION_CASTER_SRC: // TODO: this needs to be done whenever target isnt important, doing it per case for safety
+            //[[fallthrough]]
+        case TARGET_LOCATION_CASTER_DEST:
         case TARGET_UNIT_SCRIPT_NEAR_CASTER:
         default:
             triggerTarget = nullptr;
@@ -2362,20 +2376,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             caster->CastCustomSpell(target, 28836, &damage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, this);
                         return;
                     }
-                    case 30410:                             // Shadow Grasp - upon trigger
-                    {
-                        target->CastSpell(nullptr, 30166, TRIGGERED_OLD_TRIGGERED); // Triggered in sniff
-                        break;
-                    }
-                    case 30166:                             // Shadow Grasp - upon magtheridon
-                    {
-                        if (target->GetAuraCount(30166) == target->GetMap()->GetFinalNAdds(target->GetInstanceTanks(), 5))
-                        {
-                            target->CastSpell(target, 30168, TRIGGERED_OLD_TRIGGERED); // cast Shadow cage if stacks are 5
-                            target->InterruptSpell(CURRENT_CHANNELED_SPELL); // if he is casting blast nova interrupt channel, only magth channel spell
-                        }
-                        break;
-                    }
                     case 31606:                             // Stormcrow Amulet
                     {
                         CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(17970);
@@ -2798,16 +2798,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     chessPiece->RemoveAurasDueToSpell(30019);
 
                 return;
-            }
-            case 30410:                                     // Shadow Grasp - upon trigger
-            {
-                target->InterruptSpell(CURRENT_CHANNELED_SPELL);
-                break;
-            }
-            case 30166:                                     // Shadow Grasp - upon magtheridon
-            {
-                if (target->HasAura(30168))
-                    target->RemoveAurasDueToSpell(30168); // remove Shadow cage if stacks are 5
             }
             case 30238:                                     // Lordaeron's Bleesing
             {
@@ -4273,12 +4263,7 @@ void Aura::HandleModCharm(bool apply, bool Real)
 
     if (apply)
     {
-        switch (GetId())
-        {
-            case 32830: // Possess - invisible
-                caster->CastSpell(caster, 32832, TRIGGERED_OLD_TRIGGERED);
-                break;
-        }
+
     }
     else
     {
@@ -4286,11 +4271,6 @@ void Aura::HandleModCharm(bool apply, bool Real)
         {
             case 30019: // Control Piece
                 caster->RemoveAurasDueToSpell(30019);
-                break;
-            case 32830: // Possess
-                target->CastSpell(target, 13360, TRIGGERED_OLD_TRIGGERED);
-                if (caster->GetTypeId() == TYPEID_UNIT)
-                    static_cast<Creature*>(caster)->ForcedDespawn();
                 break;
             case 34630: // Scrap Reaver X6000
                 if (target->GetTypeId() == TYPEID_UNIT && target->AI())
@@ -5616,9 +5596,6 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
             case 43364: // Tranquilizing Poison
                 if (m_removeMode == AURA_REMOVE_BY_EXPIRE)
                     target->CastSpell(nullptr, 24004, TRIGGERED_OLD_TRIGGERED); // Sleep
-                break;
-            case 30410: // Shadow Grasp cast Mind Exhaustion on removal
-                target->CastSpell(target, 44032, TRIGGERED_OLD_TRIGGERED);
                 break;
             case 35201: // Paralytic Poison
                 if (m_removeMode == AURA_REMOVE_BY_DEFAULT)
@@ -7223,6 +7200,9 @@ void Aura::PeriodicTick()
             Unit::DealDamage(caster, target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, true, nullptr, IsScaled);
 
             Unit::ProcDamageAndSpell(ProcSystemArguments(caster, target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, BASE_ATTACK, spellProto));
+
+            if (GetId() == 13493)
+                m_scriptValue += pdamage;
             break;
         }
         case SPELL_AURA_PERIODIC_LEECH:
@@ -7961,9 +7941,11 @@ void Aura::PeriodicDummyTick()
                     // Should be manauser
                     if (target->GetPowerType() != POWER_MANA)
                         return;
+                    if (target->GetPowerPercent() == 100.f)
+                        return;
                     // Regen amount is max (100% from spell) on 21% or less mana and min on 92.5% or greater mana (20% from spell)
-                    int mana = target->GetPower(POWER_MANA);
-                    int max_mana = target->GetMaxPower(POWER_MANA);
+                    int32 mana = target->GetPower(POWER_MANA);
+                    int32 max_mana = target->GetMaxPower(POWER_MANA);
                     int32 intelectPercent = 10 + int32((100.f - target->GetPowerPercent()) / 100 * 45.f);
                     if (target->HasAura(38390)) // Improved Aspect of the Viper
                         intelectPercent += 5;
@@ -8246,7 +8228,7 @@ SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit* target, Wor
     for (auto& m_aura : m_auras)
         m_aura = nullptr;
 
-    OnHolderInit();
+    OnHolderInit(caster);
 }
 
 void SpellAuraHolder::AddAura(Aura* aura, SpellEffectIndex index)
@@ -8538,6 +8520,13 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount, Unit* newCaster)
     }
 
     int32 oldStackAmount = m_stackAmount;
+    if (m_spellProto->Id == 32264) // temporary hack for Inhibit Magic
+    {
+        OnHolderInit(newCaster);
+        stackAmount = m_stackAmount;
+        m_stackAmount = oldStackAmount;
+    }
+
     if (stackAmount != m_stackAmount)
     {
         m_stackAmount = stackAmount;
@@ -8652,9 +8641,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
             {
                 case 20594: // Stoneform (dwarven racial)
                     boostSpells.push_back(20612);
-                    break;
-                case 32830: // Possess
-                    boostSpells.push_back(32831);
                     break;
                 case 33896: // Desperate Defense
                     boostSpells.push_back(33897);
@@ -8935,6 +8921,12 @@ bool SpellAuraHolder::IsEmptyHolder() const
     return true;
 }
 
+bool SpellAuraHolder::IsSaveToDbHolder() const
+{
+    return !IsPassive() && !IsChanneledSpell(GetSpellProto()) && !IsItemAura(GetSpellProto()) &&
+        (GetTrackedAuraType() == TRACK_AURA_TYPE_NOT_TRACKED || (GetTrackedAuraType() == TRACK_AURA_TYPE_SINGLE_TARGET && GetCasterGuid() == GetTarget()->GetObjectGuid()));
+}
+
 void SpellAuraHolder::UnregisterAndCleanupTrackedAuras()
 {
     TrackedAuraType trackedType = GetTrackedAuraType();
@@ -9126,10 +9118,10 @@ void GameObjectAura::Update(uint32 diff)
         target->RemoveSpellAuraHolder(GetHolder());
 }
 
-void SpellAuraHolder::OnHolderInit()
+void SpellAuraHolder::OnHolderInit(WorldObject* caster)
 {
     if (AuraScript* script = GetAuraScript())
-        script->OnHolderInit(this);
+        script->OnHolderInit(this, caster);
 }
 
 void SpellAuraHolder::OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32 originalStacks)

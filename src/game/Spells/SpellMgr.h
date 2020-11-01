@@ -385,6 +385,12 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
     if (IsSpellHaveAura(spellInfo, SPELL_AURA_FLY))
         return false;
 
+    if (IsSpellHaveAura(spellInfo, SPELL_AURA_MOD_CHARM))
+        return false;
+
+    if (IsSpellHaveAura(spellInfo, SPELL_AURA_MOD_POSSESS))
+        return false;
+
     switch (spellInfo->Id)
     {
         case 588:           // Inner Fire (Rank 1)
@@ -419,6 +425,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 10095:         // Hate to Zero (Hate to Zero)
         case 11838:         // Hate to Zero (Hate to Zero)
         case 11919:         // Poison Proc
+        case 11964:         // Fevered Fatigue
         case 11966:         // Fire Shield
         case 11984:         // Immolate
         case 12099:         // Shield Spike
@@ -439,6 +446,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 14178:         // Sticky Tar
         case 15088:         // Flurry
         case 15097:         // Enrage
+        case 15506:         // Immolate
         case 15876:         // Ice Blast
         case 16140:         // Exploding Cadaver (Exploding Cadaver)
         case 16563:         // Drowning Death
@@ -448,6 +456,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 17467:         // Unholy Aura
         case 18148:         // Static Field
         case 18268:         // Fire Shield
+        case 18847:         // Fevered Fatigue
         case 18943:         // Double Attack
         case 18968:         // Fire Shield
         case 19030:         // Bear Form (Shapeshift)
@@ -1282,14 +1291,6 @@ inline void GetChainJumpRange(SpellEntry const* spellInfo, SpellEffectIndex effI
 
     switch (spellInfo->Id)
     {
-        case 2643:  // Multi-shot
-        case 14288:
-        case 14289:
-        case 14290:
-        case 25294:
-        case 27021:
-            maxSearchRangeTarget = 8.f;
-            break;
         case 32445: // Holy Wrath - Maiden of Virtue
             maxSearchRangeTarget = 100.f;
             break;

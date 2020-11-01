@@ -277,6 +277,7 @@ void instance_blood_furnace::DoNextBroggokEventPhase()
 
         m_aBroggokEvent[m_uiBroggokEventPhase].m_bIsCellOpened = true;
 
+        // TODO: add small delay - after gate opened
         for (auto m_sSortedOrcGuid : m_aBroggokEvent[m_uiBroggokEventPhase].m_sSortedOrcGuids)
         {
             if (Creature* pOrc = instance->GetCreature(m_sSortedOrcGuid))
@@ -415,6 +416,28 @@ void instance_blood_furnace::Load(const char* chrIn)
             i = NOT_STARTED;
 
     OUT_LOAD_INST_DATA_COMPLETE;
+}
+
+void instance_blood_furnace::ShowChatCommands(ChatHandler* handler)
+{
+    handler->SendSysMessage("This instance supports the following commands: diagnostics, resetgauntlet");
+}
+
+void instance_blood_furnace::ExecuteChatCommand(ChatHandler* handler, char* args)
+{
+    char* result = handler->ExtractLiteralArg(&args);
+    if (!result)
+        return;
+    std::string val = result;
+    if (val == "diagnostics")
+    {
+        handler->PSendSysMessage("Broggok event stage: %u Broggok instance data: %u", m_uiBroggokEventPhase, GetData(TYPE_BROGGOK_EVENT));
+    }
+    else if (val == "resetgauntlet")
+    {
+        if (GetData(TYPE_BROGGOK_EVENT) == IN_PROGRESS)
+            SetData(TYPE_BROGGOK_EVENT, FAIL);
+    }
 }
 
 // Sort all nascent orcs & fel orc neophytes in the instance in order to get only those near broggok doors

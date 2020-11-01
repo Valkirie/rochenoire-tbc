@@ -15318,6 +15318,35 @@ void Player::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 cou
     {
         m_uint32Values[startOffset + index] = std::stoul(*iter);
     }
+
+    // repair titles
+    uint32 foundTitle = 0;
+    for (uint32 i = 1; i <= 28; ++i)
+    {
+        if (HasTitle(i))
+        {
+            foundTitle = i;
+            break;
+        }
+    }
+
+    if (!foundTitle)
+        return;
+
+    uint32 raceMask = getRaceMask();
+    if (foundTitle <= 14 && (raceMask & RACEMASK_ALLIANCE) != 0)
+        return;
+    if (foundTitle > 14 && (raceMask & RACEMASK_HORDE) != 0)
+        return;
+
+    if (CharTitlesEntry const* tEntry = sCharTitlesStore.LookupEntry(foundTitle))
+        SetTitle(tEntry, true, false);
+    if (foundTitle > 14)
+        foundTitle -= 14;
+    else
+        foundTitle += 14;
+    if (CharTitlesEntry const* tEntry = sCharTitlesStore.LookupEntry(foundTitle))
+        SetTitle(tEntry, false, false);
 }
 
 bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
@@ -16376,7 +16405,12 @@ void Player::LoadPet()
     {
         Pet* pet = new Pet;
         if (!pet->LoadPetFromDB(this, 0, 0, true, 0, true))
+        {
             delete pet;
+            return;
+        }
+        if (IsMounted())
+            pet->SetModeFlags(PET_MODE_DISABLE_ACTIONS);
     }
 }
 
@@ -17267,10 +17301,7 @@ void Player::_SaveAuras()
         SpellAuraHolder* holder = auraHolder.second;
         // skip all holders from spells that are passive or channeled
         // save singleTarget auras if self cast.
-        bool selfCastHolder = holder->GetCasterGuid() == GetObjectGuid();
-        TrackedAuraType trackedType = holder->GetTrackedAuraType();
-        if (!holder->IsPassive() && !IsChanneledSpell(holder->GetSpellProto()) && !IsItemAura(holder->GetSpellProto()) &&
-                (trackedType == TRACK_AURA_TYPE_NOT_TRACKED || (trackedType == TRACK_AURA_TYPE_SINGLE_TARGET && selfCastHolder)))
+        if (holder->IsSaveToDbHolder())
         {
             int32  damage[MAX_EFFECT_INDEX];
             uint32 periodicTime[MAX_EFFECT_INDEX];
@@ -17284,7 +17315,7 @@ void Player::_SaveAuras()
                 if (Aura* aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
                     // don't save not own area auras
-                    if (aur->IsAreaAura() && holder->GetCasterGuid() != GetObjectGuid())
+                    if (!aur->IsSaveToDbAura())
                         continue;
 
                     damage[i] = aur->GetModifier()->m_amount;
@@ -21230,7 +21261,7 @@ void Player::SetTitle(uint32 titleId, bool lost)
         SetTitle(titleEntry, lost);
 }
 
-void Player::SetTitle(CharTitlesEntry const* title, bool lost)
+void Player::SetTitle(CharTitlesEntry const* title, bool lost, bool send)
 {
     uint32 fieldIndexOffset = title->bit_index / 32;
     uint32 flag = 1 << (title->bit_index % 32);
@@ -21249,6 +21280,9 @@ void Player::SetTitle(CharTitlesEntry const* title, bool lost)
 
         SetFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag);
     }
+
+    if (!send)
+        return;
 
     WorldPacket data(SMSG_TITLE_EARNED, 4 + 4);
     data << uint32(title->bit_index);
@@ -21678,18 +21712,32 @@ void Player::UnsummonPetIfAny()
     pet->Unsummon(PET_SAVE_NOT_IN_SLOT, this);
 }
 
-bool Player::IsPetNeedBeTemporaryUnsummoned() const
+bool Player::IsPetNeedBeTemporaryUnsummoned(Pet* pet) const
 {
     if (!IsInWorld() || !IsAlive())
         return true;
 
-    if (sWorld.getConfig(CONFIG_BOOL_PET_UNSUMMON_AT_MOUNT) && IsMounted())
+    if (IsMounted())
+    {
+        if (pet)
+        {
+            if (!pet->IsAlive())
+                return false;
+
+            if (pet->isControlled() && (!(pet->isTemporarySummoned() || InArena()) || sWorld.getConfig(CONFIG_BOOL_PET_UNSUMMON_AT_MOUNT)))
+                return true;
+        }
+        else if (!InArena())
+            return true;
+
+        if (HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED))
+            return true;
+    }
+
+    if (HasAuraType(SPELL_AURA_FLY)) // if not IsMounted and has aura, means we are removing flying mount
         return true;
 
-    if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED))) // if not IsMounted and has aura, means we are removing flying mount
-        return true;
-
-    if (hasUnitState(UNIT_STAT_TAXI_FLIGHT))
+    if (IsTaxiFlying())
         return true;
 
     return false;
@@ -21701,7 +21749,7 @@ void Player::ResummonPetTemporaryUnSummonedIfAny()
         return;
 
     // not resummon in not appropriate state
-    if (IsPetNeedBeTemporaryUnsummoned())
+    if (IsPetNeedBeTemporaryUnsummoned(nullptr))
         return;
 
     if (GetPetGuid())

@@ -209,7 +209,7 @@ struct boss_maexxnaAI : public ScriptedAI
             uint8 PLAYERS_WEB_WRAP = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_PLAYERS_WEB_WRAP);
             if (targets.size() > PLAYERS_WEB_WRAP)
             {
-                std::random_shuffle(targets.begin(), targets.end());
+                std::shuffle(targets.begin(), targets.end(), *GetRandomGenerator());
                 targets.resize(PLAYERS_WEB_WRAP);
             }
 
@@ -224,7 +224,7 @@ struct boss_maexxnaAI : public ScriptedAI
 
                 // Randomly pick up to three trigger NPCs
                 std::vector<Unit*> invisibleMen(m_summoningTriggers.begin(), m_summoningTriggers.end());
-                std::random_shuffle(invisibleMen.begin(), invisibleMen.end());
+                std::shuffle(invisibleMen.begin(), invisibleMen.end(), *GetRandomGenerator());
                 invisibleMen.resize(targets.size());
 
                 for (uint8 i = 0; i < targets.size(); i++)

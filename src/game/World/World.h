@@ -434,6 +434,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_CALCULATE_CREATURE_ZONE_AREA_DATA,
     CONFIG_BOOL_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA,
     CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF,
+    CONFIG_BOOL_ACCOUNT_DATA,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -676,7 +677,7 @@ class World
         bool IsPvPRealm() const { return (getConfig(CONFIG_UINT32_GAME_TYPE) == REALM_TYPE_PVP || getConfig(CONFIG_UINT32_GAME_TYPE) == REALM_TYPE_RPPVP || getConfig(CONFIG_UINT32_GAME_TYPE) == REALM_TYPE_FFA_PVP); }
         bool IsFFAPvPRealm() const { return getConfig(CONFIG_UINT32_GAME_TYPE) == REALM_TYPE_FFA_PVP; }
 
-        void KickAll();
+        void KickAll(bool save);
         void KickAllLess(AccountTypes sec);
         void WarnAccount(uint32 accountId, std::string from, std::string reason, const char* type = "WARNING");
         BanReturn BanAccount(BanMode mode, std::string nameOrIP, uint32 duration_secs, std::string reason, const std::string& author);
@@ -729,6 +730,13 @@ class World
 
 		uint32 GetCurrentMaxLevel() const;
         void UpdateSessionExpansion(uint8 expansion);
+
+        template<typename T>
+        void ExecuteForAllSessions(T executor)
+        {
+            for (auto& data : m_sessions)
+                executor(data);
+        }
 
         Messager<World>& GetMessager() { return m_messager; }
 

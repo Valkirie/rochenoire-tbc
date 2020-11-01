@@ -161,6 +161,8 @@ class ChatHandler
         Player* GetPlayer();
 
         std::string GetLocalItemLink(Item* pItem) const;
+
+        WorldSession* GetSession() const { return m_session; }
     protected:
         explicit ChatHandler() : m_session(nullptr), sentErrorMessage(false)
         {}      // for CLI subclass
@@ -633,6 +635,7 @@ class ChatHandler
         bool HandleTitlesCurrentCommand(char* args);
         bool HandleTitlesRemoveCommand(char* args);
         bool HandleTitlesSetMaskCommand(char* args);
+        bool HandleTitlesSwapCommand(char* args);
 
         bool HandleTriggerActiveCommand(char* args);
         bool HandleTriggerNearCommand(char* args);
@@ -707,6 +710,9 @@ class ChatHandler
 
         bool HandleBagsCommand(char* args);
 
+        bool HandleCombatListCommand(char* args);
+        bool HandleCombatStopCommand(char* args);
+
         bool HandleTicketDiscardCommand(char* args);
         bool HandleTicketEscalateCommand(char* args);
         bool HandleTicketGoCommand(char* args);
@@ -725,7 +731,6 @@ class ChatHandler
         bool HandleMaxSkillCommand(char* args);
         bool HandleSetSkillCommand(char* args);
         bool HandleRespawnCommand(char* args);
-        bool HandleCombatStopCommand(char* args);
         bool HandleRepairitemsCommand(char* args);
         bool HandleStableCommand(char* args);
         bool HandleWaterwalkCommand(char* args);

@@ -624,6 +624,7 @@ enum MovementFlags
     MOVEFLAG_LEVITATING         = 0x00000400,
     MOVEFLAG_ROOT               = 0x00000800,
     MOVEFLAG_FALLING            = 0x00001000,
+    MOVEFLAG_JUMPING            = 0x00002000,               // XXX CHECK THIS!
     MOVEFLAG_FALLINGFAR         = 0x00004000,
     MOVEFLAG_SWIMMING           = 0x00200000,               // appears with fly flag also
     MOVEFLAG_ASCENDING          = 0x00400000,               // swim up also
@@ -1018,6 +1019,7 @@ struct ProcExecutionData
     // Scripting data
     uint32 triggeredSpellId;
     std::array<int32, MAX_EFFECT_INDEX> basepoints = { 0, 0, 0 };
+    bool procOnce;
 
     ProcExecutionData(ProcSystemArguments& data, bool isVictim);
 };
@@ -1948,6 +1950,8 @@ class Unit : public WorldObject
         bool IsLevitating() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_LEVITATING); }
         bool IsWalking() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_WALK_MODE); }
         bool IsRooted() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_ROOT); }
+        bool IsJumping() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_JUMPING); }
+        bool IsFalling() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_FALLING); }
 
         virtual void SetLevitate(bool /*enabled*/) {}
         virtual void SetSwim(bool /*enabled*/) {}
@@ -2839,7 +2843,7 @@ bool Unit::CheckAllControlledUnits(Func const& func, uint32 controlledMask) cons
 
 // Helper for targets nearest to the spell target
 // The spell target is always first unless there is a target at _completely_ the same position (unbelievable case)
-struct TargetDistanceOrderNear : public std::binary_function<Unit const, Unit const, bool>
+struct TargetDistanceOrderNear
 {
     Unit const* m_mainTarget;
     DistanceCalculation m_distcalc;
@@ -2854,7 +2858,7 @@ struct TargetDistanceOrderNear : public std::binary_function<Unit const, Unit co
 
 // Helper for targets furthest away to the spell target
 // The spell target is always first unless there is a target at _completely_ the same position (unbelievable case)
-struct TargetDistanceOrderFarAway : public std::binary_function<Unit const, Unit const, bool>
+struct TargetDistanceOrderFarAway
 {
     Unit const* m_mainTarget;
     DistanceCalculation m_distcalc;
@@ -2866,7 +2870,7 @@ struct TargetDistanceOrderFarAway : public std::binary_function<Unit const, Unit
     }
 };
 
-struct LowestHPNearestOrder : public std::binary_function<Unit const, Unit const, bool>
+struct LowestHPNearestOrder
 {
     Unit const* m_mainTarget;
     DistanceCalculation m_distcalc;

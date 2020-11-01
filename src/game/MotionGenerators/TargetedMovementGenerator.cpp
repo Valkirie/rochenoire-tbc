@@ -199,7 +199,7 @@ void ChaseMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& t
     {
         targetMoved = this->RequiresNewPosition(owner, dest.x, dest.y, dest.z);
 
-        if (this->i_speedChanged || targetMoved)
+        if ((this->i_speedChanged && !owner.movespline->Finalized()) || targetMoved)
         {
             float x, y, z;
 
@@ -216,19 +216,31 @@ void ChaseMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& t
                 z = end.z;
             }
 
-            if (DispatchSplineToPosition(owner, x, y, z, EnableWalking(), true, true))
+            if (owner.GetDistance(x, y, z, DIST_CALC_NONE) > 0.3f)
             {
-                this->i_targetReached = false;
-                this->i_speedChanged = false;
-                /* m_prevTargetPos is updated on making new spline (normal and distancing) and also on reaching target
-                is used for determining if player moved towards target whilst the spline was going on to stop the spline prematurely
-                and prevent it going behind targets back - it will still occur in rare cases due to PF and lag */
-                this->i_target->GetPosition(this->i_lastTargetPos.x, this->i_lastTargetPos.y, this->i_lastTargetPos.z);
-                m_closenessAndFanningTimer = 0;
-                return;
+                if (DispatchSplineToPosition(owner, x, y, z, EnableWalking(), true, true))
+                {
+                    this->i_targetReached = false;
+                    this->i_speedChanged = false;
+                    /* m_prevTargetPos is updated on making new spline (normal and distancing) and also on reaching target
+                    is used for determining if player moved towards target whilst the spline was going on to stop the spline prematurely
+                    and prevent it going behind targets back - it will still occur in rare cases due to PF and lag */
+                    this->i_target->GetPosition(this->i_lastTargetPos.x, this->i_lastTargetPos.y, this->i_lastTargetPos.z);
+                    m_closenessAndFanningTimer = 0;
+                    return;
+                }
             }
             // if we arrived here something failed in PF dispatch and target is not reachable
-            m_reachable = false;
+            if (this->i_offset == 0.f)
+            {
+                if (!owner.CanReachWithMeleeAttack(this->i_target.getTarget()))
+                    m_reachable = false;
+            }
+            else
+            {
+                if (owner.GetDistance(this->i_target.getTarget(), true, DIST_CALC_COMBAT_REACH) > this->i_offset)
+                    m_reachable = false;
+            }
             return;
         }
         else if (!targetMoved) // we do not need new position and we are reachable
@@ -567,6 +579,12 @@ bool FollowMovementGenerator::EnableWalking() const
     return (i_target.isValid() && i_target->IsWalking());
 }
 
+void FollowMovementGenerator::MarkMovegen()
+{
+    if (m_possess)
+        m_main = false;
+}
+
 float FollowMovementGenerator::GetSpeed(Unit& owner) const
 {
     const UnitMoveType type = i_target->m_movementInfo.GetSpeedType();
@@ -624,7 +642,7 @@ bool FollowMovementGenerator::IsBoostAllowed(Unit& owner) const
     return (i_target->HasInArc(&owner) != !i_target->m_movementInfo.HasMovementFlag(MovementFlags(MOVEFLAG_BACKWARD)));
 }
 
-bool FollowMovementGenerator::IsUnstuckAllowed(Unit &owner) const
+bool FollowMovementGenerator::IsUnstuckAllowed(Unit& owner) const
 {
     // Do not try to unstuck if in combat
     if (owner.IsInCombat() || !i_target.isValid() || i_target->IsInCombat())
@@ -645,6 +663,9 @@ bool FollowMovementGenerator::IsUnstuckAllowed(Unit &owner) const
 void FollowMovementGenerator::Initialize(Unit& owner)
 {
     if (!i_target.isValid() || !i_target->IsInWorld())
+        return;
+
+    if (i_target->GetMap() != owner.GetMap())
         return;
 
     owner.addUnitState(UNIT_STAT_FOLLOW);                   // _MOVE set in _SetTargetLocation after required checks
@@ -922,7 +943,7 @@ void FollowMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& 
             targetOrientation = (!targetRelocation && !m_targetMoving && !m_targetFaced);
             targetSpeedChanged = (targetSpeedChanged && !targetRelocation && !targetOrientation);
             i_lastTargetPos = currentTargetPos;
-       }
+        }
     }
 
     // Decide whether it's suitable time to update position or orientation

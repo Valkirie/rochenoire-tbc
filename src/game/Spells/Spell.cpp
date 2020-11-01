@@ -1018,7 +1018,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
             procEx |= PROC_EX_NORMAL_HIT;
 
         m_healing = addhealth; // update value so that script handler has access
-        OnHit(); // TODO: After spell damage calc is moved to proper handler - move this before the first if
+        OnHit(missInfo); // TODO: After spell damage calc is moved to proper handler - move this before the first if
 
         int32 gain = caster->DealHeal(unitTarget, addhealth, m_spellInfo, target->isCrit, IsScaled());
 
@@ -1069,7 +1069,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
         procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
 
         m_damage = spellDamageInfo.damage; // update value so that script handler has access
-        OnHit(); // TODO: After spell damage calc is moved to proper handler - move this before the first if
+        OnHit(missInfo); // TODO: After spell damage calc is moved to proper handler - move this before the first if
 
         if (reflectTarget)
             reflectTarget->DealSpellDamage(&spellDamageInfo, true);
@@ -1109,7 +1109,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     // Passive spell hits/misses or active spells only misses (only triggers if proc flags set)
     else if (procAttacker || procVictim)
     {
-        OnHit(); // TODO: After spell damage calc is moved to proper handler - move this before the first if
+        OnHit(missInfo); // TODO: After spell damage calc is moved to proper handler - move this before the first if
         // Fill base damage struct (unitTarget - is real spell target)
         SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
         procEx = createProcExtendMask(&damageInfo, missInfo);
@@ -1317,7 +1317,7 @@ void Spell::DoAllTargetlessEffects(bool dest)
 
     if (effectMask)
     {
-        OnHit();
+        OnHit(SPELL_MISS_NONE);
 
         if (unitCaster)
         {
@@ -1345,7 +1345,7 @@ void Spell::DoAllEffectOnTarget(GOTargetInfo* target)
 
     ExecuteEffects(nullptr, nullptr, go, effectMask);
 
-    OnHit();
+    OnHit(SPELL_MISS_NONE);
 
     // cast at creature (or GO) quest objectives update at successful cast finished (+channel finished)
     // ignore autorepeat/melee casts for speed (not exist quest for spells (hm... )
@@ -1366,7 +1366,7 @@ void Spell::DoAllEffectOnTarget(ItemTargetInfo* target)
 
     ExecuteEffects(nullptr, target->item, nullptr, effectMask);
 
-    OnHit();
+    OnHit(SPELL_MISS_NONE);
 }
 
 void Spell::HandleImmediateEffectExecution(TargetInfo* target)
@@ -1473,7 +1473,7 @@ bool Spell::IsValidDeadOrAliveTarget(Unit const* target) const
 // Spell target first
 // Raidmates then descending by injury suffered (MaxHealth - Health)
 // Other players/mobs then descending by injury suffered (MaxHealth - Health)
-struct ChainHealingOrder : public std::binary_function<const Unit*, const Unit*, bool>
+struct ChainHealingOrder
 {
     const Unit* MainTarget;
     ChainHealingOrder(Unit const* Target) : MainTarget(Target) {};
@@ -1496,7 +1496,7 @@ struct ChainHealingOrder : public std::binary_function<const Unit*, const Unit*,
     }
 };
 
-class ChainHealingFullHealth: std::unary_function<const Unit*, bool>
+class ChainHealingFullHealth
 {
     public:
         const Unit* MainTarget;
@@ -3074,6 +3074,9 @@ void Spell::handle_immediate()
     if (m_spellState != SPELL_STATE_CHANNELING)
         m_spellState = SPELL_STATE_LANDING;
 
+    // Remove used for cast item if need (it can be already nullptr after TakeReagents call
+    TakeCastItem();
+
     DoAllTargetlessEffects(true);
 
     for (auto& ihit : m_UniqueTargetInfo)
@@ -3084,9 +3087,6 @@ void Spell::handle_immediate()
 
     // spell is finished, perform some last features of the spell here
     _handle_finish_phase();
-
-    // Remove used for cast item if need (it can be already nullptr after TakeReagents call
-    TakeCastItem();
 
     if (m_spellState != SPELL_STATE_CHANNELING)
         finish();                                       // successfully finish spell cast (not last in case autorepeat or channel spell)
@@ -3909,6 +3909,33 @@ void Spell::SendChannelStart(uint32 duration)
 
     m_timer = duration;
 
+    if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_CHANNELED_1))
+    {
+        data.Initialize(SMSG_SPELL_UPDATE_CHAIN_TARGETS);
+        data << m_caster->GetObjectGuid();
+        data << uint32(m_spellInfo->Id);
+        size_t count_pos = data.wpos();
+        data << uint32(0);
+        uint32 hit = 0;
+        for (TargetList::const_iterator itr = m_UniqueTargetInfo.begin(); itr != m_UniqueTargetInfo.end(); ++itr)
+        {
+            if (((itr->effectHitMask & (1 << EFFECT_INDEX_0)) && itr->reflectResult == SPELL_MISS_NONE &&
+                m_CastItem) || itr->targetGUID != m_caster->GetObjectGuid())
+            {
+                if (Unit* target = ObjectAccessor::GetUnit(*m_caster, itr->targetGUID))
+                {
+                    ++hit;
+                    data << target->GetObjectGuid();
+                }
+            }
+        }
+        if (hit)
+        {
+            data.put<uint32>(count_pos, hit);
+            m_caster->SendMessageToSet(data, true);
+        }
+    }
+
     if (target)
         m_caster->SetChannelObject(target);
 
@@ -3955,6 +3982,10 @@ void Spell::TakeCastItem()
         sLog.outError("Cast item (%s) has no item prototype", m_CastItem->GetGuidStr().c_str());
         return;
     }
+
+    // these effects change the item
+    if (IsSpellHaveEffect(m_spellInfo, SPELL_EFFECT_SUMMON_CHANGE_ITEM))
+        return;
 
     bool expendable = false;
     bool withoutCharges = false;
@@ -4999,25 +5030,25 @@ SpellCastResult Spell::CheckCast(bool strict)
                 else
                     return SPELL_FAILED_BAD_TARGETS;
 
-                SkillType skillId = SKILL_NONE;
-                int32 reqSkillValue = 0;
-                int32 skillValue = 0;
-
                 // check lock compatibility
-                SpellCastResult res = CanOpenLock(SpellEffectIndex(i), lockId, skillId, reqSkillValue, skillValue);
+                SpellEffectIndex effIdx = SpellEffectIndex(i);
+                SpellCastResult res = CanOpenLock(effIdx, lockId, m_effectSkillInfo[effIdx].skillId, m_effectSkillInfo[effIdx].reqSkillValue, m_effectSkillInfo[effIdx].skillValue);
                 if (res != SPELL_CAST_OK)
                     return res;
 
                 // chance for fail at orange mining/herb/LockPicking gathering attempt
                 // second check prevent fail at rechecks
-                if (!strict && skillId != SKILL_NONE)
+                if (!strict && m_effectSkillInfo[effIdx].skillId != SKILL_NONE)
                 {
-                    bool canFailAtMax = skillId != SKILL_HERBALISM && skillId != SKILL_MINING;
+                    bool canFailAtMax = m_effectSkillInfo[effIdx].skillId != SKILL_HERBALISM && m_effectSkillInfo[effIdx].skillId != SKILL_MINING;
 
                     // chance for failure in orange gather / lockpick (gathering skill can't fail at maxskill)
-                    if ((canFailAtMax || skillValue < sWorld.GetConfigMaxSkillValue()) && reqSkillValue > irand(skillValue - 25, skillValue + 37))
+                    if ((canFailAtMax || m_effectSkillInfo[effIdx].skillValue < sWorld.GetConfigMaxSkillValue())
+                        && m_effectSkillInfo[effIdx].reqSkillValue > irand(m_effectSkillInfo[effIdx].skillValue - 25, m_effectSkillInfo[effIdx].skillValue + 37))
                         return SPELL_FAILED_TRY_AGAIN;
                 }
+                if (m_CastItem)
+                    m_effectSkillInfo[effIdx].skillId = SKILL_NONE;
                 break;
             }
             case SPELL_EFFECT_PICKPOCKET:
@@ -6197,18 +6228,22 @@ SpellCastResult Spell::CheckItems()
             {
                 if (!m_targets.getItemTarget())
                     return SPELL_FAILED_CANT_BE_PROSPECTED;
+                Item* itemTarget = m_targets.getItemTarget();
                 // ensure item is a prospectable ore
-                if (!(m_targets.getItemTarget()->GetProto()->Flags & ITEM_FLAG_IS_PROSPECTABLE))
+                if (!(itemTarget->GetProto()->Flags & ITEM_FLAG_IS_PROSPECTABLE))
                     return SPELL_FAILED_CANT_BE_PROSPECTED;
                 // prevent prospecting in trade slot
-                if (m_targets.getItemTarget()->GetOwnerGuid() != m_caster->GetObjectGuid())
+                if (itemTarget->GetOwnerGuid() != m_caster->GetObjectGuid())
                     return SPELL_FAILED_CANT_BE_PROSPECTED;
+                // already looting it
+                if (itemTarget->m_loot && itemTarget->HasTemporaryLoot())
+                    return SPELL_FAILED_PROSPECT_WHILE_LOOTING;
                 // Check for enough skill in jewelcrafting
-                uint32 item_prospectingskilllevel = m_targets.getItemTarget()->GetProto()->RequiredSkillRank;
+                uint32 item_prospectingskilllevel = itemTarget->GetProto()->RequiredSkillRank;
                 if (item_prospectingskilllevel > p_caster->GetSkillValue(SKILL_JEWELCRAFTING))
                     return SPELL_FAILED_LOW_CASTLEVEL;
                 // make sure the player has the required ores in inventory
-                if (int32(m_targets.getItemTarget()->GetCount()) < CalculateSpellEffectValue(SpellEffectIndex(i), m_caster))
+                if (int32(itemTarget->GetCount()) < CalculateSpellEffectValue(SpellEffectIndex(i), m_caster))
                     return SPELL_FAILED_PROSPECT_NEED_MORE;
 
                 if (!LootTemplates_Prospecting.HaveLootFor(m_targets.getItemTargetEntry()))
@@ -6957,6 +6992,16 @@ void Spell::SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpel
         target->CastSpell(target, spellId150, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, ObjectGuid(), parentSpell);
     else if (spellId75 > 0)
         target->CastSpell(target, spellId75, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, ObjectGuid(), parentSpell);
+}
+
+void Spell::RegisterAuraProc(Aura* aura)
+{
+    m_procOnceHolder.insert(aura);
+}
+
+bool Spell::IsAuraProcced(Aura* aura)
+{
+    return m_procOnceHolder.find(aura) != m_procOnceHolder.end();
 }
 
 void Spell::ClearCastItem()
@@ -7759,10 +7804,10 @@ void Spell::OnCast()
         return script->OnCast(this);
 }
 
-void Spell::OnHit()
+void Spell::OnHit(SpellMissInfo missInfo)
 {
     if (SpellScript* script = GetSpellScript())
-        return script->OnHit(this);
+        return script->OnHit(this, missInfo);
 }
 
 void Spell::OnAfterHit()

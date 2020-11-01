@@ -143,6 +143,7 @@ class SpellAuraHolder
         bool IsRemovedOnShapeLost() const { return m_isRemovedOnShapeLost; }
         bool IsDeleted() const { return m_deleted;}
         bool IsEmptyHolder() const;
+        bool IsSaveToDbHolder() const;
 
         void SetDeleted() { m_deleted = true; m_spellAuraHolderState = SPELLAURAHOLDER_STATE_REMOVING; }
 
@@ -198,8 +199,10 @@ class SpellAuraHolder
         // Scripting system
         AuraScript* GetAuraScript() const { return m_auraScript; }
         // hooks
-        void OnHolderInit();
+        void OnHolderInit(WorldObject* caster);
         void OnDispel(Unit* dispeller, uint32 dispellingSpellId, uint32 originalStacks);
+        // helpers
+        void PresetAuraStacks(uint32 stacks) { m_stackAmount = stacks; } // use only in OnHolderInit
     private:
         void UpdateAuraApplication();                       // called at charges or stack changes
         void ClearExtraAuraInfo(Unit* caster);
@@ -464,6 +467,7 @@ class Aura
         bool IsPersistent() const { return m_isPersistent; }
         bool IsAreaAura() const { return m_isAreaAura; }
         bool IsPeriodic() const { return m_isPeriodic; }
+        bool IsSaveToDbAura() const;
 
         void ApplyModifier(bool apply, bool Real = false);
         void UpdateAuraScaling();
@@ -562,7 +566,7 @@ class AreaAura : public Aura
 {
     public:
         AreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster = nullptr, Item* castItem = nullptr, uint32 originalRankSpellId = 0);
-        ~AreaAura();
+        virtual ~AreaAura();
     protected:
         void Update(uint32 diff) override;
     private:
@@ -575,7 +579,7 @@ class PersistentAreaAura : public Aura
 {
     public:
         PersistentAreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster = nullptr, Item* castItem = nullptr);
-        ~PersistentAreaAura();
+        virtual ~PersistentAreaAura();
     protected:
         void Update(uint32 diff) override;
 };
@@ -585,7 +589,7 @@ class SingleEnemyTargetAura : public Aura
         friend Aura* CreateAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, Unit* caster, Item* castItem);
 
     public:
-        ~SingleEnemyTargetAura();
+        virtual ~SingleEnemyTargetAura();
         Unit* GetTriggerTarget() const override;
 
     protected:
@@ -598,7 +602,7 @@ class GameObjectAura : public Aura
 {
     public:
         GameObjectAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 const* currentDamage, int32 const* currentBasePoints, SpellAuraHolder* holder, Unit* target, GameObject* caster);
-        ~GameObjectAura();
+        virtual ~GameObjectAura();
 
     protected:
         void Update(uint32 diff) override;

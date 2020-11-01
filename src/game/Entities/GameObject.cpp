@@ -1302,7 +1302,7 @@ void GameObject::Use(Unit* user)
     uint32 triggeredFlags = 0;
     bool originalCaster = true;
 
-    if (user->IsPlayer())
+    if (user->IsPlayer() && GetGoType() != GAMEOBJECT_TYPE_TRAP) // workaround for GO casting
         if (!m_goInfo->IsUsableMounted())
             user->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
@@ -1386,6 +1386,9 @@ void GameObject::Use(Unit* user)
                 DEBUG_LOG("Chest ScriptStart id %u for %s (opened by %s)", GetGOInfo()->chest.eventId, GetGuidStr().c_str(), user->GetGuidStr().c_str());
                 StartEvents_Event(GetMap(), GetGOInfo()->chest.eventId, user, this);
             }
+
+            if (!GetGOInfo()->chest.lockId)
+                SetLootState(GO_JUST_DEACTIVATED);
 
             return;
         }

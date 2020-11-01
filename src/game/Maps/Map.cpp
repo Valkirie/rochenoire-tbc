@@ -356,6 +356,9 @@ bool Map::Add(Player* player)
     player->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
     UpdateObjectVisibility(player, cell, p);
 
+    if (IsRaid())
+        player->RemoveAllGroupBuffsFromCaster(ObjectGuid());
+
     if (i_data)
         i_data->OnPlayerEnter(player);
 
@@ -1077,6 +1080,10 @@ void Map::Remove(Player* player, bool remove)
 {
     if (i_data)
         i_data->OnPlayerLeave(player);
+
+    if (IsRaid())
+        for (auto& playerRef : GetPlayers())
+            playerRef.getSource()->RemoveAllGroupBuffsFromCaster(player->GetObjectGuid());
 
     if (remove)
         player->CleanupsBeforeDelete();

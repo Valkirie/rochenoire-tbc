@@ -2496,7 +2496,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
     AccountTypes security = SEC_PLAYER;
     std::string last_login = GetMangosString(LANG_ERROR);
 
-    QueryResult* result = LoginDatabase.PQuery("SELECT username,gmlevel,ip,loginTime FROM account a JOIN account_logons b ON(a.id=b.accountId) WHERE id = '%u' ORDER BY loginTime DESC LIMIT 1", accId);
+    QueryResult* result = LoginDatabase.PQuery("SELECT username,gmlevel,ip,loginTime FROM account a JOIN account_logons b ON(a.id=b.accountId) WHERE a.id = '%u' ORDER BY loginTime DESC LIMIT 1", accId);
     if (result)
     {
         Field* fields = result->Fetch();
@@ -3689,6 +3689,21 @@ bool ChatHandler::HandleCombatStopCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleCombatListCommand(char* args)
+{
+    Player* player = GetSession()->GetPlayer();
+    if (!player)
+        return false;
+
+    SendSysMessage("In Combat With:");
+    for (auto& ref : player->getHostileRefManager())
+    {
+        Unit* refOwner = ref.getSource()->getOwner();
+        PSendSysMessage("%s Entry: %u Counter: %u", refOwner->GetName(), refOwner->GetEntry(), refOwner->GetGUIDLow());
+    }
+    return true;
+}
+
 void ChatHandler::HandleLearnSkillRecipesHelper(Player* player, uint32 skill_id)
 {
     uint32 classmask = player->getClassMask();
@@ -4600,6 +4615,37 @@ bool ChatHandler::HandleTitlesSetMaskCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleTitlesSwapCommand(char* args)
+{
+    Player* target = getSelectedPlayer();
+    if (!target)
+        return false;
+
+    uint32 foundTitle = 0;
+    for (uint32 i = 1; i <= 28; ++i)
+    {
+        if (target->HasTitle(i))
+        {
+            foundTitle = i;
+            break;
+        }
+    }
+
+    if (!foundTitle)
+        return false;
+
+    if (CharTitlesEntry const* tEntry = sCharTitlesStore.LookupEntry(foundTitle))
+        target->SetTitle(tEntry, true);
+    if (foundTitle > 14)
+        foundTitle -= 14;
+    else
+        foundTitle += 14;
+    if (CharTitlesEntry const* tEntry = sCharTitlesStore.LookupEntry(foundTitle))
+        target->SetTitle(tEntry, false);
+
+    return true;
+}
+
 bool ChatHandler::HandleCharacterTitlesCommand(char* args)
 {
     Player* target;
@@ -4908,7 +4954,7 @@ bool ChatHandler::HandleMmapStatsCommand(char* /*args*/)
 
 bool ChatHandler::HandleBagsCommand(char* args)
 {
-    Player* player = GetPlayer();
+    Player* player = GetSession()->GetPlayer();
 
     uint32 bagEntries[] = { 34845,27680,21876,14156 };
     for (uint32 entry : bagEntries)

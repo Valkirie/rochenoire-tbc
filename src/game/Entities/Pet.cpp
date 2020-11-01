@@ -228,7 +228,7 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petentry /*= 0*/, uint32 petnumber
 
     uint32 pet_number = fields[0].GetUInt32();
 
-    if (!forced && owner->IsPetNeedBeTemporaryUnsummoned())
+    if (!forced && owner->IsPetNeedBeTemporaryUnsummoned(nullptr))
     {
         // set temporary summon that way its possible if the player unmount to resummon it automaticaly
         owner->SetTemporaryUnsummonedPetNumber(pet_number);
@@ -1832,7 +1832,7 @@ void Pet::_SaveAuras()
 
         // skip all holders from spells that are passive or channeled
         // do not save single target holders (unless they were cast by the player)
-        if (save && !holder->IsPassive() && !IsChanneledSpell(holder->GetSpellProto()) && (holder->GetCasterGuid() == GetObjectGuid() || holder->GetTrackedAuraType() == TRACK_AURA_TYPE_NOT_TRACKED))
+        if (save && holder->IsSaveToDbHolder())
         {
             int32  damage[MAX_EFFECT_INDEX];
             uint32 periodicTime[MAX_EFFECT_INDEX];
@@ -1846,7 +1846,7 @@ void Pet::_SaveAuras()
                 if (Aura* aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
                     // don't save not own area auras
-                    if (aur->IsAreaAura() && holder->GetCasterGuid() != GetObjectGuid())
+                    if (!aur->IsSaveToDbAura())
                         continue;
 
                     damage[i] = aur->GetModifier()->m_amount;
@@ -2670,4 +2670,9 @@ void Pet::RegenerateHealth()
     }
 
     ModifyHealth(addvalue);
+}
+
+void Pet::ResetCorpseRespawn()
+{
+    m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(1000); // rudimentary value - just need more than now
 }

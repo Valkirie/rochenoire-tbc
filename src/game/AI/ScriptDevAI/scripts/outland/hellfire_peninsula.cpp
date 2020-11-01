@@ -481,6 +481,7 @@ struct npc_fel_guard_houndAI : public ScriptedPetAI
     {
         m_uiPoodadTimer = 0;
         m_bIsPooActive  = false;
+        SetReactState(REACT_PASSIVE);
     }
 
     void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
@@ -1772,7 +1773,7 @@ struct npc_vindicator_sedaiAI : public ScriptedAI, public CombatActions
 
         AddCustomAction(SEDAI_ACTION_FELORC_SPAWN_ATTACK, true, [&]()
         {
-            if (Creature* orc = m_creature->SummonCreature(NPC_FEL_ORC, 258.168854f, 4109.307617f, 91.639290f, 2.644194f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 4000, true))
+            if (Creature* orc = m_creature->SummonCreature(NPC_FEL_ORC, 258.168854f, 4109.307617f, 91.639290f, 2.644194f, TEMPSPAWN_TIMED_DESPAWN, 60000, true))
             {
                 m_felOrc = orc->GetObjectGuid();
                 if (Creature* maghar = m_creature->GetMap()->GetCreature(m_maghar))
@@ -1781,7 +1782,7 @@ struct npc_vindicator_sedaiAI : public ScriptedAI, public CombatActions
                     maghar->AI()->AttackStart(orc);
                 }
             }
-            if (Creature* orc = m_creature->SummonCreature(NPC_FEL_ORC, 256.429932f, 4105.590820f, 90.982086f, 2.734515f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 4000, true))
+            if (Creature* orc = m_creature->SummonCreature(NPC_FEL_ORC, 256.429932f, 4105.590820f, 90.982086f, 2.734515f, TEMPSPAWN_TIMED_DESPAWN, 60000, true))
             {
                 m_felOrcTwo = orc->GetObjectGuid();
                 if (Creature* maghar = m_creature->GetMap()->GetCreature(m_magharTwo))
@@ -2039,6 +2040,7 @@ struct npc_laughing_skullAI : public ScriptedAI
     npc_laughing_skullAI(Creature* creature) : ScriptedAI(creature)
     {
         SetReactState(REACT_DEFENSIVE);
+        creature->GetCombatManager().SetLeashingDisable(true);
         Reset();
     }
 
@@ -2268,6 +2270,31 @@ struct SummonSmokeBeacon : public SpellScript
     }
 };
 
+enum
+{
+    FACTION_SCARAB_HOSTILE = 14,
+};
+
+struct CursedScarabPeriodicTrigger : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        Unit* target = spell->GetUnitTarget();
+        if (target && target->getFaction() != FACTION_SCARAB_HOSTILE && urand(0, 10) == 0)
+            target->setFaction(FACTION_SCARAB_HOSTILE);
+    }
+};
+
+struct CursedScarabDespawnPeriodicTrigger : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        Unit* target = spell->GetUnitTarget();
+        if (target && target->IsCreature())
+            static_cast<Creature*>(target)->ForcedDespawn();
+    }
+};
+
 void AddSC_hellfire_peninsula()
 {
     Script* pNewScript = new Script;
@@ -2372,4 +2399,6 @@ void AddSC_hellfire_peninsula()
     pNewScript->RegisterSelf();
 
     RegisterSpellScript<SummonSmokeBeacon>("spell_summon_smoke_beacon");
+    RegisterSpellScript<CursedScarabPeriodicTrigger>("spell_cursed_scarab_periodic");
+    RegisterSpellScript<CursedScarabDespawnPeriodicTrigger>("spell_cursed_scarab_despawn_periodic");
 }

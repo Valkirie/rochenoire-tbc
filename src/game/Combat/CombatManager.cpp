@@ -57,9 +57,14 @@ void CombatManager::Update(const uint32 diff)
                 m_evadeTimer -= diff;
         }
 
+        if (m_leashingDisabled)
+            return;
+
         // disabled in instances except for players in BGs
         if (!m_owner->GetMap()->IsDungeon() || m_owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
         {
+            if (!m_owner->GetMap()->IsDungeon() && m_owner->IsImmobilizedState())
+                m_owner->getThreatManager().DeleteOutOfRangeReferences();
             if (m_combatTimer)
             {
                 if (m_combatTimer <= diff)
@@ -142,6 +147,8 @@ void CombatManager::SetEvadeState(EvadeState state)
     if (m_evadeState == state)
         return;
 
+    if (state == EVADE_NONE)
+        m_evadeTimer = 0;
     if (state == EVADE_NONE && m_evadeState == EVADE_HOME)
         m_owner->AI()->SetAIOrder(ORDER_NONE);
     else if (state == EVADE_HOME)

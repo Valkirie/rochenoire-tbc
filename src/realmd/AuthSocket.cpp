@@ -178,10 +178,19 @@ std::array<uint8, 16> VersionChallenge = { { 0xBA, 0xA3, 0x1E, 0x99, 0xA0, 0x0B,
 
 /// Constructor - set the N and g values for SRP6
 AuthSocket::AuthSocket(boost::asio::io_service& service, std::function<void (Socket*)> closeHandler)
-    : Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER)
+    : Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER), m_timeoutTimer(service)
 {
-    N.SetHexStr("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
-    g.SetDword(7);
+    m_timeoutTimer.expires_from_now(boost::posix_time::seconds(30));
+    m_timeoutTimer.async_wait([&] (const boost::system::error_code& error)
+    {
+        // Timer was not cancelled, take necessary action.
+        if (error == boost::asio::error::operation_aborted)
+            return;
+
+        // Close socket if timer runs out
+        if (!IsClosed())
+            Close();
+    });
 }
 
 /// Read the packet from the client
@@ -241,9 +250,10 @@ bool AuthSocket::ProcessIncomingData()
             DEBUG_LOG("[Auth] Got unknown packet %u", cmd);
             return false;
         }
-
-        // if we reach here, it means that a valid opcode was found and the handler completed successfully
     }
+
+    // if we reach here, it means that a valid opcode was found and the handler completed successfully
+    m_timeoutTimer.cancel();
 
     return true;
 }
@@ -550,19 +560,19 @@ bool AuthSocket::_HandleLogonProof()
         pkt << (uint8) CMD_AUTH_LOGON_CHALLENGE;
         pkt << (uint8) 0x00;
         pkt << (uint8) WOW_FAIL_VERSION_INVALID;
-        DEBUG_LOG("[AuthChallenge] %u is not a valid client version!", _build);
+
+        BASIC_LOG("[AuthChallenge] Account %s tried to login with invalid client version %u!", _login.c_str(), _build);
         Write((const char*)pkt.contents(), pkt.size());
         return true;
     }
     /// </ul>
 
     ///- Continue the SRP6 calculation based on data received from the client
-    BigNumber A;
-    A.SetBinary(lp.A, 32);
-
-    // SRP safeguard: abort if A==0
-    if (A.isZero())
+    if(!srp.CalculateSessionKey(lp.A, 32))
+    {
+        BASIC_LOG("[AuthChallenge] Session calculation failed for account %s!", _login.c_str());
         return false;
+    }
 
     if ((A % N).isZero())
         return false;
@@ -644,7 +654,7 @@ bool AuthSocket::_HandleLogonProof()
                 Write(data, sizeof(data));
                 return true;
             }
-            std::vector<uint8> keys(pinCount);
+            std::vector<uint8> keys(pinCount + 1);
             if (!Read((char*)keys.data(), sizeof(uint8) * pinCount))
             {
                 const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 3, 0 };
@@ -652,12 +662,12 @@ bool AuthSocket::_HandleLogonProof()
                 return true;
             }
 
-
+            keys[pinCount] = '\0';
             auto ServerToken = generateToken(_token.c_str());
             auto clientToken = atoi((const char*)keys.data());
             if (ServerToken != clientToken)
             {
-                BASIC_LOG("[AuthChallenge] Account %s tried to login with wrong pincode! Given %u Expected %u", _login.c_str(), clientToken, ServerToken);
+                BASIC_LOG("[AuthChallenge] Account %s tried to login with wrong pincode! Given %u Expected %u Pin Count: %u", _login.c_str(), clientToken, ServerToken, pinCount);
 
                 const char data[4] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT, 0, 0};
                 Write(data, sizeof(data));
@@ -707,6 +717,7 @@ bool AuthSocket::_HandleLogonProof()
             const char data[2] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_UNKNOWN_ACCOUNT};
             Write(data, sizeof(data));
         }
+
         BASIC_LOG("[AuthChallenge] account %s tried to login with wrong password!", _login.c_str());
 
         uint32 MaxWrongPassCount = sConfig.GetIntDefault("WrongPass.MaxCount", 0);

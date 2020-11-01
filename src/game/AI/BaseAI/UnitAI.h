@@ -459,7 +459,8 @@ class UnitAI
         virtual void DistancingStarted();
         virtual void DistancingEnded();
 
-        void AttackClosestEnemy();
+        void AttackSpecificEnemy(std::function<void(Unit*,Unit*&)> check);
+        virtual void AttackClosestEnemy();
 
         void SetRootSelf(bool apply, bool combatOnly = false);
         void ClearSelfRoot();

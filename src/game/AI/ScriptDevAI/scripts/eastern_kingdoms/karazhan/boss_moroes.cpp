@@ -183,7 +183,7 @@ struct boss_moroesAI : public CombatAI
             for (uint8 i = 0; i < MAX_GUESTS; ++i)
                 m_vGuestsEntryList[i] = guests[i];
 
-            std::random_shuffle(m_vGuestsEntryList.begin(), m_vGuestsEntryList.end());
+            std::shuffle(m_vGuestsEntryList.begin(), m_vGuestsEntryList.end(), *GetRandomGenerator());
 
             // Summon the 4 entries
             for (uint8 i = 0; i < MAX_ACTIVE_GUESTS; ++i)
@@ -243,6 +243,7 @@ struct boss_moroesAI : public CombatAI
                     break;
                 target->CastSpell(nullptr, SPELL_TAUNT, TRIGGERED_OLD_TRIGGERED); // TODO: Needs to send both packets
                 m_creature->SelectHostileTarget(); // apply taunt before vanish
+                m_creature->RemoveSpellsCausingAura(SPELL_AURA_MOD_STALKED); // hunters mark
                 DoCastSpellIfCan(nullptr, SPELL_VANISH);
                 SetCombatScriptStatus(true);
                 SetMeleeEnabled(false);

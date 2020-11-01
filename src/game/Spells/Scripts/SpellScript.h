@@ -53,15 +53,15 @@ struct SpellScript
     // called in Spell::cast on all successful checks and after taking reagents
     virtual void OnCast(Spell* /*spell*/) const {}
     // called on unit target hit before damage deal and proc or after effect execution for targetless, dest, item and go
-    virtual void OnHit(Spell* /*spell*/) const {}
+    virtual void OnHit(Spell* /*spell*/, SpellMissInfo /*missInfo*/) const {}
     // called on target hit after damage deal and proc
     virtual void OnAfterHit(Spell* /*spell*/) const {}
 };
 
 struct AuraScript
 {
-    // called on SpellAuraHolder creation
-    virtual void OnHolderInit(SpellAuraHolder* /*holder*/) const {}
+    // called on SpellAuraHolder creation - caster can be nullptr
+    virtual void OnHolderInit(SpellAuraHolder* /*holder*/, WorldObject* /*caster*/) const {}
     // called during any event that calculates aura modifier amount - caster can be nullptr
     virtual int32 OnAuraValueCalculate(Aura* /*aura*/, Unit* /*caster*/, int32 value) const { return value; }
     // called during done/taken damage calculation

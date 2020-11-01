@@ -243,8 +243,8 @@ void MovementInfo::Read(ByteBuffer& data)
     if (HasMovementFlag(MOVEFLAG_FALLING))
     {
         data >> jump.velocity;
-        data >> jump.sinAngle;
         data >> jump.cosAngle;
+        data >> jump.sinAngle;
         data >> jump.xyspeed;
     }
 
@@ -284,8 +284,8 @@ void MovementInfo::Write(ByteBuffer& data) const
     if (HasMovementFlag(MOVEFLAG_FALLING))
     {
         data << jump.velocity;
-        data << jump.sinAngle;
         data << jump.cosAngle;
+        data << jump.sinAngle;
         data << jump.xyspeed;
     }
 
@@ -4252,6 +4252,7 @@ void Unit::_UpdateAutoRepeatSpell()
     // apply delay
     if (m_AutoRepeatFirstCast)
     {
+        RemoveSpellCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, false);
         AddCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, nullptr, false, 500);
         m_AutoRepeatFirstCast = false;
         return;
@@ -4933,7 +4934,7 @@ void Unit::RemoveAllGroupBuffsFromCaster(ObjectGuid casterGuid)
         next = i;
         ++next;
         SpellAuraHolder* holder = (*i).second;
-        if (holder->GetCasterGuid() == casterGuid && IsGroupRestrictedBuff(holder->GetSpellProto()))
+        if ((casterGuid.IsEmpty() || holder->GetCasterGuid() == casterGuid) && IsGroupRestrictedBuff(holder->GetSpellProto()))
         {
             RemoveAurasDueToSpell((*i).first);
 
@@ -6356,7 +6357,11 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
         MeleeAttackStart(m_attacking);
 
     if (AI())
+    {
         SendAIReaction(AI_REACTION_HOSTILE);
+        if (GetTypeId() == TYPEID_UNIT)
+            ((Creature*)this)->CallAssistance();
+    }
 
     return true;
 }
@@ -8343,7 +8348,7 @@ void Unit::ClearInCombat()
 
 void Unit::HandleExitCombat(bool pvpCombat)
 {
-    if (AI() && !IsClientControlled())
+    if (AI() && !GetClientControlling())
         AI()->EnterEvadeMode();
     else
         CombatStop(false, !pvpCombat);
@@ -8519,7 +8524,7 @@ bool Unit::IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
     }
 
     // special cases for always overwrite invisibility/stealth
-    if (invisible || m_Visibility == VISIBILITY_GROUP_STEALTH)
+    if (invisible || (m_Visibility == VISIBILITY_GROUP_STEALTH || m_Visibility == VISIBILITY_GROUP_NO_DETECT))
     {
         if (u->CanAttack(this)) // Hunter mark functionality
             if (HasAuraTypeWithCaster(SPELL_AURA_MOD_STALKED, u->GetObjectGuid()))
@@ -9239,6 +9244,10 @@ bool Unit::IsSuppressedTarget(Unit* target) const
 
     if (target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED) && target->HasDamageInterruptibleStunAura())
         return true;
+
+    // 2.3.0 - fear no longer applies suppression - in case of uncomment, need to adjust IsSuppressedTarget
+    //if (target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING))
+    //    return true;
 
     return false;
 }
@@ -10369,6 +10378,8 @@ void Unit::SetImmobilizedState(bool apply, bool stun, bool logout)
         // Prevent giving ability to move if more immobilizers are active
         if (!IsImmobilizedState())
             SendMoveRoot(false);
+
+        SetIgnoreRangedTargets(false);
     }
 }
 
@@ -10872,8 +10883,13 @@ void Unit::RemoveAurasAtMechanicImmunity(uint32 mechMask, uint32 exceptSpellId, 
 
 void Unit::NearTeleportTo(float x, float y, float z, float orientation, bool casting /*= false*/)
 {
-    if (GetTypeId() == TYPEID_PLAYER)
-        static_cast<Player*>(this)->TeleportTo(GetMapId(), x, y, z, orientation, TELE_TO_NOT_LEAVE_TRANSPORT | TELE_TO_NOT_LEAVE_COMBAT | (casting ? TELE_TO_SPELL : 0));
+    if (IsPlayer())
+    {
+        uint32 options = TELE_TO_NOT_LEAVE_TRANSPORT | (casting ? TELE_TO_SPELL : 0);
+        if (GetDistance(x, y, z, DIST_CALC_NONE) < 100.f * 100.f)
+            options |= TELE_TO_NOT_LEAVE_COMBAT;
+        static_cast<Player*>(this)->TeleportTo(GetMapId(), x, y, z, orientation, options);
+    }
     else
     {
         DisableSpline();
@@ -11761,11 +11777,26 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
     else
         m_charmedUnitsPrivate.erase(charmedGuid);
 
-    // may be not correct we have to remove only some generator taking account of the current situation
+    // Update movement of the victim
+    // Update crowd controlled movement if required:
+    // TODO: requires motionmster upgrade for proper handling past this line
+    // We are effectively rebuilding motion master contents: confused > fleeing > panic
     if (!IsPossessCharmType(spellId))
     {
+        const bool panic = charmed->IsInPanic(), fleeing = charmed->IsFleeing(), confused = charmed->IsConfused();
+
+        // stop any generated movement: current solution
         charmed->StopMoving(true);
-        charmed->GetMotionMaster()->Clear();
+        charmed->GetMotionMaster()->Initialize();
+
+        if (confused)
+            charmed->GetMotionMaster()->MoveConfused();
+        else if (fleeing && !panic)
+        {
+            AuraList const& fears = charmed->GetAurasByType(SPELL_AURA_MOD_FEAR);
+            Unit* source = (fears.empty() ? nullptr : fears.back()->GetCaster());
+            charmed->GetMotionMaster()->MoveFleeing(source ? source : this);
+        }
     }
 
     Creature* charmedCreature = nullptr;
@@ -11811,8 +11842,7 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
             }
 
             // we have to restore initial MotionMaster
-            while (charmed->GetMotionMaster()->GetCurrentMovementGeneratorType() == FOLLOW_MOTION_TYPE)
-                charmed->GetMotionMaster()->MovementExpired(true);
+            charmed->GetMotionMaster()->UnMarkFollowMovegens();
         }
         else
         {
@@ -11846,6 +11876,8 @@ void Unit::Uncharm(Unit* charmed, uint32 spellId)
         charmed->DeleteThreatList();
 
         charmed->SetTarget(nullptr);
+
+        charmed->GetMotionMaster()->UnMarkFollowMovegens();
     }
 
     // Update possessed's client control status after altering flags
@@ -11930,14 +11962,11 @@ float Unit::GetAttackDistance(Unit const* pl) const
     // radius grow if playlevel < creaturelevel
     RetDistance -= (float)leveldif;
 
-    if (creaturelevel + 5 <= sWorld.GetCurrentMaxLevel())
-    {
-        // detect range auras
-        RetDistance += GetTotalAuraModifier(SPELL_AURA_MOD_DETECT_RANGE);
+    // detect range auras
+    RetDistance += GetTotalAuraModifier(SPELL_AURA_MOD_DETECT_RANGE);
 
-        // detected range auras
-        RetDistance += pl->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
-    }
+    // detected range auras
+    RetDistance += pl->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
 
     // "Minimum Aggro Radius for a mob seems to be combat range (5 yards)"
     if (RetDistance < 5)
@@ -12209,8 +12238,8 @@ uint32 Unit::GetModifierXpBasedOnDamageReceived(uint32 xp)
         float percentageHp = float(GetDamageDoneByOthers()) / health;
         if (percentageHp >= 1.f)
             xp = 0;
-        else
-            xp *= percentageHp;
+        else if (percentageHp > 0.f)
+            xp *= (1.f - percentageHp);
     }
     return xp;
 }
