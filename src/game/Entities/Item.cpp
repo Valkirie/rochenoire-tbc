@@ -747,8 +747,8 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer)
         // Filter specific items
         switch (ItemId)
         {
-            // Badge of Justice
-            case 29434: if (pPlayer->getLevel() > pLevel) return 0; break;
+            // Badge of Justice -> Colossal Bag of Loot
+            case 29434: if (pPlayer->getLevel() > pLevel) ItemId = 21528; break;
         }
 
         // We need to make sure we're not replacing a currently needed quest item
