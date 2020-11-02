@@ -319,7 +319,7 @@ class Item : public Object
         int32 GetItemRandomPropertyId() const { return GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID); }
         uint32 GetItemSuffixFactor() const { return GetUInt32Value(ITEM_FIELD_PROPERTY_SEED); }
         void SetItemRandomProperties(int32 randomPropId);
-        bool UpdateItemSuffixFactor();
+        void UpdateItemSuffixFactor();
         static int32 GenerateItemRandomPropertyId(uint32 item_id);
 
 		static uint32 LoadScaledLoot(uint32 itemid, Player *pPlayer);
