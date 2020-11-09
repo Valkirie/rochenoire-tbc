@@ -19073,17 +19073,20 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     uint32 tCount = tItems ? tItems->GetItemCount() : 0;
 
     uint32 p_item = item;
-
-    if (sWorld.getConfig(TypeToScale[pProto->Class]))
+    if (pProto->RequiredLevel != 0)
     {
-        if (pProto->RequiredLevel != 0)
+        uint32 sItems = sWorld.getConfig(TypeToScale[pProto->Class]);
+        for (int j = 0; j < sItems; j++)
         {
-            for (int i = 0; i < vItems->GetItemCount(); i++)
+            uint32 Count = j == 0 ? vCount : tCount;
+            VendorItemData const* Items = j == 0 ? vItems : tItems;
+
+            for (int i = 0; i < Count; i++)
             {
-                uint32 s_item = Item::LoadScaledLoot(vItems->m_items[i]->item, this);
+                uint32 s_item = Item::LoadScaledLoot(Items->m_items[i]->item, this);
                 if (s_item == item)
                 {
-                    p_item = vItems->m_items[i]->item;
+                    p_item = Items->m_items[i]->item;
                     break;
                 }
             }

@@ -726,24 +726,24 @@ void WorldSession::HandleListInventoryOpcode(WorldPacket& recv_data)
     SendListInventory(guid);
 }
 
-static eConfigBoolValues const TypeToScale[16] =
+static eConfigUInt32Values const TypeToScale[16] =
 {
-    CONFIG_BOOL_SCALE_VENDOR_CONSUMABLE,
-    CONFIG_BOOL_SCALE_VENDOR_CONTAINER,
-    CONFIG_BOOL_SCALE_VENDOR_WEAPON,
-    CONFIG_BOOL_SCALE_VENDOR_GEM,
-    CONFIG_BOOL_SCALE_VENDOR_ARMOR,
-    CONFIG_BOOL_SCALE_VENDOR_REAGENT,
-    CONFIG_BOOL_SCALE_VENDOR_PROJECTILE,
-    CONFIG_BOOL_SCALE_VENDOR_TRADE_GOODS,
-    CONFIG_BOOL_SCALE_VENDOR_GENERIC,
-    CONFIG_BOOL_SCALE_VENDOR_RECIPE,
-    CONFIG_BOOL_SCALE_VENDOR_MONEY,
-    CONFIG_BOOL_SCALE_VENDOR_QUIVER,
-    CONFIG_BOOL_SCALE_VENDOR_QUEST,
-    CONFIG_BOOL_SCALE_VENDOR_KEY,
-    CONFIG_BOOL_SCALE_VENDOR_PERMANENT,
-    CONFIG_BOOL_SCALE_VENDOR_MISC,
+    CONFIG_UINT32_SCALE_VENDOR_CONSUMABLE,
+    CONFIG_UINT32_SCALE_VENDOR_CONTAINER,
+    CONFIG_UINT32_SCALE_VENDOR_WEAPON,
+    CONFIG_UINT32_SCALE_VENDOR_GEM,
+    CONFIG_UINT32_SCALE_VENDOR_ARMOR,
+    CONFIG_UINT32_SCALE_VENDOR_REAGENT,
+    CONFIG_UINT32_SCALE_VENDOR_PROJECTILE,
+    CONFIG_UINT32_SCALE_VENDOR_TRADE_GOODS,
+    CONFIG_UINT32_SCALE_VENDOR_GENERIC,
+    CONFIG_UINT32_SCALE_VENDOR_RECIPE,
+    CONFIG_UINT32_SCALE_VENDOR_MONEY,
+    CONFIG_UINT32_SCALE_VENDOR_QUIVER,
+    CONFIG_UINT32_SCALE_VENDOR_QUEST,
+    CONFIG_UINT32_SCALE_VENDOR_KEY,
+    CONFIG_UINT32_SCALE_VENDOR_PERMANENT,
+    CONFIG_UINT32_SCALE_VENDOR_MISC,
 };
 
 void WorldSession::SendListInventory(ObjectGuid vendorguid) const
@@ -796,11 +796,12 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
         {
             uint32 itemId = crItem->item;
             ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemId);
-            if (pProto)
+            if (pProto && pProto->RequiredLevel != 0)
             {
-                if (sWorld.getConfig(TypeToScale[pProto->Class]))
+                uint32 sItems = sWorld.getConfig(TypeToScale[pProto->Class]);
+                if (sItems)
                 {
-                    if (pProto->RequiredLevel != 0)
+                    if (i < customitems && sItems == 2)
                     {
                         itemId = Item::LoadScaledLoot(crItem->item, _player);
                         pProto = ObjectMgr::GetItemPrototype(itemId);
