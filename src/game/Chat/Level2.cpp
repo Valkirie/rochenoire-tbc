@@ -3690,7 +3690,7 @@ bool ChatHandler::HandleCombatStopCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleCombatListCommand(char* args)
+bool ChatHandler::HandleCombatListCommand(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
     if (!player)
@@ -4616,7 +4616,7 @@ bool ChatHandler::HandleTitlesSetMaskCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleTitlesSwapCommand(char* args)
+bool ChatHandler::HandleTitlesSwapCommand(char* /*args*/)
 {
     Player* target = getSelectedPlayer();
     if (!target)
@@ -4953,7 +4953,7 @@ bool ChatHandler::HandleMmapStatsCommand(char* /*args*/)
     return true;
 }
 
-bool ChatHandler::HandleBagsCommand(char* args)
+bool ChatHandler::HandleBagsCommand(char* /*args*/)
 {
     Player* player = GetSession()->GetPlayer();
 
@@ -4974,7 +4974,7 @@ bool ChatHandler::HandleBagsCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleBattlegroundStartCommand(char* args)
+bool ChatHandler::HandleBattlegroundStartCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
 
@@ -4995,7 +4995,7 @@ bool ChatHandler::HandleBattlegroundStartCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleBattlegroundStopCommand(char* args)
+bool ChatHandler::HandleBattlegroundStopCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
 
