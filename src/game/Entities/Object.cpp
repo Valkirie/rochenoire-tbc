@@ -2697,7 +2697,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     int32 randomPoints = spellProto->EffectDieSides[effect_index];
     if (unitCaster && basePointsPerLevel != 0.f)
     {
-        int32 level = int32(target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel());
+        int32 level = int32(/*target ? unitCaster->GetLevelForTarget(target) : */unitCaster->getLevel());
         if (level > (int32)spellProto->maxLevel && spellProto->maxLevel > 0)
             level = (int32)spellProto->maxLevel;
         else if (level < (int32)spellProto->baseLevel)
@@ -2757,7 +2757,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
-            value += int32(std::max(0, int32((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
+            value += int32(std::max(0, int32((/*target ? unitCaster->GetLevelForTarget(target) : */unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
 
             switch (aura)
             {
