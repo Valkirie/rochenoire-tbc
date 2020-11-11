@@ -1405,7 +1405,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	return armor;
 }
 
-float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, bool isSpell, bool isRevert) const
+float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, SpellEntry const* spellProto, bool isRevert) const
 {
 	if (isScaled || olddamage == 0)
 		return olddamage;
@@ -1419,18 +1419,11 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     if (!owner || !target)
         return olddamage;
 
-    float damage = olddamage;
-    bool value_neg = (olddamage < 0) ? true : false;
-
-    // Avoid breaking the below calculation
-    if (value_neg)
-        damage *= -1;
-
 	Creature* creature;
 	Player* player;
 	Player* player2;
 
-	int pAggro = 0;
+	uint32 pAggro = 0;
 	bool isPvP = false;
 
 	if (owner->IsCreature() && target->IsPlayer())
@@ -1453,7 +1446,14 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 		isPvP = true;
 	}
 	else
-		return damage;
+		return olddamage;
+
+    float damage = olddamage;
+    bool value_neg = (olddamage < 0) ? true : false;
+
+    // Avoid breaking calculation
+    if (value_neg)
+        damage *= -1;
 
     int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
 	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
@@ -1465,7 +1465,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 		if (max_health <= 1)
 			return damage;
 
-        float scaled_health = 1;
+        float scaled_health = 1.0f;
 
 		if (creature->GetTypeId() == TYPEID_UNIT)
 		{
@@ -1485,7 +1485,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 	}
 	else if (pAggro >= 2)
 	{
-        if (pAggro == 3 && isSpell)
+        if (pAggro == 3 && spellProto)
         {
             uint32 caster_level = owner->getLevel();
 
@@ -1531,7 +1531,6 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         }
 	}
 
-    // Restore value sign
     if (value_neg)
         damage *= -1;
 

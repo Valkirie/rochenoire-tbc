@@ -765,7 +765,7 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         return;
     }
 
-    uint32 scaledDamage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled, spellProto ? true : false);
+    uint32 scaledDamage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled, spellProto);
     
     if (dealer) // dealer is optional
     {
@@ -803,11 +803,11 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
 	if (cleanDamage)
 	{
         bool cleanDamageScaled = isScaled;
-		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled, spellProto ? true : false);
+		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled, spellProto);
 		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
 	}
 
-	damage = sObjectMgr.ScaleDamage(dealer, victim, olddamage, isScaled, spellProto ? true : false);
+	damage = sObjectMgr.ScaleDamage(dealer, victim, olddamage, isScaled, spellProto);
 
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT && damagetype != INSTAKILL)
@@ -5868,15 +5868,14 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
-    bool IsScaled = log->scaled;
-    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, true);
+    SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(log->SpellID);
 
-    bool invertedScaled = !IsScaled;
+    bool IsScaled = log->scaled;
+    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, spellProto);
+
+    bool r_Scaled = !IsScaled;
     if (log->attacker->IsPlayer())
-    {
-        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, invertedScaled, true, true); // inverted owner and target
-        // damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
-    }
+        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, r_Scaled, spellProto, true); // revert
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -5947,8 +5946,9 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Aura* aura = pInfo->aura;
     Modifier* mod = aura->GetModifier();
 
+    SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(aura->GetId());
     bool IsScaled = pInfo->scaled;
-    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, true);
+    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, spellProto);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
@@ -7030,8 +7030,9 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
 
 void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical, bool isScaled)
 {
+    SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(SpellID);
     if (pVictim->IsPlayer())
-        Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, true);
+        Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, spellProto);
 
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
     data << pVictim->GetPackGUID();
@@ -7045,7 +7046,8 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled) const
 {
-    Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, true);
+    SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(SpellID);
+    Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, spellProto);
 
     WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();
@@ -7351,8 +7353,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
         bool isScaled = false;
-        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, true, true); // inverted owner and target
-        //TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal); // inverted owner and target
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, spellProto, true); // revert
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7568,8 +7569,7 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
     bool isScaled = false;
-    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, true, true); // inverted owner and target
-	// TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal); // inverted owner and target
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, spellProto, true); // revert
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8041,8 +8041,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
         TakenFlat = 0.0f;
 
     bool isScaled = false;
-    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, true, true); // inverted owner and target
-	// TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat); // inverted owner and target
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, spellProto, true); // revert
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
