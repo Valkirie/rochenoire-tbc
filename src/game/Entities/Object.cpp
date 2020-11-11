@@ -2697,7 +2697,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     int32 randomPoints = spellProto->EffectDieSides[effect_index];
     if (unitCaster && basePointsPerLevel != 0.f)
     {
-        int32 level = int32(target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel());
+        int32 level = int32(/*target ? unitCaster->GetLevelForTarget(target) : */unitCaster->getLevel());
         if (level > (int32)spellProto->maxLevel && spellProto->maxLevel > 0)
             level = (int32)spellProto->maxLevel;
         else if (level < (int32)spellProto->baseLevel)
@@ -2757,7 +2757,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
-            value += int32(std::max(0, int32((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
+            value += int32(std::max(0, int32((/*target ? unitCaster->GetLevelForTarget(target) : */unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
 
             switch (aura)
             {
@@ -2796,14 +2796,18 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             if (spellScaler && casterScaler)
             {
                 value *= casterScaler->ratio / spellScaler->ratio;
-                spell->EffectScaled[effect_index] = true;
+                if (sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
+                    spell->EffectScaled[effect_index] = true;
             }
         }
         else
         {
-            if (spell && target && target->GetObjectGuid() != unitCaster->GetObjectGuid())
+            if (spell && spell->IsReferencedFromCurrent())
             {
                 if (value == 0)
+                    return value;
+
+                if (!target || !unitCaster || target->GetObjectGuid() == unitCaster->GetObjectGuid())
                     return value;
 
                 if (!sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
@@ -2814,21 +2818,21 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
                 bool canKeep = false;
 
-                if ((uTarget->IsFriend(uCaster) && uCaster->IsPlayer() && uTarget->IsPlayer()) && ((spell && spell->IsReferencedFromCurrent()) || !spell)) // PvP
-                    canKeep = uCaster->hasZoneLevel();
-                else if (uCaster->IsPlayer() || uTarget->IsPlayer())
+                if (uCaster->IsPlayer() || uTarget->IsPlayer())
+                {
                     canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
 
-                if (canKeep)
-                {
-                    if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-                        canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
-                    else
-                        canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
-                }
+                    if (canKeep)
+                    {
+                        if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+                            canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
+                        else
+                            canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
 
-                if (canKeep)
-                    value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], true);
+                        if (canKeep) // spell->EffectScaled[effect_index] * !canKeep
+                            value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto);
+                    }
+                }
             }
         }
     }

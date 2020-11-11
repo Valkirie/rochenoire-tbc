@@ -929,7 +929,7 @@ struct SpellNonMeleeDamage
     uint32 blocked;
     uint32 HitInfo;
 	Spell *spell;
-    bool scaled = false;
+    bool scaled;
 };
 
 struct SpellPeriodicAuraLogInfo
@@ -942,7 +942,7 @@ struct SpellPeriodicAuraLogInfo
     uint32 absorb;
     int32 resist;
     float  multiplier;
-	bool   scaled;
+	bool scaled;
 };
 
 uint32 createProcExtendMask(SpellNonMeleeDamage* damageInfo, SpellMissInfo missCondition);

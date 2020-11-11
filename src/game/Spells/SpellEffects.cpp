@@ -3337,8 +3337,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal);
 					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
 
-					bool isScaled = false;
-					TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // revert
+					bool m_spellScale = false;
+					TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, m_spellScale, m_spellInfo, true); // revert
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.
@@ -3765,17 +3765,22 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     if (EffectScaled[eff_idx])
     {
-        // bidirectional auras (effects on caster and target)
         switch (m_spellInfo->EffectApplyAuraName[eff_idx])
         {
+        // unidirectional auras
+        case SPELL_AURA_MOD_STAT:
+            break;
+
+        // bidirectional auras
         case SPELL_AURA_PERIODIC_LEECH:
         case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
         case SPELL_AURA_PERIODIC_MANA_FUNNEL:
         case SPELL_AURA_PERIODIC_MANA_LEECH:
         case SPELL_AURA_SCHOOL_ABSORB:
         case SPELL_AURA_MANA_SHIELD:
+        default:
             bool invertedScaled = !EffectScaled[eff_idx];
-            damage = sObjectMgr.ScaleDamage(m_caster, unitTarget, damage, invertedScaled, true, true); // reverted
+            damage = sObjectMgr.ScaleDamage(m_caster, unitTarget, damage, invertedScaled, m_spellInfo, true); // reverted
             break;
         }
     }
@@ -3823,7 +3828,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(power, SpellDmgClass(m_spellInfo->DmgClass), false, powerType);
 
-	int32 scaled_power = sObjectMgr.ScaleDamage(m_caster, unitTarget, power, EffectScaled[eff_idx], true);
+	int32 scaled_power = sObjectMgr.ScaleDamage(m_caster, unitTarget, power, EffectScaled[eff_idx], m_spellInfo);
 
     int32 new_damage;
     if (curPower < scaled_power)
@@ -4066,7 +4071,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
         bool invertedScaled = !EffectScaled[eff_idx];
-        heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, true, true); // revert
+        heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, m_spellInfo, true); // revert
         m_caster->DealHeal(m_caster, heal, m_spellInfo, false, EffectScaled[eff_idx]);
     }
 }
