@@ -3338,8 +3338,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
 
                     bool isScaled = false;
-                    TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // inverted owner and target
-					//TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal); // inverted owner and target
+                    TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // revert
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.
@@ -4067,8 +4066,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
         bool invertedScaled = !EffectScaled[eff_idx];
-        heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, true, true); // inverted owner and target
-        //heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, invertedScaled, true); // inverted owner and target
+        heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, true, true); // revert
         m_caster->DealHeal(m_caster, heal, m_spellInfo, false, EffectScaled[eff_idx]);
     }
 }
