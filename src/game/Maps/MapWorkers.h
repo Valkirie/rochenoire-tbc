@@ -30,7 +30,6 @@ class Worker
 {
     public:
         Worker(MapUpdater& updater) : m_updater(updater) {}
-        virtual ~Worker() = default;
         virtual void execute() {};
 
     protected:
