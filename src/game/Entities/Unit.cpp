@@ -9148,7 +9148,7 @@ DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
     return DIMINISHING_LEVEL_1;
 }
 
-void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
+void Unit::IncrDiminishing(DiminishingGroup group, uint32 duration, bool pvp)
 {
     const bool diminished = IsDiminishingReturnsGroupDurationDiminished(group, pvp);
 
@@ -9167,7 +9167,7 @@ void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
 
         return;
     }
-    m_Diminishing.push_back(DiminishingReturn(group, WorldTimer::getMSTime(), DIMINISHING_LEVEL_2));
+    m_Diminishing.push_back(DiminishingReturn(group, WorldTimer::getMSTime(), DIMINISHING_LEVEL_2, duration));
 }
 
 void Unit::ApplyDiminishingToDuration(DiminishingGroup group, int32& duration, Unit* caster, DiminishingLevels Level, bool isReflected)
