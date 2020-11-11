@@ -2796,7 +2796,8 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             if (spellScaler && casterScaler)
             {
                 value *= casterScaler->ratio / spellScaler->ratio;
-                spell->EffectScaled[effect_index] = true;
+                if (sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
+                    spell->EffectScaled[effect_index] = true;
             }
         }
         else
