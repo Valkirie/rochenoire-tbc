@@ -3766,15 +3766,20 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     if (EffectScaled[eff_idx])
     {
-        // bidirectional auras (effects on caster and target)
         switch (m_spellInfo->EffectApplyAuraName[eff_idx])
         {
+        // unidirectional auras
+        case SPELL_AURA_MOD_STAT:
+            break;
+
+        // bidirectional auras
         case SPELL_AURA_PERIODIC_LEECH:
         case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
         case SPELL_AURA_PERIODIC_MANA_FUNNEL:
         case SPELL_AURA_PERIODIC_MANA_LEECH:
         case SPELL_AURA_SCHOOL_ABSORB:
         case SPELL_AURA_MANA_SHIELD:
+        default:
             bool invertedScaled = !EffectScaled[eff_idx];
             damage = sObjectMgr.ScaleDamage(m_caster, unitTarget, damage, invertedScaled, true, true); // reverted
             break;
