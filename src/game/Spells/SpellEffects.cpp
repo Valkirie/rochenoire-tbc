@@ -3337,8 +3337,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal);
 					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
 
-                    bool isScaled = false;
-                    TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // revert
+					bool isScaled = false;
+					TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // revert
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.

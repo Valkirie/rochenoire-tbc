@@ -1535,8 +1535,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     if (value_neg)
         damage *= -1;
 
-    isScaled = (damage != olddamage);
-
+	isScaled = (damage != olddamage);
 	return ceil(damage);
 }
 
