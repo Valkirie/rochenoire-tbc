@@ -1405,7 +1405,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	return armor;
 }
 
-float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, bool isSpell) const
+float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, bool isSpell, bool isRevert) const
 {
 	if (isScaled || olddamage == 0)
 		return olddamage;
@@ -1477,10 +1477,11 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 			}
 		}
 
-		float scaled_damage_ratio = float((float)max_health / (float)scaled_health);
-		float damage_scaled = scaled_damage_ratio * damage;
-
-		damage = damage_scaled;
+		float ratio = float((float)max_health / (float)scaled_health);
+        if (!isRevert)
+            damage *= ratio;
+        else
+            damage /= ratio;
 	}
 	else if (pAggro >= 2)
 	{
@@ -1492,9 +1493,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
             float caster_ratio = damage / caster_funct;
 
             float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level)+4.56252);
-            float damage_scaled = target_value * caster_ratio;
-
-            damage = damage_scaled;
+            damage = target_value * caster_ratio;
         }
         else
         {
@@ -1505,6 +1504,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
             float ownerBaseHealth = 0.0f;
             int incBaseHealth = 0;
 
+            // need optimization (sql table)
             for (uint32 i = MIN_CLASSES; i < MAX_CLASSES; i++)
             {
                 if (i == 6 || i == 10)
@@ -1522,19 +1522,20 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
             targetBaseHealth /= incBaseHealth;
             ownerBaseHealth /= incBaseHealth;
 
-            float damage_percent = damage / ownerBaseHealth;
-            float damage_scaled = damage_percent * targetBaseHealth;
+            float ratio = targetBaseHealth / ownerBaseHealth;
 
-            damage = damage_scaled;
+            if (!isRevert)
+                damage *= ratio;
+            else
+                damage /= ratio;
         }
 	}
-
-    isScaled = (damage != olddamage);
 
     // Restore value sign
     if (value_neg)
         damage *= -1;
 
+	isScaled = (damage != olddamage);
 	return ceil(damage);
 }
 

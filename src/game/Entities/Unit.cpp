@@ -5872,8 +5872,8 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
     uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, true);
 
     bool invertedScaled = !IsScaled;
-    if(log->attacker->IsPlayer())
-        damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
+    if (log->attacker->IsPlayer())
+        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, invertedScaled, true, true); // revert
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -7347,7 +7347,8 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     if (caster)
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        TakenTotal = sObjectMgr.ScaleDamage(caster, caster, TakenTotal); // inverted owner and target
+        bool isScaled = false;
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, true, true); // revert
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7562,7 +7563,8 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-	TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal); // inverted owner and target
+    bool isScaled = false;
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, true, true); // revert
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8033,7 +8035,8 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-	TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat); // inverted owner and target
+    bool isScaled = false;
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, true, true); // revert
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
@@ -9140,7 +9143,7 @@ DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
     return DIMINISHING_LEVEL_1;
 }
 
-void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
+void Unit::IncrDiminishing(DiminishingGroup group, uint32 duration, bool pvp)
 {
     const bool diminished = IsDiminishingReturnsGroupDurationDiminished(group, pvp);
 
@@ -9159,7 +9162,7 @@ void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
 
         return;
     }
-    m_Diminishing.push_back(DiminishingReturn(group, WorldTimer::getMSTime(), DIMINISHING_LEVEL_2));
+    m_Diminishing.push_back(DiminishingReturn(group, WorldTimer::getMSTime(), DIMINISHING_LEVEL_2, duration));
 }
 
 void Unit::ApplyDiminishingToDuration(DiminishingGroup group, int32& duration, Unit* caster, DiminishingLevels Level, bool isReflected)
