@@ -3336,7 +3336,10 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 					int32 DoneTotal = m_caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(m_spellInfo));
 					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal);
 					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
-					TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal); // inverted owner and target
+
+                    bool isScaled = false;
+                    TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, isScaled, true, true); // inverted owner and target
+					//TakenTotal = sObjectMgr.ScaleDamage(unitTarget, m_caster, TakenTotal); // inverted owner and target
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.
@@ -3761,9 +3764,22 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
-    bool invertedScaled = !EffectScaled[eff_idx];
-    if(EffectScaled[eff_idx])
-        damage = sObjectMgr.ScaleDamage(unitTarget, m_caster, damage, invertedScaled, true); // inverted owner and target
+    if (EffectScaled[eff_idx])
+    {
+        // bidirectional auras (effects on caster and target)
+        switch (m_spellInfo->EffectApplyAuraName[eff_idx])
+        {
+        case SPELL_AURA_PERIODIC_LEECH:
+        case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
+        case SPELL_AURA_PERIODIC_MANA_FUNNEL:
+        case SPELL_AURA_PERIODIC_MANA_LEECH:
+        case SPELL_AURA_SCHOOL_ABSORB:
+        case SPELL_AURA_MANA_SHIELD:
+            bool invertedScaled = !EffectScaled[eff_idx];
+            damage = sObjectMgr.ScaleDamage(m_caster, unitTarget, damage, invertedScaled, true, true); // reverted
+            break;
+        }
+    }
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
@@ -4051,7 +4067,8 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
         bool invertedScaled = !EffectScaled[eff_idx];
-        heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, invertedScaled, true); // inverted owner and target
+        heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, true, true); // inverted owner and target
+        //heal = sObjectMgr.ScaleDamage(unitTarget, m_caster, heal, invertedScaled, true); // inverted owner and target
         m_caster->DealHeal(m_caster, heal, m_spellInfo, false, EffectScaled[eff_idx]);
     }
 }

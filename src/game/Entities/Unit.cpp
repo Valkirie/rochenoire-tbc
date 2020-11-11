@@ -5872,8 +5872,11 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
     uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, true);
 
     bool invertedScaled = !IsScaled;
-    if(log->attacker->IsPlayer())
-        damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
+    if (log->attacker->IsPlayer())
+    {
+        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, invertedScaled, true, true); // inverted owner and target
+        // damage = sObjectMgr.ScaleDamage(log->target, log->attacker, damage, invertedScaled, true); // inverted owner and target
+    }
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -7347,7 +7350,9 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     if (caster)
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        TakenTotal = sObjectMgr.ScaleDamage(caster, caster, TakenTotal); // inverted owner and target
+        bool isScaled = false;
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, true, true); // inverted owner and target
+        //TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal); // inverted owner and target
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7562,7 +7567,9 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-	TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal); // inverted owner and target
+    bool isScaled = false;
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, true, true); // inverted owner and target
+	// TakenTotal = sObjectMgr.ScaleDamage(this, pCaster, TakenTotal); // inverted owner and target
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8033,7 +8040,9 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-	TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat); // inverted owner and target
+    bool isScaled = false;
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, true, true); // inverted owner and target
+	// TakenFlat = sObjectMgr.ScaleDamage(this, caster, TakenFlat); // inverted owner and target
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
