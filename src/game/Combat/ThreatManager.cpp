@@ -475,7 +475,6 @@ void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchool
 	isScaled = pSpellTarget ? false : isScaled;
 
     float scaledThreat = sObjectMgr.ScaleDamage(getOwner(), real_target, threat, isScaled, true, true); // revert
-
     float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, scaledThreat, crit, schoolMask, threatSpell, assist);
 
     if (calculatedThreat > 0.0f)
