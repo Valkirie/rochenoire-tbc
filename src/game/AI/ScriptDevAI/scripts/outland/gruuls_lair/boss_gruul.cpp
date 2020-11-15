@@ -161,20 +161,20 @@ struct boss_gruulAI : public CombatAI
             case GRUUL_ACTION_REVERBERATION:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_REVERBERATION) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 45000),SPELL_REVERBERATION));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(35000, 45000), SPELL_REVERBERATION));
                 return;
             }
             case GRUUL_ACTION_CAVE_IN:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_CAVE_IN) == CAST_OK)
-                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 8500),SPELL_CAVE_IN);
+                        ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 8500, SPELL_CAVE_IN));
                 return;
             }
             case GRUUL_ACTION_HURTFUL_STRIKE:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_HURTFUL_STRIKE) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 8000),SPELL_HURTFUL_STRIKE);
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 8000, SPELL_HURTFUL_STRIKE));
                 break;
             }
         }
