@@ -322,6 +322,7 @@ class ChatHandler
         bool HandleGameObjectTargetCommand(char* args);
         bool HandleGameObjectTurnCommand(char* args);
         bool HandleGameObjectActivateCommand(char* args);
+        bool HandleGameObjectForcedDespawnCommand(char* args);
         bool HandleGameObjectRespawnCommand(char* args);
 
         bool HandleGMCommand(char* args);
@@ -680,6 +681,7 @@ class ChatHandler
         bool HandleMovegensCommand(char* args);
         bool HandleComeToMeCommand(char* args);
         bool HandleMovespeedShowCommand(char* args);
+        bool HandleDebugMovement(char* args);
 
         bool HandleCooldownListCommand(char* args);
         bool HandleCooldownClearCommand(char* args);
@@ -825,7 +827,7 @@ class ChatHandler
         };
 
         typedef std::list<DeletedInfo> DeletedInfoList;
-        bool GetDeletedCharacterInfoList(DeletedInfoList& foundList, std::string searchString = "") const;
+        bool GetDeletedCharacterInfoList(DeletedInfoList& foundList, std::string searchString = "");
         std::string GenerateDeletedCharacterGUIDsWhereStr(DeletedInfoList::const_iterator& itr, DeletedInfoList::const_iterator const& itr_end);
         void HandleCharacterDeletedListHelper(DeletedInfoList const& foundList);
         void HandleCharacterDeletedRestoreHelper(DeletedInfo const& delInfo);

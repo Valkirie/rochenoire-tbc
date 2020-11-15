@@ -95,6 +95,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (34874,'spell_despawn_underbog_mushrooms'),
 (36374,'spell_summon_smoke_beacon'),
 (37591,'spell_inebriate_removal'),
+(35754,'spell_soccothrates_charge'),
 (34231,'spell_increased_holy_light_healing'),
 (30926,'spell_vazruden_liquid_fire_script'),
 (33793,'spell_vazruden_liquid_fire_script'),
@@ -115,6 +116,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (40251,'spell_shadow_of_death'),
 (41289,'spell_ethereal_ring_signal_flare'),
 (41999,'spell_shadow_of_death_remove'),
+(33572,'spell_gronn_lords_grasp'),
 (33040,'spell_wota_main_cast_and_jump'),
 (33049,'spell_wota_main_cast_and_jump'),
 (33045,'spell_wota_dot'),
@@ -123,6 +125,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (42783,'spell_wrath_of_the_astromancer'),
 (45043,'spell_power_circle'),
 (44006,'spell_teleport_self_akilzon'),
+(34630,'spell_scrap_reaver_spell'),
 (43681,'spell_inactive');
 
 -- Wotlk

@@ -402,6 +402,7 @@ Unit::Unit() :
     m_noThreat = false;
     m_supportThreatOnly = false;
     m_extraAttacksExecuting = false;
+    m_debuggingMovement = false;
 
     m_baseSpeedWalk = 1.f;
     m_baseSpeedRun = 1.f;
@@ -563,7 +564,7 @@ bool Unit::UpdateMeleeAttackingState()
     if (!victim || IsNonMeleeSpellCasted(false))
         return false;
 
-    if (GetTypeId() != TYPEID_PLAYER && (!static_cast<Creature*>(this)->CanInitiateAttack() || !victim->isInAccessablePlaceFor(static_cast<Creature*>(this))))
+    if (GetTypeId() != TYPEID_PLAYER && (!static_cast<Creature*>(this)->CanInitiateAttack()))
         return false;
 
     if (!isAttackReady(BASE_ATTACK) && !(isAttackReady(OFF_ATTACK) && hasOffhandWeaponForAttack()))
@@ -4261,8 +4262,18 @@ void Unit::_UpdateAutoRepeatSpell()
     // apply delay
     if (m_AutoRepeatFirstCast)
     {
-        RemoveSpellCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, false);
-        AddCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, nullptr, false, 500);
+        TimePoint expirationTime;
+        bool isPermanent;
+        if (GetExpireTime(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, expirationTime, isPermanent))
+        {
+            if (GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(500) > expirationTime)
+            {
+                RemoveSpellCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, false);
+                AddCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, nullptr, false, 500);
+            }
+        }
+        else
+            AddCooldown(*m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo, nullptr, false, 500);
         m_AutoRepeatFirstCast = false;
         return;
     }
@@ -6378,7 +6389,7 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     return true;
 }
 
-bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= false*/, bool includingCombo /*= false*/)
+bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= false*/, bool includingCombo /*= false*/, bool clientInitiated /*= false*/)
 {
     if (includingCombo)
         ClearComboPoints();
@@ -6391,6 +6402,8 @@ bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= fals
     if (targetSwitch && GetTypeId() != TYPEID_PLAYER)
         SetTargetGuid(ObjectGuid());
 
+    if (!clientInitiated && IsPlayer())
+        ((Player*)this)->SendAttackSwingCancelAttack();     // melee and ranged forced attack cancel
     MeleeAttackStop(m_attacking);
 
     if (m_attacking)
@@ -6404,10 +6417,8 @@ bool Unit::AttackStop(bool targetSwitch /*= false*/, bool includingCast /*= fals
 
 void Unit::CombatStop(bool includingCast, bool includingCombo)
 {
-    if (GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->SendAttackSwingCancelAttack();     // melee and ranged forced attack cancel
-
     AttackStop(true, includingCast, includingCombo);
+
     RemoveAllAttackers();
     DeleteThreatList();
 
@@ -6467,12 +6478,6 @@ void Unit::RemoveAllAttackers()
     {
         AttackerSet::iterator iter = m_attackers.begin();
         (*iter)->AttackStop();
-
-        if (m_attacking)
-        {
-            sLog.outError("WORLD: Unit has an attacker that isn't attacking it!");
-            m_attackers.erase(iter);
-        }
     }
 }
 
@@ -9277,9 +9282,6 @@ bool Unit::IsOfflineTarget(Unit* victim) const
     if (!CanAttack(victim))
         return true;
 
-    if (!victim->isInAccessablePlaceFor(this))
-        return true;
-
     return false;
 }
 
@@ -10417,25 +10419,18 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid /*= ObjectGuid()*/, u
                 if (instance && sWorld.getConfig(CONFIG_BOOL_INSTANCE_STRICT_COMBAT_LOCKDOWN) && instance->IsEncounterInProgress())
                 {
                     // This rule was introduced in 2.3.0+: do not clear combat state if zone is in combat lockdown by encounter
-                    if (GetTypeId() == TYPEID_PLAYER)
-                        static_cast<Player*>(this)->SendAttackSwingCancelAttack();
                     AttackStop(true, false, true);
                     getHostileRefManager().addThreatPercent(-100);
                     getHostileRefManager().updateOnlineOfflineState(false);
                 }
                 else
-                {
                     CombatStop();
-                }
             }
             else
             {
                 // Unsuccessful FD: do not set UNIT_STAT_FEIGN_DEATH, send resist message and stop attack (+clear target for player-controlled npcs)
                 if (GetTypeId() == TYPEID_PLAYER)
-                {
                     static_cast<Player*>(this)->SendFeignDeathResisted();
-                    static_cast<Player*>(this)->SendAttackSwingCancelAttack();
-                }
                 AttackStop(true, false, true);
             }
         }
@@ -11133,10 +11128,6 @@ void Unit::StopAttackFaction(uint32 faction_id)
             AttackStop();
             if (IsNonMeleeSpellCasted(false))
                 InterruptNonMeleeSpells(false);
-
-            // melee and ranged forced attack cancel
-            if (GetTypeId() == TYPEID_PLAYER)
-                ((Player*)this)->SendAttackSwingCancelAttack();
         }
     }
 
@@ -11632,6 +11623,8 @@ bool Unit::TakeCharmOf(Unit* charmed, uint32 spellId, bool advertised /*= true*/
             charmInfo->SetCommandState(COMMAND_FOLLOW);
             charmInfo->SetIsRetreating(true);
         }
+
+        charmedPlayer->ClearSelectionGuid();
 
         charmedPlayer->SendForcedObjectUpdate();
     }
