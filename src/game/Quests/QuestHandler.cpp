@@ -254,7 +254,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
         }
 
         WorldPacket data(SMSG_QUEST_QUERY_RESPONSE, 100);       // guess size
-        uint32 pQuest_slevel = pPlayer ? pPlayer->GetQuestLevelForPlayer(pQuest) : pQuest->GetQuestLevel();
+        uint32 pQuest_slevel = _player ? _player->GetQuestLevelForPlayer(pQuest) : pQuest->GetQuestLevel();
 
         data << uint32(pQuest->GetQuestId());                   // quest id
         data << uint32(pQuest->GetQuestMethod());               // Accepted values: 0, 1 or 2. 0==IsAutoComplete() (skip objectives/details)
@@ -275,9 +275,9 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
         if (pQuest->HasQuestFlag(QUEST_FLAGS_HIDDEN_REWARDS))
             data << uint32(0);                                  // Hide money rewarded
         else
-            data << uint32(pQuest->GetRewOrReqMoney());         // reward money (below max lvl)
+            data << uint32(pQuest->GetRewOrReqMoney(_player));         // reward money (below max lvl)
 
-        data << uint32(pQuest->GetRewMoneyMaxLevel());          // used in XP calculation at client
+        data << uint32(pQuest->GetRewMoneyMaxLevel(_player));          // used in XP calculation at client
         data << uint32(pQuest->GetRewSpell());                  // reward spell, this spell will display (icon) (casted if RewSpellCast==0)
         data << uint32(pQuest->GetRewSpellCast());              // casted spell
 
@@ -301,7 +301,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
             for (iI = 0; iI < QUEST_REWARDS_COUNT; ++iI)
             {
                 uint32 pQuestItem = pQuest->RewItemId[iI];
-                pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[iI], ((Player*)pPlayer));
+                pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[iI], _player);
 				
                 data << uint32(pQuestItem);
                 data << uint32(pQuest->RewItemCount[iI]);
@@ -309,7 +309,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
             for (iI = 0; iI < QUEST_REWARD_CHOICES_COUNT; ++iI)
             {
                 uint32 pQuestItem = pQuest->RewChoiceItemId[iI];
-                pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[iI], ((Player*)pPlayer));
+                pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[iI], _player);
 
                 data << uint32(pQuestItem);
                 data << uint32(pQuest->RewChoiceItemCount[iI]);
@@ -338,7 +338,7 @@ void WorldSession::HandleQuestQueryOpcode(WorldPacket& recv_data)
                 data << uint32(pQuest->ReqCreatureOrGOId[iI]);
             }
             data << uint32(pQuest->ReqCreatureOrGOCount[iI]);
-            data << uint32(pPlayer->HasScaledItemCount(pQuest->ReqItemId[iI], pQuest->ReqItemCount[iI]));
+            data << uint32(_player->HasScaledItemCount(pQuest->ReqItemId[iI], pQuest->ReqItemCount[iI]));
             data << uint32(pQuest->ReqItemCount[iI]);
         }
 

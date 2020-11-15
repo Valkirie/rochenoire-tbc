@@ -441,7 +441,7 @@ void PlayerMenu::SendQuestGiverQuestDetails(Player const* pPlayer, Quest const* 
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_QUEST_DETAILS - for %s of %s, questid = %u", GetMenuSession()->GetPlayer()->GetGuidStr().c_str(), guid.GetString().c_str(), pQuest->GetQuestId());
 }
 
-void PlayerMenu::SendQuestGiverOfferReward(Quest const* pQuest, ObjectGuid npcGUID, bool EnableNext) const
+void PlayerMenu::SendQuestGiverOfferReward(Player const* pPlayer, Quest const* pQuest, ObjectGuid npcGUID, bool EnableNext) const
 {
     std::string Title = pQuest->GetTitle();
     std::string OfferRewardText = pQuest->GetOfferRewardText();
