@@ -1038,7 +1038,7 @@ void Aura::PickTargetsForSpellTrigger(Unit*& triggerCaster, Unit*& triggerTarget
 
 void Aura::CastTriggeredSpell(PeriodicTriggerData& data)
 {
-    Spell* spell = new Spell(data.caster, data.spellInfo, TRIGGERED_OLD_TRIGGERED, GetCasterGuid(), GetSpellProto());
+    Spell* spell = new Spell(data.caster, data.spellInfo, TRIGGERED_OLD_TRIGGERED, data.caster->GetObjectGuid(), GetSpellProto());
     SpellCastTargets targets;
     if (data.spellInfo->Targets & TARGET_FLAG_DEST_LOCATION)
     {
@@ -1576,24 +1576,6 @@ void Aura::TriggerSpell()
                             return;
 
                         break;
-                    }
-                    case 37429:                             // Spout (left)
-                    case 37430:                             // Spout (right)
-                    {
-                        float newAngle = target->GetOrientation();
-
-                        if (auraId == 37429)
-                            newAngle += 2 * M_PI_F / 72;
-                        else
-                            newAngle -= 2 * M_PI_F / 72;
-
-                        newAngle = MapManager::NormalizeOrientation(newAngle);
-
-                        target->SetFacingTo(newAngle);
-                        target->SetOrientation(newAngle);
-
-                        target->CastSpell(target, 37433, TRIGGERED_OLD_TRIGGERED);
-                        return;
                     }
 //                    // Karazhan - Chess NPC AI, Snapshot timer
 //                    case 37440: break;
@@ -2316,13 +2298,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     case 23183:                             // Mark of Frost
                     {
                         if (target->HasAura(23182))
-                            target->CastSpell(target, 23186, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCaster()->GetObjectGuid());
+                            target->CastSpell(target, 23186, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCasterGuid());
                         return;
                     }
                     case 25042:                             // Mark of Nature
                     {
                         if (target->HasAura(25040))
-                            target->CastSpell(target, 25043, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCaster()->GetObjectGuid());
+                            target->CastSpell(target, 25043, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCasterGuid());
                         return;
                     }
                     case 25471:                             // Attack Order
@@ -2333,7 +2315,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     case 37127:                             // Mark of Death
                     {
                         if (target->HasAura(37128))
-                            target->CastSpell(target, 37131, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCaster()->GetObjectGuid());
+                            target->CastSpell(target, 37131, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetCasterGuid());
                         return;
                     }
                     case 26681:                             // Cologne

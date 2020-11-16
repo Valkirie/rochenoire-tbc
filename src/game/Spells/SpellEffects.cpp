@@ -2046,7 +2046,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
 
                     int32 basepoints0 = 100;
-                    m_caster->CastCustomSpell(unitTarget, 37675, &basepoints0, nullptr, nullptr, (TRIGGERED_OLD_TRIGGERED | TRIGGERED_IGNORE_HIT_CALCULATION));
+                    m_caster->CastCustomSpell(unitTarget, 37675, &basepoints0, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
                 case 37867:                                 // Arcano-Scorp Control
@@ -7192,14 +7192,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     unitTarget->RemoveAurasDueToSpell(36904);
                     unitTarget->CastSpell(nullptr, 37013, TRIGGERED_NONE);
-                    return;
-                }
-                case 37431:                                 // Spout
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->CastSpell(nullptr, urand(0, 1) ? 37429 : 37430, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
                 case 37641:                                 // Whirlwind
