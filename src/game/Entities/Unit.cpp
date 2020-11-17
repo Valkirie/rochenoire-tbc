@@ -2409,7 +2409,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 		}
 
         bool preventedDeath = false;
-        (*i)->OnAbsorb(currentAbsorb, reflectSpell, reflectDamage, preventedDeath);
+        (*i)->OnAbsorb(s_currentAbsorb, reflectSpell, reflectDamage, preventedDeath);
         if (preventedDeath)
             preventDeathAura = (*i);
 
@@ -2482,7 +2482,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit* caster, SpellSchoolMask schoolMa
 			ApplyPowerMod(POWER_MANA, manaReduction, false);
 		}
 
-        (*i)->OnManaAbsorb(currentAbsorb);
+        (*i)->OnManaAbsorb(s_currentAbsorb);
 
 		(*i)->GetModifier()->m_amount -= s_currentAbsorb;
 		if ((*i)->GetModifier()->m_amount <= 0)
