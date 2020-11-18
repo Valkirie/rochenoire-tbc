@@ -419,9 +419,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
     // 2 specialized loops for speed optimization in non-unit case
     if (isType(TYPEMASK_UNIT))                              // unit (creature/player) case
     {
-		Unit* creature = ((Unit*)this);
-
-        for (uint16 index = 0; index < m_valuesCount; ++index)
+		for (uint16 index = 0; index < m_valuesCount; ++index)
         {
             if (updateMask->GetBit(index))
             {
@@ -502,7 +500,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
 
 				else if (index == UNIT_FIELD_LEVEL)
 				{
-					*data << uint32(creature->GetLevelForTarget(target));
+					*data << uint32(static_cast<const Unit*>(this)->GetLevelForTarget(target));
                 }
                 else if (index == UNIT_FIELD_HEALTH || index == UNIT_FIELD_MAXHEALTH)
                 {
@@ -2832,14 +2830,16 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         }
     }
 
-    bool damage = false;
     if (unitCaster && spellProto->spellLevel)
     {
+        /*
         // TODO: Drastically beter than before, but still needs some additional aura scaling research
+        // obsolete - merge me with ScaleDamage ?
+        bool damage = false;
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
-            value += int32(std::max(0, int32((/*target ? unitCaster->GetLevelForTarget(target) : */unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
+            value += int32(std::max(0, int32((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
 
             switch (aura)
             {
@@ -2881,39 +2881,37 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                 if (sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
                     spell->EffectScaled[effect_index] = true;
             }
-        }
-        else
+        }*/
+
+        if (spell && spell->IsReferencedFromCurrent())
         {
-            if (spell && spell->IsReferencedFromCurrent())
+            if (value == 0)
+                return value;
+
+            if (!target || !unitCaster || target->GetObjectGuid() == unitCaster->GetObjectGuid())
+                return value;
+
+            if (!sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
+                return value;
+
+            Unit* uTarget = (Unit*)target->GetBeneficiary();
+            Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
+
+            bool canKeep = false;
+
+            if (uCaster->IsPlayer() || uTarget->IsPlayer())
             {
-                if (value == 0)
-                    return value;
+                canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
 
-                if (!target || !unitCaster || target->GetObjectGuid() == unitCaster->GetObjectGuid())
-                    return value;
-
-                if (!sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
-                    return value;
-
-                Unit* uTarget = (Unit*)target->GetBeneficiary();
-                Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
-
-                bool canKeep = false;
-
-                if (uCaster->IsPlayer() || uTarget->IsPlayer())
+                if (canKeep)
                 {
-                    canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
+                    if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+                        canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
+                    else
+                        canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
 
-                    if (canKeep)
-                    {
-                        if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-                            canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
-                        else
-                            canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
-
-                        if (canKeep) // spell->EffectScaled[effect_index] * !canKeep
-                            value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto);
-                    }
+                    if (canKeep) // spell->EffectScaled[effect_index] * !canKeep
+                        value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto, effect_index);
                 }
             }
         }

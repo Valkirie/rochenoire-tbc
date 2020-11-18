@@ -796,7 +796,7 @@ void Unit::Suicide()
     DealDamage(this, this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 }
 
-uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss, Spell * spell, bool isScaled)
+uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss, bool isScaled)
 {
 	uint32 olddamage = damage;
 	CleanDamage const* oldcleanDamage = cleanDamage;
@@ -1704,7 +1704,7 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage* spellDamageInfo, bool durability
     // Call default DealDamage (send critical in hit info for threat calculation)
     CleanDamage cleanDamage(spellDamageInfo->damage, BASE_ATTACK, spellDamageInfo->HitInfo & SPELL_HIT_TYPE_CRIT ? MELEE_HIT_CRIT : MELEE_HIT_NORMAL);
 
-    DealDamage(this, pVictim, spellDamageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, spellDamageInfo->schoolMask, spellProto, durabilityLoss, spellDamageInfo->spell, spellDamageInfo->scaled);
+    DealDamage(this, pVictim, spellDamageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, spellDamageInfo->schoolMask, spellProto, durabilityLoss, spellDamageInfo->scaled);
 }
 
 uint32 Unit::GetResilienceRatingDamageReduction(uint32 damage, SpellDmgClass dmgClass, bool periodic/* = false*/, Powers pwrType/* = POWER_HEALtH*/) const
@@ -5886,7 +5886,7 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 
     bool r_Scaled = !IsScaled;
     if (log->attacker->IsPlayer())
-        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, r_Scaled, spellProto, true); // revert
+        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, r_Scaled, spellProto, EFFECT_INDEX_0, true); // revert
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -7358,7 +7358,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
         bool isScaled = false;
-        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, spellProto, true); // revert
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7574,7 +7574,7 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
     bool isScaled = false;
-    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, spellProto, true); // revert
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8046,7 +8046,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
         TakenFlat = 0.0f;
 
     bool isScaled = false;
-    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, spellProto, true); // revert
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
