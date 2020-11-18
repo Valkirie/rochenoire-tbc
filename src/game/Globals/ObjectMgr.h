@@ -1250,7 +1250,7 @@ class ObjectMgr
 			Scaling functions
 		**/
         float ScaleDamage(Unit* owner, Unit* target, float damage) const { bool isScaled = false; return ScaleDamage(owner, target, damage, isScaled); };
-		float ScaleDamage(Unit *owner, Unit *target, float damage, bool &isScaled, SpellEntry const* spellProto = nullptr, bool isRevert = false) const;
+        float ScaleDamage(Unit* owner, Unit* target, float damage, bool& isScaled, SpellEntry const* spellProto = nullptr, SpellEffectIndex eff_idx = EFFECT_INDEX_0, bool isRevert = false) const;
 		uint32 ScaleArmor(Unit *owner, Unit *target, uint32 armor) const;
 		uint32 getLevelScaled(Unit *owner, Unit *target) const;
 		void ScaleGold(uint32 in_level, uint32 ou_level, uint32 &mingold, uint32& maxgold) const;
