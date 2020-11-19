@@ -7981,8 +7981,7 @@ void Aura::HandleManaShield(bool apply, bool Real)
                         // Mana Shield
                         // +50% from +spd bonus
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
-						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit);
-                        break;
+						break;
                     }
                     break;
                 default:
