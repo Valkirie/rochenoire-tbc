@@ -7005,8 +7005,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                         break;
                     default:
                         DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(spellProto)) * bonus->direct_damage;
-						DoneActualBenefit = sObjectMgr.ScaleDamage(caster, target, DoneActualBenefit);
-                        break;
+						break;
                 }
             }
 
