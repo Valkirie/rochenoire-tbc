@@ -421,12 +421,13 @@ typedef std::unordered_map<uint32, uint32> CacheNpcTextIdMap;
 typedef std::unordered_map<uint32, VendorItemData> CacheVendorItemMap;
 typedef std::unordered_map<uint32, TrainerSpellData> CacheTrainerSpellMap;
 
-enum SpellDamageType
+enum SpellType
 {
-    SPELL_DAMAGE_DEFAULT,
-    SPELL_DAMAGE_POWER,
-    SPELL_DAMAGE_STATS,
-    SPELL_DAMAGE_HEAL,
+    SPELLTYPE_UNK,
+    SPELLTYPE_DAMAGE,
+    SPELLTYPE_POWER,
+    SPELLTYPE_CHARSTAT,
+    SPELLTYPE_HEAL,
 };
 
 enum SkillRangeType
@@ -1256,7 +1257,7 @@ class ObjectMgr
 		/**
 			Scaling functions
 		**/
-        SpellDamageType GetSpellDamageType(SpellEntry const* spellProto, SpellEffectIndex eff_idx) const;
+        SpellType GetSpellDamageType(SpellEntry const* spellProto, SpellEffectIndex eff_idx) const;
 
         float ScaleDamage(Unit* owner, Unit* target, float damage) const { bool isScaled = false; return ScaleDamage(owner, target, damage, isScaled); };
         float ScaleDamage(Unit* owner, Unit* target, float damage, bool& isScaled, SpellEntry const* spellProto = nullptr, SpellEffectIndex eff_idx = EFFECT_INDEX_0, bool isRevert = false) const;

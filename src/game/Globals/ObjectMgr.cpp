@@ -1405,22 +1405,28 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 	return armor;
 }
 
-SpellDamageType ObjectMgr::GetSpellDamageType(SpellEntry const* spellProto, SpellEffectIndex eff_idx) const
+SpellType ObjectMgr::GetSpellDamageType(SpellEntry const* spellProto, SpellEffectIndex eff_idx) const
 {
-    SpellDamageType type = SPELL_DAMAGE_DEFAULT;
+    SpellType type = SPELLTYPE_UNK;
 
     if (uint32 aura = spellProto->EffectApplyAuraName[eff_idx])
     {
         switch (aura)
         {
         case SPELL_AURA_MOD_STAT:
-            type = SPELL_DAMAGE_STATS;
+            type = SPELLTYPE_CHARSTAT;
             break;
         case SPELL_AURA_POWER_BURN_MANA:
         case SPELL_AURA_MANA_SHIELD:
         case SPELL_AURA_PERIODIC_MANA_FUNNEL:
         case SPELL_AURA_PERIODIC_MANA_LEECH:
-            type = SPELL_DAMAGE_POWER;
+            type = SPELLTYPE_POWER;
+            break;
+        case SPELL_AURA_PERIODIC_DAMAGE:
+        case SPELL_AURA_PERIODIC_LEECH:
+            //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
+        case SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE:
+            type = SPELLTYPE_DAMAGE;
             break;
         }
     }
@@ -1430,11 +1436,21 @@ SpellDamageType ObjectMgr::GetSpellDamageType(SpellEntry const* spellProto, Spel
         {
         case SPELL_EFFECT_HEALTH_LEECH:
         case SPELL_EFFECT_HEAL:
-            type = SPELL_DAMAGE_HEAL;
+            type = SPELLTYPE_HEAL;
             break;
         case SPELL_EFFECT_POWER_DRAIN:
         case SPELL_EFFECT_POWER_BURN:
-            type = SPELL_DAMAGE_POWER;
+            type = SPELLTYPE_POWER;
+            break;
+        case SPELL_EFFECT_SCHOOL_DAMAGE:
+        case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
+        case SPELL_EFFECT_SUMMON:
+        case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+            //   SPELL_EFFECT_WEAPON_PERCENT_DAMAGE: excluded, abs values only
+        case SPELL_EFFECT_WEAPON_DAMAGE:
+        case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+        case SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE:
+            type = SPELLTYPE_DAMAGE;
             break;
         }
     }
@@ -1495,9 +1511,9 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
 	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
 
-    SpellDamageType spellType = GetSpellDamageType(spellProto, eff_idx);
+    SpellType spellType = spellProto ? GetSpellDamageType(spellProto, eff_idx) : SPELLTYPE_UNK;
 
-    if (spellType == SPELL_DAMAGE_STATS)
+    if (spellType == SPELLTYPE_CHARSTAT)
     {
         uint32 caster_level = owner->getLevel();
         float caster_funct = (0.0072 * pow(caster_level, 2) + 1.2594 * (caster_level) + 21.718);
@@ -1506,7 +1522,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         float target_value = (0.0072 * pow(scaled_level, 2) + 1.2594 * (scaled_level) + 21.718);
         damage = target_value * caster_ratio;
     }
-    else if (spellType == SPELL_DAMAGE_HEAL)
+    else if (spellType == SPELLTYPE_HEAL)
     {
         uint32 caster_level = owner->getLevel();
         float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level) + 4.56252);
@@ -1517,7 +1533,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     }
     else if (pAggro == 1)
 	{
-        uint32 max_value = spellType == SPELL_DAMAGE_POWER ? creature->GetMaxPower(POWER_MANA) : creature->GetMaxHealth();
+        uint32 max_value = spellType == SPELLTYPE_POWER ? creature->GetMaxPower(POWER_MANA) : creature->GetMaxHealth();
 
 		if (max_value <= 1)
 			return damage;
@@ -1528,7 +1544,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 			{
                 if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(scaled_level, cinfo->UnitClass, cinfo->Expansion))
                 {
-                    float scaled_value = spellType == SPELL_DAMAGE_POWER ? cCLSS->BaseMana * cinfo->PowerMultiplier : cCLSS->BaseHealth * cinfo->HealthMultiplier;
+                    float scaled_value = spellType == SPELLTYPE_POWER ? cCLSS->BaseMana * cinfo->PowerMultiplier : cCLSS->BaseHealth * cinfo->HealthMultiplier;
                     float ratio = float((float)max_value / (float)scaled_value);
 
                     if (!isRevert)
@@ -1544,9 +1560,9 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         PlayerClassLevelInfo target_classInfo;
         PlayerClassLevelInfo owner_classInfo;
 
-        float targetBaseHealth = 0.0f;
-        float ownerBaseHealth = 0.0f;
-        int incBaseHealth = 0;
+        float targetBaseValue = 0.0f;
+        float ownerBaseValue = 0.0f;
+        int incBaseValue = 0;
 
         // need optimization (sql table)
         for (uint32 i = MIN_CLASSES; i < MAX_CLASSES; i++)
@@ -1557,16 +1573,16 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
             sObjectMgr.GetPlayerClassLevelInfo(i, scaled_level, &target_classInfo);
             sObjectMgr.GetPlayerClassLevelInfo(i, origin_level, &owner_classInfo);
 
-            targetBaseHealth += spellType == SPELL_DAMAGE_POWER ? target_classInfo.basemana : target_classInfo.basehealth;
-            ownerBaseHealth += spellType == SPELL_DAMAGE_POWER ? target_classInfo.basemana : owner_classInfo.basehealth;
+            targetBaseValue += spellType == SPELLTYPE_POWER ? target_classInfo.basemana : target_classInfo.basehealth;
+            ownerBaseValue += spellType == SPELLTYPE_POWER ? target_classInfo.basemana : owner_classInfo.basehealth;
 
-            incBaseHealth++;
+            incBaseValue++;
         }
 
-        targetBaseHealth /= incBaseHealth;
-        ownerBaseHealth /= incBaseHealth;
+        targetBaseValue /= incBaseValue;
+        ownerBaseValue /= incBaseValue;
 
-        float ratio = targetBaseHealth / ownerBaseHealth;
+        float ratio = targetBaseValue / ownerBaseValue;
 
         if (!isRevert)
             damage *= ratio;
