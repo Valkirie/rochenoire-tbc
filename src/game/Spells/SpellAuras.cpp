@@ -7236,7 +7236,7 @@ void Aura::PeriodicTick()
             const uint32 malus = (resist > 0 ? (absorb + uint32(resist)) : absorb);
             pdamage = (pdamage <= malus ? 0 : (pdamage - malus));
 
-            pdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_isScaled, spellProto);
+            pdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_isScaled, spellProto, GetEffIndex());
             pdamage = std::min(pdamage, target->GetHealth());
 
             if (pdamage)
@@ -7260,11 +7260,11 @@ void Aura::PeriodicTick()
 
             uint32 heal = pCaster->SpellHealingBonusTaken(pCaster, spellProto, int32(pdamage * multiplier), DOT, GetStackAmount());
             bool invertedScaled = !m_isScaled;
-            heal = sObjectMgr.ScaleDamage(target, pCaster, heal, invertedScaled, spellProto);
+            heal = sObjectMgr.ScaleDamage(pCaster, target, heal, invertedScaled, spellProto, GetEffIndex(), true); // revert
 
             int32 gain = pCaster->DealHeal(pCaster, heal, spellProto, false, m_isScaled);
             invertedScaled = !m_isScaled;
-            gain = sObjectMgr.ScaleDamage(target, pCaster, gain, invertedScaled, spellProto);
+            gain = sObjectMgr.ScaleDamage(pCaster, target, gain, invertedScaled, spellProto, GetEffIndex());
 
             // Health Leech effects do not generate healing aggro
             if (m_modifier.m_auraname == SPELL_AURA_PERIODIC_LEECH)
@@ -7394,7 +7394,7 @@ void Aura::PeriodicTick()
                 }
             }
 
-			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_isScaled, spellProto);
+			uint32 sdamage = sObjectMgr.ScaleDamage(pCaster, target, pdamage, m_isScaled, spellProto, GetEffIndex());
             DETAIL_FILTER_LOG(LOG_FILTER_PERIODIC_AFFECTS, "PeriodicTick: %s power leech of %s for %u dmg inflicted by %u",
                               GetCasterGuid().GetString().c_str(), target->GetGuidStr().c_str(), pdamage, GetId());
 
