@@ -1155,55 +1155,22 @@ float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
         float current_radius = 0.0f;
         int current_targets = 1;
 
-        for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+        for (int32 eff_idx = 0; eff_idx < MAX_EFFECT_INDEX; ++eff_idx)
         {
-            if (spellInfo->Effect[i] == 0)
+            if (spellInfo->Effect[eff_idx] == 0)
                 continue;
 
-            bool damage = false;
-            if (spellInfo->spellLevel)
-            {
-                if (uint32 aura = spellInfo->EffectApplyAuraName[i])
-                {
-                    switch (aura)
-                    {
-                    case SPELL_AURA_PERIODIC_DAMAGE:
-                    case SPELL_AURA_PERIODIC_LEECH:
-                        //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
-                    case SPELL_AURA_POWER_BURN_MANA:
-                        damage = true;
-                    }
-                }
-                else if (uint32 effect = spellInfo->Effect[i])
-                {
-                    switch (effect)
-                    {
-                    case SPELL_EFFECT_SCHOOL_DAMAGE:
-                    case SPELL_EFFECT_POWER_DRAIN:
-                    case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
-                    case SPELL_EFFECT_HEALTH_LEECH:
-                    case SPELL_EFFECT_HEAL:
-                    case SPELL_EFFECT_SUMMON:
-                    case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
-                        //   SPELL_EFFECT_WEAPON_PERCENT_DAMAGE: excluded, abs values only
-                    case SPELL_EFFECT_WEAPON_DAMAGE:
-                    case SPELL_EFFECT_POWER_BURN:
-                    case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
-                    case SPELL_EFFECT_TRIGGER_SPELL_WITH_VALUE:
-                        damage = true;
-                    }
-                }
-            }
+            SpellType spellType = spellInfo ? GetSpellDamageType(spellInfo, SpellEffectIndex(eff_idx)) : SPELLTYPE_UNK;
 
-            float max_radius = std::min(100.0f, GetSpellRadius(sSpellRadiusStore.LookupEntry(spellInfo->EffectRadiusIndex[i])));
+            float max_radius = std::min(100.0f, GetSpellRadius(sSpellRadiusStore.LookupEntry(spellInfo->EffectRadiusIndex[eff_idx])));
             if (max_radius > current_radius)
                 current_radius = max_radius;
 
             auto& data = SpellTargetMgr::GetSpellTargetingData(spellId);
-            auto& ignoredTargets = data.ignoredTargets[i];
+            auto& ignoredTargets = data.ignoredTargets[eff_idx];
 
-            uint32 targetModeA = spellInfo->EffectImplicitTargetA[i];
-            uint32 targetModeB = spellInfo->EffectImplicitTargetB[i];
+            uint32 targetModeA = spellInfo->EffectImplicitTargetA[eff_idx];
+            uint32 targetModeB = spellInfo->EffectImplicitTargetB[eff_idx];
 
             SpellTargetInfo& dataA = SpellTargetInfoTable[targetModeA];
             SpellTargetInfo& dataB = SpellTargetInfoTable[targetModeB];
@@ -1216,14 +1183,14 @@ float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
                     {
                     case TARGET_ENUMERATOR_CONE:
                     case TARGET_ENUMERATOR_AOE:
-                        if (!damage)
+                        if (!spellType == SPELLTYPE_DAMAGE)
                             CoeffSpellRatio -= current_radius / 100.0f;
                         else
                             CoeffSpellRatio += current_radius / 100.0f;
                         break;
                     case TARGET_ENUMERATOR_CHAIN: // more target = lower value
-                        current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
-                        if (!damage)
+                        current_targets = spellInfo->EffectChainTarget[eff_idx] > current_targets ? spellInfo->EffectChainTarget[eff_idx] : current_targets;
+                        if (!spellType == SPELLTYPE_DAMAGE)
                             CoeffSpellRatio -= current_targets / 10.0f;
                         else
                             CoeffSpellRatio += current_targets / 10.0f;
@@ -1240,14 +1207,14 @@ float ObjectMgr::GetSpellCoeffRatio(uint32 spellId) const
                     {
                     case TARGET_ENUMERATOR_CONE:
                     case TARGET_ENUMERATOR_AOE:
-                        if (!damage)
+                        if (!spellType == SPELLTYPE_DAMAGE)
                             CoeffSpellRatio -= current_radius / 100.0f;
                         else
                             CoeffSpellRatio += current_radius / 100.0f;
                         break;
                     case TARGET_ENUMERATOR_CHAIN: // more target = lower value
-                        current_targets = spellInfo->EffectChainTarget[i] > current_targets ? spellInfo->EffectChainTarget[i] : current_targets;
-                        if (!damage)
+                        current_targets = spellInfo->EffectChainTarget[eff_idx] > current_targets ? spellInfo->EffectChainTarget[eff_idx] : current_targets;
+                        if (!spellType == SPELLTYPE_DAMAGE)
                             CoeffSpellRatio -= current_targets / 10.0f;
                         else
                             CoeffSpellRatio += current_targets / 10.0f;
