@@ -7902,6 +7902,8 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     {
         // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
         DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneFlat, APbonus, damagetype, true);
+        bool tmp_scale = false;
+        DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
     }
     // weapon damage based spells
     else if (isWeaponDamageBasedSpell && (APbonus || DoneFlat))
@@ -7929,8 +7931,6 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     if (!flat)
         DoneTotal = 0.0f;
 
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
     float tmpDamage = (int32(pdamage) + DoneTotal * int32(stack)) * DoneTotalMod;
 
     // apply spellmod to Done damage
