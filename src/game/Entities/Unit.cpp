@@ -7286,8 +7286,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, ui
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     float tmpDamage = (int32(pdamage) + DoneTotal * int32(stack)) * DoneTotalMod;
     // apply spellmod to Done damage (flat and pct)
@@ -7499,8 +7498,7 @@ uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellEntry const* spellProto, i
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     // use float as more appropriate for negative values and percent applying
     float heal = (healamount + DoneTotal * int32(stack)) * DoneTotalMod;
@@ -7902,8 +7900,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     {
         // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
         DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneFlat, APbonus, damagetype, true);
-        bool tmp_scale = false;
-        DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
+		DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
     }
     // weapon damage based spells
     else if (isWeaponDamageBasedSpell && (APbonus || DoneFlat))
