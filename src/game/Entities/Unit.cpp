@@ -8049,7 +8049,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
         TakenFlat = 0.0f;
 
     bool tmp_scale = false;
-    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, tmp_scale, spellProto);
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
