@@ -766,6 +766,7 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         return;
     }
 
+    uint32 originalDamage = damage;
     uint32 scaledDamage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled, spellProto);
     
     if (dealer) // dealer is optional
@@ -786,9 +787,9 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
     if (victim->AI())
         victim->AI()->DamageTaken(dealer, scaledDamage, damagetype, spellProto);
 
-    // do not use originalDamage (counter scaled value)
-    if (absorb && scaledDamage > damage)
-        *absorb += (scaledDamage - damage);
+    // todo ???
+    if (absorb && originalDamage > damage)
+        *absorb += (originalDamage - damage);
 }
 
 void Unit::Suicide()
