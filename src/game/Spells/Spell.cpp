@@ -5876,7 +5876,7 @@ SpellCastResult Spell::CheckRange(bool strict)
     return SPELL_CAST_OK;
 }
 
-int32 Spell::CalculateSpellEffectDamage(Unit* unitTarget, int32 damage, bool IsScaled)
+int32 Spell::CalculateSpellEffectDamage(Unit* unitTarget, int32 damage)
 {
     // damage bonus (per damage class)
     switch (m_spellInfo->DmgClass)
