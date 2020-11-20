@@ -7576,7 +7576,7 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     bool tmp_scale = false;
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, tmp_scale, spellProto);
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
