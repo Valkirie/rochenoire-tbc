@@ -7358,9 +7358,9 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     if (caster)
     {
-        bool tmp_scale = false;
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+        bool isScaled = false;
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7575,9 +7575,9 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
     }
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
-    bool tmp_scale = false;
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+    bool isScaled = false;
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8049,8 +8049,8 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-    bool tmp_scale = false;
-    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+    bool isScaled = false;
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
