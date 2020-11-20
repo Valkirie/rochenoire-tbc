@@ -584,7 +584,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
         }
 
         if (damage >= 0)
-            m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, damage, EffectScaled[eff_idx]);
+            m_damagePerEffect[eff_idx] = CalculateSpellEffectDamage(unitTarget, damage);
     }
 }
 
@@ -3314,12 +3314,13 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     // found spelldamage coefficients of 0.381% per 0.1 speed and 15.244 per 4.0 speed
                     // but own calculation say 0.385 gives at most one point difference to published values
+                    bool tmp_scale = false;
 					int32 DoneTotal = m_caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(m_spellInfo));
-					DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal);
-					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
+                    DoneTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, DoneTotal, tmp_scale, m_spellInfo, eff_idx);
 
-					bool m_spellScale = false;
-					TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, m_spellScale, m_spellInfo, eff_idx, true); // revert
+                    tmp_scale = false;
+					int32 TakenTotal = unitTarget->SpellBaseDamageBonusTaken(GetSpellSchoolMask(m_spellInfo));
+					TakenTotal = sObjectMgr.ScaleDamage(m_caster, unitTarget, TakenTotal, tmp_scale, m_spellInfo, eff_idx);
 
 					int32 bonusDamage = DoneTotal + TakenTotal;
                     // Does Amplify Magic/Dampen Magic influence flametongue? If not, the above addition must be removed.

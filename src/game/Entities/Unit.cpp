@@ -7080,7 +7080,7 @@ void Unit::EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 dam
     SendEnergizeSpellLog(victim, spellInfo->Id, damage, powerType, isScaled);
     // needs to be called after sending spell log
     victim->ModifyPower(powerType, damage);
-    victim->getHostileRefManager().threatAssist(this, float(damage) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellInfo), spellInfo);
+    victim->getHostileRefManager().threatAssist(this, float(damage) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellInfo), spellInfo, false, false, isScaled);
 }
 
 /** Calculate spell coefficents and level penalties for spell/melee damage or heal
@@ -7358,8 +7358,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     if (caster)
     {
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        bool isScaled = false;
-        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, tmp_scale, spellProto);
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
@@ -7574,8 +7573,7 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-    bool isScaled = false;
-    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
+    TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, tmp_scale, spellProto);
 
     // Healing Way dummy affects healing taken from Healing Wave
     if (spellProto->SpellFamilyName == SPELLFAMILY_SHAMAN && (spellProto->SpellFamilyFlags & uint64(0x0000000000000040)))
@@ -8046,8 +8044,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-    bool isScaled = false;
-    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, isScaled, spellProto, EFFECT_INDEX_0, true); // revert
+    TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, tmp_scale, spellProto);
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
     // bonus result can be negative
