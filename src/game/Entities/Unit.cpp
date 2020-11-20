@@ -7359,7 +7359,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     {
         bool tmp_scale = false;
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
-        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, tmp_scale, spellProto, EFFECT_INDEX_0, true); // revert
+        TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, tmp_scale, spellProto);
     }
 
     float tmpDamage = (int32(pdamage) + TakenTotal * int32(stack)) * TakenTotalMod;
