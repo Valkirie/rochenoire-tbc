@@ -766,6 +766,7 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
         return;
     }
 
+    uint32 originalDamage = damage;
     uint32 scaledDamage = sObjectMgr.ScaleDamage(dealer, victim, damage, isScaled, spellProto);
     
     if (dealer) // dealer is optional
@@ -786,9 +787,9 @@ void Unit::DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* ab
     if (victim->AI())
         victim->AI()->DamageTaken(dealer, scaledDamage, damagetype, spellProto);
 
-    // do not use originalDamage (counter scaled value)
-    if (absorb && scaledDamage > damage)
-        *absorb += (scaledDamage - damage);
+    // todo ???
+    if (absorb && originalDamage > damage)
+        *absorb += (originalDamage - damage);
 }
 
 void Unit::Suicide()
@@ -5959,7 +5960,7 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
 
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(aura->GetId());
     bool IsScaled = pInfo->scaled;
-    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, spellProto, aura->GetEffIndex());
+    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, spellProto);
 
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
@@ -7142,7 +7143,7 @@ int32 Unit::SpellBonusWithCoeffs(SpellEntry const* spellProto, int32 total, int3
  * Calculates caster part of spell damage bonuses,
  * also includes different bonuses dependent from target auras
  */
-uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
+uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack, bool IsScaled)
 {
     if (!spellProto || !victim || damagetype == DIRECT_DAMAGE)
         return pdamage;
@@ -7285,8 +7286,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, ui
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     float tmpDamage = (int32(pdamage) + DoneTotal * int32(stack)) * DoneTotalMod;
     // apply spellmod to Done damage (flat and pct)
@@ -7300,7 +7300,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellEntry const* spellProto, ui
  * Calculates target part of spell damage bonuses,
  * will be called on each tick for periodic damage over time auras
  */
-uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
+uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack, bool IsScaled)
 {
     if (!spellProto || damagetype == DIRECT_DAMAGE)
         return pdamage;
@@ -7357,7 +7357,6 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellEntry const* spellProto, u
     // apply benefit affected by spell power implicit coeffs and spell level penalties
     if (caster)
     {
-        bool tmp_scale = false;
         TakenTotal = caster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
         TakenTotal = sObjectMgr.ScaleDamage(caster, this, TakenTotal, tmp_scale, spellProto);
     }
@@ -7498,8 +7497,7 @@ uint32 Unit::SpellHealingBonusDone(Unit* victim, SpellEntry const* spellProto, i
 
     // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
     DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneAdvertisedBenefit, 0, damagetype, true);
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
+	DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
 
     // use float as more appropriate for negative values and percent applying
     float heal = (healamount + DoneTotal * int32(stack)) * DoneTotalMod;
@@ -7574,7 +7572,6 @@ uint32 Unit::SpellHealingBonusTaken(Unit* pCaster, SpellEntry const* spellProto,
     }
 
     // apply benefit affected by spell power implicit coeffs and spell level penalties
-    bool tmp_scale = false;
     TakenTotal = pCaster->SpellBonusWithCoeffs(spellProto, TakenTotal, TakenAdvertisedBenefit, 0, damagetype, false);
     TakenTotal = sObjectMgr.ScaleDamage(pCaster, this, TakenTotal, tmp_scale, spellProto);
 
@@ -7751,7 +7748,7 @@ bool Unit::IsImmuneToSchool(SpellEntry const* spellInfo, uint8 effectMask) const
  * Calculates caster part of melee damage bonuses,
  * also includes different bonuses dependent from target auras
  */
-uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat)
+uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat, bool IsScaled)
 {
     if (!victim || pdamage == 0)
         return pdamage;
@@ -7901,6 +7898,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     {
         // apply ap bonus and benefit affected by spell power implicit coeffs and spell level penalties
         DoneTotal = SpellBonusWithCoeffs(spellProto, DoneTotal, DoneFlat, APbonus, damagetype, true);
+		DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal);
     }
     // weapon damage based spells
     else if (isWeaponDamageBasedSpell && (APbonus || DoneFlat))
@@ -7928,8 +7926,6 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     if (!flat)
         DoneTotal = 0.0f;
 
-    bool tmp_scale = false;
-    DoneTotal = sObjectMgr.ScaleDamage(this, victim, DoneTotal, tmp_scale, spellProto);
     float tmpDamage = (int32(pdamage) + DoneTotal * int32(stack)) * DoneTotalMod;
 
     // apply spellmod to Done damage
@@ -7947,7 +7943,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
  * Calculates target part of melee damage bonuses,
  * will be called on each tick for periodic damage over time auras
  */
-uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat)
+uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto, DamageEffectType damagetype, uint32 stack, bool flat, bool IsScaled)
 {
     if (pdamage == 0)
         return pdamage;
@@ -8048,7 +8044,6 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackTyp
     if (!flat)
         TakenFlat = 0.0f;
 
-    bool tmp_scale = false;
     TakenFlat = sObjectMgr.ScaleDamage(caster, this, TakenFlat, tmp_scale, spellProto);
     float tmpDamage = (int32(pdamage) + (TakenFlat + TakenAdvertisedBenefit) * int32(stack)) * TakenTotalMod;
 
