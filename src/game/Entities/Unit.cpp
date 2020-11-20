@@ -7079,7 +7079,7 @@ void Unit::EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 dam
     SendEnergizeSpellLog(victim, spellInfo->Id, damage, powerType, isScaled);
     // needs to be called after sending spell log
     victim->ModifyPower(powerType, damage);
-    victim->getHostileRefManager().threatAssist(this, float(damage) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellInfo), spellInfo);
+    victim->getHostileRefManager().threatAssist(this, float(damage) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellInfo), spellInfo, false, false, isScaled);
 }
 
 /** Calculate spell coefficents and level penalties for spell/melee damage or heal
