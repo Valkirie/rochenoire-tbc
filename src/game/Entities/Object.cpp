@@ -2897,22 +2897,17 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             Unit* uTarget = (Unit*)target->GetBeneficiary();
             Unit* uCaster = (Unit*)unitCaster->GetBeneficiary();
 
-            bool canKeep = false;
-
             if (uCaster->IsPlayer() || uTarget->IsPlayer())
             {
-                canKeep = sObjectMgr.isAuraRestricted(spellProto->EffectApplyAuraName[effect_index]);
+                bool canKeep = false;
+
+                if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
+                    canKeep = sObjectMgr.isAuraSafe(aura);
+                else if (uint32 effect = spellProto->Effect[effect_index])
+                    canKeep = sObjectMgr.isEffectRestricted(effect);
 
                 if (canKeep)
-                {
-                    if (spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AURA || spellProto->Effect[effect_index] == SPELL_EFFECT_APPLY_AREA_AURA_PARTY || spellProto->Effect[effect_index] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-                        canKeep = sObjectMgr.isAuraSafe(spellProto->EffectApplyAuraName[effect_index]);
-                    else
-                        canKeep = sObjectMgr.isEffectRestricted(spellProto->Effect[effect_index]);
-
-                    if (canKeep) // spell->EffectScaled[effect_index] * !canKeep
-                        value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto, effect_index);
-                }
+                    value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto, effect_index);
             }
         }
     }
