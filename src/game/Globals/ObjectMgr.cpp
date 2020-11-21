@@ -1044,12 +1044,6 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	return true;
 }
 
-bool ObjectMgr::isAuraRestricted(uint32 EffectApplyAuraName) const
-{
-	int AURA_RESTRICTED[] = { SPELL_AURA_MOD_POSSESS, SPELL_AURA_MOD_RESISTANCE };
-	return std::find(std::begin(AURA_RESTRICTED), std::end(AURA_RESTRICTED), EffectApplyAuraName) == std::end(AURA_RESTRICTED);
-}
-
 bool ObjectMgr::isAuraSafe(uint32 EffectApplyAuraName) const
 {
 	int AURA_SAFE[] = { SPELL_AURA_NONE, SPELL_AURA_BIND_SIGHT, SPELL_AURA_PERIODIC_DAMAGE,
@@ -1082,11 +1076,6 @@ bool ObjectMgr::isEffectRestricted(uint32 Effect) const
 {
 	int SPELL_EFFECT_RESTRICTED[] = { SPELL_EFFECT_MODIFY_THREAT_PERCENT, SPELL_EFFECT_WEAPON_PERCENT_DAMAGE, SPELL_EFFECT_LEARN_SPELL, SPELL_EFFECT_SKILL_STEP, SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL, SPELL_EFFECT_WEAPON_DAMAGE, SPELL_EFFECT_NORMALIZED_WEAPON_DMG, SPELL_EFFECT_DISPEL }; // Do not scale those effects
 	return std::find(std::begin(SPELL_EFFECT_RESTRICTED), std::end(SPELL_EFFECT_RESTRICTED), Effect) == std::end(SPELL_EFFECT_RESTRICTED);
-}
-
-bool ObjectMgr::isEffectSafe(uint32 Effect) const
-{
-	return true;
 }
 
 float ObjectMgr::GetFactorNHT(float u_MaxPlayer, float u_nbr_players, float f_softness, float NT) const
