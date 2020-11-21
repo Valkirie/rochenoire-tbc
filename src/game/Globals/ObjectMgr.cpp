@@ -1482,8 +1482,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
 
     if (spellType == SPELLTYPE_CHARSTAT)
     {
-        uint32 caster_level = owner->getLevel();
-        float caster_funct = (0.0072 * pow(caster_level, 2) + 1.2594 * (caster_level) + 21.718);
+        float caster_funct = (0.0072 * pow(origin_level, 2) + 1.2594 * (origin_level) + 21.718);
         float caster_ratio = damage / caster_funct;
 
         float target_value = (0.0072 * pow(scaled_level, 2) + 1.2594 * (scaled_level) + 21.718);
@@ -1491,8 +1490,7 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     }
     else if (spellType == SPELLTYPE_HEAL)
     {
-        uint32 caster_level = owner->getLevel();
-        float caster_funct = (0.0792541 * pow(caster_level, 2) + 1.93556 * (caster_level) + 4.56252);
+        float caster_funct = (0.0792541 * pow(origin_level, 2) + 1.93556 * (origin_level) + 4.56252);
         float caster_ratio = damage / caster_funct;
 
         float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level) + 4.56252);
