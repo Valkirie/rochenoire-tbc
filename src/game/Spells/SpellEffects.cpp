@@ -3745,27 +3745,6 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
-    if (EffectScaled[eff_idx])
-    {
-        switch (m_spellInfo->EffectApplyAuraName[eff_idx])
-        {
-        // unidirectional auras
-        case SPELL_AURA_MOD_STAT:
-            break;
-
-        // bidirectional auras
-        case SPELL_AURA_PERIODIC_LEECH:
-        case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
-        case SPELL_AURA_PERIODIC_MANA_FUNNEL:
-        case SPELL_AURA_PERIODIC_MANA_LEECH:
-        case SPELL_AURA_SCHOOL_ABSORB:
-        case SPELL_AURA_MANA_SHIELD:
-        default:
-            bool invertedScaled = !EffectScaled[eff_idx];
-            damage = sObjectMgr.ScaleDamage(m_caster, unitTarget, damage, invertedScaled, m_spellInfo, eff_idx, true); // reverted
-            break;
-        }
-    }
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
