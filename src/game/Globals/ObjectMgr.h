@@ -1266,10 +1266,8 @@ class ObjectMgr
 		void ScaleGold(uint32 in_level, uint32 ou_level, uint32 &mingold, uint32& maxgold) const;
 		bool IsScalable(Unit *owner, Unit *target) const;
 
-		bool isAuraRestricted(uint32 EffectApplyAuraName) const;
 		bool isAuraSafe(uint32 EffectApplyAuraName) const;
 		bool isEffectRestricted(uint32 Effect) const;
-		bool isEffectSafe(uint32 Effect) const;
 
 		int sign(int x) const { return (x > 0) - (x < 0); };
 
