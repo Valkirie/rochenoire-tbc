@@ -13731,8 +13731,9 @@ void Player::IncompleteQuest(uint32 quest_id)
     }
 }
 
-void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver, bool announce)
+void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGiver, bool announce)
 {
+    Quest* pQuest = (Quest*)pQuest_ori;
     uint32 quest_id = pQuest->GetQuestId();
 
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
@@ -13771,11 +13772,12 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     {
         if (uint32 itemId = pQuest->RewChoiceItemId[reward])
         {
-			itemId = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+            pQuest->RewChoiceItemId[reward] = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+            
             ItemPosCountVec dest;
-            if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewChoiceItemCount[reward]) == EQUIP_ERR_OK)
+            if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewChoiceItemId[reward], pQuest->RewChoiceItemCount[reward]) == EQUIP_ERR_OK)
             {
-                Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
+                Item* item = StoreNewItem(dest, pQuest->RewChoiceItemId[reward], true, Item::GenerateItemRandomPropertyId(pQuest->RewChoiceItemId[reward]));
                 SendNewItem(item, pQuest->RewChoiceItemCount[reward], true, false, false, false);
             }
         }
@@ -13787,12 +13789,12 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         {
             if (uint32 itemId = pQuest->RewItemId[i])
             {
-				itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
-
+                pQuest->RewItemId[i] = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
+                
                 ItemPosCountVec dest;
-                if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewItemCount[i]) == EQUIP_ERR_OK)
+                if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewItemId[i], pQuest->RewItemCount[i]) == EQUIP_ERR_OK)
                 {
-                    Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
+                    Item* item = StoreNewItem(dest, pQuest->RewItemId[i], true, Item::GenerateItemRandomPropertyId(pQuest->RewItemId[i]));
                     SendNewItem(item, pQuest->RewItemCount[i], true, false, false, false);
                 }
             }
@@ -15035,7 +15037,7 @@ void Player::SendQuestCompleteEvent(uint32 quest_id) const
     }
 }
 
-void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
+void Player::SendQuestReward(Quest* pQuest, uint32 XP, uint32 honor) const
 {
     uint32 questid = pQuest->GetQuestId();
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_QUEST_COMPLETE quest = %u", questid);
@@ -15059,7 +15061,6 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
     for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
     {
 		uint32 itemId = pQuest->RewItemId[i];
-		itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*) this);
 
         if (itemId > 0)
             data << itemId << pQuest->RewItemCount[i];
