@@ -27,6 +27,12 @@
 #include "Spells/SpellTargetDefines.h"
 #include "World/World.h"
 
+static eConfigFloatValues const qualityToUpgrade[MAX_ITEM_QUALITY] =
+{
+    CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE,                       // ITEM_QUALITY_RARE
+    CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
+};
+
 void AddItemsSetItem(Player* player, Item* item)
 {
     ItemPrototype const* proto = item->GetProto();
@@ -742,30 +748,30 @@ uint32 Item::ComputeRequiredLevel(uint32 quality, uint32 ilevel)
 	return RequiredLevel;
 }
 
-uint32 Item::LoadScaledParent(uint32 itemid)
+uint32 Item::LoadScaledParent(uint32 ItemId)
 {
-	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(itemid);
+	ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(ItemId);
 
 	if (!pProto)
-		return itemid;
+		return ItemId;
 
 	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
 	{
-		if (ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(itemid))
+		if (ItemLootScale const *sItem = sObjectMgr.GetItemLootParentingScale(ItemId))
 			return sItem->ItemId;
 	}
 	else
 	{
-		uint32 scaleid = std::floor((itemid - 41000 - 1)/(2 * 180));
+		uint32 ScaleId = std::floor((ItemId - MIN_ENTRY_SCALE - 1)/(MAX_QUALITY_SCALE * MAX_ILEVEL_SCALE));
 
-		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(scaleid))
-			return scaleid;
+		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
+			return ScaleId;
 	}
 
-	return itemid;
+	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer)
+uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
 {
 	if (ItemId && pPlayer)
 	{
@@ -825,12 +831,12 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer)
 			}
 		}
 
-		return LoadScaledLoot(ItemId, pLevel);
+		return LoadScaledLoot(ItemId, pLevel, upgrade);
 	}
 	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel)
+uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade)
 {
 	if (pLevel > sWorld.GetCurrentMaxLevel())
 		pLevel = sWorld.GetCurrentMaxLevel();
@@ -869,31 +875,43 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel)
 	}
 	else
 	{
-		uint32 ItemLevel = pProto->ItemLevel;
+        uint32 BonusQuality = 0;
 
-		if (pLevel <= 60)
-			ItemLevel = pLevel + 5;
-		else if (pLevel > 60 && pLevel < 70)
-		{
-			if (pProto->Quality < 3) // gray, white, green
-				ItemLevel = (pLevel - 60) * 3 + 90;
-			else if (pProto->Quality == 3) // blue
-				ItemLevel = (pLevel - 60) * 3 + 85;
-			else if (pProto->Quality > 3) // purple, yellow, orange
-				ItemLevel = (uint32)round((pLevel - 10) / 0.6f);
-		}
-		else if (pLevel == 70)
-		{
-			if (pProto->Quality >= 3)
-				ItemLevel = 115 + std::max(0, int32(pProto->ItemLevel - 115));
-			else
-				ItemLevel = 120;
-		}
+        // roll dice to see if item should be upgraded
+        if (upgrade)
+        {
+            if (pProto->Quality >= ITEM_QUALITY_EPIC)
+                BonusQuality = 0; // Do not create Legendary, Artifacts
+            else if (pProto->Quality <= ITEM_QUALITY_NORMAL)
+                BonusQuality = 0; // Do not upgrade Poor, Common
+            else
+            {
+                bool UpgradeToEpic = false;
+                bool UpgradeToRare = false;
 
-		uint32 ScaleId = (41000 + ItemId * 2 * 180 + ItemLevel);
+                switch (pProto->Quality)
+                {
+                case ITEM_QUALITY_UNCOMMON:
+                    UpgradeToRare = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_RARE]));
+                case ITEM_QUALITY_RARE:
+                    UpgradeToEpic = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_EPIC]));
+                    break;
+                }
 
-		if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
-			return ScaleId;
+                BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
+            }
+        }
+
+		uint32 ScaleId = (MIN_ENTRY_SCALE + ItemId * MAX_QUALITY_SCALE * MAX_ILEVEL_SCALE + pLevel);
+        
+        if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
+        {
+            uint32 UpgradeId = ScaleId + BonusQuality * MAX_ILEVEL_SCALE;
+            if (!sItemStorage.LookupEntry<ItemPrototype>(UpgradeId))
+                return ScaleId;
+            else
+                return UpgradeId;
+        }
 	}
 
 	return ItemId;

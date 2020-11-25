@@ -344,6 +344,11 @@ AccountData = 0
 #        Description: Calculate at loading gameobject zoneId / areaId and save in gameobject table (WARNING: SLOW WORLD SERVER STARTUP)
 #        Default:     0  - (Do not show)
 #
+#    Rate.Upgrade.Item.Rare
+#    Rate.Upgrade.Item.Epic
+#        Upgrade rates (items by quality)
+#        Default: 1
+#
 ###################################################################################################################
 
 WowPatch = 15
@@ -386,6 +391,8 @@ Calculate.Creature.Zone.Area.Data = 0
 Calculate.Gameoject.Zone.Area.Data = 0
 SummoningRitual.ReqParticipants = 1
 SummoningRitual.AllowSelfUse = 1
+Rate.Upgrade.Item.Rare = 50.0
+Rate.Upgrade.Item.Epic = 50.0
 
 ###################################################################################################################
 # SERVER LOGGING
