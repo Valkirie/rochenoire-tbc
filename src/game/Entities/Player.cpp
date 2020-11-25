@@ -13544,7 +13544,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
         if (pQuest->RewChoiceItemId[reward])
         {
 			uint32 pQuestItem = pQuest->RewChoiceItemId[reward];
-			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], (Player*)this);
 
             InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewChoiceItemCount[reward]);
             if (res != EQUIP_ERR_OK)
@@ -13562,7 +13562,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
             if (pQuest->RewItemId[i])
             {
 				uint32 pQuestItem = pQuest->RewItemId[i];
-				pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], ((Player*)this));
+                pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
 
                 InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewItemCount[i]);
                 if (res != EQUIP_ERR_OK)
@@ -13772,7 +13772,7 @@ void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGi
     {
         if (uint32 itemId = pQuest->RewChoiceItemId[reward])
         {
-            pQuest->RewChoiceItemId[reward] = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+            pQuest->RewChoiceItemId[reward] = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], (Player*)this, true);
             
             ItemPosCountVec dest;
             if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewChoiceItemId[reward], pQuest->RewChoiceItemCount[reward]) == EQUIP_ERR_OK)
@@ -13789,7 +13789,7 @@ void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGi
         {
             if (uint32 itemId = pQuest->RewItemId[i])
             {
-                pQuest->RewItemId[i] = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
+                pQuest->RewItemId[i] = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this, true);
                 
                 ItemPosCountVec dest;
                 if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuest->RewItemId[i], pQuest->RewItemCount[i]) == EQUIP_ERR_OK)

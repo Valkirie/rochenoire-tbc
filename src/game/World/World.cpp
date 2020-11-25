@@ -643,6 +643,9 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_SUMMONINGRITUAL_REQPARTICIPANTS, "SummoningRitual.ReqParticipants", 4);
     setConfig(CONFIG_BOOL_SUMMONINGRITUAL_ALLOW_SELF, "SummoningRitual.AllowSelfUse", false);
 
+    setConfig(CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE, "Rate.Upgrade.Item.Rare", 1.0f);
+    setConfig(CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC, "Rate.Upgrade.Item.Epic", 1.0f);
+
     setConfigMinMax(CONFIG_UINT32_MAINTENANCE_DAY, "MaintenanceDay", 3, 0, 6);
 
     setConfig(CONFIG_UINT32_MAIL_DELIVERY_DELAY, "MailDeliveryDelay", HOUR);

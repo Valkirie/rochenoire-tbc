@@ -249,6 +249,9 @@ enum ItemQualities
 };
 
 #define MAX_ITEM_QUALITY                 7
+#define MIN_ENTRY_SCALE                  41000
+#define MAX_ILEVEL_SCALE                 70
+#define MAX_QUALITY_SCALE                3
 
 const uint32 ItemQualityColors[MAX_ITEM_QUALITY] =
 {
