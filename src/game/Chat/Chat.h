@@ -472,6 +472,7 @@ class ChatHandler
         bool HandleNpcUnFollowCommand(char* args);
         bool HandleNpcWhisperCommand(char* args);
         bool HandleNpcYellCommand(char* args);
+        bool HandleNpcTempSpawn(char* args);
 
         // TODO: NpcCommands that needs to be fixed :
         bool HandleNpcAddWeaponCommand(char* args);
@@ -683,6 +684,7 @@ class ChatHandler
         bool HandleComeToMeCommand(char* args);
         bool HandleMovespeedShowCommand(char* args);
         bool HandleDebugMovement(char* args);
+        bool HandlePrintMovement(char* args);
 
         bool HandleCooldownListCommand(char* args);
         bool HandleCooldownClearCommand(char* args);

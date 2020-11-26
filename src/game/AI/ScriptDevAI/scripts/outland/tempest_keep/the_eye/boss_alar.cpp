@@ -133,6 +133,8 @@ struct boss_alarAI : public CombatAI
     
     ScriptedInstance* m_instance;
 
+    GuidVector m_spawns;
+
     uint8 m_phase;
     uint8 m_uiCurrentPlatformId;
     uint8 m_uiFuturePlatformId;
@@ -156,12 +158,15 @@ struct boss_alarAI : public CombatAI
         m_firstPlatform = true;
 
         SetDeathPrevention(true);
+        SetMeleeEnabled(true);
 
         m_creature->SetIgnoreRangedTargets(true);
 
         m_creature->SetDisplayId(m_creature->GetNativeDisplayId());
 
         m_uiCurrentPlatformId   = 0;
+
+        DespawnGuids(m_spawns);
     }
 
     void Aggro(Unit* /*who*/) override
@@ -201,7 +206,10 @@ struct boss_alarAI : public CombatAI
     void JustSummoned(Creature* summoned) override
     {
         if (summoned->GetEntry() == NPC_FLAME_PATCH)
-            summoned->CastSpell(summoned, SPELL_FLAME_PATCH, TRIGGERED_OLD_TRIGGERED);
+        {
+            summoned->CastSpell(nullptr, SPELL_FLAME_PATCH, TRIGGERED_OLD_TRIGGERED);
+            m_spawns.push_back(summoned->GetObjectGuid());
+        }
     }
     
     // UNCOMMENT THIS AREA WHEN PATCH 2.1 HITS - should be done through serverside 41910
@@ -416,6 +424,7 @@ struct boss_alarAI : public CombatAI
                 m_creature->SetHover(false);
                 m_creature->SetLevitate(false);
                 SetCombatMovement(true, true);
+                SetMeleeEnabled(true);
                 SetDeathPrevention(false);
                 break;
             }
@@ -485,11 +494,12 @@ struct boss_alarAI : public CombatAI
             {
                 ResetCombatAction(ALAR_CHARGE, urand(25000, 30000));
                 SetCombatMovement(false);
+                SetMeleeEnabled(false);
                 m_creature->SetHover(true);
                 m_creature->SetLevitate(true);
                 m_creature->GetMotionMaster()->MovePoint(POINT_ID_DIVE_BOMB, aCenterLocation[2].m_fX, aCenterLocation[2].m_fY, aCenterLocation[2].m_fZ);
                 SetDeathPrevention(true);
-                ResetCombatAction(action, 40000);
+                ResetCombatAction(action, urand(50000, 60000));
                 break;
             }
             case ALAR_FLAME_PATCH:
