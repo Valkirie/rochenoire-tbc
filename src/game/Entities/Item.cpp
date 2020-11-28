@@ -29,8 +29,13 @@
 
 static eConfigFloatValues const qualityToUpgrade[MAX_ITEM_QUALITY] =
 {
-    CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE,                       // ITEM_QUALITY_RARE
-    CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC,                       // ITEM_QUALITY_EPIC
+    CONFIG_FLOAT_RATE_DROP_ITEM_POOR,                       // PLACEHOLDER: ITEM_QUALITY_POOR
+    CONFIG_FLOAT_RATE_DROP_ITEM_NORMAL,                     // PLACEHOLDER: ITEM_QUALITY_NORMAL
+    CONFIG_FLOAT_RATE_DROP_ITEM_UNCOMMON,                   // PLACEHOLDER: ITEM_QUALITY_UNCOMMON
+    CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE,                    // ITEM_QUALITY_RARE
+    CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC,                    // ITEM_QUALITY_EPIC
+    CONFIG_FLOAT_RATE_DROP_ITEM_LEGENDARY,                  // PLACEHOLDER: ITEM_QUALITY_LEGENDARY
+    CONFIG_FLOAT_RATE_DROP_ITEM_ARTIFACT,                   // PLACEHOLDER: ITEM_QUALITY_ARTIFACT
 };
 
 void AddItemsSetItem(Player* player, Item* item)
@@ -775,6 +780,9 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
 {
 	if (ItemId && pPlayer)
 	{
+        // Restore default item
+        ItemId = LoadScaledParent(ItemId);
+
         // Checking if player has appropriate level for current zone
         uint32 pLevel = pPlayer->getZoneLevel();
 
