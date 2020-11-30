@@ -311,7 +311,7 @@ AccountData = 0
 #
 #    Rochenoire.Flexible.Core.Ratio
 #        Set the flexible raids players ratio
-#        Default:     2 - (raid 40 become raid 20, raid 20 become raid 10)
+#        Default:     2.0
 #
 #    Rochenoire.Flexible.Core.MinSize.Common
 #    Rochenoire.Flexible.Core.MinSize.Instance
@@ -334,7 +334,7 @@ AccountData = 0
 #    Rate.Weight.Item.Legendary
 #    Rate.Weight.Item.Artifact
 #         Equipment level rates coeff (used by smart loot)
-#         Default: 1
+#         Default: 1.0
 #
 #     Calculate.Creature.Zone.Area.Data
 #        Description: Calculate at loading creature zoneId / areaId and save in creature table (WARNING: SLOW WORLD SERVER STARTUP)
@@ -344,10 +344,16 @@ AccountData = 0
 #        Description: Calculate at loading gameobject zoneId / areaId and save in gameobject table (WARNING: SLOW WORLD SERVER STARTUP)
 #        Default:     0  - (Do not show)
 #
-#    Rate.Upgrade.Item.Rare
-#    Rate.Upgrade.Item.Epic
+#    BonusUpgrade.Rate.Rare
+#    BonusUpgrade.Rate.Epic
 #        Upgrade rates (items by quality)
-#        Default: 1
+#        Default: 1.0
+#
+#    BonusUpgrade.Quest
+#    BonusUpgrade.Crafting
+#        Enable/Disable item bonus upgrade
+#        Default: 0 (disable)
+#                 0 (enable)
 #
 ###################################################################################################################
 
@@ -372,7 +378,7 @@ Rochenoire.Scaling.Vendor.Misc = 0
 Rochenoire.Rate.Drop.Item.Group = 0.5
 Rochenoire.Rate.XP.Group = 0.5
 Rochenoire.Flexible.Core.MapType = 2
-Rochenoire.Flexible.Core.Ratio = 4
+Rochenoire.Flexible.Core.Ratio = 2.0
 Rochenoire.Flexible.Core.MinSize.Common = 5
 Rochenoire.Flexible.Core.MinSize.Instance = 2
 Rochenoire.Flexible.Core.MinSize.Raid = 5
@@ -391,8 +397,10 @@ Calculate.Creature.Zone.Area.Data = 0
 Calculate.Gameoject.Zone.Area.Data = 0
 SummoningRitual.ReqParticipants = 1
 SummoningRitual.AllowSelfUse = 1
-Rate.Upgrade.Item.Rare = 50.0
-Rate.Upgrade.Item.Epic = 50.0
+BonusUpgrade.Rate.Rare = 17.0
+BonusUpgrade.Rate.Epic = 10.0
+BonusUpgrade.Quest = 0
+BonusUpgrade.Crafting = 0
 
 ###################################################################################################################
 # SERVER LOGGING
