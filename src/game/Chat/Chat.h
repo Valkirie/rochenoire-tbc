@@ -162,6 +162,7 @@ class ChatHandler
         Player* GetPlayer();
 
         std::string GetLocalItemLink(Item* pItem) const;
+        std::string GetLocalItemQuality(Item* pItem) const;
 
         WorldSession* GetSession() const { return m_session; }
     protected:
