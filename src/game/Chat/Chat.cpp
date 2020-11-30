@@ -3442,7 +3442,20 @@ std::string ChatHandler::GetLocalItemLink(Item* pItem) const
             }
         }
 
-        return m_session ? "|cffffffff|Hitem:" + std::to_string(pProto->ItemId) + ":0:" + std::to_string(pItem->GetItemRandomPropertyId()) + ":0|h[" + Name + "]|h|r" : Name;
+        std::string Quality;
+        switch (pProto->Quality) // cffa335ee
+        {
+        default:
+        case ITEM_QUALITY_NORMAL: Quality = "ffffff"; break;
+        case ITEM_QUALITY_POOR: Quality = "9d9d9d"; break;
+        case ITEM_QUALITY_UNCOMMON: Quality = "1eff00"; break;
+        case ITEM_QUALITY_RARE: Quality = "0070dd"; break;
+        case ITEM_QUALITY_EPIC: Quality = "a335ee"; break;
+        case ITEM_QUALITY_LEGENDARY: Quality = "ff8000"; break;
+        case ITEM_QUALITY_ARTIFACT: Quality = "e6cc80"; break;
+        }
+
+        return m_session ? "|cff" + Quality + "|Hitem:" + std::to_string(pProto->ItemId) + ":0:" + std::to_string(pItem->GetItemRandomPropertyId()) + ":0|h[" + Name + "]|h|r" : Name;
     }
 
     return "";
