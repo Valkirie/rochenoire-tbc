@@ -913,13 +913,8 @@ class ObjectMgr
 
         ItemLocale const* GetItemLocale(uint32 entry) const
         {
-            if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(entry))
-                if (pProto->Class != ITEM_CLASS_CONSUMABLE && pProto->Class != ITEM_CLASS_MISC)
-                {
-                    uint32 parent = std::floor((entry - 41000 - 1) / (2 * 180));
-                    if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(parent))
-                        entry = parent;
-                }
+            // recover parent item so we don't have to populate locales_item
+            entry = Item::LoadScaledParent(entry);
             
             ItemLocaleMap::const_iterator itr = mItemLocaleMap.find(entry);
             if (itr == mItemLocaleMap.end()) return nullptr;
