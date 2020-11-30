@@ -3395,6 +3395,32 @@ std::string ChatHandler::GetNameLink(Player* chr) const
     return playerLink(chr->GetName());
 }
 
+std::string ChatHandler::GetLocalItemQuality(Item* pItem) const
+{
+    ItemPrototype const* pProto = pItem->GetProto();
+
+    if (pProto)
+    {
+        std::string Quality;
+
+        switch (pProto->Quality) // cffa335ee
+        {
+        default:
+        case ITEM_QUALITY_NORMAL: Quality = "Normal"; break;
+        case ITEM_QUALITY_POOR: Quality = "Poor"; break;
+        case ITEM_QUALITY_UNCOMMON: Quality = "Uncommon"; break;
+        case ITEM_QUALITY_RARE: Quality = "Rare"; break;
+        case ITEM_QUALITY_EPIC: Quality = "Epic"; break;
+        case ITEM_QUALITY_LEGENDARY: Quality = "Legendary"; break;
+        case ITEM_QUALITY_ARTIFACT: Quality = "Artifact"; break;
+        }
+
+        return Quality;
+    }
+
+    return "";
+}
+
 std::string ChatHandler::GetLocalItemLink(Item* pItem) const
 {
     // |cff1eff00|Hitem:15211:0:584:0|h[Militant Shortsword of the Monkey]|h|r
