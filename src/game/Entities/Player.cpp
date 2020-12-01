@@ -10874,42 +10874,36 @@ uint32 Player::getExpItemLevel() const
 	}
 }
 
-std::map<uint32, std::vector<uint32>> drop_map = {
-	//						  01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70
-	{ITEM_QUALITY_UNCOMMON, { 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1 }},
-	{ITEM_QUALITY_RARE,     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9 }},
-	{ITEM_QUALITY_EPIC,     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 }},
+std::map<uint32, std::vector<float>> drop_map = {
+    {ITEM_QUALITY_UNCOMMON, { 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 3.0f, 3.0f, 4.0f, 5.0f, 5.0f, 6.0f, 7.0f, 7.0f, 7.0f, 7.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 6.0f, 6.0f, 6.0f, 5.0f, 5.0f, 5.0f, 4.0f, 4.0f, 4.0f, 4.0f, 3.0f, 3.0f, 3.0f, 3.0f, 2.0f, 2.0f, 2.0f, 2.0f, 1.0f, 1.0f, 1.0f }},
+    {ITEM_QUALITY_RARE,     { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 3.0f, 3.0f, 4.0f, 4.0f, 4.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 6.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f }},
+    {ITEM_QUALITY_EPIC,     { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 3.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 6.0f, 6.0f, 6.0f, 6.0f, 7.0f, 7.0f, 7.0f, 7.0f }}, 
 };
 
 float Player::getItemLevelCoeff(uint32 pQuality) const
 {
-	bool IsEnabled = sWorld.getConfig(CONFIG_BOOL_SMART_LOOT);
-
-	if (!IsEnabled)
+	if (!sWorld.getConfig(CONFIG_BOOL_SMART_LOOT))
 		return 1.0f;
 
-	float qualityModifier = std::max((float)getExpItemLevel() / (float)GetItemLevel(), 1.0f);
-	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
-
+	float qualityModifier = std::max((float)getExpItemLevel() / (float)GetItemLevel(), 1.0f) * sWorld.getConfig(qualityToRate[pQuality]);
 	float quantityModifier = 1.0f;
+
 	float pCount = countRelevant(pQuality, true);
-    uint32 mLevel = sWorld.GetCurrentMaxLevel();
-	uint32 pLevel = std::min((float)mLevel, (float)getLevel());
+    uint32 pLevel = std::min((float)sWorld.GetCurrentMaxLevel(), (float)getLevel());
 
 	switch (pQuality)
 	{
 		case ITEM_QUALITY_UNCOMMON: // GREEN
 		case ITEM_QUALITY_RARE:     // BLUE
 		case ITEM_QUALITY_EPIC:     // PURPLE
-            float drop_value = (float)drop_map[pQuality][pLevel - 1];
-			quantityModifier = drop_value - pCount;
+			quantityModifier = drop_map[pQuality][pLevel - 1] - pCount;
 		break;
 	}
 	
-    uint32 coeffMaxAmount = sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
+    float coeffMaxAmount = (float)sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
     float coeffModifier = std::max(qualityModifier, quantityModifier);
 
-	return std::min(coeffModifier, (float)coeffMaxAmount);
+	return std::min(coeffModifier, coeffMaxAmount);
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
