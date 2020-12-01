@@ -359,7 +359,7 @@ AccountData = 0
 #    BonusUpgrade.Crafting
 #        Enable/Disable item bonus upgrade
 #        Default: 0 (disable)
-#                 0 (enable)
+#                 1 (enable)
 #
 ###################################################################################################################
 
