@@ -839,12 +839,12 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
 			}
 		}
 
-		return LoadScaledLoot(ItemId, pLevel, upgrade);
+		return LoadScaledLoot(ItemId, pLevel, upgrade, pPlayer);
 	}
 	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade)
+uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* pPlayer)
 {
 	if (pLevel > sWorld.GetCurrentMaxLevel())
 		pLevel = sWorld.GetCurrentMaxLevel();
@@ -900,11 +900,12 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade)
                 switch (pProto->Quality)
                 {
                 case ITEM_QUALITY_UNCOMMON:
-                    UpgradeToRare = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_RARE]));
+                    UpgradeToRare = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_RARE]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_RARE) : 1.0f));
                 case ITEM_QUALITY_RARE:
-                    UpgradeToEpic = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_EPIC]));
+                    UpgradeToEpic = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_EPIC]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_EPIC) : 1.0f));
                     break;
                 }
+
 
                 BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
             }
