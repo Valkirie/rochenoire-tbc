@@ -272,7 +272,8 @@ AccountData = 0
 #        Default: 15 (2.4)
 #                 0  (1.2)
 #
-#    Rochenoire.Scaling.PvP.Enabled
+#    Rochenoire.Scaling.PvP.Enemy
+#    Rochenoire.Scaling.PvP.Friendly
 #        Enable/Disable PvP level scaling
 #        Default: 0 (disable)
 #                 1 (enable)
@@ -364,7 +365,8 @@ AccountData = 0
 ###################################################################################################################
 
 WowPatch = 15
-Rochenoire.Scaling.PvP.Enabled = 0
+Rochenoire.Scaling.PvP.Enemy = 0
+Rochenoire.Scaling.PvP.Friendly = 0
 Rochenoire.Scaling.Vendor.Consumable = 0
 Rochenoire.Scaling.Vendor.Container = 0
 Rochenoire.Scaling.Vendor.Weapon = 0
