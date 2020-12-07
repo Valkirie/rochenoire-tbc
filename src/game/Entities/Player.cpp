@@ -10882,33 +10882,28 @@ uint32 Player::getExpItemLevel() const
 
 float Player::getItemLevelCoeff(uint32 pQuality) const
 {
-	bool IsEnabled = sWorld.getConfig(CONFIG_BOOL_SMART_LOOT);
-
-	if (!IsEnabled)
+	if (!sWorld.getConfig(CONFIG_BOOL_SMART_LOOT))
 		return 1.0f;
 
-	float qualityModifier = std::max((float)getExpItemLevel() / (float)GetItemLevel(), 1.0f);
-	qualityModifier *= sWorld.getConfig(qualityToRate[pQuality]);
-
+	float qualityModifier = std::max((float)getExpItemLevel() / (float)GetItemLevel(), 1.0f) * sWorld.getConfig(qualityToRate[pQuality]);
 	float quantityModifier = 1.0f;
+
 	float pCount = countRelevant(pQuality, true);
-    uint32 mLevel = sWorld.GetCurrentMaxLevel();
-	uint32 pLevel = std::min((float)mLevel, (float)getLevel());
+    uint32 pLevel = std::min((float)sWorld.GetCurrentMaxLevel(), (float)getLevel());
 
 	switch (pQuality)
 	{
 		case ITEM_QUALITY_UNCOMMON: // GREEN
 		case ITEM_QUALITY_RARE:     // BLUE
 		case ITEM_QUALITY_EPIC:     // PURPLE
-            float drop_value = (float)drop_map[pQuality][pLevel - 1];
-			quantityModifier = drop_value - pCount;
+			quantityModifier = drop_map[pQuality][pLevel - 1] - pCount;
 		break;
 	}
 	
-    uint32 coeffMaxAmount = sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
+    float coeffMaxAmount = (float)sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
     float coeffModifier = std::max(qualityModifier, quantityModifier);
 
-	return std::min(coeffModifier, (float)coeffMaxAmount);
+	return std::min(coeffModifier, coeffMaxAmount);
 }
 
 Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
@@ -13543,7 +13538,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
         if (pQuest->RewChoiceItemId[reward])
         {
 			uint32 pQuestItem = pQuest->RewChoiceItemId[reward];
-			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+			pQuestItem = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], (Player*)this);
 
             InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewChoiceItemCount[reward]);
             if (res != EQUIP_ERR_OK)
@@ -13561,7 +13556,7 @@ bool Player::CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const
             if (pQuest->RewItemId[i])
             {
 				uint32 pQuestItem = pQuest->RewItemId[i];
-				pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], ((Player*)this));
+                pQuestItem = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
 
                 InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, pQuestItem, pQuest->RewItemCount[i]);
                 if (res != EQUIP_ERR_OK)
@@ -13730,8 +13725,9 @@ void Player::IncompleteQuest(uint32 quest_id)
     }
 }
 
-void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver, bool announce)
+void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGiver, bool announce)
 {
+    Quest* pQuest = (Quest*)pQuest_ori;
     uint32 quest_id = pQuest->GetQuestId();
 
     for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
@@ -13749,6 +13745,13 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
                 DestroyItemCount(pQuest->ReqSourceId[i], pQuest->ReqSourceCount[i], true, false, true);
         }
     }
+
+    // bonus upgrade : clear tables
+    bool CanUpgrade = sWorld.getConfig(CONFIG_BOOL_BONUS_UPGRADE_QUEST);
+    for (int i = 0; i < QUEST_REWARD_CHOICES_COUNT; ++i)
+        pQuest->RewChoiceItemIdUp[i] = nullptr;
+    for (int i = 0; i < QUEST_REWARDS_COUNT; ++i)
+        pQuest->RewItemIdUp[i] = nullptr;
 
 	if (pQuest->HasSpecialFlag(QUEST_SPECIAL_FLAG_TIMED))
 	{
@@ -13770,12 +13773,17 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
     {
         if (uint32 itemId = pQuest->RewChoiceItemId[reward])
         {
-			itemId = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], ((Player*)this));
+            itemId = Item::LoadScaledLoot(pQuest->RewChoiceItemId[reward], (Player*)this, CanUpgrade);
+
             ItemPosCountVec dest;
             if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewChoiceItemCount[reward]) == EQUIP_ERR_OK)
             {
                 Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
                 SendNewItem(item, pQuest->RewChoiceItemCount[reward], true, false, false, false);
+
+                if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(pQuest->RewChoiceItemId[reward]))
+                    if (ItemPrototype const* pProtoUp = sItemStorage.LookupEntry<ItemPrototype>(itemId))
+                        pQuest->RewChoiceItemIdUp[reward] = pProto->Quality != pProtoUp->Quality ? item : 0;
             }
         }
     }
@@ -13786,13 +13794,17 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         {
             if (uint32 itemId = pQuest->RewItemId[i])
             {
-				itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this);
-
+                itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*)this, CanUpgrade);
+                
                 ItemPosCountVec dest;
                 if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, pQuest->RewItemCount[i]) == EQUIP_ERR_OK)
                 {
                     Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
                     SendNewItem(item, pQuest->RewItemCount[i], true, false, false, false);
+
+                    if (ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(pQuest->RewItemId[i]))
+                        if (ItemPrototype const* pProtoUp = sItemStorage.LookupEntry<ItemPrototype>(itemId))
+                            pQuest->RewItemIdUp[i] = pProto->Quality != pProtoUp->Quality ? item : 0;
                 }
             }
         }
@@ -13855,7 +13867,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver,
         q_status.uState = QUEST_CHANGED;
 
     if (announce)
-        SendQuestReward(pQuest, xp, honor);
+        SendQuestReward(pQuest, reward, xp, honor);
 
     bool handled = false;
 
@@ -15034,7 +15046,7 @@ void Player::SendQuestCompleteEvent(uint32 quest_id) const
     }
 }
 
-void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
+void Player::SendQuestReward(Quest const* pQuest, uint32 reward, uint32 XP, uint32 honor) const
 {
     uint32 questid = pQuest->GetQuestId();
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_QUEST_COMPLETE quest = %u", questid);
@@ -15058,7 +15070,6 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
     for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
     {
 		uint32 itemId = pQuest->RewItemId[i];
-		itemId = Item::LoadScaledLoot(pQuest->RewItemId[i], (Player*) this);
 
         if (itemId > 0)
             data << itemId << pQuest->RewItemCount[i];
@@ -15066,6 +15077,25 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP, uint32 honor) const
             data << uint32(0) << uint32(0);
     }
     GetSession()->SendPacket(data);
+
+    // bonus upgrade : is enabled ?
+    if (sWorld.getConfig(CONFIG_BOOL_BONUS_UPGRADE_QUEST))
+    {
+        // bonus upgrade : scroll RewChoiceItems
+        if (Item* pItem = pQuest->RewChoiceItemIdUp[reward])
+        {
+            ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
+            PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this));
+        }
+
+        // bonus upgrade : scroll RewItems
+        for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
+            if (Item* pItem = pQuest->RewItemIdUp[i])
+            {
+                ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
+                PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this)); // dirty : temp
+            }
+    }
 }
 
 void Player::SendQuestFailed(uint32 quest_id, uint32 reason) const
