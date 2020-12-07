@@ -403,9 +403,9 @@ class Spell
         SpellCastResult CheckCast(bool strict);
         SpellCastResult CheckPetCast(Unit* target);
 
-		// scaling
-        bool EffectScaled[MAX_EFFECT_INDEX] = { false };
-        bool IsScaled() { for (int i = 0; i < MAX_EFFECT_INDEX; i++) { if (EffectScaled[i]) return true; }  return false; };
+		//                 eff_idx guid
+        std::map<std::pair<uint32, uint32>, bool> m_effectScaled;
+        bool IsScaledForTarget(uint32 guid, int eff_idx = -1);
 
         // handlers
         void handle_immediate();

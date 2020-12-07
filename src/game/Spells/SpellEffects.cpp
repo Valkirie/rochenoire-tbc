@@ -3794,7 +3794,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
 
     power -= unitTarget->GetResilienceRatingDamageReduction(power, SpellDmgClass(m_spellInfo->DmgClass), false, powerType);
 
-	int32 scaled_power = sObjectMgr.ScaleDamage(m_caster, unitTarget, power, EffectScaled[eff_idx], m_spellInfo);
+	int32 scaled_power = sObjectMgr.ScaleDamage(m_caster, unitTarget, power, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())], m_spellInfo, eff_idx);
 
     int32 new_damage;
     if (curPower < scaled_power)
@@ -4023,7 +4023,7 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "HealthLeech :%i", damage);
 
     uint32 curHealth = unitTarget->GetHealth();
-    damage = m_caster->SpellNonMeleeDamageLog(unitTarget, m_spellInfo->Id, damage, EffectScaled[eff_idx]);
+    damage = m_caster->SpellNonMeleeDamageLog(unitTarget, m_spellInfo->Id, damage, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())]);
     if ((int32)curHealth < damage)
         damage = curHealth;
 
@@ -4036,9 +4036,9 @@ void Spell::EffectHealthLeech(SpellEffectIndex eff_idx)
     if (m_caster->IsAlive())
     {
         heal = m_caster->SpellHealingBonusTaken(m_caster, m_spellInfo, heal, HEAL);
-        bool invertedScaled = !EffectScaled[eff_idx];
+        bool invertedScaled = !m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())];
         heal = sObjectMgr.ScaleDamage(m_caster, unitTarget, heal, invertedScaled, m_spellInfo, eff_idx, true); // revert
-        m_caster->DealHeal(m_caster, heal, m_spellInfo, false, EffectScaled[eff_idx]);
+        m_caster->DealHeal(m_caster, heal, m_spellInfo, false, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())]);
     }
 }
 
@@ -4262,7 +4262,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     if (unitTarget->GetMaxPower(power) == 0)
         return;
 
-    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, EffectScaled[eff_idx]);
+    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())]);
 
     // Mad Alchemist's Potion
     if (m_spellInfo->Id == 45051)

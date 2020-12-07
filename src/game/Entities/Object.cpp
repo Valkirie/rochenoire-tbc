@@ -1992,6 +1992,9 @@ Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map)
     if (settings.spellId)
         creature->SetUInt32Value(UNIT_CREATED_BY_SPELL, settings.spellId);
 
+    if (settings.ownerGuid)
+        creature->SetOwnerGuid(settings.ownerGuid);
+
     if (settings.spawner && settings.spawner->GetTypeId() == TYPEID_UNIT)
         if (Creature* spawnerCreature = static_cast<Creature*>(settings.spawner))
             if (UnitAI* ai = spawnerCreature->AI())
@@ -2907,7 +2910,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                     canKeep = sObjectMgr.isEffectRestricted(effect);
 
                 if (canKeep)
-                    value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->EffectScaled[effect_index], spellProto, effect_index);
+                    value = sObjectMgr.ScaleDamage((Unit*)unitCaster, (Unit*)target, value, spell->m_effectScaled[std::make_pair(effect_index, target->GetGUIDLow())], spellProto, effect_index);
             }
         }
     }
