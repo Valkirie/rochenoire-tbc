@@ -857,7 +857,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 	if (!pProto)
 		return ItemId;
 
-	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_MISC)
+	if (pProto->Class == ITEM_CLASS_CONSUMABLE || pProto->Class == ITEM_CLASS_CONTAINER || pProto->Class == ITEM_CLASS_MISC)
 	{
         // skip if correct
         if (abs((int)pLevel - (int)pProto->RequiredLevel) < 5)
@@ -881,7 +881,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 				return sItem->ReplacementId;
 		}
 	}
-	else
+	else if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
 	{
         uint32 BonusQuality = 0;
 
@@ -906,7 +906,6 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
                     break;
                 }
 
-
                 BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
             }
         }
@@ -915,11 +914,14 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
         
         if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
         {
-            uint32 UpgradeId = ScaleId + BonusQuality * MAX_ILEVEL_SCALE;
-            if (!sItemStorage.LookupEntry<ItemPrototype>(UpgradeId))
-                return ScaleId;
-            else
-                return UpgradeId;
+            if (BonusQuality)
+            {
+                uint32 UpgradeId = ScaleId + BonusQuality * MAX_ILEVEL_SCALE;
+                if (sItemStorage.LookupEntry<ItemPrototype>(UpgradeId))
+                    return UpgradeId;
+            }
+
+            return ScaleId;
         }
 	}
 
