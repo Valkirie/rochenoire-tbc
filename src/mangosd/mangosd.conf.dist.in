@@ -904,6 +904,11 @@ LogColors = ""
 #                 0 - Engage from any angle
 #        Default: 1 - Engage from behind
 #
+#    AutoUprank
+#        Automatically select correct rank when buffing/healing higher level players
+#                 0 (false)
+#        Default: 1 (true)
+#
 #    AutoDownrank
 #        Automatically select correct rank when buffing/healing lower level players
 #                 0 (false)
@@ -999,6 +1004,7 @@ SkillChance.Prospecting = 0
 OffhandCheckAtTalentsReset = 0
 PetUnsummonAtMount = 0
 PetAttackFromBehind = 1
+AutoUprank = 1
 AutoDownrank = 1
 Event.Announce = 0
 BeepAtStart = 1
