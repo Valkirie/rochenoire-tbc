@@ -37,6 +37,7 @@
 #include "Server/DBCStores.h"
 #include "Log.h"
 #include "Metric/Metric.h"
+#include <World\World.h>
 
 #include <cassert>
 
@@ -47,6 +48,7 @@ inline bool isStatic(MovementGenerator* mv)
 
 void MotionMaster::Initialize()
 {
+    if (sWorld.getConfig(CONFIG_BOOL_METRIC))
     metric::duration<std::chrono::microseconds> meas("motionmaster.initialize", {
         { "entry", std::to_string(m_owner->GetEntry()) },
         { "guid", std::to_string(m_owner->GetGUIDLow()) },
@@ -92,6 +94,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
     if (m_owner->hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
         return;
 
+    if (sWorld.getConfig(CONFIG_BOOL_METRIC))
     metric::duration<std::chrono::microseconds> meas("motionmaster.updatemotion", {
         { "entry", std::to_string(m_owner->GetEntry()) },
         { "guid", std::to_string(m_owner->GetGUIDLow()) },

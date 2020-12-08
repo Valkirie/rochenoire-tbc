@@ -82,6 +82,7 @@ bool PathFinder::calculate(const Vector3& start, Vector3& dest, bool forceDest/*
     if (!MaNGOS::IsValidMapCoord(start.x, start.y, start.z))
         return false;
 
+    if (sWorld.getConfig(CONFIG_BOOL_METRIC))
     metric::duration<std::chrono::microseconds> meas("pathfinder.calculate", {
         { "entry", std::to_string(m_sourceUnit->GetEntry()) },
         { "guid", std::to_string(m_sourceUnit->GetGUIDLow()) },

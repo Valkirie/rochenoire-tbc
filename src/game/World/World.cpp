@@ -606,6 +606,7 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_SCALE_PVP_HOSTILE, "Rochenoire.Scaling.PvP.Enemy", false);
     setConfig(CONFIG_BOOL_SCALE_PVP_FRIENDLY, "Rochenoire.Scaling.PvP.Friendly", false);
+    setConfig(CONFIG_BOOL_METRIC, "Metric.Enable", false);
 
     setConfig(CONFIG_UINT32_SCALE_VENDOR_CONSUMABLE, "Rochenoire.Scaling.Vendor.Consumable", 0);
     setConfig(CONFIG_UINT32_SCALE_VENDOR_CONTAINER, "Rochenoire.Scaling.Vendor.Container", 0);

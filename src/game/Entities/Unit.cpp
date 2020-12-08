@@ -440,6 +440,7 @@ void Unit::Update(const uint32 diff)
     if (!IsInWorld())
         return;
 
+    if(sWorld.getConfig(CONFIG_BOOL_METRIC))
     metric::duration<std::chrono::microseconds> meas("unit.update", {
         { "entry", std::to_string(GetEntry()) },
         { "guid", std::to_string(GetGUIDLow()) },
@@ -489,6 +490,7 @@ void Unit::Update(const uint32 diff)
 
     if (AI() && IsAlive())
     {
+        if (sWorld.getConfig(CONFIG_BOOL_METRIC))
         metric::duration<std::chrono::microseconds> meas_ai("unit.update.ai", {
             { "entry", std::to_string(GetEntry()) },
             { "guid", std::to_string(GetGUIDLow()) },
@@ -11317,6 +11319,7 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
     if (movespline->Finalized())
         return;
 
+    if (sWorld.getConfig(CONFIG_BOOL_METRIC))
     metric::duration<std::chrono::microseconds> meas("unit.updatesplinemovement", {
         { "entry", std::to_string(GetEntry()) },
         { "guid", std::to_string(GetGUIDLow()) },
