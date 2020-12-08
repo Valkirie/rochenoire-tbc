@@ -165,6 +165,8 @@ DBCStorage <TaxiPathEntry> sTaxiPathStore(TaxiPathEntryfmt);
 TaxiPathNodesByPath sTaxiPathNodesByPath;
 static DBCStorage <TaxiPathNodeEntry> sTaxiPathNodeStore(TaxiPathNodeEntryfmt);
 
+DBCStorage <TransportAnimationEntry> sTransportAnimationStore(TransportAnimationfmt);
+
 DBCStorage <TotemCategoryEntry> sTotemCategoryStore(TotemCategoryEntryfmt);
 DBCStorage <WMOAreaTableEntry>  sWMOAreaTableStore(WMOAreaTableEntryfmt);
 DBCStorage <WorldMapAreaEntry>  sWorldMapAreaStore(WorldMapAreaEntryfmt);
@@ -490,7 +492,7 @@ void LoadDBCStores(const std::string& dataPath)
     // fill data (pointers to sTaxiPathNodeStore elements
     for (uint32 i = 1; i < sTaxiPathNodeStore.GetNumRows(); ++i)
         if (TaxiPathNodeEntry const* entry = sTaxiPathNodeStore.LookupEntry(i))
-            sTaxiPathNodesByPath[entry->path][entry->index] = entry;
+            sTaxiPathNodesByPath[entry->path].set(entry->index, entry);
 
     // Initialize global taxinodes mask
     // include existing nodes that have at least single not spell base (scripted) path
@@ -533,6 +535,8 @@ void LoadDBCStores(const std::string& dataPath)
             sTaxiNodesMask[field] |= submask;
         }
     }
+
+    LoadDBC(availableDbcLocales, bar, bad_dbc_files, sTransportAnimationStore,  dbcPath, "TransportAnimation.dbc");
 
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sTotemCategoryStore,       dbcPath, "TotemCategory.dbc");
     LoadDBC(availableDbcLocales, bar, bad_dbc_files, sWorldMapAreaStore,        dbcPath, "WorldMapArea.dbc");

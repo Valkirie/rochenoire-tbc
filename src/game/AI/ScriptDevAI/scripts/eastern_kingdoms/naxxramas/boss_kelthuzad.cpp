@@ -666,7 +666,7 @@ struct ChainsKelThuzad : public SpellScript
         if (targets.size() <= CONTROLLED_TARGETS)
             return;
 
-        std::random_shuffle(targets.begin(), targets.end());
+        std::shuffle(targets.begin(), targets.end(), *GetRandomGenerator());
         targets.resize(CONTROLLED_TARGETS);
 
         DoScriptText(urand(0, 1) ? SAY_CHAIN1 : SAY_CHAIN2, caster);

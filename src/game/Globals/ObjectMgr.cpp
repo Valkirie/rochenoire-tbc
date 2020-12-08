@@ -1916,6 +1916,57 @@ void ObjectMgr::LoadCreatureConditionalSpawn()
     sLog.outString();
 }
 
+void ObjectMgr::LoadCreatureSpawnDataTemplates()
+{
+    m_creatureSpawnTemplateMap.clear();
+
+    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT Entry, UnitFlags, Faction, ModelId, EquipmentId, CurHealth, CurMana, SpawnFlags FROM creature_spawn_data_template"));
+    if (!result)
+    {
+        BarGoLink bar(1);
+        bar.step();
+        sLog.outErrorDb(">> Loaded creature_spawn_data_template, table is empty!");
+        sLog.outString();
+        return;
+    }
+    
+    BarGoLink bar(result->GetRowCount());
+
+    uint32 count = 0;
+
+    do
+    {
+        bar.step();
+
+        Field* fields = result->Fetch();
+
+        uint32 entry =      fields[0].GetUInt32();
+        int64 unitFlags =   int64(fields[1].GetUInt64());
+        uint32 faction =    fields[2].GetUInt32();
+        uint32 modelId =    fields[3].GetUInt32();
+        uint32 equipmentId = fields[4].GetUInt32();
+        uint32 curHealth =  fields[5].GetUInt32();
+        uint32 curMana =    fields[6].GetUInt32();
+        uint32 spawnFlags = fields[7].GetUInt32();
+
+        // leave room for invalidation in future
+
+        auto& data = m_creatureSpawnTemplateMap[entry];
+        data.unitFlags = unitFlags;
+        data.faction = faction;
+        data.modelId = modelId;
+        data.equipmentId = equipmentId;
+        data.curHealth = curHealth;
+        data.curMana = curMana;
+        data.spawnFlags = spawnFlags;
+
+        ++count;
+    } while (result->NextRow());
+
+    sLog.outString(">> Loaded %u creature_spawn_data_template entries", count);
+    sLog.outString();
+}
+
 void ObjectMgr::LoadCreatureSpawnEntry()
 {
     mCreatureSpawnEntryMap.clear();
@@ -1973,11 +2024,14 @@ void ObjectMgr::LoadCreatures()
                           //   13         14       15          16            17         18
                           "curhealth, curmana, DeathState, MovementType, spawnMask, event,"
                           //   19                        20                             21         22
-                          "pool_creature.pool_entry, pool_creature_template.pool_entry, patch_min, patch_max "
+                          "pool_creature.pool_entry, pool_creature_template.pool_entry, patch_min, patch_max,"
+                          //   23
+                          "creature_spawn_data.id "
                           "FROM creature "
                           "LEFT OUTER JOIN game_event_creature ON creature.guid = game_event_creature.guid "
                           "LEFT OUTER JOIN pool_creature ON creature.guid = pool_creature.guid "
-                          "LEFT OUTER JOIN pool_creature_template ON creature.id = pool_creature_template.id");
+                          "LEFT OUTER JOIN pool_creature_template ON creature.id = pool_creature_template.id "
+                          "LEFT OUTER JOIN creature_spawn_data ON creature.guid = creature_spawn_data.guid ");
 
     if (!result)
     {
@@ -2065,6 +2119,8 @@ void ObjectMgr::LoadCreatures()
         data.EntryPoolId        = fields[20].GetInt16();
         data.patch_min          = fields[21].GetInt16();
         data.patch_max          = fields[22].GetInt16();
+        data.spawnTemplate      = GetCreatureSpawnTemplate(0);
+        uint32 spawnDataEntry   = fields[23].GetUInt32();
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(data.mapid);
         if (!mapEntry)
@@ -2155,6 +2211,14 @@ void ObjectMgr::LoadCreatures()
                 sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `MovementType`=0 (idle) have `spawndist`<>0, set to 0.", guid, data.id);
                 data.spawndist = 0.0f;
             }
+        }
+
+        if (spawnDataEntry > 0)
+        {
+            if (CreatureSpawnTemplate const* templateData = GetCreatureSpawnTemplate(spawnDataEntry))
+                data.spawnTemplate = templateData;
+            else
+                sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with spawn template %u that doesnt exist.", guid, data.id, spawnDataEntry);
         }
 
         if (mapEntry->IsContinent())
@@ -7649,10 +7713,12 @@ inline void CheckAndFixGOCaptureMinTime(GameObjectInfo const* goInfo, uint32 con
     const_cast<uint32&>(dataN) = 1;
 }
 
-void ObjectMgr::LoadGameobjectInfo()
+std::vector<uint32> ObjectMgr::LoadGameobjectInfo()
 {
     SQLGameObjectLoader loader;
     loader.Load(sGOStorage);
+
+    std::vector<uint32> transportDisplayIds;
 
     // some checks
     for (SQLStorageBase::SQLSIterator<GameObjectInfo> itr = sGOStorage.getDataBegin<GameObjectInfo>(); itr < sGOStorage.getDataEnd<GameObjectInfo>(); ++itr)
@@ -7764,6 +7830,9 @@ void ObjectMgr::LoadGameobjectInfo()
                     CheckGOLockId(goInfo, goInfo->camera.lockId, 0);
                 break;
             }
+            case GAMEOBJECT_TYPE_TRANSPORT:
+                transportDisplayIds.push_back(goInfo->displayId);
+                break;
             case GAMEOBJECT_TYPE_MO_TRANSPORT:              // 15
             {
                 if (goInfo->moTransport.taxiPathId)
@@ -7772,6 +7841,7 @@ void ObjectMgr::LoadGameobjectInfo()
                         sLog.outErrorDb("Gameobject (Entry: %u GoType: %u) have data0=%u but TaxiPath (Id: %u) not exist.",
                                         goInfo->id, goInfo->type, goInfo->moTransport.taxiPathId, goInfo->moTransport.taxiPathId);
                 }
+                transportDisplayIds.push_back(goInfo->displayId);
                 break;
             }
             case GAMEOBJECT_TYPE_SUMMONING_RITUAL:          // 18
@@ -7818,6 +7888,8 @@ void ObjectMgr::LoadGameobjectInfo()
 
     sLog.outString(">> Loaded %u game object templates", sGOStorage.GetRecordCount());
     sLog.outString();
+
+    return transportDisplayIds;
 }
 
 void ObjectMgr::LoadExplorationBaseXP()

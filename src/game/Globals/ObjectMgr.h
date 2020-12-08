@@ -160,6 +160,7 @@ struct MangosStringLocale
     BroadcastText const* broadcastText;
 };
 
+typedef std::unordered_map<uint32, CreatureSpawnTemplate> CreatureSpawnTemplateMap;
 typedef std::unordered_map<uint32 /*guid*/, CreatureData> CreatureDataMap;
 typedef CreatureDataMap::value_type CreatureDataPair;
 
@@ -512,7 +513,7 @@ class ObjectMgr
 
         std::unordered_map<uint32, std::vector<uint32>> const& GetCreatureSpawnEntry() const { return mCreatureSpawnEntryMap; }
 
-        void LoadGameobjectInfo();
+        std::vector<uint32> LoadGameobjectInfo();
 
         void PackGroupIds();
         Group* GetGroupById(uint32 id) const;
@@ -715,6 +716,7 @@ class ObjectMgr
         void LoadCreatureAddons();
         void LoadCreatureClassLvlStats();
         void LoadCreatureConditionalSpawn();
+        void LoadCreatureSpawnDataTemplates();
         void LoadCreatureSpawnEntry();
         void LoadCreatureModelInfo();
         void LoadCreatureModelRace();
@@ -874,6 +876,12 @@ class ObjectMgr
         {
             CreatureDataPair const* dataPair = GetCreatureDataPair(guid);
             return dataPair ? &dataPair->second : nullptr;
+        }
+
+        CreatureSpawnTemplate const* GetCreatureSpawnTemplate(uint32 entry) const
+        {
+            auto itr = m_creatureSpawnTemplateMap.find(entry);
+            return itr != m_creatureSpawnTemplateMap.end() ? &(*itr).second : nullptr;
         }
 
         CreatureData* GetCreatureData(uint32 guid)
@@ -1404,6 +1412,7 @@ class ObjectMgr
 
         MapObjectGuids mMapObjectGuids;
         ActiveCreatureGuidsOnMap m_activeCreatures;
+        CreatureSpawnTemplateMap m_creatureSpawnTemplateMap;
         CreatureDataMap mCreatureDataMap;
         CreatureLocaleMap mCreatureLocaleMap;
         std::unordered_map<uint32, std::unordered_map<uint32, std::pair<uint32, uint32>>> m_creatureCooldownMap;
