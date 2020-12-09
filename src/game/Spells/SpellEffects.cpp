@@ -3751,6 +3751,7 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
+    aur->GetModifier()->m_isScaled = IsScaledForTarget(unitTarget->GetGUIDLow(), eff_idx);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
 
@@ -3818,7 +3819,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_POWER_DRAIN), unitTarget->GetPackGUID(), new_damage, uint32(powerType), gainMultiplier);
 
     if (int32 gain = int32(new_damage * gainMultiplier))
-        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType);
+        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType, IsScaledForTarget(unitTarget->GetGUIDHigh(), eff_idx));
 }
 
 void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
@@ -4262,7 +4263,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     if (unitTarget->GetMaxPower(power) == 0)
         return;
 
-    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())]);
+    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, IsScaledForTarget(unitTarget->GetGUIDHigh(), eff_idx));
 
     // Mad Alchemist's Potion
     if (m_spellInfo->Id == 45051)
