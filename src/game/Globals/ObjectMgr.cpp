@@ -1266,10 +1266,8 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 		player = (Player *)owner;
 		creature = (Creature *)target;
 	}
-	/* else if (target->IsPlayer() && owner->IsPlayer())
-	{
-		return target->getLevel() > owner->getLevel() ? target->getLevel() : owner->getLevel();
-	} */
+	else if (target->IsPlayer() && owner->IsPlayer())
+		return owner->getLevel();
 	else
 		return target->getLevel();
 
