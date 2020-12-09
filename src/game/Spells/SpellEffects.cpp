@@ -3751,6 +3751,7 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
     Aura* aur = CreateAura(m_spellInfo, eff_idx, &damage, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, caster, m_CastItem);
+    aur->GetModifier()->m_isScaled = IsScaledForTarget(unitTarget->GetGUIDLow(), eff_idx);
     m_spellAuraHolder->AddAura(aur, eff_idx);
 }
 
