@@ -3818,7 +3818,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_POWER_DRAIN), unitTarget->GetPackGUID(), new_damage, uint32(powerType), gainMultiplier);
 
     if (int32 gain = int32(new_damage * gainMultiplier))
-        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType);
+        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType, IsScaledForTarget(unitTarget->GetGUIDHigh(), eff_idx));
 }
 
 void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
@@ -4262,7 +4262,7 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     if (unitTarget->GetMaxPower(power) == 0)
         return;
 
-    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, m_effectScaled[std::make_pair(eff_idx, unitTarget->GetGUIDHigh())]);
+    m_caster->EnergizeBySpell(unitTarget, m_spellInfo, damage, power, IsScaledForTarget(unitTarget->GetGUIDHigh(), eff_idx));
 
     // Mad Alchemist's Potion
     if (m_spellInfo->Id == 45051)
