@@ -471,11 +471,19 @@ void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchool
     if (!victim->IsAlive() || !getOwner()->IsAlive())
         return;
 
-	Unit *real_target = pSpellTarget ? pSpellTarget : victim;
-	isScaled = pSpellTarget ? false : isScaled;
+	Unit* redirectedTarget = pSpellTarget ? pSpellTarget : victim;
 
-    float scaledThreat = sObjectMgr.ScaleDamage(getOwner(), real_target, threat, isScaled, threatSpell, EFFECT_INDEX_0, true); // revert
-    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, scaledThreat, crit, schoolMask, threatSpell, assist);
+    if (redirectedTarget->GetGUIDLow() == victim->GetGUIDLow())
+        isScaled = true; // no scaling to self
+    else if (pSpellTarget)
+    {
+        isScaled = false; // ignore scaling
+        threat = sObjectMgr.ScaleDamage(redirectedTarget, victim, threat, isScaled, threatSpell, EFFECT_INDEX_0, true); // original threat
+        isScaled = false; // ignore scaling
+    }
+
+    float s_threat = sObjectMgr.ScaleDamage(redirectedTarget, iOwner, threat, isScaled);
+    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, s_threat, crit, schoolMask, threatSpell, assist);
 
     if (calculatedThreat > 0.0f)
     {
