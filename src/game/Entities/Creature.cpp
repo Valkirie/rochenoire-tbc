@@ -169,8 +169,7 @@ void Creature::AddToWorld()
     ///- Register the creature for guid lookup
 	if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 	{
-		uint32 mapType = GetMap()->GetMapEntry() ? GetMap()->GetMapEntry()->map_type : 0;
-        if (mapType > 0 && mapType <= sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+		if (GetMap()->IsDungeon())
 			GetMap()->InsertCreature(GetGUIDLow(), (Creature*)this);
 
 		GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
@@ -222,8 +221,7 @@ void Creature::RemoveFromWorld()
     {
 		if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 		{
-            uint32 mapType = GetMap()->GetMapEntry() ? GetMap()->GetMapEntry()->map_type : 0;
-            if (mapType > 0 && mapType <= sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+            if (GetMap()->IsDungeon())
 				GetMap()->EraseCreature(GetGUIDLow(), (Creature*)this);
 
 			GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);

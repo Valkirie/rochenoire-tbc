@@ -72,6 +72,7 @@ struct InstanceTemplate
     // or 0 (not related to continent 0 map id)
     uint32 levelMin;
     uint32 levelMax;
+    uint32 minPlayers;
     uint32 maxPlayers;
     uint32 reset_delay;                                     // in days
     uint32 script_id;

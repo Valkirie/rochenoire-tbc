@@ -5246,10 +5246,13 @@ SpellCastResult Spell::CheckCast(bool strict)
                     InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(mapId);
                     if (!instance)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
-                    if (instance->levelMin > target->getLevel())
-                        return SPELL_FAILED_LOWLEVEL;
-                    if (instance->levelMax && instance->levelMax < target->GetLevelForTarget(m_caster)) // m_targets.getUnitTarget() ?
-                        return SPELL_FAILED_HIGHLEVEL;
+                    if (!sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
+                    {
+                        if (instance->levelMin > target->getLevel())
+                            return SPELL_FAILED_LOWLEVEL;
+                        if (instance->levelMax && instance->levelMax < target->GetLevelForTarget(m_caster))
+                            return SPELL_FAILED_HIGHLEVEL;
+                    }
 
                     Difficulty difficulty = m_caster->GetMap()->GetDifficulty();
                     if (InstancePlayerBind* targetBind = target->GetBoundInstance(mapId, difficulty))
