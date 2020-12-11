@@ -239,12 +239,12 @@ struct boss_viscidusAI : public CombatAI
 
     void UpdateHitCounts()
     {
-        m_uiHitCount_Slow = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW);
-        m_uiHitCount_SlowMore = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW_MORE);
-        m_uiHitCount_Freeze = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
-        m_uiHitCount_Crack = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_CRACK);
-        m_uiHitCount_Shatter = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SHATTER);
-        m_uiHitCount_Explode = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
+        m_uiHitCount_Slow = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW);
+        m_uiHitCount_SlowMore = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SLOW_MORE);
+        m_uiHitCount_Freeze = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
+        m_uiHitCount_Crack = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_CRACK);
+        m_uiHitCount_Shatter = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_SHATTER);
+        m_uiHitCount_Explode = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), HITCOUNT_FREEZE);
     }
 
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damagetype, SpellEntry const* spellInfo) override

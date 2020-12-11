@@ -522,7 +522,7 @@ void instance_naxxramas::SetData(uint32 type, uint32 data)
 
                 uint8 HORSEMEN_COUNT = MAX_HORSEMEN;
                 if (Creature* horsemen = GetSingleCreatureFromStorage(NPC_BLAUMEUX))
-                    HORSEMEN_COUNT = horsemen->GetMap()->GetFinalNAdds(horsemen->GetInstanceTanks(), HORSEMEN_COUNT);
+                    HORSEMEN_COUNT = ((DungeonMap*)horsemen->GetMap())->GetFinalNAdds(horsemen->GetInstanceTanks(), HORSEMEN_COUNT);
 
                 if (m_horsemenKilled == HORSEMEN_COUNT)
                     SetData(TYPE_FOUR_HORSEMEN, DONE);

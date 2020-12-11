@@ -1270,7 +1270,7 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
             }
             case ILLIDAN_ACTION_SHADOW_DEMON:
             {
-                uint32 AMOUNT_DEMONS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
+                uint32 AMOUNT_DEMONS = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
                 float fX, fY, fZ;
                 for (uint8 i = 0; i < AMOUNT_DEMONS; ++i)
                 {
@@ -1391,7 +1391,7 @@ struct npc_akama_illidanAI : public CombatAI, private DialogueHelper
         AddCombatAction(AKAMA_ACTION_HEAL, 0u);
         AddCustomAction(AKAMA_SUMMON_ILLIDARI, true, [&]()
         {
-            uint32 ILLIDARI_ELITES = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ILLIDARI_ELITES);
+            uint32 ILLIDARI_ELITES = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ILLIDARI_ELITES);
             for (uint8 i = 0; i < ILLIDARI_ELITES; ++i)
                 m_creature->SummonCreature(NPC_ILLIDARI_ELITE, aIllidariElitesPos[i].fX, aIllidariElitesPos[i].fY, aIllidariElitesPos[i].fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
 

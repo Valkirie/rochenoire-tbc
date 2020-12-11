@@ -146,7 +146,7 @@ struct boss_fankrissAI : public CombatAI
                     if (!m_wormsSpawnPerWave)
                     {
                         // Determine how many Spawn of Fankriss will be spawned in the next wave
-                        m_wormsSpawnPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), urand(1, 3));
+                        m_wormsSpawnPerWave = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), urand(1, 3));
                         // Randomise the summoning spells so each NPC spawns in a different location
                         std::random_shuffle(m_summonWormSpells.begin(), m_summonWormSpells.end());
                         ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, urand(22000, 70000), spellId));

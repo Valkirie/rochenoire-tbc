@@ -765,12 +765,12 @@ float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction
 float f_min_red_health = 0.7f;	// store the maximum percentage of damage reduction before reducing adds number
 float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
 
-uint32 Map::GetFinalNAdds(float NT, float Nadds) const
+uint32 DungeonMap::GetFinalNAdds(float NT, float Nadds) const
 {
 	return sObjectMgr.GetFactorAdds(GetMaxPlayers(), GetCurPlayers(), NT, f_ratio_heal_dps, f_softness, Nadds, f_min_red_health);
 }
 
-uint32 Map::GetCreaturesCount(uint32 entry, bool IsScaled) const
+uint32 DungeonMap::GetCreaturesCount(uint32 entry, bool IsScaled) const
 {
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
@@ -794,7 +794,7 @@ uint32 Map::GetCreaturesCount(uint32 entry, bool IsScaled) const
 	return output;
 }
 
-uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
+uint32 DungeonMap::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
 {
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
@@ -812,7 +812,7 @@ uint32 Map::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
 	return output;
 }
 
-void Map::ShuffleFlexibleCore()
+void DungeonMap::ShuffleFlexibleCore()
 {
     if (m_creaturesStore.size() == 0)
         return;
@@ -840,7 +840,7 @@ enum FlexibleCore
     DISPLAY_VISIBLE = 2
 };
 
-void Map::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
+void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
 {
 	if (RefreshSize != 0)
 		lastKnownRefreshSize = RefreshSize > GetMaxPlayers() ? GetMaxPlayers() : RefreshSize;

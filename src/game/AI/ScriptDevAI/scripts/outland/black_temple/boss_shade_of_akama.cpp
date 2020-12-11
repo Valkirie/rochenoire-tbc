@@ -747,7 +747,7 @@ struct npc_creature_generatorAI : public ScriptedAI, public TimerManager
                 NPC_ASH_ELEMENTAL = 23523
                 NPC_ASH_ROGUE = 23318
                 NPC_ASH_SPIRITBIND = 23524 */
-            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 3); ++i)
+            for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 3); ++i)
             {
                 m_creature->SummonCreature(auiRandSpawnEntry[i], m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSPAWN_DEAD_DESPAWN, 0);
             }

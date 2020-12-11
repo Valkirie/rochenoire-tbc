@@ -1287,8 +1287,8 @@ void instance_mount_hyjal::SpawnWave(uint32 index, bool setTimer)
     // Resize based on raid size
     uint32 newSpawns = waveMobs.size();
     newSpawns += GetInfernalsPerWave(index);
-    newSpawns = spawner->GetMap()->GetFinalNAdds(spawner->GetInstanceTanks(), newSpawns);
-    uint8 CONCURRENT_SPAWNS = spawner->GetMap()->GetFinalNAdds(spawner->GetInstanceTanks(), MAX_CONCURRENT_SPAWNS);
+    newSpawns = ((DungeonMap*)spawner->GetMap())->GetFinalNAdds(spawner->GetInstanceTanks(), newSpawns);
+    uint8 CONCURRENT_SPAWNS = ((DungeonMap*)spawner->GetMap())->GetFinalNAdds(spawner->GetInstanceTanks(), MAX_CONCURRENT_SPAWNS);
 
     if (!setTimer)
     {
@@ -1317,7 +1317,7 @@ void instance_mount_hyjal::SpawnWave(uint32 index, bool setTimer)
     DoUpdateWorldState(WORLD_STATE_MOUNT_HYJAL_ENEMYCOUNT, m_hyjalEnemyCount + newSpawns);
 
     // Resize based on raid size
-    uint8 waveSize = spawner->GetMap()->GetFinalNAdds(spawner->GetInstanceTanks(), waveMobs.size());
+    uint8 waveSize = ((DungeonMap*)spawner->GetMap())->GetFinalNAdds(spawner->GetInstanceTanks(), waveMobs.size());
     for (uint8 i = 0; i < waveSize; ++i)
     {
         HyjalWaveMob& mob = waveMobs[i];
@@ -1364,7 +1364,7 @@ void instance_mount_hyjal::SpawnInvasionInfernals(uint32 index)
 void instance_mount_hyjal::SpawnInfernals(uint32 count)
 {
     if (Creature* infernalRelay = instance->GetCreature(m_infernalRelays[0]))
-        infernalRelay->GetMap()->GetFinalNAdds(infernalRelay->GetInstanceTanks(), count);
+        count = ((DungeonMap*)infernalRelay->GetMap())->GetFinalNAdds(infernalRelay->GetInstanceTanks(), count);
 
     uint32 triggerCount = m_infernalRelays.size();
     m_infernalIndices.resize(count);
@@ -1438,7 +1438,7 @@ void instance_mount_hyjal::SpawnInvasionWave(uint32 index, bool setTimer)
         }
 
         // Resize based on raid size
-        uint8 waveSize = spawner->GetMap()->GetFinalNAdds(spawner->GetInstanceTanks(), waveMobs.size());
+        uint8 waveSize = ((DungeonMap*)spawner->GetMap())->GetFinalNAdds(spawner->GetInstanceTanks(), waveMobs.size());
         for (uint8 i = 0; i < waveSize; ++i)
         {
             HyjalWaveMob& mob = waveMobs[i];

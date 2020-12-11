@@ -199,7 +199,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
                     DoScriptText(urand(0, 1) ? SAY_SUMMON1 : SAY_SUMMON2, m_creature);
 
                     // summon murlocs - north / south
-                    uint32 m_auiSpellSummonMurlocKeep = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 12);
+                    uint32 m_auiSpellSummonMurlocKeep = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 12);
                     for (uint8 i = 0; i < m_auiSpellSummonMurlocKeep; ++i)
                         DoCastSpellIfCan(m_creature, m_auiSpellSummonMurloc[i], CAST_TRIGGERED);
 
@@ -227,7 +227,7 @@ struct boss_morogrim_tidewalkerAI : public CombatAI
                 if (!CanExecuteCombatAction())
                     return;
 
-                uint32 m_auiSpellSummonGlobuleKeep = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
+                uint32 m_auiSpellSummonGlobuleKeep = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
                 for (uint8 i = 0; i < m_auiSpellSummonGlobuleKeep; ++i)
                     m_creature->CastSpell(nullptr, m_auiSpellSummonGlobule[i], TRIGGERED_OLD_TRIGGERED);
 

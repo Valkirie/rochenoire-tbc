@@ -411,7 +411,7 @@ void instance_blackwing_lair::OnCreatureDeath(Creature* pCreature)
             m_uiDeadDrakonidsCount++;
             // If the requiered amount of drakonids are killed, start phase 2
             Creature* pChromatic = GetSingleCreatureFromStorage(NPC_CHROMATIC_DRAKONID);
-            uint8 DRAKONID_SUMMONS = pChromatic ? pChromatic->GetMap()->GetFinalNAdds(pChromatic->GetInstanceTanks(), MAX_DRAKONID_SUMMONS) : MAX_DRAKONID_SUMMONS;
+            uint8 DRAKONID_SUMMONS = pChromatic ? ((DungeonMap*)pChromatic->GetMap())->GetFinalNAdds(pChromatic->GetInstanceTanks(), MAX_DRAKONID_SUMMONS) : MAX_DRAKONID_SUMMONS;
 
             if (m_uiDeadDrakonidsCount >= DRAKONID_SUMMONS && GetData(TYPE_NEFARIAN) == IN_PROGRESS)
                 SetData(TYPE_NEFARIAN, SPECIAL);
@@ -567,9 +567,9 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
         // Pick Razorgore
         Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE);
 
-        uint8 EGGS_DEFENDERS     = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_EGGS_DEFENDERS) : MAX_EGGS_DEFENDERS;
-        uint8 DRAWGONSPAWN       = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_DRAGONSPAWN) : MAX_DRAGONSPAWN;
-        uint8 BLACKWING_DEFENDER = pRazorgore ? pRazorgore->GetMap()->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_BLACKWING_DEFENDER) : MAX_BLACKWING_DEFENDER;
+        uint8 EGGS_DEFENDERS     = pRazorgore ? ((DungeonMap*)pRazorgore->GetMap())->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_EGGS_DEFENDERS) : MAX_EGGS_DEFENDERS;
+        uint8 DRAWGONSPAWN       = pRazorgore ? ((DungeonMap*)pRazorgore->GetMap())->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_DRAGONSPAWN) : MAX_DRAGONSPAWN;
+        uint8 BLACKWING_DEFENDER = pRazorgore ? ((DungeonMap*)pRazorgore->GetMap())->GetFinalNAdds(pRazorgore->GetInstanceTanks(), MAX_BLACKWING_DEFENDER) : MAX_BLACKWING_DEFENDER;
 
         // Spawn the defenders
         for (uint8 i = 0; i < EGGS_DEFENDERS; ++i)

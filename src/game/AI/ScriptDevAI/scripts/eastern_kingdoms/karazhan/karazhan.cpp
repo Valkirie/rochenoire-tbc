@@ -348,7 +348,7 @@ void instance_karazhan::SetData64(uint32 uiData, uint64 uiGuid)
         {
             m_bBasementBossReady = true;
             m_sBasementMobsCount = m_sBasementMobsSet.size();
-            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+            m_sBasementMobs = ((DungeonMap*)instance)->GetFinalNAdds(1, m_sBasementMobsCount);
         }
     }
 }
@@ -430,7 +430,7 @@ void instance_karazhan::OnCreatureDeath(Creature* pCreature)
         case NPC_COLDMIST_STALKER:
         case NPC_COLDMIST_WIDOW:
             // update the amount of creature each time one is killed
-            m_sBasementMobs = instance->GetFinalNAdds(1, m_sBasementMobsCount);
+            m_sBasementMobs = ((DungeonMap*)instance)->GetFinalNAdds(1, m_sBasementMobsCount);
 
             // avoid exploiting the event
             if (!m_bBasementBossReady)
