@@ -796,10 +796,10 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
         {
             uint32 itemId = crItem->item;
             ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemId);
-            if (pProto && pProto->RequiredLevel != 0)
+            if (pProto)
             {
                 uint32 sItems = sWorld.getConfig(TypeToScale[pProto->Class]);
-                if (sItems)
+                if (sItems && pProto->RequiredLevel != 0)
                 {
                     if (i < customitems && sItems == 2)
                     {
