@@ -375,7 +375,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
             // Handle the stomach tentacles kill
             case NPC_FLESH_TENTACLE:
                 ++m_uiFleshTentaclesKilled;
-                if (m_uiFleshTentaclesKilled == m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES))
+                if (m_uiFleshTentaclesKilled == ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES))
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_CTHUN_VULNERABLE, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                     {
@@ -394,7 +394,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
         m_uiFleshTentaclesKilled = 0;
 
         // Spawn 2 flesh tentacles
-        for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES); ++i)
+        for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES); ++i)
             m_creature->SummonCreature(NPC_FLESH_TENTACLE, afCthunLocations[i][0], afCthunLocations[i][1], afCthunLocations[i][2], afCthunLocations[i][3], TEMPSPAWN_DEAD_DESPAWN, 0);
     }
 
@@ -560,7 +560,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
 
             // Spawn 8 Eye Tentacles every 30 seconds
             float fX, fY, fZ;
-            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_EYE_TENTACLES); ++i)
+            for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_EYE_TENTACLES); ++i)
             {
                 m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, M_PI_F / 4 * i);
                 m_creature->SummonCreature(NPC_EYE_TENTACLE, fX, fY, fZ, 0, TEMPSPAWN_DEAD_DESPAWN, 0);

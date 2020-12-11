@@ -306,7 +306,7 @@ struct boss_onyxiaAI : public CombatAI
     // Onyxian Whelps summoning during phase 2
     void SummonWhelps()
     {
-        uint8 WhelpsPerWave = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), m_uiWhelpsPerWave);
+        uint8 WhelpsPerWave = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), m_uiWhelpsPerWave);
         if (m_uiSummonCount >= WhelpsPerWave)
         {
             ResetTimer(ONYXIA_SUMMON_WHELPS, 90 * IN_MILLISECONDS - WhelpsPerWave * (m_HasSummonedFirstWave ? 3000 : 1750));

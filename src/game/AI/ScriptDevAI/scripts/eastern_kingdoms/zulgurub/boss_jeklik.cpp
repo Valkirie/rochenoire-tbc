@@ -297,7 +297,7 @@ struct boss_jeklikAI : public ScriptedAI
                 if (m_uiFlyingBatsTimer <= uiDiff)
                 {
                     // Note: the bat riders summoning and movement may need additional research
-                    for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 3); ++i)
+                    for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 3); ++i)
                     {
                         if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                             m_creature->SummonCreature(NPC_BAT_RIDER, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ() + 15.0f, 0, TEMPSPAWN_DEAD_DESPAWN, 0);

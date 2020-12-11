@@ -236,7 +236,7 @@ struct boss_ragnarosAI : public CombatAI
 
                 // Summon 8 elementals around the boss
                 if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_SONS_FLAME) == CAST_OK)
-                    m_uiAddCount = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), NB_ADDS_IN_SUBMERGE);
+                    m_uiAddCount = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), NB_ADDS_IN_SUBMERGE);
 
                 ResetCombatAction(RAGNAROS_PHASE_TRANSITION, 1000);
                 m_phase = PHASE_SUBMERGING;

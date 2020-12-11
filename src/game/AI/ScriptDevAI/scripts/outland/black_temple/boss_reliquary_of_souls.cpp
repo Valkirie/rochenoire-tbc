@@ -140,13 +140,13 @@ struct boss_reliquary_of_soulsAI : public Scripted_NoMovementAI, public TimerMan
         });
         AddCustomAction(RELIQUARY_ACTION_SUMMON_SOUL, 0u, [&]
         {
-            uint8 m_auiSpellSummonEnslavedSoul = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 3);
+            uint8 m_auiSpellSummonEnslavedSoul = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 3);
             for (uint8 i = 0; i < m_auiSpellSummonEnslavedSoul; ++i)
                 DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
 
             m_soulSummonedCount += m_auiSpellSummonEnslavedSoul;
 
-            uint8 ENSLAVED_SOULS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ENSLAVED_SOULS);
+            uint8 ENSLAVED_SOULS = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ENSLAVED_SOULS);
             if (m_soulSummonedCount < ENSLAVED_SOULS)
                 ResetTimer(RELIQUARY_ACTION_SUMMON_SOUL, 2400);
         });
@@ -258,7 +258,7 @@ struct boss_reliquary_of_soulsAI : public Scripted_NoMovementAI, public TimerMan
         ++m_soulDeathCount;
 
         // Prepare to summon the essence
-        uint8 ENSLAVED_SOULS = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ENSLAVED_SOULS);
+        uint8 ENSLAVED_SOULS = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_ENSLAVED_SOULS);
         if (m_soulDeathCount == ENSLAVED_SOULS)
             ReduceTimer(RELIQUARY_ACTION_SUBMERGE, 4000);
     }

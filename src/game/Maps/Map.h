@@ -130,11 +130,6 @@ class Map : public GridRefManager<NGridType>
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
 
-		void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
-        void ShuffleFlexibleCore();
-		uint32 GetFinalNAdds(float NT, float Nadds) const;
-		uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
-		uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
 		uint32 GetPlayersCount() const;
 		
 		virtual void Update(const uint32&);
@@ -545,6 +540,13 @@ class DungeonMap : public Map
         DungeonPersistentState* GetPersistanceState() const;
 
         virtual void InitVisibilityDistance() override;
+
+        // flexible core
+        void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
+        void ShuffleFlexibleCore();
+        uint32 GetFinalNAdds(float NT, float Nadds) const;
+        uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
+        uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
     private:
         bool m_resetAfterUnload;
         bool m_unloadWhenEmpty;

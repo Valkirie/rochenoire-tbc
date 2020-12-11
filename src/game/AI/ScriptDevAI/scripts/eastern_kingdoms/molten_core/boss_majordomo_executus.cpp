@@ -242,7 +242,7 @@ struct boss_majordomoAI : public CombatAI
             }
 
             // If 4 adds (half of them) are dead, make all remaining healers immune to polymorph via aura
-            if (m_addsKilled >= m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_MAJORDOMO_ADDS))
+            if (m_addsKilled >= ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_MAJORDOMO_ADDS))
                 DoCastSpellIfCan(nullptr, SPELL_IMMUNE_POLY);
 
             // Buff the remaining adds

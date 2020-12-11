@@ -204,7 +204,7 @@ struct boss_gurtogg_bloodboilAI : public ScriptedAI, public CombatActions
                 DoScriptText(urand(0, 1) ? SAY_SPECIAL1 : SAY_SPECIAL2, m_creature);
 
                 // Debuff player
-                uint32 m_auiSpellRage = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
+                uint32 m_auiSpellRage = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), 4);
 
                 switch (m_auiSpellRage)
                 {

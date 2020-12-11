@@ -1112,7 +1112,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     // Trigger the eight summoning spells for the adds in Ragnaros encounter
                     const uint32 spell_list[8] = { 21110, 21111, 21112, 21113, 21114, 21115, 21116, 21117 };
                     
-                    uint32 m_uiAddCount = m_caster->GetMap()->GetFinalNAdds(m_caster->GetInstanceTanks(), 8);
+                    uint32 m_uiAddCount = ((DungeonMap*)m_caster->GetMap())->GetFinalNAdds(m_caster->GetInstanceTanks(), 8);
                     for (int s = 0; s < m_uiAddCount; ++s)
                         m_caster->CastSpell(m_caster, spell_list[s], TRIGGERED_OLD_TRIGGERED, nullptr);
 
@@ -2414,13 +2414,13 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
 
                     // Equilize the health of all targets based on the corresponding health percent
-                    uint32 targets = unitTarget->GetMap()->GetFinalNAdds(unitTarget->GetInstanceTanks(), 4);
+                    uint32 targets = ((DungeonMap*)unitTarget->GetMap())->GetFinalNAdds(unitTarget->GetInstanceTanks(), 4);
                     unitTarget->SetHealth(m_caster->GetHealth() / targets);
                     return;
                 }
                 case 41499:                                 // Empyreal Balance
                 {
-                    uint32 targets = unitTarget->GetMap()->GetFinalNAdds(unitTarget->GetInstanceTanks(), 4);
+                    uint32 targets = ((DungeonMap*)unitTarget->GetMap())->GetFinalNAdds(unitTarget->GetInstanceTanks(), 4);
                     unitTarget->SetMaxHealth(m_caster->GetMaxHealth() / targets);
                     return;
                 }
@@ -4610,7 +4610,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
             case 28864:                    // summons 10 corpse scarab
             case 29434:                    // summons 10 spiderling
             case 41915:                    // summons 02 parasitic shadowfiends
-                amount = m_caster->GetMap()->GetFinalNAdds(m_caster->GetInstanceTanks(), damage);
+                amount = ((DungeonMap*)m_caster->GetMap())->GetFinalNAdds(m_caster->GetInstanceTanks(), damage);
                 break;
         }
     }

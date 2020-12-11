@@ -442,7 +442,7 @@ struct ShadowOfDeath : public AuraScript
             target->getHostileRefManager().setOnlineOfflineState(false);
             target->CastSpell(nullptr, SPELL_SUMMON_SPIRIT, TRIGGERED_NONE); // Summon Spirit
 
-            uint32 m_auiSpellSummon = caster->GetMap()->GetFinalNAdds(caster->GetInstanceTanks(), 4);
+            uint32 m_auiSpellSummon = ((DungeonMap*)caster->GetMap())->GetFinalNAdds(caster->GetInstanceTanks(), 4);
 
             switch (m_auiSpellSummon)
             {

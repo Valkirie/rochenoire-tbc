@@ -206,7 +206,7 @@ struct boss_maexxnaAI : public ScriptedAI
             std::vector<Unit*> targets;
             m_creature->SelectAttackingTargets(targets, ATTACKING_TARGET_ALL_SUITABLE, 0, nullptr, SELECT_FLAG_PLAYER | SELECT_FLAG_SKIP_TANK, m_webWrapParams);
 
-            uint8 PLAYERS_WEB_WRAP = m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_PLAYERS_WEB_WRAP);
+            uint8 PLAYERS_WEB_WRAP = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_PLAYERS_WEB_WRAP);
             if (targets.size() > PLAYERS_WEB_WRAP)
             {
                 std::shuffle(targets.begin(), targets.end(), *GetRandomGenerator());

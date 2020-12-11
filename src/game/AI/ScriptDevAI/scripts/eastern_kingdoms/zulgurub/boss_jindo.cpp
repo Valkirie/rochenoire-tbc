@@ -151,7 +151,7 @@ struct boss_jindoAI : public ScriptedAI
 
                 // summon skeletons in the pit at random points
                 float fX, fY, fZ;
-                for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_SKELETONS); ++i)
+                for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_SKELETONS); ++i)
                 {
                     m_creature->GetRandomPoint(aPitTeleportLocs[0], aPitTeleportLocs[1], aPitTeleportLocs[2], 4.0f, fX, fY, fZ);
                     if (Creature* pSummoned = m_creature->SummonCreature(NPC_SACRIFICED_TROLL, fX, fY, fZ, 0.0f, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000))

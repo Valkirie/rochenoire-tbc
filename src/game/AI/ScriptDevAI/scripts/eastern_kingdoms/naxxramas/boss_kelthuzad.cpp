@@ -356,7 +356,7 @@ struct boss_kelthuzadAI : public ScriptedAI
         for (auto& trigger : m_summoningTriggers)
         {
             // "How many NPCs per type" is stored in a vector: {npc_entry:number_of_npcs}
-            for (uint8 i = 0; i < m_creature->GetMap()->GetFinalNAdds(m_creature->GetInstanceTanks(), count); ++i)
+            for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), count); ++i)
             {
                 m_creature->GetRandomPoint(trigger->GetPositionX(), trigger->GetPositionY(), trigger->GetPositionZ(), 12.0f, newX, newY, newZ);
                 if (Creature* summoned = m_creature->SummonCreature(entry, newX, newY, newZ, 0.0f, TEMPSPAWN_CORPSE_DESPAWN, 5 * MINUTE * IN_MILLISECONDS))
@@ -662,7 +662,7 @@ struct ChainsKelThuzad : public SpellScript
         caster->SelectAttackingTargets(targets, ATTACKING_TARGET_ALL_SUITABLE, 0, nullptr, SELECT_FLAG_PLAYER | SELECT_FLAG_SKIP_TANK, chainsParams);
 
         // Prevent the mind control to happen if all remaining players would be targeted
-        uint8 CONTROLLED_TARGETS = caster->GetMap()->GetFinalNAdds(caster->GetInstanceTanks(), MAX_CONTROLLED_TARGETS);
+        uint8 CONTROLLED_TARGETS = ((DungeonMap*)caster->GetMap())->GetFinalNAdds(caster->GetInstanceTanks(), MAX_CONTROLLED_TARGETS);
         if (targets.size() <= CONTROLLED_TARGETS)
             return;
 

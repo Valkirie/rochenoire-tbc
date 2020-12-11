@@ -3683,7 +3683,7 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
         }
 
         if (packId != 0)
-            u_nbr_pack = target->GetMap()->GetCreaturesPackSize(packId);
+            u_nbr_pack = ((DungeonMap*)target->GetMap())->GetCreaturesPackSize(packId);
 
         PSendSysMessage("Expected number of tank(s): %u", u_nbr_tank);
         PSendSysMessage("Current creature pack size: %u (pack id: %u)", u_nbr_pack, packId);
@@ -6140,7 +6140,7 @@ bool ChatHandler::HandleInstanceSaveDataCommand(char* /*args*/)
 bool ChatHandler::HandleInstanceRescaleCommand(char* args)
 {
     Unit* target = getSelectedUnit();
-    Map* target_map = target->GetMap();
+    DungeonMap* target_map = (DungeonMap*)target->GetMap();
     uint32 value = 0;
 
     if (!target || !target_map)
