@@ -1402,36 +1402,18 @@ void Map::UnloadAll(bool pForce)
     }
 }
 
-static eConfigUInt32Values const mapTypeToMinSize[5] =
-{
-    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_COMMON,                       // MAP_COMMON
-    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_INSTANCE,                     // MAP_INSTANCE
-    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_RAID,                         // MAP_RAID
-    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_BATTLEGROUND,                 // MAP_BATTLEGROUND
-    CONFIG_UINT32_FLEXIBLE_CORE_MINSIZE_ARENA,                        // MAP_ARENA
-};
-
 uint32 Map::GetMaxPlayers() const
 {
-    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
-    if (mapType < MAP_RAID)
-        return 5;
-
     if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
         return iTemplate->maxPlayers;
-    else
-        return 0;
+    return 0;
 }
 
 uint32 Map::GetMinPlayers() const
 {
-    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
-    float mapRatio = (float)(GetMaxPlayers() / sWorld.getConfig(CONFIG_FLOAT_FLEXIBLE_CORE_RATIO));
-    switch (GetMaxPlayers())
-    {
-        case 25: return 8;
-        default: return std::max((float)sWorld.getConfig(mapTypeToMinSize[mapType]), (float)mapRatio);
-    }
+    if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
+        return iTemplate->minPlayers;
+    return 0;
 }
 
 uint32 Map::GetCurPlayers() const
@@ -2029,8 +2011,7 @@ void DungeonMap::Update(const uint32& t_diff)
     Map::Update(t_diff);
 
 	// Refresh and update flexible core
-    uint32 mapType = i_mapEntry ? i_mapEntry->map_type : 0;
-	if (mapType > 0 && mapType <= sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+    if (GetMinPlayers() != GetMaxPlayers())
 		UpdateFlexibleCore();
 }
 

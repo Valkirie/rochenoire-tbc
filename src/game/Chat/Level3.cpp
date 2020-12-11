@@ -6150,8 +6150,7 @@ bool ChatHandler::HandleInstanceRescaleCommand(char* args)
         return false;
     }
 
-    uint32 mapType = target_map->GetMapEntry() ? target_map->GetMapEntry()->map_type : 0;
-    if (mapType == 0 || mapType > sWorld.getConfig(CONFIG_UINT32_FLEXIBLE_CORE_MAPTYPE))
+    if (target_map && !target_map->IsDungeon())
     {
         SetSentErrorMessage(true);
         return false;
