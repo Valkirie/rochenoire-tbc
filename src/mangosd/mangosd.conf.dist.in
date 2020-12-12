@@ -307,27 +307,6 @@ AccountData = 0
 #         Group XP rates bonus
 #         Default: 0.5
 #
-#    Rochenoire.Flexible.Core.MapType
-#        Enable/Disable map size scaling
-#        Default: 2
-#                 4 (Arena)
-#                 3 (Battleground)
-#                 2 (Raid)
-#                 1 (Instance)
-#                 0 (Common)
-#
-#    Rochenoire.Flexible.Core.Ratio
-#        Set the flexible raids players ratio
-#        Default:     2.0
-#
-#    Rochenoire.Flexible.Core.MinSize.Common
-#    Rochenoire.Flexible.Core.MinSize.Instance
-#    Rochenoire.Flexible.Core.MinSize.Raid
-#    Rochenoire.Flexible.Core.MinSize.Battleground
-#    Rochenoire.Flexible.Core.MinSize.Arena
-#        Minimum rescaled map size (number of players)
-#        Default:     5
-#
 #    Rochenoire.SmartLoot.Enabled
 #        Enable/Disable smart loot algorithm
 #        Default: 1 (enable)
@@ -385,13 +364,6 @@ Rochenoire.Scaling.Vendor.Permanent = 0
 Rochenoire.Scaling.Vendor.Misc = 0
 Rochenoire.Rate.Drop.Item.Group = 0.5
 Rochenoire.Rate.XP.Group = 0.5
-Rochenoire.Flexible.Core.MapType = 2
-Rochenoire.Flexible.Core.Ratio = 2.0
-Rochenoire.Flexible.Core.MinSize.Common = 5
-Rochenoire.Flexible.Core.MinSize.Instance = 2
-Rochenoire.Flexible.Core.MinSize.Raid = 5
-Rochenoire.Flexible.Core.MinSize.Battleground = 5
-Rochenoire.Flexible.Core.MinSize.Arena = 5
 Rochenoire.SmartLoot.Enabled = 1
 Rochenoire.SmartLoot.Amount = 4
 Rate.Weight.Item.Poor = 1.0
@@ -405,10 +377,10 @@ Calculate.Creature.Zone.Area.Data = 0
 Calculate.Gameoject.Zone.Area.Data = 0
 SummoningRitual.ReqParticipants = 1
 SummoningRitual.AllowSelfUse = 1
-BonusUpgrade.Rate.Rare = 17.0
-BonusUpgrade.Rate.Epic = 10.0
-BonusUpgrade.Quest = 0
-BonusUpgrade.Crafting = 0
+BonusUpgrade.Rate.Rare = 25.0
+BonusUpgrade.Rate.Epic = 12.5
+BonusUpgrade.Quest = 1
+BonusUpgrade.Crafting = 1
 
 ###################################################################################################################
 # SERVER LOGGING
