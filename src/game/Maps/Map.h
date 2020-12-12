@@ -74,6 +74,7 @@ struct InstanceTemplate
     uint32 levelMax;
     uint32 minPlayers;
     uint32 maxPlayers;
+    uint32 nbrTank;
     uint32 reset_delay;                                     // in days
     uint32 script_id;
     bool   mountAllowed;
@@ -200,10 +201,6 @@ class Map : public GridRefManager<NGridType>
         uint8 GetSpawnMode() const { return (i_spawnMode); }
         Difficulty GetDifficulty() const { return Difficulty(GetSpawnMode()); }
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
-        uint32 GetMaxPlayers() const;
-		uint32 GetMinPlayers() const;
-        uint32 GetCurPlayers() const;
-        void SetCurPlayers(const uint32 nbr) { u_nbr_players = nbr; };
         uint32 GetMaxResetDelay() const;
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
@@ -277,55 +274,6 @@ class Map : public GridRefManager<NGridType>
         std::map<uint32, uint32>& GetTempCreatures() { return m_tempCreatures; }
         std::map<uint32, uint32>& GetTempPets() { return m_tempPets; }
 
-        // Flexible Core
-        struct CreatureRatio
-        {
-            bool treated = false;
-            bool added = false;
-            bool removed = false;
-
-            float ratio_c1 = 0.85f;		// difficulty coefficient when raid size is close to min size raid
-            float ratio_c2 = 1.0f;		// difficulty coefficient when raid size is close to max size raid
-            float ratio_c0 = 1.0f;		// used to compute c1 and c2
-            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
-
-            uint32 nbr_tank = 2;        // number of tanks needed for that encounter
-            uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
-            uint32 nbr_adds;
-            uint32 nbr_adds_scaled;
-            uint32 nbr_adds_alive;
-            float  nbr_adds_keep;
-
-            uint32 instance_size;
-            uint32 pool_size;
-
-            uint32 packid;
-
-            float r_health;
-            float r_dps;
-            float r_dmg;
-            float r_attack;
-
-            float m_health;
-            float m_power;
-
-            uint32 m_faction;
-            uint32 m_reactstate;
-            uint32 m_flags;
-        };
-
-        std::map<uint32, uint32> m_poolsStore;
-        std::map<uint32, uint8> m_displayStore;
-        typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
-        CreatureRatioMap m_creaturesRatio;
-        typedef std::unordered_map<uint32, Creature*> CreatureMap;
-        CreatureMap m_creaturesStore;
-        CreatureMap m_creaturesStore_buffer;
-
-        uint32 u_TmpPlayer = 40;       // store the temporary number of players
-        uint32 u_nbr_players = 40;       // store the current group size
-        uint32 u_GroupSize = 0;        // store the last known group size
-
         void AddUpdateObject(Object* obj)
         {
             i_objectsToClientUpdate.insert(obj);
@@ -335,10 +283,6 @@ class Map : public GridRefManager<NGridType>
         {
             i_objectsToClientUpdate.erase(obj);
         }
-
-        void UpdateCreature(uint32 guid, Creature* cr, bool erased = false);
-        void InsertCreature(uint32 guid, Creature* cr);
-        void EraseCreature(uint32 guid, Creature* cr);
 
         // DynObjects currently
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
@@ -541,16 +485,86 @@ class DungeonMap : public Map
 
         virtual void InitVisibilityDistance() override;
 
-        // flexible core
         void UpdateFlexibleCore(bool isRefresh = false, uint32 RefreshSize = 0);
-        void ShuffleFlexibleCore();
         uint32 GetFinalNAdds(float NT, float Nadds) const;
         uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
         uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
+
+        uint32 GetTankNbr() const;
+        uint32 GetMaxPlayers() const;
+        uint32 GetMinPlayers() const;
+        uint32 GetCurPlayers() const;
+        void SetCurPlayers(uint32 nbr) { u_nbr_players = nbr; };
+
+        void UpdateCreature(uint32 guid, Creature* cr, bool erased = false);
+        void InsertCreature(uint32 guid, Creature* cr);
+        void EraseCreature(uint32 guid, Creature* cr);
     private:
         bool m_resetAfterUnload;
         bool m_unloadWhenEmpty;
         Team m_team;
+
+        // Flexible Core
+
+        // Flexible Core
+        struct CreatureRatio
+        {
+            bool treated = false;
+            bool added = false;
+            bool removed = false;
+
+            float ratio_c1 = 0.85f;		// difficulty coefficient when raid size is close to min size raid
+            float ratio_c2 = 1.0f;		// difficulty coefficient when raid size is close to max size raid
+            float ratio_c0 = 1.0f;		// used to compute c1 and c2
+            float ratio_hrht = 0.0f;	// 0 : everyone take damage, 1 : only tanks take damage
+
+            uint32 nbr_tank = 2;        // number of tanks needed for that encounter
+            uint32 nbr_pack = 1;        // number of creatures commonly encountered in one pack
+            uint32 nbr_adds;
+            uint32 nbr_adds_scaled;
+            uint32 nbr_adds_alive;
+            float  nbr_adds_keep;
+
+            uint32 instance_size;
+            uint32 pool_size;
+
+            uint32 packid;
+
+            float r_health;
+            float r_dps;
+            float r_dmg;
+            float r_attack;
+
+            float m_health;
+            float m_power;
+
+            uint32 m_faction;
+            uint32 m_reactstate;
+            uint32 m_flags;
+        };
+
+        typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
+        typedef std::unordered_map<uint32, Creature*> CreatureMap;
+
+        std::map<uint32, uint32> m_poolsStore;
+        std::map<uint32, uint8> m_displayStore;
+        CreatureRatioMap m_creaturesRatio;
+        CreatureMap m_creaturesStore;
+        CreatureMap m_creaturesStore_buffer;
+
+        uint32 u_TmpPlayer;     // store the temporary number of players
+        uint32 u_nbr_players;   // store the current group size
+        uint32 u_GroupSize;     // store the last known group size
+
+        uint32 lastKnownGroupSize = 0;	    // store the last known group size
+        uint32 lastKnownPoolSize = 0;   	// store the number of creatures in the raid
+        uint32 lastKnownRefreshSize = 0;	// store the forced raid size
+
+        const float f_ratio_heal_dps = 0.2f;    // store the ratio heal vs dps (between 0.2 and 0.3)
+        const float f_max_red_boss = 0.8f;	    // store the maximum percentage of damage reduction (boss / trash)
+        const float f_max_red_adds = 0.8f;	    // store the maximum percentage of damage reduction (adds)
+        const float f_min_red_health = 0.7f;    // store the maximum percentage of damage reduction before reducing adds number
+        const float f_softness = 100.0f;        // store the softness value (= 100, do not touch)
 };
 
 class BattleGroundMap : public Map
