@@ -754,16 +754,38 @@ void Map::Update(const uint32& t_diff)
     m_weatherSystem->UpdateWeathers(t_diff);
 }
 
-// VARS
-float f_ratio_heal_dps = 0.2f;  // store the ratio heal vs dps (between 0.2 and 0.3)
-uint32 lastKnownGroupSize = 0;	// store the last known group size
-uint32 lastKnownPoolSize = 0;	// store the number of creatures in the raid
-uint32 lastKnownRefreshSize = 0;	// store the forced raid size
+void DungeonMap::UpdateCreature(uint32 guid, Creature* cr, bool erased)
+{
+    uint32 mapId = GetId() * 1000;
+    if (cr->IsTemporarySummon()) guid += mapId;
+    uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-float f_max_red_boss = 0.8f;	// store the maximum percentage of damage reduction (boss / trash)
-float f_max_red_adds = 0.8f;	// store the maximum percentage of damage reduction (adds)
-float f_min_red_health = 0.7f;	// store the maximum percentage of damage reduction before reducing adds number
-float f_softness = 100.0f;		// store the softness value (= 100, do not touch)
+    std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
+    CreatureRatio& cdata = m_creaturesRatio[s_entry];
+
+    if (erased)
+        cdata.removed = true;
+    else
+        cdata.added = true;
+
+    m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
+}
+
+void DungeonMap::InsertCreature(uint32 guid, Creature* cr)
+{
+    UpdateCreature(guid, cr, false);
+
+    if (m_creaturesStore.find(guid) == m_creaturesStore.end())
+        m_creaturesStore.insert(std::make_pair(guid, cr));
+}
+
+void DungeonMap::EraseCreature(uint32 guid, Creature* cr)
+{
+    UpdateCreature(guid, cr, true);
+
+    if (m_creaturesStore.find(guid) != m_creaturesStore.end())
+        m_creaturesStore.erase(guid);
+}
 
 uint32 DungeonMap::GetFinalNAdds(float NT, float Nadds) const
 {
@@ -810,24 +832,6 @@ uint32 DungeonMap::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
         }
 	}
 	return output;
-}
-
-void DungeonMap::ShuffleFlexibleCore()
-{
-    if (m_creaturesStore.size() == 0)
-        return;
-
-    std::vector<CreatureMap::key_type> v(m_creaturesStore.size());
-    std::transform(m_creaturesStore.begin(), m_creaturesStore.end(), v.begin(),
-        [](const CreatureMap::value_type& x) {
-            return x.first;
-        });
-    std::srand(time(0));
-    auto n = m_creaturesStore.size();
-    for (auto i = n - 1; i > 0; --i) {
-        CreatureMap::size_type r = (double(rand()) / RAND_MAX) * (i + 1);
-        std::swap(m_creaturesStore[v[i]], m_creaturesStore[v[r]]);
-    }
 }
 
 enum FlexibleCore
@@ -1402,21 +1406,21 @@ void Map::UnloadAll(bool pForce)
     }
 }
 
-uint32 Map::GetMaxPlayers() const
+uint32 DungeonMap::GetMaxPlayers() const
 {
     if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
         return iTemplate->maxPlayers;
     return 0;
 }
 
-uint32 Map::GetMinPlayers() const
+uint32 DungeonMap::GetMinPlayers() const
 {
     if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
         return iTemplate->minPlayers;
     return 0;
 }
 
-uint32 Map::GetCurPlayers() const
+uint32 DungeonMap::GetCurPlayers() const
 {
     return u_GroupSize == 0 ? GetPlayersCount() : u_nbr_players;
 }
@@ -1868,6 +1872,10 @@ DungeonMap::DungeonMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnM
     // the timer is started by default, and stopped when the first player joins
     // this make sure it gets unloaded if for some reason no player joins
     m_unloadTimer = std::max(sWorld.getConfig(CONFIG_UINT32_INSTANCE_UNLOAD_DELAY), (uint32)MIN_UNLOAD_DELAY);
+
+    // Flexible Core
+    u_TmpPlayer = GetMaxPlayers();
+    u_nbr_players = u_TmpPlayer;
 }
 
 DungeonMap::~DungeonMap()
@@ -1999,9 +2007,6 @@ bool DungeonMap::Add(Player* player)
 
     // this will acquire the same mutex so it cannot be in the previous block
     Map::Add(player);
-
-    //if (sWorld.getConfig(CONFIG_BOOL_FLEXIBLE_RAID) && IsRaid())
-        //ShuffleFlexibleCore();
 
     return true;
 }
@@ -2486,39 +2491,6 @@ void Map::SendObjectUpdates()
             update_player.first->GetSession()->SendPacket(packet);
         }
     }
-}
-
-void Map::UpdateCreature(uint32 guid, Creature* cr, bool erased)
-{
-    uint32 mapId = GetId() * 1000;
-    if (cr->IsTemporarySummon()) guid += mapId;
-    uint32 packId = sObjectMgr.GetCreaturePool(guid);
-
-    std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
-    CreatureRatio& cdata = m_creaturesRatio[s_entry];
-
-    if (erased)
-        cdata.removed = true;
-    else
-        cdata.added = true;
-
-    m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
-}
-
-void Map::InsertCreature(uint32 guid, Creature* cr)
-{
-    UpdateCreature(guid, cr, false);
-
-    if (m_creaturesStore.find(guid) == m_creaturesStore.end())
-        m_creaturesStore.insert(std::make_pair(guid, cr));
-}
-
-void Map::EraseCreature(uint32 guid, Creature* cr)
-{
-    UpdateCreature(guid, cr, true);
-
-    if (m_creaturesStore.find(guid) != m_creaturesStore.end())
-        m_creaturesStore.erase(guid);
 }
 
 uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)

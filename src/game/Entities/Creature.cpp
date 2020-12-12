@@ -170,7 +170,7 @@ void Creature::AddToWorld()
 	if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 	{
 		if (GetMap()->IsDungeon())
-			GetMap()->InsertCreature(GetGUIDLow(), (Creature*)this);
+			((DungeonMap*)GetMap())->InsertCreature(GetGUIDLow(), (Creature*)this);
 
 		GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
 	}
@@ -222,7 +222,7 @@ void Creature::RemoveFromWorld()
 		if (GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
 		{
             if (GetMap()->IsDungeon())
-				GetMap()->EraseCreature(GetGUIDLow(), (Creature*)this);
+                ((DungeonMap*)GetMap())->EraseCreature(GetGUIDLow(), (Creature*)this);
 
 			GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)nullptr);
 		}
