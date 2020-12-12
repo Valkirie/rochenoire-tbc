@@ -44,6 +44,7 @@
 #include "Loot/LootMgr.h"
 #include "Spells/SpellMgr.h"
 #include "Spells/Spell.h"
+#include "MotionGenerators/PathFinder.h"
 
 Object::Object(): m_updateFlag(0), m_itsNewObject(false)
 {
@@ -168,7 +169,7 @@ void Object::BuildCreateUpdateBlockForPlayer(UpdateData* data, Player* target) c
 
     if (isType(TYPEMASK_UNIT))
     {
-        if (((Unit*) this)->GetVictim())
+        if (static_cast<const Unit*>(this)->GetVictim())
             updateFlags |= UPDATEFLAG_HAS_ATTACKING_TARGET;
     }
 
@@ -254,19 +255,16 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint8 updateFlags) const
     // 0x20
     if (updateFlags & UPDATEFLAG_LIVING)
     {
-        Unit* unit = ((Unit*)this);
+        Unit const* unit = static_cast<Unit const*>(this);
 
-        if (GetTypeId() == TYPEID_PLAYER)
-        {
-            Player* player = ((Player*)unit);
-            if (player->GetTransport())
-                player->m_movementInfo.AddMovementFlag(MOVEFLAG_ONTRANSPORT);
-            else
-                player->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ONTRANSPORT);
-        }
+        // TODO: Remove this when moveflag is properly used
+        if (unit->GetTransport())
+            const_cast<Unit*>(unit)->m_movementInfo.AddMovementFlag(MOVEFLAG_ONTRANSPORT);
+        else
+            const_cast<Unit*>(unit)->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ONTRANSPORT);
 
         // Write movement info
-        unit->m_movementInfo.Write(*data);
+        *data << unit->m_movementInfo;
 
         // Unit speeds
         *data << float(unit->GetSpeed(MOVE_WALK));
@@ -296,10 +294,11 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint8 updateFlags) const
         }
         else
         {
-            *data << float(((WorldObject*)this)->GetPositionX());
-            *data << float(((WorldObject*)this)->GetPositionY());
-            *data << float(((WorldObject*)this)->GetPositionZ());
-            *data << float(((WorldObject*)this)->GetOrientation());
+            WorldObject const* wo = static_cast<WorldObject const*>(this);
+            *data << float(wo->GetPositionX());
+            *data << float(wo->GetPositionY());
+            *data << float(wo->GetPositionZ());
+            *data << float(wo->GetOrientation());
         }
     }
 
@@ -572,11 +571,11 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                     uint32 dynflagsValue = m_uint32Values[index];
 
                     // Checking SPELL_AURA_EMPATHY and caster
-                    if (dynflagsValue & UNIT_DYNFLAG_SPECIALINFO && ((Unit*) this)->IsAlive())
+                    if (dynflagsValue & UNIT_DYNFLAG_SPECIALINFO && static_cast<const Unit*>(this)->IsAlive())
                     {
                         bool bIsEmpathy = false;
                         bool bIsCaster = false;
-                        Unit::AuraList const& mAuraEmpathy = ((Unit*)this)->GetAurasByType(SPELL_AURA_EMPATHY);
+                        Unit::AuraList const& mAuraEmpathy = static_cast<const Unit*>(this)->GetAurasByType(SPELL_AURA_EMPATHY);
                         for (Unit::AuraList::const_iterator itr = mAuraEmpathy.begin(); !bIsCaster && itr != mAuraEmpathy.end(); ++itr)
                         {
                             bIsEmpathy = true;              // Empathy by aura set
@@ -651,7 +650,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
 
                     if (GetTypeId() == TYPEID_UNIT || GetTypeId() == TYPEID_PLAYER)
                     {
-                        Unit* unit = (Unit*)this; // hunters mark effects should only be visible to owners and not all players
+                        Unit const* unit = static_cast<const Unit*>(this); // hunters mark effects should only be visible to owners and not all players
                         if (!unit->HasAuraTypeWithCaster(SPELL_AURA_MOD_STALKED, target->GetObjectGuid()))
                             dynflagsValue &= ~UNIT_DYNFLAG_TRACK_UNIT;
                     }
@@ -1243,7 +1242,7 @@ void WorldObject::Relocate(float x, float y, float z, float orientation)
     m_position.o = orientation;
 
     if (isType(TYPEMASK_UNIT))
-        ((Unit*)this)->m_movementInfo.ChangePosition(x, y, z, orientation);
+        m_movementInfo.ChangePosition(x, y, z, orientation);
 }
 
 void WorldObject::Relocate(float x, float y, float z)
@@ -1253,7 +1252,7 @@ void WorldObject::Relocate(float x, float y, float z)
     m_position.z = z;
 
     if (isType(TYPEMASK_UNIT))
-        ((Unit*)this)->m_movementInfo.ChangePosition(x, y, z, GetOrientation());
+        m_movementInfo.ChangePosition(x, y, z, GetOrientation());
 }
 
 void WorldObject::SetOrientation(float orientation)
@@ -1261,7 +1260,7 @@ void WorldObject::SetOrientation(float orientation)
     m_position.o = orientation;
 
     if (isType(TYPEMASK_UNIT))
-        ((Unit*)this)->m_movementInfo.ChangeOrientation(orientation);
+        m_movementInfo.ChangeOrientation(orientation);
 }
 
 uint32 WorldObject::GetZoneId() const
@@ -1315,11 +1314,12 @@ float WorldObject::GetDistance(const WorldObject* obj, bool is3D, DistanceCalcul
     }
 }
 
-float WorldObject::GetDistance(float x, float y, float z, DistanceCalculation distcalc) const
+float WorldObject::GetDistance(float x, float y, float z, DistanceCalculation distcalc, bool transport) const
 {
-    float dx = GetPositionX() - x;
-    float dy = GetPositionY() - y;
-    float dz = GetPositionZ() - z;
+    Position pos = GetPosition(transport ? GetTransport() : nullptr);
+    float dx = pos.x - x;
+    float dy = pos.y - y;
+    float dz = pos.z - z;
     float dist = dx * dx + dy * dy + dz * dz;
 
     switch (distcalc)
@@ -1669,45 +1669,78 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float& z, Map* atMap 
         z = ground_z;
 }
 
-void WorldObject::MovePositionToFirstCollision(WorldLocation &pos, float dist, float angle)
+void WorldObject::MovePositionToFirstCollision(Position& pos, float dist, float angle)
 {
-    float destX = pos.coord_x + dist * cos(angle);
-    float destY = pos.coord_y + dist * sin(angle);
-    float destZ = pos.coord_z;
+    float destX = pos.x + dist * cos(angle);
+    float destY = pos.y + dist * sin(angle);
+    float destZ = pos.z;
+
+    GenericTransport* transport = GetTransport();
+
+    float halfHeight = GetCollisionHeight();
+    if (IsUnit())
+    {
+        PathFinder path(static_cast<Unit*>(this));
+        path.calculate(destX, destY, destZ + halfHeight, false, true);
+        if (path.getPathType())
+        {
+            G3D::Vector3 result = path.getPath().back();
+            destX = result.x;
+            destY = result.y;
+            destZ = result.z;
+            if (transport) // transport produces offset, but we need global pos
+                transport->CalculatePassengerPosition(destX, destY, destZ);
+        }
+    }
 
     UpdateAllowedPositionZ(destX, destY, destZ);
-    bool colPoint = GetMap()->GetHitPosition(pos.coord_x, pos.coord_y, pos.coord_z + 0.5f, destX, destY, destZ, -0.5f);
+    destZ += halfHeight;
+    bool colPoint = GetMap()->GetHitPosition(pos.x, pos.y, pos.z + halfHeight, destX, destY, destZ, -0.5f);
+    destZ -= halfHeight;
 
     if (colPoint)
     {
         destX -= CONTACT_DISTANCE * cos(angle);
         destY -= CONTACT_DISTANCE * sin(angle);
-        dist = sqrt((pos.coord_x - destX)*(pos.coord_x - destX) + (pos.coord_y - destY)*(pos.coord_y - destY));
+        dist = sqrt((pos.x - destX) * (pos.x - destX) + (pos.y - destY) * (pos.y - destY));
     }
 
+    colPoint = GetMap()->GetHitPosition(destX, destY, destZ + halfHeight, destX, destY, destZ, -0.5f);
+    if (colPoint)
+        dist = sqrt((pos.x - destX) * (pos.x - destX) + (pos.y - destY) * (pos.y - destY));
+
     float step = dist / 10.0f;
+    Position tempPos(destX, destY, destZ, 0.f);
+    bool distanceZSafe = true;
+    float previousZ = destZ;
 
     for (int i = 0; i < 10; i++)
     {
-        if (fabs(pos.coord_z - destZ) > ATTACK_DISTANCE)
+        if (fabs(pos.z - destZ) > ATTACK_DISTANCE)
         {
+            previousZ = destZ;
             destX -= step * cos(angle);
             destY -= step * sin(angle);
             UpdateAllowedPositionZ(destX, destY, destZ);
+            if (fabs(previousZ - destZ) > (ATTACK_DISTANCE / 2))
+                distanceZSafe = false;
         }
         else
         {
-            pos.coord_x = destX;
-            pos.coord_y = destY;
-            pos.coord_z = destZ;
+            pos.x = destX;
+            pos.y = destY;
+            pos.z = destZ;
             break;
         }
     }
 
-    MaNGOS::NormalizeMapCoord(pos.coord_x);
-    MaNGOS::NormalizeMapCoord(pos.coord_y);
-    UpdateAllowedPositionZ(pos.coord_x, pos.coord_y, pos.coord_z);
-    pos.orientation = m_position.o;
+    if (distanceZSafe)
+        pos = tempPos;
+
+    MaNGOS::NormalizeMapCoord(pos.x);
+    MaNGOS::NormalizeMapCoord(pos.y);
+    UpdateAllowedPositionZ(pos.x, pos.y, pos.z);
+    pos.o = m_position.o;
 }
 
 float WorldObject::GetCombinedCombatReach(WorldObject const* pVictim, bool forMeleeRange, float flat_mod) const
@@ -1971,7 +2004,11 @@ Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map)
         return nullptr;
     }
 
-    TemporarySpawn* creature = new TemporarySpawn(settings.spawner ? settings.spawner->GetObjectGuid() : ObjectGuid());
+    TemporarySpawn* creature;
+    if (!settings.tempSpawnMovegen)
+        creature = new TemporarySpawn(settings.spawner ? settings.spawner->GetObjectGuid() : ObjectGuid());
+    else
+        creature = new TemporarySpawnWaypoint(settings.spawner ? settings.spawner->GetObjectGuid() : ObjectGuid(), settings.waypointId, settings.spawnPathId, settings.pathOrigin);
 
     GenericTransport* transport = nullptr;
     if (settings.spawner)
@@ -2993,4 +3030,21 @@ float Position::GetAngle(const float x, const float y) const
     float ang = atan2(dy, dx);                              // returns value between -Pi..Pi
     ang = (ang >= 0) ? ang : 2 * M_PI_F + ang;
     return ang;
+}
+
+float Position::GetDistance(Position const& other) const
+{
+    float dx = GetPositionX() - other.GetPositionX();
+    float dy = GetPositionY() - other.GetPositionY();
+    float distsq = dx * dx + dy * dy;
+
+    float dz = GetPositionZ() - other.GetPositionZ();
+    distsq += dz * dz;
+
+    return distsq;
+}
+
+bool operator!=(const Position& left, const Position& right)
+{
+    return left.x != right.x || left.y != right.y || left.z != right.z || left.o != right.o;
 }

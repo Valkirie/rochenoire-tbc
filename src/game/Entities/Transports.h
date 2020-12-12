@@ -33,6 +33,7 @@ class GenericTransport : public GameObject
         GenericTransport() : m_passengerTeleportIterator(m_passengers.end()) {}
         bool AddPassenger(Unit* passenger);
         bool RemovePassenger(Unit* passenger);
+        bool AddPetToTransport(Unit* passenger, Pet* pet);
 
         void UpdatePosition(float x, float y, float z, float o);
         void UpdatePassengerPosition(WorldObject* object);
@@ -51,6 +52,8 @@ class GenericTransport : public GameObject
         {
             CalculatePassengerOffset(x, y, z, o, GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
         }
+
+        void CalculatePassengerOrientation(float& o) const;
 
         static void CalculatePassengerPosition(float& x, float& y, float& z, float* o, float transX, float transY, float transZ, float transO);
         static void CalculatePassengerOffset(float& x, float& y, float& z, float* o, float transX, float transY, float transZ, float transO);
@@ -93,7 +96,7 @@ class Transport : public GenericTransport
         KeyFrameVec const& GetKeyFrames() const { return m_transportTemplate.keyFrames; }
     private:
         void TeleportTransport(uint32 newMapid, float x, float y, float z, float o);
-        void UpdateForMap(Map const* targetMap);
+        void UpdateForMap(Map const* targetMap, bool newMap);
         void DoEventIfAny(TaxiPathNodeEntry const& node, bool departure);
         void MoveToNextWayPoint();                          // move m_next/m_cur to next points
         float CalculateSegmentPos(float perc);

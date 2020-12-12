@@ -1607,9 +1607,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             }
             // Get a random point AT the circumference
             float angle = 2.0f * M_PI_F * rand_norm_f();
-            WorldLocation loc;
-            target->GetFirstCollisionPosition(loc, radius, angle);
-            m_targets.setDestination(loc.coord_x, loc.coord_y, loc.coord_z);
+            Position pos;
+            target->GetFirstCollisionPosition(pos, radius, angle);
+            m_targets.setDestination(pos.x, pos.y, pos.z);
             break;
         }
         case TARGET_LOCATION_RANDOM_SIDE:
@@ -1619,10 +1619,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                 // Use sqrt(rand) to correct distribution when converting polar to Cartesian coordinates.
                 radius *= sqrtf(rand_norm_f());
                 float angle = 2.0f * M_PI_F * rand_norm_f();
-                WorldLocation loc;
-                m_targets.getDestination(loc);
-                m_caster->MovePositionToFirstCollision(loc, radius, angle);
-                m_targets.setDestination(loc.coord_x, loc.coord_y, loc.coord_z);
+                Position pos = m_targets.getDestination();
+                m_caster->MovePositionToFirstCollision(pos, radius, angle);
+                m_targets.setDestination(pos.x, pos.y, pos.z);
             }
             break;
         }
@@ -1654,9 +1653,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (radius == 0.f) // All shaman totems have 0 radius - need to override with proper value
                 radius = 2.f;
 
-            WorldLocation loc;
-            m_caster->GetFirstCollisionPosition(loc, radius, angle);
-            m_targets.setDestination(loc.coord_x, loc.coord_y, loc.coord_z);
+            Position pos;
+            m_trueCaster->GetFirstCollisionPosition(pos, radius, angle);
+            m_targets.setDestination(pos.x, pos.y, pos.z);
             break;
         }
         case TARGET_LOCATION_CURRENT_REFERENCE:
@@ -1699,10 +1698,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                     case TARGET_LOCATION_SW:    angle += 3 * M_PI_F / 4;    break;
                 }
 
-                WorldLocation loc;
-                m_targets.getDestination(loc);
-                currentTarget->MovePositionToFirstCollision(loc, radius, angle);
-                m_targets.setDestination(loc.coord_x, loc.coord_y, loc.coord_z);
+                Position pos = m_targets.getDestination();
+                currentTarget->MovePositionToFirstCollision(pos, radius, angle);
+                m_targets.setDestination(pos.x, pos.y, pos.z);
             }
             break;
         }
@@ -1765,9 +1763,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                     case TARGET_LOCATION_UNIT_FRONT_LEFT:   angle += M_PI_F * 0.25f; break;
                 }
 
-                WorldLocation loc;
-                target->GetFirstCollisionPosition(loc, radius, angle);
-                m_targets.setDestination(loc.coord_x, loc.coord_y, loc.coord_z);
+                Position pos;
+                target->GetFirstCollisionPosition(pos, radius, angle);
+                m_targets.setDestination(pos.x, pos.y, pos.z);
             }
             break;
         }
@@ -3237,7 +3235,7 @@ void Spell::_handle_immediate_phase()
     m_diminishLevel = DIMINISHING_LEVEL_1;
     m_diminishGroup = DIMINISHING_NONE;
 
-    // handle none and dest targeted effects
+    // handle none targeted effects
     DoAllTargetlessEffects(false);
 
     // process items
@@ -3247,6 +3245,16 @@ void Spell::_handle_immediate_phase()
     // fill initial spell damage from caster for immediate effects
     for (auto& ihit : m_UniqueTargetInfo)
         HandleImmediateEffectExecution(&ihit);
+
+    // process self immediately
+    for (auto& ihit : m_UniqueTargetInfo)
+    {
+        if (ihit.targetGUID == m_caster->GetObjectGuid())
+        {
+            DoAllEffectOnTarget(&ihit);
+            break;
+        }
+    }
 
     // start channeling if applicable (after _handle_immediate_phase for get persistent effect dynamic object for channel target
     if (IsChanneledSpell(m_spellInfo) && m_duration)
@@ -4985,7 +4993,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                 {
                     float range = GetSpellMaxRange(sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex));
 
-                    WorldLocation pos;
+                    Position pos;
                     target->GetFirstCollisionPosition(pos, target->GetCombatReach(), target->GetAngle(m_caster));
 
                     // TODO: Implement jumpin case check
@@ -4993,7 +5001,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     //{
                     PathFinder pathFinder(m_caster);
                     pathFinder.setPathLengthLimit(range * 1.5f);
-                    bool result = pathFinder.calculate(pos.coord_x, pos.coord_y, pos.coord_z);
+                    bool result = pathFinder.calculate(pos.x, pos.y, pos.z);
 
                     if (pathFinder.getPathType() & PATHFIND_SHORT)
                         return SPELL_FAILED_OUT_OF_RANGE;

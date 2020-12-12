@@ -4545,6 +4545,9 @@ void Unit::SetInFront(Unit const* target)
 void Unit::SetFacingTo(float ori)
 {
     Movement::MoveSplineInit init(*this);
+    // supplied orientation is global space but we need local orientation
+    if (GenericTransport* transport = GetTransport())
+        transport->CalculatePassengerOrientation(ori);
     init.SetFacing(ori);
     init.Launch();
 }
@@ -10152,6 +10155,8 @@ void CharmInfo::SetStayPosition()
     if (!m_unit->movespline->Finalized())
     {
         Movement::Location loc = m_unit->movespline->ComputePosition();
+        if (GenericTransport* transport = m_unit->GetTransport())
+            transport->CalculatePassengerPosition(loc.x, loc.y, loc.z, &loc.orientation);
         m_stayPosX = loc.x;
         m_stayPosY = loc.y;
         m_stayPosZ = loc.z;
@@ -10248,21 +10253,27 @@ void Unit::InterruptMoving(bool forceSendStop /*=false*/)
 
     if (!movespline->Finalized())
     {
-        Movement::Location loc = movespline->ComputePosition();
+        Movement::Location computedLoc = movespline->ComputePosition();
+        Position pos(computedLoc.x, computedLoc.y, computedLoc.z, computedLoc.orientation);
+        if (GenericTransport* transport = GetTransport())
+        {
+            m_movementInfo.UpdateTransportData(pos);
+            transport->CalculatePassengerPosition(pos.x, pos.y, pos.z, &pos.o);
+        }
 
         if (movespline->isFacing() && movespline->isFacingTarget())
         {
             if (Unit const* target = ObjectAccessor::GetUnit(*this, ObjectGuid(movespline->GetFacing().target)))
-                loc.orientation = GetAngle(target);
+                pos.o = GetAngle(target);
             else
             {
-                float angle = atan2((loc.y - GetPositionY()), (loc.x - GetPositionX()));
-                loc.orientation = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
+                float angle = atan2((pos.y - GetPositionY()), (pos.x - GetPositionX()));
+                pos.o = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
             }
         }
 
         movespline->_Interrupt();
-        Relocate(loc.x, loc.y, loc.z, loc.orientation);
+        Relocate(pos.x, pos.y, pos.z, pos.o);
         isMoving = true;
     }
 
@@ -11361,45 +11372,59 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
     if (m_movesplineTimer.Passed() || arrived)
     {
         m_movesplineTimer.Reset(POSITION_UPDATE_DELAY);
-        Movement::Location loc = movespline->ComputePosition();
+        Movement::Location computedLoc = movespline->ComputePosition();
+        Position pos(computedLoc.x, computedLoc.y, computedLoc.z, computedLoc.orientation);
+        if (GenericTransport* transport = GetTransport())
+        {
+            m_movementInfo.UpdateTransportData(pos);
+            transport->CalculatePassengerPosition(pos.x, pos.y, pos.z, &pos.o);
+        }
 
         if (movespline->isFacing() && movespline->isFacingTarget())
         {
             if (Unit const* target = ObjectAccessor::GetUnit(*this, ObjectGuid(movespline->GetFacing().target)))
-                loc.orientation = GetAngle(target);
+                pos.o = GetAngle(target);
             else
             {
-                float angle = atan2((loc.y - GetPositionY()), (loc.x - GetPositionX()));
-                loc.orientation = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
+                float angle = atan2((pos.y - GetPositionY()), (pos.x - GetPositionX()));
+                pos.o = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
             }
         }
 
         if (GetTypeId() == TYPEID_PLAYER)
-            ((Player*)this)->SetPosition(loc.x, loc.y, loc.z, loc.orientation);
+            ((Player*)this)->SetPosition(pos.x, pos.y, pos.z, pos.o);
         else
-            GetMap()->CreatureRelocation((Creature*)this, loc.x, loc.y, loc.z, loc.orientation);
+            GetMap()->CreatureRelocation((Creature*)this, pos.x, pos.y, pos.z, pos.o);
     }
 }
 
 void Unit::UpdateSplinePosition()
 {
-    auto loc = movespline->ComputePosition();
+    Movement::Location computedLoc = movespline->ComputePosition();
+    Position pos(computedLoc.x, computedLoc.y, computedLoc.z, computedLoc.orientation);
+    if (GenericTransport* transport = GetTransport())
+    {
+        m_movementInfo.UpdateTransportData(pos);
+        transport->CalculatePassengerPosition(pos.x, pos.y, pos.z, &pos.o);
+    }
+    if (GenericTransport* transport = GetTransport())
+        transport->CalculatePassengerPosition(pos.x, pos.y, pos.z, &pos.o);
 
     if (movespline->isFacing() && movespline->isFacingTarget())
     {
         if (Unit const* target = ObjectAccessor::GetUnit(*this, ObjectGuid(movespline->GetFacing().target)))
-            loc.orientation = GetAngle(target);
+            pos.o = GetAngle(target);
         else
         {
-            float angle = atan2((loc.y - GetPositionY()), (loc.x - GetPositionX()));
-            loc.orientation = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
+            float angle = atan2((pos.y - GetPositionY()), (pos.x - GetPositionX()));
+            pos.o = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
         }
     }
 
     if (IsPlayer())
-        static_cast<Player*>(this)->SetPosition(loc.x, loc.y, loc.z, loc.orientation);
+        static_cast<Player*>(this)->SetPosition(pos.x, pos.y, pos.z, pos.o);
     else
-        GetMap()->CreatureRelocation((Creature*)this, loc.x, loc.y, loc.z, loc.orientation);
+        GetMap()->CreatureRelocation((Creature*)this, pos.x, pos.y, pos.z, pos.o);
 }
 
 void Unit::DisableSpline()
@@ -12070,32 +12095,29 @@ void Unit::UpdateAllowedPositionZ(float x, float y, float& z, Map* atMap /*=null
     if (!atMap)
         atMap = GetMap();
 
-    if (GenericTransport* transport = GetTransport())
-        return;
-
     // non fly unit don't must be in air
     // non swim unit must be at ground (mostly speedup, because it don't must be in water and water level check less fast
     if (!CanFly())
     {
         bool canSwim = CanSwim();
-        float ground_z = z, max_z;
+        float groundZ = GetMap()->GetHeight(x, y, z, canSwim), maxZ;
         if (canSwim)
-            max_z = atMap->GetTerrain()->GetWaterOrGroundLevel(x, y, z, &ground_z, !HasAuraType(SPELL_AURA_WATER_WALK), GetCollisionHeight());
+            maxZ = atMap->GetTerrain()->GetWaterOrGroundLevel(x, y, z, groundZ, !HasAuraType(SPELL_AURA_WATER_WALK), GetCollisionHeight());
         else
-            max_z = ground_z = atMap->GetHeight(x, y, z);
-        if (max_z > INVALID_HEIGHT)
+            maxZ = groundZ;
+        if (maxZ > INVALID_HEIGHT)
         {
-            if (z > max_z)
-                z = max_z;
-            else if (z < ground_z)
-                z = ground_z;
+            if (z > maxZ)
+                z = maxZ;
+            else if (z < groundZ)
+                z = groundZ;
         }
     }
     else
     {
-        float ground_z = atMap->GetHeight(x, y, z);
-        if (z < ground_z)
-            z = ground_z;
+        float groundZ = atMap->GetHeight(x, y, z);
+        if (z < groundZ)
+            z = groundZ;
     }
 }
 

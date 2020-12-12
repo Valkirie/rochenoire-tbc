@@ -81,43 +81,12 @@ void MapManager::LoadTransports()
             continue;
         }
 
-        Transport* t = new Transport(*transportTemplate);
-
-        t->SetPeriod(fields[2].GetUInt32());
-
-        // sLog.outString("Loading transport %d between %s, %s", entry, name.c_str(), goinfo->name);
-
-        TaxiPathNodeEntry const* startNode = t->GetKeyFrames().begin()->Node;
-        uint32 mapId = startNode->mapid;
-        float x = startNode->x;
-        float y = startNode->y;
-        float z = startNode->z;
-        float o = t->GetKeyFrames().begin()->InitialOrientation;
-
-        // current code does not support transports in dungeon!
-        const MapEntry* pMapInfo = sMapStore.LookupEntry(mapId);
-        if (!pMapInfo || pMapInfo->Instanceable())
-        {
-            delete t;
+        const MapEntry* pMapInfo = sMapStore.LookupEntry(transportTemplate->keyFrames.begin()->Node->mapid);
+        if (!pMapInfo)
             continue;
-        }
 
-        // If we someday decide to use the grid to track transports, here:
-        t->SetMap(sMapMgr.CreateMap(mapId, t));
+        m_transportsByMap[pMapInfo->MapID].push_back(transportTemplate);
 
-        // creates the Gameobject
-        if (!t->Create(entry, mapId, x, y, z, o, GO_ANIMPROGRESS_DEFAULT))
-        {
-            delete t;
-            continue;
-        }
-
-        m_Transports.insert(t);
-
-        for (uint32 i : transportTemplate->mapsUsed)
-            m_TransportsByMap[i].insert(t);
-
-        // t->GetMap()->Add<GameObject>((GameObject *)t);
         ++count;
     }
     while (result->NextRow());
@@ -134,7 +103,7 @@ void MapManager::LoadTransports()
             uint32 guid  = fields[0].GetUInt32();
             uint32 entry = fields[1].GetUInt32();
             std::string name = fields[2].GetCppString();
-            sLog.outErrorDb("Transport %u '%s' have record (GUID: %u) in `gameobject`. Transports DON'T must have any records in `gameobject` or its behavior will be unpredictable/bugged.", entry, name.c_str(), guid);
+            sLog.outErrorDb("Transport %u '%s' have record (GUID: %u) in `gameobject`. Transports MUST NOT have any records in `gameobject` or its behavior will be unpredictable/bugged.", entry, name.c_str(), guid);
         }
         while (result->NextRow());
 
@@ -211,7 +180,7 @@ void Transport::MoveToNextWayPoint()
 
 void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, float o)
 {
-    Map const* oldMap = GetMap();
+    Map* oldMap = GetMap();
     Relocate(x, y, z);
 
     auto& passengers = GetPassengers();
@@ -252,14 +221,27 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
     // we need to create and save new Map object with 'newMapid' because if not done -> lead to invalid Map object reference...
     // player far teleport would try to create same instance, but we need it NOW for transport...
     // correct me if I'm wrong O.o
-    Map* newMap = sMapMgr.CreateMap(newMapid, this);
-    SetMap(newMap);
-
-    if (oldMap != newMap)
+    if (GetMapId() != newMapid)
     {
-        UpdateForMap(oldMap);
-        UpdateForMap(newMap);
+        oldMap->GetMessager().AddMessage([transport = this, newMapid](Map* map)
+        {
+            transport->RemoveModelFromMap();
+            map->RemoveTransport(transport);
+            transport->UpdateForMap(map, false);
+            transport->ResetMap();
+
+            Map* newMap = sMapMgr.CreateMap(newMapid, transport);
+            newMap->GetMessager().AddMessage([transport = transport](Map* map)
+            {
+                transport->SetMap(map);
+                map->AddTransport(transport);
+                transport->AddModelToMap();
+                transport->UpdateForMap(map, true);
+            });
+        });
     }
+    else
+        UpdateModelPosition();
 }
 
 bool GenericTransport::AddPassenger(Unit* passenger)
@@ -281,12 +263,11 @@ bool GenericTransport::AddPassenger(Unit* passenger)
             CalculatePassengerOffset(passenger->m_movementInfo.t_pos.x, passenger->m_movementInfo.t_pos.y, passenger->m_movementInfo.t_pos.z, &passenger->m_movementInfo.t_pos.o);
         }
 
-        if (Pet* pet =passenger->GetPet())
-        {
-            AddPassenger(pet);
-            pet->m_movementInfo.SetTransportData(GetObjectGuid(), passenger->m_movementInfo.t_pos.x, passenger->m_movementInfo.t_pos.y, passenger->m_movementInfo.t_pos.z, passenger->m_movementInfo.t_pos.o, GetPathProgress());
-            pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
-        }
+        if (Pet* pet = passenger->GetPet())
+            AddPetToTransport(passenger, pet);
+
+        if (Pet* miniPet = passenger->GetMiniPet())
+            AddPetToTransport(passenger, miniPet);
     }
     return true;
 }
@@ -319,8 +300,25 @@ bool GenericTransport::RemovePassenger(Unit* passenger)
             RemovePassenger(pet);
             pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
         }
+
+        if (Pet* pet = passenger->GetMiniPet())
+        {
+            RemovePassenger(pet);
+            pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
+        }
     }
     return true;
+}
+
+bool GenericTransport::AddPetToTransport(Unit* passenger, Pet* pet)
+{
+    if (AddPassenger(pet))
+    {
+        pet->m_movementInfo.SetTransportData(GetObjectGuid(), passenger->m_movementInfo.t_pos.x, passenger->m_movementInfo.t_pos.y, passenger->m_movementInfo.t_pos.z, passenger->m_movementInfo.t_pos.o, GetPathProgress());
+        pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
+        return true;
+    }
+    return false;
 }
 
 void Transport::Update(const uint32 diff)
@@ -556,6 +554,11 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
     }
 }
 
+void GenericTransport::CalculatePassengerOrientation(float& o) const
+{
+    o = MapManager::NormalizeOrientation(GetOrientation() + o);
+}
+
 void GenericTransport::CalculatePassengerPosition(float& x, float& y, float& z, float* o, float transX, float transY, float transZ, float transO)
 {
     float inx = x, iny = y, inz = z;
@@ -580,13 +583,13 @@ void GenericTransport::CalculatePassengerOffset(float& x, float& y, float& z, fl
     x = (inx + iny * std::tan(transO)) / (std::cos(transO) + std::sin(transO) * std::tan(transO));
 }
 
-void Transport::UpdateForMap(Map const* targetMap)
+void Transport::UpdateForMap(Map const* targetMap, bool newMap)
 {
     Map::PlayerList const& pl = targetMap->GetPlayers();
     if (pl.isEmpty())
         return;
 
-    if (GetMapId() == targetMap->GetId())
+    if (newMap)
     {
         for (const auto& itr : pl)
         {

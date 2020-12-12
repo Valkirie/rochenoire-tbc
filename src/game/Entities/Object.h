@@ -297,7 +297,10 @@ struct Position
     float GetPositionO() const { return o; }
     bool IsEmpty() const { return x == 0.f && y == 0.f && z == 0.f; }
     float GetAngle(const float x, const float y) const;
+    float GetDistance(Position const& other) const; // WARNING: Returns squared distance for performance reasons
 };
+
+bool operator!=(const Position& left, const Position& right);
 
 struct WorldLocation
 {
@@ -654,6 +657,13 @@ struct TempSpawnSettings
     bool spellId = 0;
     ObjectGuid ownerGuid;
     uint32 spawnDataEntry = 0;
+
+    // TemporarySpawnWaypoint subsystem
+    bool tempSpawnMovegen = false;
+    uint32 waypointId = 0;
+    int32 spawnPathId = 0;
+    uint32 pathOrigin = 0;
+
     TempSpawnSettings() {}
     TempSpawnSettings(WorldObject* spawner, uint32 entry, float x, float y, float z, float ori, TempSpawnType spawnType, uint32 despawnTime, bool activeObject = false, bool setRun = false, uint32 pathId = 0, uint32 faction = 0,
         uint32 modelId = 0, bool spawnCounting = false, bool forcedOnTop = false, bool spellId = 0) :
@@ -764,7 +774,7 @@ class MovementInfo
         static float GetOrientationInMotion(MovementFlags flags, float orientation);
 
         // Position manipulations
-        Position const* GetPos() const { return &pos; }
+        Position const& GetPos() const { return pos; }
         void SetTransportData(ObjectGuid guid, float x, float y, float z, float o, uint32 time)
         {
             t_guid = guid;
@@ -774,6 +784,7 @@ class MovementInfo
             t_pos.o = o;
             t_time = time;
         }
+        void UpdateTransportData(Position pos) { t_pos = pos; }
         void ClearTransportData()
         {
             t_guid = ObjectGuid();
@@ -784,7 +795,7 @@ class MovementInfo
             t_time = 0;
         }
         ObjectGuid const& GetTransportGuid() const { return t_guid; }
-        Position const* GetTransportPos() const { return &t_pos; }
+        Position const& GetTransportPos() const { return t_pos; }
         uint32 GetTransportTime() const { return t_time; }
         uint32 GetFallTime() const { return fallTime; }
         void ChangeOrientation(float o) { pos.o = o; }
@@ -857,7 +868,7 @@ class WorldObject : public Object
         
         void GetPosition(WorldLocation& loc) const
         { loc.mapid = m_mapId; GetPosition(loc.coord_x, loc.coord_y, loc.coord_z); loc.orientation = GetOrientation(); }
-        Position const& GetPosition() const { return m_position; }
+        Position const& GetPosition(GenericTransport* transport = nullptr) const { if (transport) return m_movementInfo.GetTransportPos(); return m_position; }
         float GetOrientation() const { return m_position.o; }
 
         /// Gives a 2d-point in distance distance2d in direction absAngle around the current position (point-to-point)
@@ -913,10 +924,10 @@ class WorldObject : public Object
         void UpdateGroundPositionZ(float x, float y, float& z) const;
         virtual void UpdateAllowedPositionZ(float x, float y, float& z, Map* atMap = nullptr) const;
 
-        void MovePositionToFirstCollision(WorldLocation &pos, float dist, float angle);
-        void GetFirstCollisionPosition(WorldLocation &pos, float dist, float angle)
+        void MovePositionToFirstCollision(Position &pos, float dist, float angle);
+        void GetFirstCollisionPosition(Position&pos, float dist, float angle)
         {
-            GetPosition(pos);
+            pos = GetPosition();
             MovePositionToFirstCollision(pos, dist, angle);
         }
         void GetRandomPoint(float x, float y, float z, float distance, float& rand_x, float& rand_y, float& rand_z, float minDist = 0.0f, float const* ori = nullptr) const;
@@ -939,7 +950,7 @@ class WorldObject : public Object
         virtual void SetOwnerGuid(ObjectGuid /*guid*/) { }
 
         float GetDistance(const WorldObject* obj, bool is3D = true, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
-        float GetDistance(float x, float y, float z, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
+        float GetDistance(float x, float y, float z, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS, bool transport = false) const;
         float GetDistance2d(float x, float y, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
         float GetDistanceZ(const WorldObject* obj) const;
         bool IsInMap(const WorldObject* obj) const
