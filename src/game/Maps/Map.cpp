@@ -951,14 +951,7 @@ void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                     }
                     else
                     {
-                        switch (GetMaxPlayers())
-                        {
-                            case 40: cdata.nbr_tank = 3; break;
-                            case 25: cdata.nbr_tank = 2; break;
-                            case 20: cdata.nbr_tank = 2; break;
-                            case 10: cdata.nbr_tank = 2; break;
-                            case 5: cdata.nbr_tank = 1; break;
-                        }
+                        cdata.nbr_tank = GetTankNbr();
                     }
 
                     cdata.r_health = 1.0f * sObjectMgr.GetFactorHP(GetMaxPlayers(), GetCurPlayers(), cdata.nbr_tank, f_ratio_heal_dps, f_softness);
@@ -1404,6 +1397,13 @@ void Map::UnloadAll(bool pForce)
         ++i;
         UnloadGrid(grid.getX(), grid.getY(), pForce);       // deletes the grid and removes it from the GridRefManager
     }
+}
+
+uint32 DungeonMap::GetTankNbr() const
+{
+    if (InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId()))
+        return iTemplate->nbrTank;
+    return 0;
 }
 
 uint32 DungeonMap::GetMaxPlayers() const

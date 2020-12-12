@@ -74,6 +74,7 @@ struct InstanceTemplate
     uint32 levelMax;
     uint32 minPlayers;
     uint32 maxPlayers;
+    uint32 nbrTank;
     uint32 reset_delay;                                     // in days
     uint32 script_id;
     bool   mountAllowed;
@@ -489,6 +490,7 @@ class DungeonMap : public Map
         uint32 GetCreaturesCount(uint32 entry, bool IsScaled = false) const;
         uint32 GetCreaturesPackSize(uint32 pack, bool IsScaled = false) const;
 
+        uint32 GetTankNbr() const;
         uint32 GetMaxPlayers() const;
         uint32 GetMinPlayers() const;
         uint32 GetCurPlayers() const;
