@@ -670,6 +670,9 @@ class Spell
         void SetPowerCost(uint32 powerCost) { m_powerCost = powerCost; }
         // access to targets
         TargetList& GetTargetList() { return m_UniqueTargetInfo; }
+
+        // GO casting preparations
+        void SetTrueCaster(WorldObject* caster) { m_trueCaster = caster; }
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
         bool IgnoreItemRequirements() const;                // some item use spells have unexpected reagent data
@@ -842,6 +845,9 @@ class Spell
 
         // needed to store all log for this spell
         SpellLog m_spellLog;
+
+        // GO casting preparations
+        WorldObject* m_trueCaster;
 };
 
 enum ReplenishType
@@ -865,7 +871,7 @@ namespace MaNGOS
         SpellNotifierPlayer(Spell& spell, UnitList& data, const uint32& i, float radius)
             : i_data(data), i_spell(spell), i_index(i), i_radius(radius)
         {
-            i_originalCaster = i_spell.GetAffectiveCasterObject();
+            i_originalCaster = i_spell.GetCastingObject();
         }
 
         void Visit(PlayerMapType& m)

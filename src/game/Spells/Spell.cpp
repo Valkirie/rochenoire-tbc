@@ -315,7 +315,7 @@ void SpellLog::SendToSet()
 // ***********
 
 Spell::Spell(Unit* caster, SpellEntry const* info, uint32 triggeredFlags, ObjectGuid originalCasterGUID, SpellEntry const* triggeredBy) :
-    m_spellScript(SpellScriptMgr::GetSpellScript(info->Id)), m_spellLog(this)
+    m_spellScript(SpellScriptMgr::GetSpellScript(info->Id)), m_spellLog(this), m_trueCaster(caster)
 {
     MANGOS_ASSERT(caster != nullptr && info != nullptr);
     MANGOS_ASSERT(info == sSpellTemplate.LookupEntry<SpellEntry>(info->Id) && "`info` must be pointer to sSpellTemplate element");
@@ -3674,9 +3674,12 @@ void Spell::SendSpellStart() const
     if (m_CastItem)
         data << m_CastItem->GetPackGUID();
     else
-        data << m_caster->GetPackGUID();
+        data << m_trueCaster->GetPackGUID();
 
-    data << m_caster->GetPackGUID();
+    if (m_trueCaster->IsGameObject()) // write empty guid if GO
+        data << ObjectGuid().WriteAsPacked();
+    else
+        data << m_caster->GetPackGUID();
     data << uint32(m_spellInfo->Id);;                       // spellId
     data << uint8(m_cast_count);                            // pending spell cast?
     data << uint16(castFlags);                              // cast flags
@@ -3716,9 +3719,12 @@ void Spell::SendSpellGo()
     if (m_CastItem)
         data << m_CastItem->GetPackGUID();
     else
-        data << m_caster->GetPackGUID();
+        data << m_trueCaster->GetPackGUID();
 
-    data << m_caster->GetPackGUID();
+    if (m_trueCaster->IsGameObject()) // write empty guid if GO
+        data << ObjectGuid().WriteAsPacked();
+    else
+        data << m_caster->GetPackGUID();
     data << uint32(m_spellInfo->Id);                        // spellId
     data << uint16(castFlags);                              // cast flags
     data << uint32(m_caster->GetMap()->GetCurrentMSTime());                // timestamp
@@ -6966,7 +6972,12 @@ WorldObject* Spell::GetCastingObject() const
 
 float Spell::GetSpellSpeed() const
 {
-    if (IsChanneledSpell(m_spellInfo)) return 0.f; return m_spellInfo->speed;
+    if (m_trueCaster->IsGameObject()) // 4 spells in all of wotlk and doesnt seem like GO casting supports travelling delay from sniffs
+        return 0.f;
+    if (IsChanneledSpell(m_spellInfo))
+        return 0.f;
+    
+    return m_spellInfo->speed;
 }
 
 void Spell::ResetEffectDamageAndHeal()
