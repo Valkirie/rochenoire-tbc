@@ -1265,57 +1265,7 @@ void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false *
         SetGoState(GO_STATE_READY);
 }
 
-void GameObject::CastSpell(Unit* target, uint32 spellId, bool triggered /* = true*/)
-{
-    CastSpell(target, spellId, triggered ? TRIGGERED_FULL_MASK : TRIGGERED_NONE);
-}
-
-void GameObject::CastSpell(Unit* target, uint32 spellId, TriggerCastFlags triggered)
-{
-    SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-    if (!spellInfo)
-        return;
-
-    bool self = false;
-
-    for (uint8 j = 0; j < 3; ++j)
-        if (spellInfo->EffectImplicitTargetA[j] == TARGET_UNIT_CASTER)
-            self = true;
-
-    if (self)
-    {
-        if (target)
-            target->CastSpell(target, spellInfo, triggered);
-        return;
-    }
-
-    //summon world trigger
-    Creature* trigger = SummonTrigger(GetPositionX(), GetPositionY(), GetPositionZ(), 0, GetSpellCastTime(spellInfo, nullptr) + 100);
-    if (!trigger)
-        return;
-
-    // remove immunity flags, to allow spell to target anything
-    trigger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PLAYER);
-
-    if (Unit* owner = GetOwner())
-    {
-        trigger->setFaction(owner->getFaction());
-        if (owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP))
-            trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
-        // needed for GO casts for proper target validation checks
-        trigger->SetOwnerGuid(owner->GetObjectGuid());
-        trigger->CastSpell(target ? target : trigger, spellInfo, triggered, nullptr, nullptr, owner->GetObjectGuid());
-    }
-    else
-    {
-        trigger->setFaction(IsPositiveSpell(spellInfo->Id) ? 35 : 14);
-        // Set owner guid for target if no owner available - needed by trigger auras
-        // - trigger gets despawned and there's no caster avalible (see AuraEffect::TriggerSpell())
-        trigger->CastSpell(target ? target : trigger, spellInfo, triggered, nullptr, nullptr, target ? target->GetObjectGuid() : GetObjectGuid());
-    }
-}
-
-void GameObject::Use(Unit* user)
+void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
 {
     // user must be provided
     MANGOS_ASSERT(user || PrintEntryError("GameObject::Use (without user)"));
@@ -1327,7 +1277,7 @@ void GameObject::Use(Unit* user)
     bool originalCaster = true;
 
     if (user->IsPlayer() && GetGoType() != GAMEOBJECT_TYPE_TRAP) // workaround for GO casting
-        if (!m_goInfo->IsUsableMounted())
+        if (!spellInfo && !m_goInfo->IsUsableMounted())
             user->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
     // test only for exist cooldown data (cooldown timer used for door/buttons reset that not have use cooldown)
@@ -1343,6 +1293,9 @@ void GameObject::Use(Unit* user)
     bool scriptReturnValue = user->GetTypeId() == TYPEID_PLAYER && sScriptDevAIMgr.OnGameObjectUse((Player*)user, this);
     if (!scriptReturnValue)
         GetMap()->ScriptsStart(sGameObjectTemplateScripts, GetEntry(), spellCaster, this);
+
+    if (AI())
+        AI()->OnUse(user, spellInfo);
 
     sWorldState.HandleGameObjectUse(this, user);
 
@@ -1920,14 +1873,14 @@ void GameObject::Use(Unit* user)
     if (!spellId)
         return;
 
-    SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-    if (!spellInfo)
+    SpellEntry const* triggeredSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+    if (!triggeredSpellInfo)
     {
         sLog.outError("WORLD: unknown spell id %u at use action for gameobject (Entry: %u GoType: %u )", spellId, GetEntry(), GetGoType());
         return;
     }
 
-    Spell* spell = new Spell(spellCaster, spellInfo, triggeredFlags, originalCaster ? GetObjectGuid() : ObjectGuid());
+    Spell* spell = new Spell(spellCaster, triggeredSpellInfo, triggeredFlags, originalCaster ? GetObjectGuid() : ObjectGuid());
 
     // spell target is user of GO
     SpellCastTargets targets;

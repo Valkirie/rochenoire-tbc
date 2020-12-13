@@ -8269,7 +8269,8 @@ void Spell::EffectActivateObject(SpellEffectIndex eff_idx)
                     break;
                 case 36546:         // no delay meant to happen - activate trap immediately
                 case 38054:
-                    gameObjTarget->Use(m_caster);
+                case 39844:
+                    gameObjTarget->Use(m_caster, m_spellInfo);
                     break;
                 default:
                 {

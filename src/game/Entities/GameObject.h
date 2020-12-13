@@ -765,7 +765,7 @@ class GameObject : public WorldObject
         uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
         void SetDisplayId(uint32 modelId);
 
-        void Use(Unit* user);
+        void Use(Unit* user, SpellEntry const* spellInfo = nullptr);
 
         void CastSpell(Unit* target, uint32 spell, bool triggered = true);
         void CastSpell(Unit* target, uint32 spell, TriggerCastFlags triggered);
