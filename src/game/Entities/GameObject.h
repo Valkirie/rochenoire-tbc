@@ -767,9 +767,6 @@ class GameObject : public WorldObject
 
         void Use(Unit* user, SpellEntry const* spellInfo = nullptr);
 
-        void CastSpell(Unit* target, uint32 spell, bool triggered = true);
-        void CastSpell(Unit* target, uint32 spell, TriggerCastFlags triggered);
-
         LootState GetLootState() const { return m_lootState; }
         void SetLootState(LootState state);
 
