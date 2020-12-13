@@ -24,6 +24,7 @@
 #include "Entities/Object.h"
 #include "Util.h"
 #include "AI/BaseAI/GameObjectAI.h"
+#include "Spells/SpellAuras.h"
 #include "Spells/SpellDefines.h"
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
@@ -544,6 +545,7 @@ struct GameObjectInfo
             case GAMEOBJECT_TYPE_TRAP:              return trap.large != 0;
             case GAMEOBJECT_TYPE_SPELL_FOCUS:       return spellFocus.large != 0;
             case GAMEOBJECT_TYPE_GOOBER:            return goober.large != 0;
+            case GAMEOBJECT_TYPE_TRANSPORT:         return true;
             case GAMEOBJECT_TYPE_SPELLCASTER:       return spellcaster.large != 0;
             case GAMEOBJECT_TYPE_CAPTURE_POINT:     return capturePoint.large != 0;
             default: return false;
@@ -649,6 +651,7 @@ enum CapturePointSliderValue
 enum GameobjectExtraFlags
 {
     GAMEOBJECT_EXTRA_FLAG_CUSTOM_ANIM_ON_USE = 0x00000001,    // GO that plays custom animation on usage
+    GAMEOBJECT_EXTRA_FLAG_ACTIVE             = 0x00001000,    // Always active
 };
 
 class Unit;
