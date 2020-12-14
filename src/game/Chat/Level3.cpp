@@ -2268,8 +2268,11 @@ bool ChatHandler::HandleLookupItemCommand(char* args)
     // Search in `item_template`
     for (uint32 id = 0; id < sItemStorage.GetMaxEntry(); ++id)
     {
+        if (id >= MIN_ENTRY_SCALE)
+            break;
+
         ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype >(id);
-        if (!pProto || (pProto && pProto->ItemId < MIN_ENTRY_SCALE))
+        if (!pProto)
             continue;
 
         int loc_idx = GetSessionDbLocaleIndex();
