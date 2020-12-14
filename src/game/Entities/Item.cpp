@@ -906,7 +906,15 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
                     break;
                 }
 
-                BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
+                switch (pProto->Quality)
+                {
+                case ITEM_QUALITY_UNCOMMON:
+                    BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
+                    break;
+                case ITEM_QUALITY_RARE:
+                    BonusQuality = UpgradeToEpic ? 1 : 0;
+                    break;
+                }
             }
         }
 
