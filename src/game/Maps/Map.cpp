@@ -896,6 +896,8 @@ void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
             isRefresh = true;
             lastKnownPoolSize = m_creaturesStore.size();
         }
+        else if (m_creaturesStore_buffer.size() != 0)
+            isRefresh = true;
 
 		if (isRefresh)
 		{
