@@ -59,6 +59,7 @@ void MapManager::LoadTransports()
 
         uint32 entry = fields[0].GetUInt32();
         std::string name = fields[1].GetCppString();
+        uint32 period = fields[2].GetUInt32();
 
         const GameObjectInfo* goinfo = ObjectMgr::GetGameObjectInfo(entry);
 
@@ -74,7 +75,7 @@ void MapManager::LoadTransports()
             continue;
         }
 
-        TransportTemplate const* transportTemplate = sTransportMgr.GetTransportTemplate(entry);
+        TransportTemplate* transportTemplate = sTransportMgr.GetTransportTemplate(entry);
         if (!transportTemplate)
         {
             sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, transport template missing (core generated)", entry, name.c_str());
@@ -84,6 +85,8 @@ void MapManager::LoadTransports()
         const MapEntry* pMapInfo = sMapStore.LookupEntry(transportTemplate->keyFrames.begin()->Node->mapid);
         if (!pMapInfo)
             continue;
+
+        transportTemplate->pathTime = period;
 
         m_transportsByMap[pMapInfo->MapID].push_back(transportTemplate);
 
@@ -147,8 +150,7 @@ bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, 
     m_nextFrame = GetKeyFrames().begin();
     m_currentFrame = m_nextFrame++;
 
-    m_pathProgress = time(nullptr) % (m_transportTemplate.pathTime / 1000);
-    m_pathProgress *= 1000;
+    m_pathProgress = GetMap()->GetCurrentMSTime();
 
     SetObjectScale(goinfo->size);
 
@@ -321,15 +323,21 @@ bool GenericTransport::AddPetToTransport(Unit* passenger, Pet* pet)
     return false;
 }
 
-void Transport::Update(const uint32 diff)
+void Transport::Update(const uint32 /*diff*/)
 {
     uint32 const positionUpdateDelay = 50;
 
     if (GetKeyFrames().size() <= 1)
         return;
 
+    uint32 currentMsTime = GetMap()->GetCurrentMSTime() - m_movementStarted;
+    if (m_pathProgress >= currentMsTime) // map transition and update happened in same tick due to MT
+        return;
+
+    const uint32 diff = currentMsTime - m_pathProgress;
+
     if (IsMoving() || !m_pendingStop)
-        m_pathProgress = m_pathProgress + diff;
+        m_pathProgress = currentMsTime;
 
     uint32 pathProgress = m_pathProgress % GetPeriod();
     while (true)
@@ -358,15 +366,6 @@ void Transport::Update(const uint32 diff)
             TeleportTransport(m_nextFrame->Node->mapid, m_nextFrame->Node->x, m_nextFrame->Node->y, m_nextFrame->Node->z, m_nextFrame->InitialOrientation);
             return;
         }
-
-        /*
-        for(PlayerSet::const_iterator itr = m_passengers.begin(); itr != m_passengers.end();)
-        {
-            PlayerSet::const_iterator it2 = itr;
-            ++itr;
-            //(*it2)->SetPosition( m_curr->second.x + (*it2)->GetTransOffsetX(), m_curr->second.y + (*it2)->GetTransOffsetY(), m_curr->second.z + (*it2)->GetTransOffsetZ(), (*it2)->GetTransOffsetO() );
-        }
-        */
 
         if (m_currentFrame == GetKeyFrames().begin())
             DETAIL_FILTER_LOG(LOG_FILTER_TRANSPORT_MOVES, " ************ BEGIN ************** %s", GetName());
@@ -433,18 +432,16 @@ bool ElevatorTransport::Create(uint32 guidlow, uint32 name_id, Map* map, float x
     return false;
 }
 
-void ElevatorTransport::Update(const uint32 diff)
+void ElevatorTransport::Update(const uint32 /*diff*/)
 {
     if (!m_animationInfo)
         return;
 
     if (GetGoState() == GO_STATE_READY)
     {
-        m_pathProgress += diff;
-        // TODO: Fix movement in unloaded grid - currently GO will just disappear
-        uint32 timer = GetMap()->GetCurrentMSTime() % m_animationInfo->TotalTime;
-        TransportAnimationEntry const* nodeNext = m_animationInfo->GetNextAnimNode(timer);
-        TransportAnimationEntry const* nodePrev = m_animationInfo->GetPrevAnimNode(timer);
+        m_pathProgress = (GetMap()->GetCurrentMSTime() - m_movementStarted) % m_animationInfo->TotalTime;
+        TransportAnimationEntry const* nodeNext = m_animationInfo->GetNextAnimNode(m_pathProgress);
+        TransportAnimationEntry const* nodePrev = m_animationInfo->GetPrevAnimNode(m_pathProgress);
         if (nodeNext && nodePrev)
         {
             m_currentSeg = nodePrev->TimeSeg;
@@ -456,7 +453,7 @@ void ElevatorTransport::Update(const uint32 diff)
                 currentPos = posPrev;
             else
             {
-                uint32 timeElapsed = timer - nodePrev->TimeSeg;
+                uint32 timeElapsed = m_pathProgress - nodePrev->TimeSeg;
                 uint32 timeDiff = nodeNext->TimeSeg - nodePrev->TimeSeg;
                 G3D::Vector3 segmentDiff = posNext - posPrev;
                 float velocityX = float(segmentDiff.x) / timeDiff, velocityY = float(segmentDiff.y) / timeDiff, velocityZ = float(segmentDiff.z) / timeDiff;
@@ -475,11 +472,6 @@ void ElevatorTransport::Update(const uint32 diff)
         }
 
     }
-}
-
-uint32 ElevatorTransport::GetPathProgress() const
-{
-    return GetMap()->GetCurrentMSTime() % m_animationInfo->TotalTime;
 }
 
 void GenericTransport::UpdatePosition(float x, float y, float z, float o)
