@@ -1275,7 +1275,8 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
     if (owner->IsCreature())
     {
-        p_level = player->getZoneLevel();
+        uint32 AreaID = creature->GetTerrain() ? creature->GetZoneId() : 0;
+        p_level = player->getZoneLevel(AreaID);
 
         if (creature->IsWorldBoss())
             p_level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
