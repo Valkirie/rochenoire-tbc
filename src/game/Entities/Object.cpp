@@ -2939,14 +2939,13 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
     if (unitCaster && spellProto->spellLevel)
     {
-        /*
         // TODO: Drastically beter than before, but still needs some additional aura scaling research
         // obsolete - merge me with ScaleDamage ?
         bool damage = false;
         if (uint32 aura = spellProto->EffectApplyAuraName[effect_index])
         {
             // TODO: to be incorporated into the main per level calculation after research
-            value += int32(std::max(0, int32((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - spellProto->maxLevel)) * basePointsPerLevel);
+            value += int32(std::max(0, int32(unitCaster->getLevel() - spellProto->maxLevel)) * basePointsPerLevel);
 
             switch (aura)
             {
@@ -2981,14 +2980,10 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (damage && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION))
         {
             GtNPCManaCostScalerEntry const* spellScaler = sGtNPCManaCostScalerStore.LookupEntry(spellProto->spellLevel - 1);
-            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry((target ? unitCaster->GetLevelForTarget(target) : unitCaster->getLevel()) - 1);
+            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->getLevel() - 1);
             if (spellScaler && casterScaler)
-            {
                 value *= casterScaler->ratio / spellScaler->ratio;
-                if (sObjectMgr.IsScalable((Unit*)target, (Unit*)unitCaster))
-                    spell->EffectScaled[effect_index] = true;
-            }
-        }*/
+        }
 
         if (spell && spell->IsReferencedFromCurrent())
         {
