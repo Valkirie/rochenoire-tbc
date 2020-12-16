@@ -1060,6 +1060,8 @@ class WorldObject : public Object
         Creature* SummonCreature(uint32 id, float x, float y, float z, float ang, TempSpawnType spwtype, uint32 despwtime, bool asActiveObject = false, bool setRun = false, uint32 pathId = 0, uint32 faction = 0, uint32 modelId = 0, bool spawnCounting = false, bool forcedOnTop = false);
         Creature* SummonTrigger(float x, float y, float z, float ang, uint32 dur, uint32 faction = 0, uint32 level = 0);
 
+        static GameObject* SummonGameObject(uint32 dbGuid, Map* map);
+
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
         void SetActiveObjectState(bool active);
 
