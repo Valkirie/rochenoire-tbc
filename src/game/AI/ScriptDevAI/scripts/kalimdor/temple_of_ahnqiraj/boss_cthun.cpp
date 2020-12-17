@@ -257,6 +257,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
 
     // Global variables
     uint32 m_uiPhaseTimer;
+    uint8 m_uiFleshTentaclesSpawned;
     uint8 m_uiFleshTentaclesKilled;
     uint32 m_uiDigestiveAcidTimer;
     uint32 m_giantClawTentaclesDelay;
@@ -276,6 +277,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
         m_Phase                     = PHASE_TRANSITION;
 
         m_uiPhaseTimer              = 0;
+        m_uiFleshTentaclesSpawned   = 0;
         m_uiFleshTentaclesKilled    = 0;
         m_uiDigestiveAcidTimer      = 4000;
         m_giantClawTentaclesDelay   = 0;
@@ -373,7 +375,7 @@ struct boss_cthunAI : public Scripted_NoMovementAI
             // Handle the stomach tentacles kill
             case NPC_FLESH_TENTACLE:
                 ++m_uiFleshTentaclesKilled;
-                if (m_uiFleshTentaclesKilled == ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES))
+                if (m_uiFleshTentaclesKilled == m_uiFleshTentaclesSpawned)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_CTHUN_VULNERABLE, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
                     {
@@ -391,9 +393,10 @@ struct boss_cthunAI : public Scripted_NoMovementAI
     void DoSpawnFleshTentacles()
     {
         m_uiFleshTentaclesKilled = 0;
+        m_uiFleshTentaclesSpawned = ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES);
 
         // Spawn 2 flesh tentacles
-        for (uint8 i = 0; i < ((DungeonMap*)m_creature->GetMap())->GetFinalNAdds(m_creature->GetInstanceTanks(), MAX_FLESH_TENTACLES); ++i)
+        for (uint8 i = 0; i < m_uiFleshTentaclesSpawned; ++i)
             m_creature->SummonCreature(NPC_FLESH_TENTACLE, afCthunLocations[i][0], afCthunLocations[i][1], afCthunLocations[i][2], afCthunLocations[i][3], TEMPSPAWN_DEAD_DESPAWN, 0);
     }
 
@@ -730,8 +733,9 @@ struct PeriodicSummonEyeTrigger : public AuraScript
         if (Unit* caster = aura->GetCaster())
         {
             uint32 eyeTentaclesSpells[] = { SPELL_SUMMON_EYE_TENTACLE_1, SPELL_SUMMON_EYE_TENTACLE_2, SPELL_SUMMON_EYE_TENTACLE_3, SPELL_SUMMON_EYE_TENTACLE_4, SPELL_SUMMON_EYE_TENTACLE_5, SPELL_SUMMON_EYE_TENTACLE_6, SPELL_SUMMON_EYE_TENTACLE_7, SPELL_SUMMON_EYE_TENTACLE_8 };
-            for (auto spellId:eyeTentaclesSpells)
-                caster->CastSpell(nullptr, spellId, TRIGGERED_OLD_TRIGGERED);
+            uint32 count = ((DungeonMap*)caster->GetMap())->GetFinalNAdds(caster->GetInstanceTanks(), MAX_EYE_TENTACLES);
+            for (uint8 i = 0; i < count; i++)
+                caster->CastSpell(nullptr, eyeTentaclesSpells[i], TRIGGERED_OLD_TRIGGERED);
         }
     }
 };
