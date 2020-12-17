@@ -209,10 +209,9 @@ class FindGOData
 
 struct ZoneFlex
 {
-    std::string AreaName;
-    uint32 AreaID;
+    std::string ZoneName;
+    uint32 ZoneID;
     uint32 MapID;
-    uint32 ParentWorldMapID;
     uint32 LevelRangeMin;
     uint32 LevelRangeMax;
 };
@@ -943,9 +942,10 @@ class ObjectMgr
             return itr->second;
         }
 
-        ZoneFlex const* GetZoneFlex(uint32 AreaID) const
+        ZoneFlex const* getAreaZone(uint32 AreaID = 0, uint32 ZoneID = 0) const;
+        ZoneFlex const* GetZoneFlex(uint32 ZoneID) const
         {
-            ZoneFlexMap::const_iterator itr = mZoneFlexMap.find(AreaID);
+            ZoneFlexMap::const_iterator itr = mZoneFlexMap.find(ZoneID);
             if (itr == mZoneFlexMap.end()) return nullptr;
             return &itr->second;
         }

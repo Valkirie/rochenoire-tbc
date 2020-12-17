@@ -784,7 +784,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
         ItemId = LoadScaledParent(ItemId);
 
         // Checking if player has appropriate level for current zone
-        uint32 pLevel = pPlayer->getZoneLevel();
+        uint32 pLevel = pPlayer->getAreaZoneLevel();
 
         // Filter specific items
         switch (ItemId)

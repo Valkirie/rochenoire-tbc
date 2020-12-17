@@ -1379,7 +1379,7 @@ void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsibl
         {
             uint32 ReqLevel = 10;
 
-            if (responsiblePlayer->hasZoneLevel())
+            if (responsiblePlayer->hasAreaZoneLevel())
             {
                 if (uint16 skillValue = responsiblePlayer->GetSkillValue(skill))
                 {
@@ -9584,13 +9584,20 @@ void Unit::SetLevel(uint32 lvl)
         ((Player*)this)->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_LEVEL);
 }
 
-bool Unit::hasZoneLevel(uint32 AreaID) const
+bool Unit::hasAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
 {
-    uint32 Id = AreaID != 0 ? AreaID : GetTerrain() ? GetZoneId() : 0;
+    uint32 area = AreaID != 0 ? AreaID : GetTerrain() ? GetAreaId() : 0;
+    uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
-    if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(Id))
+    uint32 pLevel = getLevel();
+
+    if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))
     {
-        uint32 pLevel = getLevel();
+        if (pLevel < thisArea->LevelRangeMin || pLevel > thisArea->LevelRangeMax)
+            return false;
+    }
+    else if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(zone))
+    {
         if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
             return false;
     }
@@ -9598,20 +9605,22 @@ bool Unit::hasZoneLevel(uint32 AreaID) const
     return true;
 }
 
-uint32 Unit::getZoneLevel(uint32 AreaID) const
+uint32 Unit::getAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
 {
-    uint32 Id = AreaID != 0 ? AreaID : GetTerrain() ? GetZoneId() : 0;
+    uint32 area = AreaID != 0 ? AreaID : GetTerrain() ? GetAreaId() : 0;
+    uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
     uint32 pLevel = getLevel();
-    if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(Id))
+
+    if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))
     {
-        // should not happen
-        if (thisZone->LevelRangeMin == 0 && thisZone->LevelRangeMax == 0)
-            return pLevel;
-        else if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
+        if (pLevel < thisArea->LevelRangeMin || pLevel > thisArea->LevelRangeMax)
+            return pLevel > thisArea->LevelRangeMax ? thisArea->LevelRangeMax : thisArea->LevelRangeMin;
+    }
+    else if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(zone))
+    {
+        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
             return pLevel > thisZone->LevelRangeMax ? thisZone->LevelRangeMax : thisZone->LevelRangeMin;
-        else
-            return pLevel;
     }
 
     return pLevel;

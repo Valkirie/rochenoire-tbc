@@ -966,6 +966,16 @@ CreatureClassLvlStats const* ObjectMgr::GetCreatureClassLvlStats(uint32 level, u
     return nullptr;
 }
 
+ZoneFlex const* ObjectMgr::getAreaZone(uint32 AreaID, uint32 ZoneID) const
+{
+    if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(AreaID))
+        return thisArea;
+    else if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(ZoneID))
+        return thisZone;
+
+    return nullptr;
+}
+
 const float mingold_array[65] = { 1.33f,5.09f,6.4f,6.5f,7.28f,8.98f,9.4f,9.42f,14.26f,17.76f,19.84f,20.27f,20.35f,33.44f,42.58f,43.04f,50.08f,50.26f,59.76f,60.73f,61.03f,71.05f,79.18f,79.51f,80.94f,83.08f,88.93f,90.86f,92.47f,99.63f,100.31f,103.96f,110.63f,115.4f,131.43f,133.72f,135.77f,139.42f,151.96f,170.22f,170.48f,175.41f,176.06f,179.42f,181.38f,187.58f,190.36f,193.57f,201.26f,201.54f,212.49f,221.2f,225.94f,286.99f,297.95f,369.16f,442.04f,515.1f,588.1f,661.1f,734.1f,807.1f,880.1f,953.1f,1024.1f };
 const float maxgold_array[65] = { 7.08f,11.96f,12.13f,13.15f,14.81f,17.12f,17.66f,18.75f,25.95f,31.68f,38.27f,38.86f,46.84f,48.81f,62.52f,66.07f,76.91f,86.15f,87.94f,100.73f,104.82f,106.03f,111.34f,118.17f,126.29f,130.69f,143.12f,152.31f,155.17f,157.88f,161.5f,176.44f,178.51f,204.82f,205.48f,206.91f,220.09f,230.24f,233.94f,278.17f,306.00f,306.71f,309.74f,327.00f,339.45f,341.09f,351.8f,359.08f,370.32f,488.16f,499.34f,514.34f,524.28f,550.51f,695.23f,850.22f,894.25f,1250.6f,1427.9f,1605.2f,1782.5f,1959.7f,2137.0f,2314.3f,2491.6f };
 void ObjectMgr::ScaleGold(uint32 in_level, uint32 ou_level, uint32 &mingold, uint32& maxgold) const
@@ -1275,8 +1285,8 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 
     if (owner->IsCreature())
     {
-        uint32 AreaID = creature->GetTerrain() ? creature->GetZoneId() : 0;
-        p_level = player->getZoneLevel(AreaID);
+        uint32 AreaID = creature->GetTerrain() ? creature->GetAreaId() : 0;
+        p_level = player->getAreaZoneLevel(AreaID);
 
         if (creature->IsWorldBoss())
             p_level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
@@ -2623,18 +2633,16 @@ void ObjectMgr::LoadZoneScale()
 		Field *fields = result->Fetch();
 		bar.step();
 
-        std::string AreaName = fields[0].GetString();
+        std::string ZoneName = fields[0].GetString();
         uint32 MapID = fields[1].GetUInt32();
-        uint32 AreaID = fields[2].GetUInt32();
-        uint32 ParentWorldMapID = fields[3].GetUInt32();
-        uint32 LevelRangeMin = fields[4].GetUInt32();
-        uint32 LevelRangeMax = fields[5].GetUInt32();
+        uint32 ZoneID = fields[2].GetUInt32();
+        uint32 LevelRangeMin = fields[3].GetUInt32();
+        uint32 LevelRangeMax = fields[4].GetUInt32();
 
-        ZoneFlex& data = mZoneFlexMap[AreaID];
-        data.AreaName = AreaName;
+        ZoneFlex& data = mZoneFlexMap[ZoneID];
+        data.ZoneName = ZoneName;
         data.MapID = MapID;
-        data.AreaID = AreaID;
-        data.ParentWorldMapID = ParentWorldMapID;
+        data.ZoneID = ZoneID;
         data.LevelRangeMin = LevelRangeMin;
         data.LevelRangeMax = LevelRangeMax;
 

@@ -6996,9 +6996,21 @@ uint32 Player::GetLevelFromDB(ObjectGuid guid)
 
 void Player::UpdateArea(uint32 newArea)
 {
-    m_areaUpdateId    = newArea;
-
     AreaTableEntry const* area = GetAreaEntryByAreaID(newArea);
+
+    if (m_areaUpdateId != newArea)
+    {
+        std::string current_zone_name = area->area_name[GetSession()->GetSessionDbcLocale()];
+        if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(newArea, m_zoneUpdateId))
+        {
+            GetSession()->SendAreaTriggerMessage("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+            ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+        }
+        else
+            ChatHandler(this).PSendSysMessage("Entered %s: (missing details for entry %u)", current_zone_name.c_str(), newArea);
+    }
+
+    m_areaUpdateId = newArea;
 
     // FFA_PVP flags are area and not zone id dependent
     // so apply them accordingly
@@ -7048,15 +7060,6 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
             Weather* wth = GetMap()->GetWeatherSystem()->FindOrCreateWeather(newZone);
             wth->SendWeatherUpdateToPlayer(this);
         }
-
-        std::string current_zone_name = zone->area_name[GetSession()->GetSessionDbcLocale()];
-        if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(newZone))
-        {
-            GetSession()->SendAreaTriggerMessage("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
-            ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
-        }
-        else
-            ChatHandler(this).PSendSysMessage("Entered %s: (missing details for entry %u)", current_zone_name.c_str(), newZone);
     }
 
     if (m_areaUpdateId != newArea || force)
@@ -13368,8 +13371,8 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
             return getLevel() + uint32(highLevelDiff) >= pQuest->GetMinLevel();
         else
         {
-            return (hasZoneLevel(pQuest->GetZoneOrSort()) ||
-                (!hasZoneLevel(pQuest->GetZoneOrSort()) && getLevel() + uint32(highLevelDiff) >= GetQuestLevelForPlayer(pQuest)));
+            return (hasAreaZoneLevel(0 /* AreaID */, pQuest->GetZoneOrSort()) ||
+                (!hasAreaZoneLevel(0 /* AreaID */, pQuest->GetZoneOrSort()) && getLevel() + uint32(highLevelDiff) >= GetQuestLevelForPlayer(pQuest)));
         }
     }
 
@@ -13381,7 +13384,7 @@ uint32 Player::GetQuestLevelForPlayer(Quest const* pQuest) const
     if (pQuest->IsSpecificQuest())
         return pQuest && (pQuest->GetQuestLevel() > 0) ? (uint32)pQuest->GetQuestLevel() : getLevel();
     else
-        return getZoneLevel(pQuest->GetZoneOrSort()) + pQuest->GetQuestRelativeLevel();
+        return getAreaZoneLevel(0 /* AreadID */, pQuest->GetZoneOrSort()) + pQuest->GetQuestRelativeLevel();
 }
 
 bool Player::CanTakeQuest(Quest const* pQuest, bool msg) const
@@ -14046,7 +14049,7 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
     if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
-        (!qInfo->IsSpecificQuest() && !hasZoneLevel(qInfo->GetZoneOrSort()) && getLevel() < GetQuestLevelForPlayer(qInfo)))
+        (!qInfo->IsSpecificQuest() && !hasAreaZoneLevel(0 /* AreaID */, qInfo->GetZoneOrSort()) && getLevel() < GetQuestLevelForPlayer(qInfo)))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
