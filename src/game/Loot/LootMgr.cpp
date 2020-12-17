@@ -1787,19 +1787,13 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 					{
 						LootItem* lootItem = m_lootItems[itemSlot];
-						uint32 lootItemId = lootItem->itemId;
 
-						if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
+                        if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold) && !lootItem->isScaled)
 						{
-							lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
-
-							if (lootItem->itemId != lootItemId)
-							{
-								lootItem->itemId = lootItemId;
-								lootItem->isScaled = true;
-							}
+                            lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player);
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
+                            lootItem->isScaled = true;
 						}
 					}
 				}
@@ -1983,19 +1977,13 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 					for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 					{
 						LootItem* lootItem = m_lootItems[itemSlot];
-						uint32 lootItemId = lootItem->itemId;
 
-						if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
+                        if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold) && !lootItem->isScaled)
 						{
-							lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
-
-							if (lootItem->itemId != lootItemId)
-							{
-								lootItem->itemId = lootItemId;
-								lootItem->isScaled = true;
-							}
+                            lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player);
 							lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 							lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
+                            lootItem->isScaled = true;
 						}
 					}
 
@@ -2121,19 +2109,13 @@ Loot::Loot(Player* player, Item* item, LootType type) :
 			for (uint8 itemSlot = 0; itemSlot < m_lootItems.size(); ++itemSlot)
 			{
 				LootItem* lootItem = m_lootItems[itemSlot];
-				uint32 lootItemId = lootItem->itemId;
 
-				if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold))
+				if (!player->GetGroup() || (player->GetGroup() && lootItem->isUnderThreshold) && !lootItem->isScaled)
 				{
-					lootItemId = Item::LoadScaledLoot(lootItem->itemId, player);
-
-					if (lootItem->itemId != lootItemId)
-					{
-						lootItem->itemId = lootItemId;
-						lootItem->isScaled = true;
-					}
+                    lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player);
 					lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getLevel());
 					lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getLevel());
+                    lootItem->isScaled = true;
 				}
 			}
 
@@ -2226,12 +2208,19 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem)
     if (target->GetSession())
     {
         ItemPosCountVec dest;
-		if(lootItem->IsAllowed(target, this) && !lootItem->isScaled)
-			itemId = Item::LoadScaledLoot(itemId, target);
+
+        if (lootItem->IsAllowed(target, this) && !lootItem->isScaled)
+        {
+            itemId = Item::LoadScaledLoot(itemId, target);
+            lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(target->getLevel(), true);
+            lootItem->randomSuffix = lootItem->getRandomSuffixScaled(target->getLevel(), true);
+            lootItem->isScaled = true;
+        }
+
         msg = target->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, lootItem->count);
         if (msg == EQUIP_ERR_OK)
         {
-            Item* newItem = target->StoreNewItem(dest, itemId, true, lootItem->getRandomPropertyScaled(target->getLevel(), true));
+            Item* newItem = target->StoreNewItem(dest, itemId, true, lootItem->randomPropertyId);
 
             if (lootItem->freeForAll)
             {
@@ -2538,10 +2527,12 @@ void Loot::GetLootContentFor(Player* player, ByteBuffer& buffer)
     for (LootItemList::const_iterator lootItemItr = m_lootItems.begin(); lootItemItr != m_lootItems.end(); ++lootItemItr)
     {
         LootItem* lootItem = *lootItemItr;
-		LootItem* lootItem_tmp = new LootItem(lootItem->itemId, lootItem->count, lootItem->randomSuffix, lootItem->randomPropertyId, lootItem->lootSlot);
-
-		if (lootItem->IsAllowed(player, this) && !lootItem->isScaled)
-			lootItem_tmp->itemId = Item::LoadScaledLoot(lootItem_tmp->itemId, player);
+		
+        if (lootItem->IsAllowed(player, this) && !lootItem->isScaled)
+        {
+            lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player);
+            lootItem->isScaled = true;
+        }
 
         LootSlotType slot_type = lootItem->GetSlotTypeForSharedLoot(player, this);
         if (slot_type >= MAX_LOOT_SLOT_TYPE)
@@ -2551,7 +2542,7 @@ void Loot::GetLootContentFor(Player* player, ByteBuffer& buffer)
         }
 
         buffer << uint8(lootItem->lootSlot);
-        buffer << *lootItem_tmp;
+        buffer << *lootItem;
         buffer << uint8(slot_type);                              // 0 - get 1 - look only 2 - master selection
         ++itemsShown;
 
