@@ -2981,7 +2981,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
 
         if (spell && spell->IsReferencedFromCurrent())
         {
-            if (value == 0)
+            if (value == -1 || value == 0 || value == 1)
                 return value;
 
             if (!target || !unitCaster || target->GetObjectGuid() == unitCaster->GetObjectGuid())

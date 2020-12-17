@@ -5987,9 +5987,18 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     Modifier* mod = aura->GetModifier();
 
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(aura->GetId());
-    bool IsScaled = pInfo->scaled;
-    uint32 damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), pInfo->damage, IsScaled, spellProto, aura->GetEffIndex());
 
+    bool IsScaled = pInfo->scaled;
+    uint32 damage = pInfo->damage;
+
+    if (IsScaled && aura->GetCaster()->IsPlayer())
+    {
+        bool r_IsScaled = !IsScaled;
+        damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, r_IsScaled, spellProto, aura->GetEffIndex(), true);
+    }
+    else // why would you ever land here ?
+        damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, IsScaled, spellProto, aura->GetEffIndex()); // ?????
+    
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
     data << aura->GetCasterGuid().WriteAsPacked();
