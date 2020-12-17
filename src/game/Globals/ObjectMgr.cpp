@@ -1053,9 +1053,6 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 
 		if (creature->GetCreatureType() == CREATURE_TYPE_CRITTER)
 			return false;
-
-        if (creature->IsDead())
-            return false;
 	}
 
 	return true;

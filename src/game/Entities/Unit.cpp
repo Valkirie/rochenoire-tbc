@@ -1372,7 +1372,7 @@ void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsibl
     // only lootable if it has loot or can drop gold
     victim->PrepareBodyLootState();
 
-	// prepare body for herbalism | mining | skinning
+	/* prepare body for herbalism | mining | skinning
     if (uint32 skill = victim->GetCreatureInfo()->GetRequiredLootSkill())
     {
         if (responsiblePlayer && responsiblePlayer->HasSkill(skill))
@@ -1397,7 +1397,7 @@ void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsibl
                 victim->SetVisibility(VISIBILITY_ON);
             }
         }
-    }
+    } */
 }
 
 void Unit::PetOwnerKilledUnit(Unit* pVictim)

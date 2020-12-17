@@ -20817,11 +20817,8 @@ uint32 Player::GetResurrectionSpellId() const
 // Used in triggers for check "Only to targets that grant experience or honor" req
 bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
-    uint32 v_level = pVictim->GetLevelForTarget(this);
-    uint32 k_grey  = GetLevelForTarget(pVictim);
-	
     // Victim level less gray level
-    if (MaNGOS::XP::IsTrivialLevelDifference(k_grey, v_level))
+    if (MaNGOS::XP::IsTrivialLevelDifference(getLevel(), pVictim->GetLevelForTarget(this)))
         return false;
 
     if (pVictim->GetTypeId() == TYPEID_UNIT)
