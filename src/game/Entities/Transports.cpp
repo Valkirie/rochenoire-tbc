@@ -278,21 +278,24 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
     if (mapChange)
     {
         oldMap->GetMessager().AddMessage([transport = this, newMapid](Map* map)
-        {
-            transport->RemoveModelFromMap();
-            map->RemoveTransport(transport);
-            transport->UpdateForMap(map, false);
-            transport->ResetMap();
-
-            Map* newMap = sMapMgr.CreateMap(newMapid, transport);
-            newMap->GetMessager().AddMessage([transport = transport](Map* map)
             {
-                transport->SetMap(map);
-                map->AddTransport(transport);
-                transport->AddModelToMap();
-                transport->UpdateForMap(map, true);
+                transport->RemoveModelFromMap();
+                map->RemoveTransport(transport);
+                transport->UpdateForMap(map, false);
+                transport->Object::RemoveFromWorld();
+                transport->ResetMap();
+
+                Map* newMap = sMapMgr.CreateMap(newMapid, transport);
+                newMap->GetMessager().AddMessage([transport = transport](Map* map)
+                    {
+                        transport->SetMap(map);
+                        transport->Object::AddToWorld();
+                        map->AddTransport(transport);
+                        transport->AddModelToMap();
+                        transport->SpawnPassengers();
+                        transport->UpdateForMap(map, true);
+                    });
             });
-        });
     }
     else
         UpdateModelPosition();
