@@ -448,9 +448,6 @@ int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
         return randomPropertyId;
 
 	uint32 level = loot_level;
-    uint32 mLevel = sWorld.GetCurrentMaxLevel();
-    ilevel = std::min((float)mLevel, (float)ilevel);
-
 	if (!loot_level || won)
 	{
 		loot_level = ilevel;
@@ -468,10 +465,7 @@ int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 
 void LootItem::setRandomPropertyScaled()
 {
-    if (!randomPropertyId)
-        return;
-
-    if (!randomPropertyIdArray.empty())
+    if (!randomPropertyId || !randomPropertyIdArray.empty())
         return;
 
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
@@ -488,9 +482,6 @@ int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
         return randomSuffix;
 
 	uint32 level = loot_level;
-    uint32 mLevel = sWorld.GetCurrentMaxLevel();
-    ilevel = std::min((float)mLevel, (float)ilevel);
-
 	if (!loot_level || won)
 	{
 		loot_level = ilevel;
@@ -508,10 +499,7 @@ int32 LootItem::getRandomSuffixScaled(uint32 ilevel, bool won, bool display)
 
 void LootItem::setRandomSuffixScaled()
 {
-    if (!randomSuffix)
-        return;
-
-    if (!randomSuffixIdArray.empty())
+    if (!randomSuffix || !randomSuffixIdArray.empty())
         return;
 
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
@@ -673,15 +661,18 @@ void GroupLootRoll::SendStartRoll()
         if (!plr || !plr->GetSession())
             continue;
 
-		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
-		uint32 plevel = plr->getAreaZoneLevel();
+        uint32 plevel = plr->getAreaZoneLevel();
+
+        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+        uint32 randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
+        uint32 randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
 
 		WorldPacket data(SMSG_LOOT_START_ROLL, (8 + 4 + 4 + 4 + 4 + 4 + 1));
 		data << m_loot->GetLootGuid();												// creature guid what we're looting
 		data << uint32(m_itemSlot);													// item slot in loot
 		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
+		data << uint32(randomSuffix);												// randomSuffix
+		data << uint32(randomPropertyId);											// item random property ID
 		data << uint32(LOOT_ROLL_TIMEOUT);											// the countdown time to choose "need" or "greed"
 
 		size_t voteMaskPos = data.wpos();
@@ -711,15 +702,18 @@ void GroupLootRoll::SendAllPassed()
         if (!plr || !plr->GetSession())
             continue;
 
-		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
-		uint32 plevel = plr->getLevel();
+        uint32 plevel = plr->getAreaZoneLevel();
+
+        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+        uint32 randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
+        uint32 randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
 
 		WorldPacket data(SMSG_LOOT_ALL_PASSED, (8 + 4 + 4 + 4 + 4));
 		data << m_loot->GetLootGuid();												// creature guid what we're looting
 		data << uint32(m_itemSlot);													// item slot in loot
 		data << uint32(itemId);														// the itemEntryId for the item that shall be rolled for
-		data << uint32(m_lootItem->getRandomSuffixScaled(plevel, false, true));		// randomSuffix
-		data << uint32(m_lootItem->getRandomPropertyScaled(plevel, false, true));	// item random property ID
+		data << uint32(randomSuffix);		                                        // randomSuffix
+		data << uint32(randomPropertyId);	                                        // item random property ID
 
         plr->GetSession()->SendPacket(data);
     }
@@ -747,6 +741,12 @@ void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNum
         }
     }
 
+    Player* winner = sObjectMgr.GetPlayer(targetGuid);
+    if (!winner || !winner->GetSession())
+        return;
+
+    uint32 plevel = winner->getAreaZoneLevel();
+
     for (RollVoteMap::const_iterator itr = m_rollVoteMap.begin(); itr != m_rollVoteMap.end(); ++itr)
     {
         if (itr->second.vote == ROLL_NOT_VALID)
@@ -755,12 +755,6 @@ void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNum
         Player* plr = sObjectMgr.GetPlayer(itr->first);
         if (!plr || !plr->GetSession())
             continue;
-
-        Player* winner = sObjectMgr.GetPlayer(targetGuid);
-        if (!winner || !winner->GetSession())
-            continue;
-
-        uint32 plevel = winner->getAreaZoneLevel();
 
         m_lootItem->itemId = Item::LoadScaledLoot(m_lootItem->itemId, winner);
         m_lootItem->randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
@@ -1788,7 +1782,7 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 						{
 							if (Player* pl = itr->getSource())
 								if (pl != player && IsEligibleForLoot(pl, creature))
-                                    avg_level += pl->getLevel();
+                                    avg_level += pl->getAreaZoneLevel();
 						}
                         avg_level /= grp->GetMembersCount();
 					}
@@ -1950,7 +1944,7 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type) :
 						{
 							if (Player * pl = itr->getSource())
 								if (pl != player && IsEligibleForLoot(pl, gameObject))
-                                    avg_level += pl->getLevel();
+                                    avg_level += pl->getAreaZoneLevel();
 						}
                         avg_level /= grp->GetMembersCount();
 					}
@@ -2079,7 +2073,7 @@ Loot::Loot(Player* player, Item* item, LootType type) :
 				{
 					if (Player * pl = itr->getSource())
 						if (pl != player && IsEligibleForLoot(pl, player))
-                            avg_level += pl->getLevel();
+                            avg_level += pl->getAreaZoneLevel();
 				}
                 avg_level /= grp->GetMembersCount();
 			}
