@@ -22,6 +22,7 @@
 #include "Globals/ObjectMgr.h"
 #include "ProgressBar.h"
 #include "Util.h"
+#include "Loot/LootMgr.h"
 
 #include <list>
 #include <vector>
@@ -30,12 +31,13 @@ struct EnchStoreItem
 {
     uint32  ench;
     float   chance;
+    uint32  suffixvalue;
 
     EnchStoreItem()
-        : ench(0), chance(0) {}
+        : ench(0), chance(0), suffixvalue(0) {}
 
-    EnchStoreItem(uint32 _ench, float _chance)
-        : ench(_ench), chance(_chance) {}
+    EnchStoreItem(uint32 _ench, float _chance, uint32 _suffixvalue)
+        : ench(_ench), chance(_chance), suffixvalue(_suffixvalue) {}
 };
 
 typedef std::vector<EnchStoreItem> EnchStoreList;
@@ -48,7 +50,7 @@ void LoadRandomEnchantmentsTable()
     RandomItemEnch.clear();                                 // for reload case
 
     uint32 count = 0;
-    QueryResult* result = WorldDatabase.Query("SELECT entry, ench, chance FROM item_enchantment_template");
+    QueryResult* result = WorldDatabase.Query("SELECT entry, ench, chance, suffixvalue FROM item_enchantment_template");
 
     if (result)
     {
@@ -62,9 +64,10 @@ void LoadRandomEnchantmentsTable()
             uint32 entry = fields[0].GetUInt32();
             uint32 ench = fields[1].GetUInt32();
             float chance = fields[2].GetFloat();
+            uint32 suffixvalue = fields[3].GetUInt32();
 
             if (chance > 0.000001f && chance <= 100.0f)
-                RandomItemEnch[entry].push_back(EnchStoreItem(ench, chance));
+                RandomItemEnch[entry].push_back(EnchStoreItem(ench, chance, suffixvalue));
 
             ++count;
         }
@@ -82,6 +85,12 @@ void LoadRandomEnchantmentsTable()
 
 uint32 GetItemEnchantMod(uint32 entry)
 {
+    uint32 suffixvalue;
+    return GetItemEnchantMod(entry, suffixvalue);
+}
+
+uint32 GetItemEnchantMod(uint32 entry, uint32& suffixvalue)
+{
     if (!entry) return 0;
 
     EnchantmentStore::const_iterator tab = RandomItemEnch.find(entry);
@@ -96,6 +105,15 @@ uint32 GetItemEnchantMod(uint32 entry)
     float fCount = 0;
 
     const EnchStoreList& enchantList = tab->second;
+    if (suffixvalue)
+    {
+        for (auto ench_iter : enchantList)
+        {
+            if (suffixvalue == ench_iter.suffixvalue)
+                return ench_iter.ench;
+        }
+    }
+
     for (auto ench_iter : enchantList)
     {
         fCount += ench_iter.chance;
@@ -111,7 +129,11 @@ uint32 GetItemEnchantMod(uint32 entry)
     {
         fCount += ench_iter.chance;
 
-        if (fCount > dRoll) return ench_iter.ench;
+        if (fCount > dRoll)
+        {
+            suffixvalue = ench_iter.suffixvalue;
+            return ench_iter.ench;
+        }
     }
 
     return 0;

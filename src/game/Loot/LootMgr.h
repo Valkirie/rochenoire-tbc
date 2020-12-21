@@ -200,7 +200,8 @@ struct LootItem
     bool         isUnderThreshold  : 1;
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
-	bool         isScaled          = false;                         // true if item is scaled
+    uint32       loot_level;
+    uint32       suffixvalue;
     std::map<uint32, uint32> randomPropertyIdArray;
     std::map<uint32, uint32> randomSuffixIdArray;
 
@@ -211,13 +212,12 @@ struct LootItem
     // Should be called for non-reference LootStoreItem entries only (mincountOrRef > 0)
     explicit LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold);
 
-    LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot);
+    LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot, uint32 suffixvalue = 0);
 
 	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomPropertyScaled();
 	int32 getRandomSuffixScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomSuffixScaled();
-	uint32 loot_level = 0;
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot
     bool AllowedForPlayer(Player const* player, WorldObject const* lootTarget) const;
