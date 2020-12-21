@@ -31,8 +31,8 @@ class GenericTransport : public GameObject
 {
     public:
         GenericTransport() : m_passengerTeleportIterator(m_passengers.end()), m_pathProgress(0), m_movementStarted(0) {}
-        bool AddPassenger(Unit* passenger);
-        bool RemovePassenger(Unit* passenger);
+        bool AddPassenger(WorldObject* passenger);
+        bool RemovePassenger(WorldObject* passenger);
         bool AddPetToTransport(Unit* passenger, Pet* pet);
 
         void UpdatePosition(float x, float y, float z, float o);
@@ -86,7 +86,7 @@ class Transport : public GenericTransport
     public:
         explicit Transport(TransportTemplate const& transportTemplate);
 
-        static void LoadTransport(TransportTemplate const& transportTemplate, Map* map);
+        static void LoadTransport(TransportTemplate const& transportTemplate, Map* map, bool spawnOnDemand = false);
         bool Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint32 animprogress);
         void Update(const uint32 diff) override;
 
@@ -94,6 +94,8 @@ class Transport : public GenericTransport
         void SetPeriod(uint32 period) { m_period = period; }
 
         KeyFrameVec const& GetKeyFrames() const { return m_transportTemplate.keyFrames; }
+
+        void SpawnPassengers();
     private:
         void TeleportTransport(uint32 newMapid, float x, float y, float z, float o);
         void UpdateForMap(Map const* targetMap, bool newMap);

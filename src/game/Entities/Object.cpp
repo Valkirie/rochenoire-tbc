@@ -2117,12 +2117,12 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     return WorldObject::SummonCreature(TempSpawnSettings(this, id, x, y, z, ang, spwtype, despwtime, asActiveObject, setRun, pathId, faction, modelId, spawnCounting, forcedOnTop), GetMap());
 }
 
-GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map)
+GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map, GenericTransport* transport)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(dbGuid);
     MANGOS_ASSERT(data);
     GameObject* gameobject = GameObject::CreateGameObject(data->id);
-    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT)))
+    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT), transport))
     {
         delete gameobject;
         return nullptr;
@@ -2131,7 +2131,7 @@ GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map)
     return gameobject;
 }
 
-Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map)
+Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map, GenericTransport* transport)
 {
     CreatureData const* data = sObjectMgr.GetCreatureData(dbGuid);
     if (!data)
@@ -2149,7 +2149,7 @@ Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map)
 
     Creature* creature = new Creature;
     // DEBUG_LOG("Spawning creature %u",*itr);
-    if (!creature->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(cinfo->GetHighGuid())))
+    if (!creature->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(cinfo->GetHighGuid()), transport))
     {
         delete creature;
         return nullptr;

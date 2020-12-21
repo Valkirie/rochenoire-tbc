@@ -125,7 +125,7 @@ Transport::Transport(TransportTemplate const& transportTemplate) : GenericTransp
     m_updateFlag = (UPDATEFLAG_TRANSPORT | UPDATEFLAG_LOWGUID | UPDATEFLAG_HIGHGUID | UPDATEFLAG_HAS_POSITION);
 }
 
-void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* map)
+void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* map, bool spawnOnDemand /*= false*/)
 {
     Transport* t = new Transport(transportTemplate);
 
@@ -150,6 +150,11 @@ void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* m
     }
 
     map->AddTransport(t);
+
+    t->SpawnPassengers();
+
+    if (spawnOnDemand)
+        t->UpdateForMap(map, true);
 }
 
 bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint32 animprogress)
@@ -207,6 +212,22 @@ void Transport::MoveToNextWayPoint()
     m_currentFrame = m_nextFrame++;
     if (m_nextFrame == GetKeyFrames().end())
         m_nextFrame = GetKeyFrames().begin();
+}
+
+void Transport::SpawnPassengers()
+{
+    uint32 mapId = GetGOInfo()->moTransport.mapID;
+    if (!mapId)
+        return;
+
+    auto& guids = sObjectMgr.GetDbGuidsForTransport(mapId);
+    for (auto& data : guids)
+    {
+        if (data.first == TYPEID_GAMEOBJECT)
+            WorldObject::SpawnGameObject(data.second, GetMap(), this);
+        else if (data.first == TYPEID_UNIT)
+            WorldObject::SpawnCreature(data.second, GetMap(), this);
+    }
 }
 
 void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, float o)
@@ -277,7 +298,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
         UpdateModelPosition();
 }
 
-bool GenericTransport::AddPassenger(Unit* passenger)
+bool GenericTransport::AddPassenger(WorldObject* passenger)
 {
     if (m_passengers.find(passenger) == m_passengers.end())
     {
@@ -296,16 +317,20 @@ bool GenericTransport::AddPassenger(Unit* passenger)
             CalculatePassengerOffset(passenger->m_movementInfo.t_pos.x, passenger->m_movementInfo.t_pos.y, passenger->m_movementInfo.t_pos.z, &passenger->m_movementInfo.t_pos.o);
         }
 
-        if (Pet* pet = passenger->GetPet())
-            AddPetToTransport(passenger, pet);
+        if (passenger->IsUnit())
+        {
+            Unit* unitPassenger = static_cast<Unit*>(passenger);
+            if (Pet* pet = unitPassenger->GetPet())
+                AddPetToTransport(unitPassenger, pet);
 
-        if (Pet* miniPet = passenger->GetMiniPet())
-            AddPetToTransport(passenger, miniPet);
+            if (Pet* miniPet = unitPassenger->GetMiniPet())
+                AddPetToTransport(unitPassenger, miniPet);
+        }
     }
     return true;
 }
 
-bool GenericTransport::RemovePassenger(Unit* passenger)
+bool GenericTransport::RemovePassenger(WorldObject* passenger)
 {
     bool erased = false;
     if (m_passengerTeleportIterator != m_passengers.end())
@@ -328,16 +353,21 @@ bool GenericTransport::RemovePassenger(Unit* passenger)
         DETAIL_LOG("Unit %s removed from transport %s.", passenger->GetName(), GetName());
         passenger->SetTransport(nullptr);
         passenger->m_movementInfo.SetTransportData(ObjectGuid(), 0, 0, 0, 0, 0);
-        if (Pet* pet = passenger->GetPet())
-        {
-            RemovePassenger(pet);
-            pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
-        }
 
-        if (Pet* pet = passenger->GetMiniPet())
+        if (passenger->IsUnit())
         {
-            RemovePassenger(pet);
-            pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
+            Unit* unitPassenger = static_cast<Unit*>(passenger);
+            if (Pet* pet = unitPassenger->GetPet())
+            {
+                RemovePassenger(pet);
+                pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
+            }
+
+            if (Pet* pet = unitPassenger->GetMiniPet())
+            {
+                RemovePassenger(pet);
+                pet->NearTeleportTo(passenger->m_movementInfo.pos.x, passenger->m_movementInfo.pos.y, passenger->m_movementInfo.pos.z, passenger->m_movementInfo.pos.o);
+            }
         }
     }
     return true;

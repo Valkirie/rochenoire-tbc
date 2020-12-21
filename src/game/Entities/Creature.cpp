@@ -46,6 +46,7 @@
 #include "Grids/CellImpl.h"
 #include "Movement/MoveSplineInit.h"
 #include "Entities/CreatureLinkingMgr.h"
+#include "Entities/Transports.h"
 
 // apply implementation of the singletons
 #include "Policies/Singleton.h"
@@ -1590,6 +1591,11 @@ bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, GenericTransp
     if (map->GetCreature(cinfo->GetObjectGuid(dbGuid)))
         return false;
 
+    // Backported from WOTLK
+    Position dbPos(data->posX, data->posY, data->posZ, data->orientation);
+    if (transport)
+        transport->CalculatePassengerPosition(dbPos.x, dbPos.y, dbPos.z, &dbPos.o);
+
     CreatureCreatePos pos(map, data->posX, data->posY, data->posZ, data->orientation);
 
     m_dbGuid = dbGuid;
@@ -1641,6 +1647,13 @@ bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, GenericTransp
                     Relocate(data->posX, data->posY, tz);
             }
         }
+    }
+
+    // Backported from WOTLK
+    if (transport)
+    {
+        m_movementInfo.SetTransportPos(Position(data->posX, data->posY, data->posZ, data->orientation));
+        transport->AddPassenger(this);
     }
 
     map->Add(this);
