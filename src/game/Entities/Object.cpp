@@ -1964,6 +1964,9 @@ void WorldObject::RemoveFromWorld()
 {
     if (m_isOnEventNotified)
         m_currMap->RemoveFromOnEventNotified(this);
+    if (!IsPlayer()) // players have their own logic due to cross map transports
+        if (GenericTransport* transport = GetTransport())
+            transport->RemovePassenger(this);
 
     Object::RemoveFromWorld();
 }
