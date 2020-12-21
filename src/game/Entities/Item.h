@@ -321,9 +321,10 @@ class Item : public Object
         void SetItemRandomProperties(int32 randomPropId);
         void UpdateItemSuffixFactor();
         static int32 GenerateItemRandomPropertyId(uint32 item_id);
+        static int32 GenerateItemRandomPropertyId(uint32 item_id, uint32& suffixvalue);
 
 		static uint32 LoadScaledLoot(uint32 ItemId, Player* pPlayer, bool upgrade = false);
-		static uint32 LoadScaledLoot(uint32 ItemId, uint32 plevel, bool upgrade = false, Player* pPlayer = nullptr );
+		static uint32 LoadScaledLoot(uint32 ItemId, uint32 plevel, bool upgrade = false, Player* pPlayer = nullptr);
 		static uint32 LoadScaledParent(uint32 ItemId);
 		static uint32 ComputeRequiredLevel(uint32 quality, uint32 ilevel);
 
