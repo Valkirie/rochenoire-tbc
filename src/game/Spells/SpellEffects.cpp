@@ -8914,7 +8914,7 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
         return;
 
     Creature* creature = (Creature*) unitTarget;
-    int32 targetLevel = creature->getLevel();
+    int32 targetLevel = creature->GetLevelForTarget(m_caster);
 
     uint32 skill = creature->GetCreatureInfo()->GetRequiredLootSkill();
 
