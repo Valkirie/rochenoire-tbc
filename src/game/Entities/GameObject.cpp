@@ -809,7 +809,7 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask) const
     WorldDatabase.CommitTransaction();
 }
 
-bool GameObject::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, GenericTransport* transport)
+bool GameObject::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(dbGuid);
 
@@ -828,9 +828,6 @@ bool GameObject::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, GenericTran
     float y = data->posY;
     float z = data->posZ;
     float ang = data->orientation;
-
-    if (transport)
-        transport->CalculatePassengerPosition(x, y, z, &ang);
 
     float rotation0 = data->rotation0;
     float rotation1 = data->rotation1;
@@ -877,12 +874,6 @@ bool GameObject::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, GenericTran
     }
 
     AIM_Initialize();
-
-    if (transport)
-    {
-        m_movementInfo.SetTransportPos(Position(data->posX, data->posY, data->posZ, data->orientation));
-        transport->AddPassenger(this);
-    }
 
     return true;
 }

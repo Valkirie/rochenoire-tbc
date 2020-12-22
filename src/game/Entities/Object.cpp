@@ -1964,9 +1964,6 @@ void WorldObject::RemoveFromWorld()
 {
     if (m_isOnEventNotified)
         m_currMap->RemoveFromOnEventNotified(this);
-    if (!IsPlayer()) // players have their own logic due to cross map transports
-        if (GenericTransport* transport = GetTransport())
-            transport->RemovePassenger(this);
 
     Object::RemoveFromWorld();
 }
@@ -2120,12 +2117,12 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     return WorldObject::SummonCreature(TempSpawnSettings(this, id, x, y, z, ang, spwtype, despwtime, asActiveObject, setRun, pathId, faction, modelId, spawnCounting, forcedOnTop), GetMap());
 }
 
-GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map, GenericTransport* transport)
+GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(dbGuid);
     MANGOS_ASSERT(data);
     GameObject* gameobject = GameObject::CreateGameObject(data->id);
-    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT), transport))
+    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT)))
     {
         delete gameobject;
         return nullptr;

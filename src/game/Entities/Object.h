@@ -1060,7 +1060,7 @@ class WorldObject : public Object
         static Creature* SummonCreature(TempSpawnSettings settings, Map* map);
         Creature* SummonCreature(uint32 id, float x, float y, float z, float ang, TempSpawnType spwtype, uint32 despwtime, bool asActiveObject = false, bool setRun = false, uint32 pathId = 0, uint32 faction = 0, uint32 modelId = 0, bool spawnCounting = false, bool forcedOnTop = false);
 
-        static GameObject* SpawnGameObject(uint32 dbGuid, Map* map, GenericTransport* transport);
+        static GameObject* SpawnGameObject(uint32 dbGuid, Map* map);
         static Creature* SpawnCreature(uint32 dbGuid, Map* map, GenericTransport* transport);
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
