@@ -242,33 +242,28 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
     {
         WorldObject* obj = (*m_passengerTeleportIterator++);
 
-        if (!obj->IsUnit())
-            return; // should never happen on tbc
-
-        Unit* passengerUnit = static_cast<Unit*>(obj);
-
-        Position pos = passengerUnit->m_movementInfo.GetTransportPos();
+        Position pos = obj->m_movementInfo.GetTransportPos();
 
         switch (obj->GetTypeId())
         {
-            case TYPEID_UNIT:
+        case TYPEID_UNIT:
+        {
+            if (mapChange)
             {
-                if (mapChange)
-                {
-                    RemovePassenger(passengerUnit);
-                    if (obj->IsCreature() && !static_cast<Creature*>(obj)->IsPet())
-                        passengerUnit->AddObjectToRemoveList();
-                }
-                break;
+                RemovePassenger(obj);
+                if (obj->IsCreature() && !static_cast<Creature*>(obj)->IsPet())
+                    obj->AddObjectToRemoveList();
             }
-            case TYPEID_PLAYER:
-            {
-                Player* player = static_cast<Player*>(obj);
-                if (player->IsDead() && !player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
-                    player->ResurrectPlayer(1.0);
-                player->TeleportTo(newMapid, pos.x, pos.y, pos.z, pos.o, TELE_TO_NOT_LEAVE_TRANSPORT, nullptr, this);
-                break;
-            }
+            break;
+        }
+        case TYPEID_PLAYER:
+        {
+            Player* player = static_cast<Player*>(obj);
+            if (player->IsDead() && !player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                player->ResurrectPlayer(1.0);
+            player->TeleportTo(newMapid, pos.x, pos.y, pos.z, pos.o, TELE_TO_NOT_LEAVE_TRANSPORT, nullptr, this);
+            break;
+        }
         }
     }
 
@@ -298,7 +293,10 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
             });
     }
     else
+    {
         UpdateModelPosition();
+        UpdatePassengerPositions(m_passengers);
+    }
 }
 
 bool GenericTransport::AddPassenger(WorldObject* passenger)
@@ -597,12 +595,6 @@ void GenericTransport::UpdatePassengerPosition(WorldObject* passenger)
                 dynamic_cast<Player*>(passenger)->m_movementInfo.t_guid = GetObjectGuid();
             }
             dynamic_cast<Player*>(passenger)->m_movementInfo.t_time = GetPathProgress();
-            break;
-        case TYPEID_GAMEOBJECT:
-            //GetMap()->GameObjectRelocation(passenger->ToGameObject(), x, y, z, o, false);
-            break;
-        case TYPEID_DYNAMICOBJECT:
-            //GetMap()->DynamicObjectRelocation(passenger->ToDynObject(), x, y, z, o);
             break;
         default:
             break;
