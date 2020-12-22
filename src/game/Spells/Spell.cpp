@@ -4912,7 +4912,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     return SPELL_FAILED_DONT_REPORT;
                 }
 
-				if ((!sObjectMgr.IsScalable(target, plrCaster) && (target->getLevel() > plrCaster->getLevel()) && !gmmode))
+				if (target->GetLevelForTarget(plrCaster) > plrCaster->getLevel() && !gmmode)
                 {
                     plrCaster->SendPetTameFailure(PETTAME_TOOHIGHLEVEL);
                     return SPELL_FAILED_DONT_REPORT;
