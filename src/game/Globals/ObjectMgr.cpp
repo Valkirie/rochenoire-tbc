@@ -1016,6 +1016,9 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
     if (owner->IsCreature() && target->IsCreature())
         return false;
 
+    if (owner->GetObjectGuid() == target->GetObjectGuid())
+        return false;
+
 	Creature* creature;
 	Player* player;
 
