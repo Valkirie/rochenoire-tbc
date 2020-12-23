@@ -2286,7 +2286,6 @@ struct npc_BlackMarket : public ScriptedAI
         }
     }
 
-
     void EraseTrade(ObjectGuid guid)
     {
         ite2 = m_tradesStore.find(guid);
@@ -2603,20 +2602,10 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pItem)
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
 
-        Item* newItem = Item::CreateItem(ItemId, 1, pPlayer);
+        Item* newItem = Item::CreateItem(ItemId, 1);
 
         if (!newItem)
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-
-        if (pItem->GetItemRandomPropertyId())
-        {
-            int32 RandomPropertyId = Item::GenerateItemRandomPropertyId(ItemId);
-            newItem->SetItemRandomProperties(RandomPropertyId);
-        }
-        
-        if (pItem->IsSoulBound())
-            newItem->SetBinding(true);
-        newItem->SetState(ITEM_CHANGED, pPlayer);
 
         char buffer[50];
         uint32 value = GetTokenValue(newItem);
@@ -2641,45 +2630,50 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             // Proceed
             npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
 
-            Item* pItem = pBlackMarketAI->GetItem(pPlayer->GetObjectGuid());
-
-            if (!pItem)
+            ObjectGuid gItem_guid = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
+            if (!gItem_guid)
                 return;
 
-            if (ObjectGuid gItem_guid = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid()))
-                if (Item* gItem = pPlayer->GetItemByGuid(gItem_guid))
+            Item* gItem = pPlayer->GetItemByGuid(gItem_guid); // original item
+            Item* pItem = pBlackMarketAI->GetItem(pPlayer->GetObjectGuid()); // scaled item
+            if (!gItem || !pItem)
+                return;
+
+            // Transfert item properties : Soulbound
+            pItem->SetBinding(gItem->IsSoulBound());
+
+            // Transfert item properties : RandomProperty (suffi)
+            //                           : RandomSuffix (todo)
+            if (gItem->GetItemRandomPropertyId())
+            {
+                uint32 RandomProp = Item::GenerateItemRandomPropertyId(pItem->GetEntry(), gItem);
+                pItem->SetItemRandomProperties(RandomProp);
+            }
+
+            uint32 value = GetTokenValue(pItem);
+            if (pPlayer->HasItemCount(BLACKMARKET_TOKEN, value))
+            {
+                ItemPosCountVec dest;
+                InventoryResult res = pPlayer->CanStoreItem(NULL_BAG, NULL_SLOT, dest, pItem, true);
+                if (res == EQUIP_ERR_OK)
                 {
-                    uint32 value = GetTokenValue(pItem);
-                    if (pPlayer->HasItemCount(BLACKMARKET_TOKEN, value))
+                    uint32 count = pPlayer->GetItemCount(gItem->GetEntry());
+                    pPlayer->DestroyItemCount(gItem, count, true);
+
+                    if (!count)
                     {
-                        ItemPosCountVec dest;
-                        InventoryResult res = pPlayer->CanStoreItem(NULL_BAG, NULL_SLOT, dest, pItem, true);
-                        if (res == EQUIP_ERR_OK)
-                        {
-                            uint32 count = pPlayer->GetItemCount(gItem->GetEntry());
-                            pPlayer->DestroyItemCount(gItem, count, true);
+                        pPlayer->DestroyItemCount(BLACKMARKET_TOKEN, value, true, true);
 
-                            if (!count)
-                            {
-                                //if (Item* finalItem = pPlayer->StoreItem(dest, pItem, true))
-                                pPlayer->DestroyItemCount(BLACKMARKET_TOKEN, value, true, true);
-
-                                std::string subject = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
-                                std::string body = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_BODY);
-                                MailDraft(subject, body).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, pCreature->GetEntry()));
-
-                                /* if (pItem->GetProto()->Class != ITEM_CLASS_CONSUMABLE && pItem->GetProto()->Class != ITEM_CLASS_QUEST)
-                                    pItem->SetGuidValue(ITEM_FIELD_CREATOR, pPlayer->GetObjectGuid()); */
-
-                                // pPlayer->SendNewItem(pItem, 1, true, true, true, true);
-                            }
-                        }
-                        else
-                            DoScriptText(BLACKMARKET_SAY1, pCreature, pPlayer);
+                        std::string subject = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
+                        std::string body = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_BODY);
+                        MailDraft(subject, body).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, pCreature->GetEntry()));
                     }
-                    else
-                        DoScriptText(BLACKMARKET_SAY2, pCreature, pPlayer);
                 }
+                else
+                    DoScriptText(BLACKMARKET_SAY1, pCreature, pPlayer);
+            }
+            else
+                DoScriptText(BLACKMARKET_SAY2, pCreature, pPlayer);
         }
         else
             DoScriptText(BLACKMARKET_SAY3, pCreature, pPlayer);

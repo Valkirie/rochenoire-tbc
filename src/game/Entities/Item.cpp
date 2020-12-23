@@ -690,6 +690,11 @@ uint32 Item::GetSpell() const
     return 0;
 }
 
+int32 Item::GenerateItemRandomPropertyId(uint32 item_id, Item* item)
+{
+    uint32 suffixvalue = GetItemEnchantSuffix(item);
+    return GenerateItemRandomPropertyId(item_id, suffixvalue);
+}
 int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
 {
     uint32 suffixvalue;
