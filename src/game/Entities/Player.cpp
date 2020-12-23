@@ -13879,7 +13879,7 @@ void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGi
         q_status.uState = QUEST_CHANGED;
 
     if (announce)
-        SendQuestReward(pQuest, reward, xp, honor);
+        SendQuestReward(pQuest, questGiver, reward, xp, honor);
 
     bool handled = false;
 
@@ -15058,7 +15058,7 @@ void Player::SendQuestCompleteEvent(uint32 quest_id) const
     }
 }
 
-void Player::SendQuestReward(Quest const* pQuest, uint32 reward, uint32 XP, uint32 honor) const
+void Player::SendQuestReward(Quest const* pQuest, Object* questGiver, uint32 reward, uint32 XP, uint32 honor) const
 {
     uint32 questid = pQuest->GetQuestId();
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_QUEST_COMPLETE quest = %u", questid);
@@ -15093,11 +15093,13 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 reward, uint32 XP, uint
     // bonus upgrade : is enabled ?
     if (sWorld.getConfig(CONFIG_BOOL_BONUS_UPGRADE_QUEST))
     {
+        bool sendClap = false;
+
         // bonus upgrade : scroll RewChoiceItems
         if (Item* pItem = pQuest->RewChoiceItemIdUp[reward])
         {
             ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
-            PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this));
+            sendClap = true;
         }
 
         // bonus upgrade : scroll RewItems
@@ -15105,8 +15107,21 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 reward, uint32 XP, uint
             if (Item* pItem = pQuest->RewItemIdUp[i])
             {
                 ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
-                PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this)); // dirty : temp
+                sendClap = true;
             }
+
+        if (sendClap)
+        {
+            switch (questGiver->GetTypeId())
+            {
+            case TYPEID_UNIT:
+                Creature* creature = dynamic_cast<Creature*>(questGiver);
+                creature->HandleEmote(EMOTE_ONESHOT_APPLAUD);
+
+                PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this)); // dirty : temp
+                break;
+            }
+        }
     }
 }
 
