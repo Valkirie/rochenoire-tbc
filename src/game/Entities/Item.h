@@ -320,6 +320,7 @@ class Item : public Object
         uint32 GetItemSuffixFactor() const { return GetUInt32Value(ITEM_FIELD_PROPERTY_SEED); }
         void SetItemRandomProperties(int32 randomPropId);
         void UpdateItemSuffixFactor();
+        static int32 GenerateItemRandomPropertyId(uint32 item_id, Item* item);
         static int32 GenerateItemRandomPropertyId(uint32 item_id);
         static int32 GenerateItemRandomPropertyId(uint32 item_id, uint32& suffixvalue);
 
