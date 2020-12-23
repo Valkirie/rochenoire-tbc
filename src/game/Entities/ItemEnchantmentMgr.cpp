@@ -83,6 +83,37 @@ void LoadRandomEnchantmentsTable()
     sLog.outString();
 }
 
+uint32 GetItemEnchantSuffix(Item* item)
+{
+    if (!item) return 0;
+
+    uint32 ItemId = item->GetEntry();
+    ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(ItemId);
+
+    if (!pProto)
+        return 0;
+
+    uint32 entry = pProto->RandomProperty;
+    uint32 ench = item->GetItemRandomPropertyId();
+    EnchantmentStore::const_iterator tab = RandomItemEnch.find(entry);
+
+    if (tab == RandomItemEnch.end())
+    {
+        sLog.outErrorDb("Item RandomProperty / RandomSuffix id #%u used in `item_template` but it doesn't have records in `item_enchantment_template` table.", entry);
+        return 0;
+    }
+
+    const EnchStoreList& enchantList = tab->second;
+
+    for (auto ench_iter : enchantList)
+    {
+        if (ench == ench_iter.ench)
+            return ench_iter.suffixvalue;
+    }
+
+    return 0;
+}
+
 uint32 GetItemEnchantMod(uint32 entry)
 {
     uint32 suffixvalue;
@@ -105,13 +136,10 @@ uint32 GetItemEnchantMod(uint32 entry, uint32& suffixvalue)
     float fCount = 0;
 
     const EnchStoreList& enchantList = tab->second;
-    if (suffixvalue)
+    for (auto ench_iter : enchantList)
     {
-        for (auto ench_iter : enchantList)
-        {
-            if (suffixvalue == ench_iter.suffixvalue)
-                return ench_iter.ench;
-        }
+        if (suffixvalue == ench_iter.suffixvalue)
+            return ench_iter.ench;
     }
 
     for (auto ench_iter : enchantList)
