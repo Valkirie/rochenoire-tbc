@@ -2603,7 +2603,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pItem)
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
 
-        Item* newItem = Item::CreateItem(ItemId, 1, pPlayer);
+        Item* newItem = Item::CreateItem(ItemId, 1);
 
         if (!newItem)
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
