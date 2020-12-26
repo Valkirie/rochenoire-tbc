@@ -31,13 +31,13 @@ struct EnchStoreItem
 {
     uint32  ench;
     float   chance;
-    uint32  suffixvalue;
+    uint32  type;
 
     EnchStoreItem()
-        : ench(0), chance(0), suffixvalue(0) {}
+        : ench(0), chance(0), type(0) {}
 
-    EnchStoreItem(uint32 _ench, float _chance, uint32 _suffixvalue)
-        : ench(_ench), chance(_chance), suffixvalue(_suffixvalue) {}
+    EnchStoreItem(uint32 _ench, float _chance, uint32 _type)
+        : ench(_ench), chance(_chance), type(_type) {}
 };
 
 typedef std::vector<EnchStoreItem> EnchStoreList;
@@ -50,7 +50,7 @@ void LoadRandomEnchantmentsTable()
     RandomItemEnch.clear();                                 // for reload case
 
     uint32 count = 0;
-    QueryResult* result = WorldDatabase.Query("SELECT entry, ench, chance, suffixvalue FROM item_enchantment_template");
+    QueryResult* result = WorldDatabase.Query("SELECT entry, ench, chance, type FROM item_enchantment_template");
 
     if (result)
     {
@@ -64,10 +64,10 @@ void LoadRandomEnchantmentsTable()
             uint32 entry = fields[0].GetUInt32();
             uint32 ench = fields[1].GetUInt32();
             float chance = fields[2].GetFloat();
-            uint32 suffixvalue = fields[3].GetUInt32();
+            uint32 type = fields[3].GetUInt32();
 
             if (chance > 0.000001f && chance <= 100.0f)
-                RandomItemEnch[entry].push_back(EnchStoreItem(ench, chance, suffixvalue));
+                RandomItemEnch[entry].push_back(EnchStoreItem(ench, chance, type));
 
             ++count;
         }
@@ -108,7 +108,7 @@ uint32 GetItemEnchantSuffix(Item* item)
     for (auto ench_iter : enchantList)
     {
         if (ench == ench_iter.ench)
-            return ench_iter.suffixvalue;
+            return ench_iter.type;
     }
 
     return 0;
@@ -116,11 +116,11 @@ uint32 GetItemEnchantSuffix(Item* item)
 
 uint32 GetItemEnchantMod(uint32 entry)
 {
-    uint32 suffixvalue;
-    return GetItemEnchantMod(entry, suffixvalue);
+    uint32 type;
+    return GetItemEnchantMod(entry, type);
 }
 
-uint32 GetItemEnchantMod(uint32 entry, uint32& suffixvalue)
+uint32 GetItemEnchantMod(uint32 entry, uint32& type)
 {
     if (!entry) return 0;
 
@@ -138,7 +138,7 @@ uint32 GetItemEnchantMod(uint32 entry, uint32& suffixvalue)
     const EnchStoreList& enchantList = tab->second;
     for (auto ench_iter : enchantList)
     {
-        if (suffixvalue == ench_iter.suffixvalue)
+        if (type == ench_iter.type)
             return ench_iter.ench;
     }
 
@@ -159,7 +159,7 @@ uint32 GetItemEnchantMod(uint32 entry, uint32& suffixvalue)
 
         if (fCount > dRoll)
         {
-            suffixvalue = ench_iter.suffixvalue;
+            type = ench_iter.type;
             return ench_iter.ench;
         }
     }

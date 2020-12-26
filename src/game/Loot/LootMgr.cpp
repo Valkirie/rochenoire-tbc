@@ -400,7 +400,7 @@ LootItem::LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold)
     lootSlot          = _lootSlot;
     count             = urand(li.mincountOrRef, li.maxcount);     // constructor called for mincountOrRef > 0 only
     randomSuffix      = GenerateEnchSuffixFactor(itemId);
-    randomPropertyId  = Item::GenerateItemRandomPropertyId(itemId, suffixvalue);
+    randomPropertyId  = Item::GenerateItemRandomPropertyId(itemId, type);
     isBlocked         = false;
     currentLooterPass = false;
     isReleased        = false;
@@ -409,7 +409,7 @@ LootItem::LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold)
 	setRandomSuffixScaled();
 }
 
-LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot, uint32 _suffixvalue)
+LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot, uint32 _type)
 {
     itemProto = ObjectMgr::GetItemPrototype(_itemId);
     if (itemProto)
@@ -426,7 +426,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
 
     itemId            = _itemId;
     loot_level        = 0;
-    suffixvalue       = _suffixvalue;
+    type       = _type;
     lootSlot          = _lootSlot;
     conditionId       = 0;
     lootItemType      = LOOTITEM_TYPE_NORMAL;
@@ -471,7 +471,7 @@ void LootItem::setRandomPropertyScaled()
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
     {
         uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
-        if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid, suffixvalue))
+        if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid, type))
             randomPropertyIdArray[plevel] = rproperty;
     }
 }

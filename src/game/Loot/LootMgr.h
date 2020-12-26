@@ -201,7 +201,7 @@ struct LootItem
     bool         currentLooterPass : 1;
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
     uint32       loot_level;
-    uint32       suffixvalue;
+    uint32       type;
     std::map<uint32, uint32> randomPropertyIdArray;
     std::map<uint32, uint32> randomSuffixIdArray;
 
@@ -212,7 +212,7 @@ struct LootItem
     // Should be called for non-reference LootStoreItem entries only (mincountOrRef > 0)
     explicit LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold);
 
-    LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot, uint32 suffixvalue = 0);
+    LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _randomPropertyId, uint32 _lootSlot, uint32 type = 0);
 
 	int32 getRandomPropertyScaled(uint32 ilevel, bool won = false, bool display = true);
 	void setRandomPropertyScaled();
