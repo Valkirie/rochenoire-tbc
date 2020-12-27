@@ -2634,8 +2634,8 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         newItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer ? pPlayer->GetObjectGuid() : ObjectGuid());
         newItem->SetBinding(pItem->IsSoulBound());
 
-        // Transfert item properties : RandomProperty (done)
-        //                           : RandomSuffix   (done)
+        // Transfert item properties : RandomProperty
+        //                           : RandomSuffix
         if (int32 RandomProperty = pItem->GetItemRandomPropertyId())
         {
             if (RandomProperty > 0)
@@ -2646,6 +2646,17 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             else if(RandomProperty < 0)
             {
                 newItem->SetItemRandomProperties(RandomProperty);
+            }
+        }
+
+        // Transfert item properties : Enchantments
+        for (int i = 0; i < MAX_ENCHANTMENT_SLOT; ++i)
+        {
+            if (uint32 enchantment = pItem->GetEnchantmentId(EnchantmentSlot(i)))
+            {
+                uint32 duration = pItem->GetEnchantmentDuration(EnchantmentSlot(i));
+                uint32 charge = pItem->GetEnchantmentCharges(EnchantmentSlot(i));
+                newItem->SetEnchantment(EnchantmentSlot(i), enchantment, duration, charge, pPlayer->GetObjectGuid());
             }
         }
 
