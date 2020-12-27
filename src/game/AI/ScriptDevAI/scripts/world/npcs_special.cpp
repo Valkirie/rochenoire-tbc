@@ -2559,12 +2559,18 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(ItemId);
 
         if (!pProto)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         Item* pItem = pPlayer->GetItemByEntry(ItemId);
 
         if (!pItem)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
             pBlackMarketAI->InsertTrade(pPlayer->GetObjectGuid(), pItem->GetObjectGuid());
@@ -2594,23 +2600,35 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(ItemId);
 
         if (!pProto)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
         ObjectGuid gItem = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
 
         if (!gItem)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         Item* pItem = pPlayer->GetItemByGuid(gItem);
 
         if (!pItem)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         Item* newItem = Item::CreateItem(ItemId, 1);
 
         if (!newItem)
+        {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
+            return;
+        }
 
         // Transfert item properties : Soulbound
         newItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer ? pPlayer->GetObjectGuid() : ObjectGuid());
