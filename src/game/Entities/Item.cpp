@@ -856,7 +856,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
 	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* pPlayer)
+uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* pPlayer, uint32 _BonusQuality)
 {
 	if (pLevel > sWorld.GetCurrentMaxLevel())
 		pLevel = sWorld.GetCurrentMaxLevel();
@@ -895,7 +895,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 	}
 	else if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
 	{
-        uint32 BonusQuality = 0;
+        uint32 BonusQuality = _BonusQuality;
 
         // roll dice to see if item should be upgraded
         if (upgrade)
