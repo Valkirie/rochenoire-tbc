@@ -552,7 +552,7 @@ class DungeonMap : public Map
             uint32 m_flags;
         };
 
-        typedef std::map<std::string, CreatureRatio> CreatureRatioMap;
+        typedef std::map<std::pair<uint32, uint32>, CreatureRatio> CreatureRatioMap;
         typedef std::unordered_map<uint32, Creature*> CreatureMap;
 
         std::map<uint32, uint32> m_poolsStore;

@@ -780,8 +780,8 @@ void DungeonMap::UpdateCreature(uint32 guid, Creature* cr, bool erased)
     if (cr->IsTemporarySummon()) guid += mapId;
     uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-    std::string s_entry = std::to_string(cr->GetEntry()) + ":" + std::to_string(packId);
-    CreatureRatio& cdata = m_creaturesRatio[s_entry];
+    std::pair<uint32, uint32> key = std::make_pair(cr->GetEntry(), packId);
+    CreatureRatio& cdata = m_creaturesRatio[key];
 
     if (erased)
         cdata.removed = true;
@@ -924,8 +924,8 @@ void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
                 uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-                std::string s_entry = std::to_string(cinfo->Entry) + ":" + std::to_string(packId);
-                CreatureRatio& cdata = m_creaturesRatio[s_entry];
+                std::pair<uint32, uint32> key = std::make_pair(cinfo->Entry, packId);
+                CreatureRatio& cdata = m_creaturesRatio[key];
 
                 // Store once values
                 if (!cdata.m_health)
@@ -1088,8 +1088,8 @@ void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
                 if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
                 uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-                std::string s_entry = std::to_string(creature->GetEntry()) + ":" + std::to_string(packId);
-                CreatureRatio& cdata = m_creaturesRatio[s_entry];
+                std::pair<uint32, uint32> key = std::make_pair(creature->GetEntry(), packId);
+                CreatureRatio& cdata = m_creaturesRatio[key];
 
                 uint8 displayStatus = m_displayStore[guid];
                 if (displayStatus == DISPLAY_VISIBLE)
