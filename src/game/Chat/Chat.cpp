@@ -3444,7 +3444,7 @@ std::string ChatHandler::GetLocalItemLink(Item* pItem) const
         
         char* const* suffix = itemSuffix ? itemSuffix->nameSuffix : (itemProperty ? itemProperty->nameSuffix : nullptr);
 
-        std::string expectedName = std::string(pProto->Name1);
+        std::string name = std::string(pProto->Name1);
 
         int loc_idx = m_session->GetSessionDbLocaleIndex();
         if (loc_idx >= 0)
@@ -3452,32 +3452,39 @@ std::string ChatHandler::GetLocalItemLink(Item* pItem) const
             if (ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId))
             {
                 if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
-                    expectedName = il->Name[loc_idx];
+                    name = il->Name[loc_idx];
             }
         }
 
         if (suffix)
         {
-            expectedName += " ";
-            expectedName += suffix[loc_idx >= 0 ? loc_idx : 0];
+            name += " ";
+            name += suffix[loc_idx >= 0 ? loc_idx : 0];
         }
 
-        std::string Quality;
+        std::string quality;
         switch (pProto->Quality)
         {
         default:
-        case ITEM_QUALITY_NORMAL: Quality = "ffffff"; break;
-        case ITEM_QUALITY_POOR: Quality = "9d9d9d"; break;
-        case ITEM_QUALITY_UNCOMMON: Quality = "1eff00"; break;
-        case ITEM_QUALITY_RARE: Quality = "0070dd"; break;
-        case ITEM_QUALITY_EPIC: Quality = "a335ee"; break;
-        case ITEM_QUALITY_LEGENDARY: Quality = "ff8000"; break;
-        case ITEM_QUALITY_ARTIFACT: Quality = "e6cc80"; break;
+        case ITEM_QUALITY_NORMAL: quality = "ffffff"; break;
+        case ITEM_QUALITY_POOR: quality = "9d9d9d"; break;
+        case ITEM_QUALITY_UNCOMMON: quality = "1eff00"; break;
+        case ITEM_QUALITY_RARE: quality = "0070dd"; break;
+        case ITEM_QUALITY_EPIC: quality = "a335ee"; break;
+        case ITEM_QUALITY_LEGENDARY: quality = "ff8000"; break;
+        case ITEM_QUALITY_ARTIFACT: quality = "e6cc80"; break;
         }
 
-        //                  |cff1eff00         |Hitem:10219                                 :0:0:0:0:0:802                                   :0                                   |h[Elegant Circlet of the Owl]|h|r"               |h|r
-        //                  |cff1eff00         |Hitem:6607341                               :0:0:0:0:0:-60                                   :18                                  |h[Abomination Cleaver of the Wild]|h|r"
-        return m_session ? "|cff" + Quality + "|Hitem:" + std::to_string(pProto->ItemId) + ":0:0:0:0:0:" + std::to_string(RandomProperty) + ":" + std::to_string(SuffixFactor) + "|h[" + expectedName + "]|h|r" : expectedName;
+        std::string item_id      = std::to_string(pProto->ItemId);
+        std::string perm_ench_id = std::to_string(pItem->GetEnchantmentId(PERM_ENCHANTMENT_SLOT));
+        std::string gem1         = std::to_string(pItem->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT));
+        std::string gem2         = std::to_string(pItem->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_2));
+        std::string gem3         = std::to_string(pItem->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_3));
+        std::string bonus        = std::to_string(pItem->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT));
+        std::string ench_id      = std::to_string(RandomProperty);
+        std::string suff_id      = std::to_string(SuffixFactor);
+
+        return m_session ? "|cff" + quality + "|Hitem:" + item_id + ":" + perm_ench_id + ":" + gem1 + ":" + gem2 + ":" + gem3 + ":" + bonus + ":" + ench_id + ":" + suff_id + "|h[" + name + "]|h|r" : name;
     }
 
     return "";
