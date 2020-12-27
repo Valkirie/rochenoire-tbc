@@ -5914,7 +5914,7 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
     uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, spellProto);
 
     bool r_Scaled = !IsScaled;
-    if (log->attacker->IsPlayer())
+    if (log->attacker && log->attacker->IsPlayer())
         damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, r_Scaled, spellProto, EFFECT_INDEX_0, true); // revert
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
@@ -5991,14 +5991,17 @@ void Unit::SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const
     bool IsScaled = pInfo->scaled;
     uint32 damage = pInfo->damage;
 
-    if (IsScaled && aura->GetCaster()->IsPlayer())
+    if (aura->GetCaster() && aura->GetTarget())
     {
-        bool r_IsScaled = !IsScaled;
-        damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, r_IsScaled, spellProto, aura->GetEffIndex(), true);
+        if (IsScaled && aura->GetCaster()->IsPlayer())
+        {
+            bool r_IsScaled = !IsScaled;
+            damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, r_IsScaled, spellProto, aura->GetEffIndex(), true);
+        }
+        else // why would you ever land here ?
+            damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, IsScaled, spellProto, aura->GetEffIndex());
     }
-    else // why would you ever land here ?
-        damage = sObjectMgr.ScaleDamage(aura->GetCaster(), aura->GetTarget(), damage, IsScaled, spellProto, aura->GetEffIndex()); // ?????
-    
+
     WorldPacket data(SMSG_PERIODICAURALOG, 30);
     data << aura->GetTarget()->GetPackGUID();
     data << aura->GetCasterGuid().WriteAsPacked();
@@ -6173,7 +6176,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
 {
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "WORLD: Sending SMSG_ATTACKERSTATEUPDATE");
 
-    bool s_totalDamage = calcDamageInfo->attacker->IsPlayer();
+    bool s_totalDamage = calcDamageInfo->attacker ? calcDamageInfo->attacker->IsPlayer() : false;
     uint32 totalDamage = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, calcDamageInfo->totalDamage, s_totalDamage);
 
     // Subdamage count:
@@ -6193,7 +6196,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
     {
         auto &line = calcDamageInfo->subDamage[i];
 
-        bool s_subDamaged = calcDamageInfo->attacker->IsPlayer();
+        bool s_subDamaged = calcDamageInfo->attacker ? calcDamageInfo->attacker->IsPlayer() : false;
         uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, s_subDamaged);
 
         data << uint32(line.damageSchoolMask);
@@ -7074,7 +7077,7 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell)
 void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical, bool isScaled)
 {
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(SpellID);
-    if (pVictim->IsPlayer())
+    if (pVictim && pVictim->IsPlayer())
         Damage = sObjectMgr.ScaleDamage((Unit*)this, pVictim, Damage, isScaled, spellProto);
 
     WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
