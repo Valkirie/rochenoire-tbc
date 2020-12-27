@@ -2660,6 +2660,9 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             }
         }
 
+        // Transfert item properties : Durability
+        newItem->SetUInt32Value(ITEM_FIELD_DURABILITY, pItem->GetUInt32Value(ITEM_FIELD_DURABILITY));
+
         char buffer[50];
         uint32 value = GetTokenValue(newItem);
         std::string answer_yes = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_YES);
