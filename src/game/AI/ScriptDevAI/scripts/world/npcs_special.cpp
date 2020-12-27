@@ -2572,10 +2572,15 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         uint32 RequiredLevel = pPlayer->getLevel();
         uint32 s_RequiredLevel = std::max(pProto->Quality >= 4 ? 40 : pProto->RequiredLevel, RequiredLevel - 10) + 1;
 
-        uint32 p_ItemId = Item::LoadScaledParent(ItemId);
+        uint32 parent_ItemId = Item::LoadScaledParent(ItemId);
+
+        uint32 BonusUpgrade = 0;
+        if (ItemPrototype const* parent_pProto = ObjectMgr::GetItemPrototype(parent_ItemId))
+            BonusUpgrade = pProto->Quality - parent_pProto->Quality;
+
         for (int i = s_RequiredLevel; i <= RequiredLevel; i ++)
         {
-            uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, i);
+            uint32 s_ItemId = Item::LoadScaledLoot(parent_ItemId, i, false, nullptr, BonusUpgrade);
 
             std::string Name = getLocalItemName(pProto, pPlayer) + " [" + std::to_string(i) + "]";
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, Name.c_str(), GOSSIP_SENDER_MAIN, 20000000 + s_ItemId);
