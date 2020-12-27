@@ -1188,14 +1188,16 @@ void Item::SetEnchantment(EnchantmentSlot slot, uint32 id, uint32 duration, uint
     if ((GetEnchantmentId(slot) == id) && (GetEnchantmentDuration(slot) == duration) && (GetEnchantmentCharges(slot) == charges))
         return;
 
-    Player* owner = GetOwner();
-    if (slot < MAX_INSPECTED_ENCHANTMENT_SLOT)
+    if (Player* owner = GetOwner())
     {
-        if (uint32 oldEnchant = GetEnchantmentId(slot))
-            owner->SendEnchantmentLog(ObjectGuid(), GetEntry(), oldEnchant);
+        if (slot < MAX_INSPECTED_ENCHANTMENT_SLOT)
+        {
+            if (uint32 oldEnchant = GetEnchantmentId(slot))
+                owner->SendEnchantmentLog(ObjectGuid(), GetEntry(), oldEnchant);
 
-        if (id)
-            owner->SendEnchantmentLog(caster, GetEntry(), id);
+            if (id)
+                owner->SendEnchantmentLog(caster, GetEntry(), id);
+        }
     }
 
     SetUInt32Value(ITEM_FIELD_ENCHANTMENT_1_1 + slot * MAX_ENCHANTMENT_OFFSET + ENCHANTMENT_ID_OFFSET, id);
