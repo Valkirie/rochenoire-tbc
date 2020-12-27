@@ -93,8 +93,8 @@ uint32 GetItemEnchantSuffix(Item* item)
     if (!pProto)
         return 0;
 
-    uint32 entry = pProto->RandomProperty;
-    uint32 ench = item->GetItemRandomPropertyId();
+    int32 entry = pProto->RandomProperty != 0 ? pProto->RandomProperty : pProto->RandomSuffix;
+    int32 ench = pProto->RandomProperty != 0 ? item->GetItemRandomPropertyId() : -item->GetItemRandomPropertyId();
     EnchantmentStore::const_iterator tab = RandomItemEnch.find(entry);
 
     if (tab == RandomItemEnch.end())

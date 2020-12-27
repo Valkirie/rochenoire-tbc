@@ -698,7 +698,7 @@ int32 Item::GenerateItemRandomPropertyId(uint32 item_id, Item* item)
 
 int32 Item::GenerateItemRandomPropertyId(uint32 item_id)
 {
-    uint32 type;
+    uint32 type = 0;
     return GenerateItemRandomPropertyId(item_id, type);
 }
 

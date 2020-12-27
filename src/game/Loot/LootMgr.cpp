@@ -444,7 +444,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
 
 int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 {
-    if (!randomPropertyId)
+    if (!randomPropertyId && !randomSuffix)
         return randomPropertyId;
 
 	uint32 level = loot_level;
@@ -465,13 +465,13 @@ int32 LootItem::getRandomPropertyScaled(uint32 ilevel, bool won, bool display)
 
 void LootItem::setRandomPropertyScaled()
 {
-    if (!randomPropertyId || !randomPropertyIdArray.empty())
+    if ((!randomPropertyId && !randomSuffix) || !randomPropertyIdArray.empty())
         return;
 
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
     {
         uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
-        if (uint32 rproperty = Item::GenerateItemRandomPropertyId(itemid, type))
+        if (uint32 rproperty = randomPropertyId > 0 ? Item::GenerateItemRandomPropertyId(itemid, type) : randomPropertyId)
             randomPropertyIdArray[plevel] = rproperty;
     }
 }
