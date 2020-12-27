@@ -10912,8 +10912,9 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 		break;
 	}
 	
-    float coeffMaxAmount = (float)sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
+    float coeffMaxAmount = sWorld.getConfig(CONFIG_UINT32_SMART_LOOT_AMOUNT);
     float coeffModifier = std::max(qualityModifier, quantityModifier);
+    coeffModifier = std::max(1.0f, coeffModifier); // smart loot should never be a malus
 
 	return std::min(coeffModifier, coeffMaxAmount);
 }
