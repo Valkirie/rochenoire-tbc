@@ -2608,6 +2608,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
 
         // Transfert item properties : Soulbound
+        newItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer ? pPlayer->GetObjectGuid() : ObjectGuid());
         newItem->SetBinding(pItem->IsSoulBound());
 
         // Transfert item properties : RandomProperty (done)
