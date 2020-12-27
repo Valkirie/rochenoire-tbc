@@ -878,18 +878,18 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 		// look for an item below player level
 		for (uint32 j = pLevel; j > 0; j--)
 		{
-			std::string s = std::to_string(ItemId) + ":" + std::to_string(j);
+            std::pair<uint32,uint32> key = std::make_pair(ItemId, j);
 
-			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(s))
+			if (ItemLootScale const *sItem = sObjectMgr.GetItemLootScale(key))
 				return sItem->ReplacementId;
 		}
 
 		// look for the closest item above player level (backup)
 		for (uint32 j = pLevel; j < sWorld.GetCurrentMaxLevel(); j++)
 		{
-			std::string s = std::to_string(ItemId) + ":" + std::to_string(j);
+            std::pair<uint32, uint32> key = std::make_pair(ItemId, j);
 
-			if (ItemLootScale const* sItem = sObjectMgr.GetItemLootScale(s))
+			if (ItemLootScale const* sItem = sObjectMgr.GetItemLootScale(key))
 				return sItem->ReplacementId;
 		}
 	}

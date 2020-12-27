@@ -216,14 +216,26 @@ struct ZoneFlex
     uint32 LevelRangeMax;
 };
 
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1, T2>& p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second);
+
+        // Mainly for demonstration purposes, i.e. works but is overly simple
+        // In the real world, use sth. like boost.hash_combine
+        return h1 ^ h2;
+    }
+};
+
 typedef std::unordered_map<uint32, CreatureLocale> CreatureLocaleMap;
 typedef std::unordered_map<uint32, GameObjectLocale> GameObjectLocaleMap;
 typedef std::unordered_map<uint32, ItemLocale> ItemLocaleMap;
 typedef std::unordered_map<uint32, QuestLocale> QuestLocaleMap;
 typedef std::unordered_map<uint32, uint32> CreaturePoolMap;
 typedef std::unordered_map<uint32, ZoneFlex> ZoneFlexMap;
-typedef std::unordered_map<std::string, CreatureFlex> CreatureFlexMap;
-typedef std::unordered_map<std::string, ItemLootScale> LootScaleMap;
+typedef std::unordered_map<std::pair<uint32, uint32>, CreatureFlex, pair_hash> CreatureFlexMap;
+typedef std::unordered_map<std::pair<uint32, uint32>, ItemLootScale, pair_hash> LootScaleMap;
 typedef std::unordered_map<uint32, ItemLootScale> LootScaleParentingMap;
 typedef std::unordered_map<uint32, NpcTextLocale> NpcTextLocaleMap;
 typedef std::unordered_map<uint32, PageTextLocale> PageTextLocaleMap;
@@ -928,9 +940,9 @@ class ObjectMgr
             return &itr->second;
         }
 
-		CreatureFlex const* GetCreatureFlex(std::string entry) const
+		CreatureFlex const* GetCreatureFlex(std::pair<uint32, uint32> key) const
 		{
-            CreatureFlexMap::const_iterator itr = mCreatureFlexMap.find(entry);
+            CreatureFlexMap::const_iterator itr = mCreatureFlexMap.find(key);
 			if (itr == mCreatureFlexMap.end()) return nullptr;
 			return &itr->second;
 		}
@@ -950,9 +962,9 @@ class ObjectMgr
             return &itr->second;
         }
 
-		ItemLootScale const* GetItemLootScale(std::string entry) const
+		ItemLootScale const* GetItemLootScale(std::pair<uint32, uint32> key) const
 		{
-			LootScaleMap::const_iterator itr = mLootScaleMap.find(entry);
+			LootScaleMap::const_iterator itr = mLootScaleMap.find(key);
 			if (itr == mLootScaleMap.end()) return nullptr;
 			return &itr->second;
 		}

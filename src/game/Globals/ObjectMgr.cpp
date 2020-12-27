@@ -2705,8 +2705,8 @@ void ObjectMgr::LoadCreaturesScale()
 
 void ObjectMgr::AddCreatureScale(uint32 entry, uint32 map, uint32 nb_tank, uint32 nb_pack, float ratio_hrht, float ratio_c1, float ratio_c2)
 {
-    std::string s = std::to_string(entry) + ":" + std::to_string(map);
-    CreatureFlex& data = mCreatureFlexMap[s];
+    std::pair<uint32, uint32> key = std::make_pair(entry, map);
+    CreatureFlex& data = mCreatureFlexMap[key];
     data.c_entry = entry;
     data.m_entry = map;
     data.nb_tank = nb_tank;
@@ -2795,8 +2795,8 @@ void ObjectMgr::LoadLootScale()
 		data.ReplacementId = item;
 		data.plevel = level;
 
-		std::string s = std::to_string(entry) + ":" + std::to_string(level);
-		ItemLootScale& data2 = mLootScaleMap[s];
+        std::pair<uint32, uint32> key = std::make_pair(entry, level);
+		ItemLootScale& data2 = mLootScaleMap[key];
 		data2.ItemId = entry;
 		data2.ReplacementId = item;
 		data2.plevel = level;

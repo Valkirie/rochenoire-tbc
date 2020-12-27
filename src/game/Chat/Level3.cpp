@@ -3675,8 +3675,8 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
         float       	f_ratio_c1 = 0.0f;		// difficulty coefficient when raid size is close to min size raid
         float	        f_ratio_c2 = 0.0f;		// difficulty coefficient when raid size is close to max size raid
 
-        std::string s = std::to_string(Entry) + ":" + std::to_string(m_entry);
-        if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+        std::pair<uint32, uint32> key = std::make_pair(Entry, m_entry);
+        if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(key))
         {
             u_nbr_tank = f_values->nb_tank;
             u_nbr_pack = f_values->nb_pack;

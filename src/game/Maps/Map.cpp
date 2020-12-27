@@ -961,8 +961,8 @@ void DungeonMap::UpdateFlexibleCore(bool isRefresh, uint32 RefreshSize)
 
                 if (!cdata.treated)
                 {
-                    std::string s = std::to_string(cinfo->Entry) + ":" + std::to_string(GetId());
-                    if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(s))
+                    std::pair<uint32, uint32> key = std::make_pair(cinfo->Entry, GetId());
+                    if (CreatureFlex const* f_values = sObjectMgr.GetCreatureFlex(key))
                     {
                         cdata.nbr_tank = f_values->nb_tank;
                         cdata.nbr_pack = f_values->nb_pack;
