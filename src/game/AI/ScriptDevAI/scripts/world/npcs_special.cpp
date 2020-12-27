@@ -2607,6 +2607,24 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!newItem)
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
 
+        // Transfert item properties : Soulbound
+        newItem->SetBinding(pItem->IsSoulBound());
+
+        // Transfert item properties : RandomProperty (done)
+        //                           : RandomSuffix   (done)
+        if (int32 RandomProperty = pItem->GetItemRandomPropertyId())
+        {
+            if (RandomProperty > 0)
+            {
+                uint32 RandomProp = Item::GenerateItemRandomPropertyId(newItem->GetEntry(), pItem);
+                newItem->SetItemRandomProperties(RandomProp);
+            }
+            else if(RandomProperty < 0)
+            {
+                newItem->SetItemRandomProperties(RandomProperty);
+            }
+        }
+
         char buffer[50];
         uint32 value = GetTokenValue(newItem);
         std::string answer_yes = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_YES);
@@ -2638,17 +2656,6 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             Item* pItem = pBlackMarketAI->GetItem(pPlayer->GetObjectGuid()); // scaled item
             if (!gItem || !pItem)
                 return;
-
-            // Transfert item properties : Soulbound
-            pItem->SetBinding(gItem->IsSoulBound());
-
-            // Transfert item properties : RandomProperty (suffi)
-            //                           : RandomSuffix (todo)
-            if (gItem->GetItemRandomPropertyId())
-            {
-                uint32 RandomProp = Item::GenerateItemRandomPropertyId(pItem->GetEntry(), gItem);
-                pItem->SetItemRandomProperties(RandomProp);
-            }
 
             uint32 value = GetTokenValue(pItem);
             if (pPlayer->HasItemCount(BLACKMARKET_TOKEN, value))
