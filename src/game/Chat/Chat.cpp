@@ -3425,27 +3425,45 @@ std::string ChatHandler::GetLocalItemQuality(Item* pItem) const
 
 std::string ChatHandler::GetLocalItemLink(Item* pItem) const
 {
-    // |cff1eff00|Hitem:15211:0:584:0|h[Militant Shortsword of the Monkey]|h|r
     ItemPrototype const* pProto = pItem->GetProto();
 
     if (pProto)
     {
-        std::string Name;
-        Name = pProto->Name1;
+        ItemRandomPropertiesEntry const* itemProperty = nullptr;
+        ItemRandomSuffixEntry const* itemSuffix = nullptr;
+        int32 RandomProperty = pItem->GetItemRandomPropertyId();
+        uint32 SuffixFactor = 0;
+
+        if (RandomProperty > 0)
+            itemProperty = sItemRandomPropertiesStore.LookupEntry(RandomProperty);
+        else if (RandomProperty < 0)
+        {
+            itemSuffix = sItemRandomSuffixStore.LookupEntry(-RandomProperty);
+            SuffixFactor = itemSuffix ? pItem->GetItemSuffixFactor() : 0;
+        }
+        
+        char* const* suffix = itemSuffix ? itemSuffix->nameSuffix : (itemProperty ? itemProperty->nameSuffix : nullptr);
+
+        std::string expectedName = std::string(pProto->Name1);
 
         int loc_idx = m_session->GetSessionDbLocaleIndex();
         if (loc_idx >= 0)
         {
-            ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId);
-            if (il)
+            if (ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId))
             {
                 if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
-                    Name = il->Name[loc_idx];
+                    expectedName = il->Name[loc_idx];
             }
         }
 
+        if (suffix)
+        {
+            expectedName += " ";
+            expectedName += suffix[loc_idx >= 0 ? loc_idx : 0];
+        }
+
         std::string Quality;
-        switch (pProto->Quality) // cffa335ee
+        switch (pProto->Quality)
         {
         default:
         case ITEM_QUALITY_NORMAL: Quality = "ffffff"; break;
@@ -3457,7 +3475,9 @@ std::string ChatHandler::GetLocalItemLink(Item* pItem) const
         case ITEM_QUALITY_ARTIFACT: Quality = "e6cc80"; break;
         }
 
-        return m_session ? "|cff" + Quality + "|Hitem:" + std::to_string(pProto->ItemId) + ":0:" + std::to_string(pItem->GetItemRandomPropertyId()) + ":0|h[" + Name + "]|h|r" : Name;
+        //                  |cff1eff00         |Hitem:10219                                 :0:0:0:0:0:802                                   :0                                   |h[Elegant Circlet of the Owl]|h|r"               |h|r
+        //                  |cff1eff00         |Hitem:6607341                               :0:0:0:0:0:-60                                   :18                                  |h[Abomination Cleaver of the Wild]|h|r"
+        return m_session ? "|cff" + Quality + "|Hitem:" + std::to_string(pProto->ItemId) + ":0:0:0:0:0:" + std::to_string(RandomProperty) + ":" + std::to_string(SuffixFactor) + "|h[" + expectedName + "]|h|r" : expectedName;
     }
 
     return "";
