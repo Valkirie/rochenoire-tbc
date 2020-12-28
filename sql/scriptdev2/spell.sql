@@ -124,6 +124,9 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (36374,'spell_summon_smoke_beacon'),
 (37591,'spell_inebriate_removal'),
 (35754,'spell_soccothrates_charge'),
+(31617,'spell_raise_dead_hyjal'),
+(31624,'spell_raise_dead_hyjal'),
+(31625,'spell_raise_dead_hyjal'),
 (38028,'spell_watery_grave'),
 (34231,'spell_increased_holy_light_healing'),
 (33793,'spell_vazruden_liquid_fire_script'),
@@ -142,6 +145,30 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (38606,'spell_exorcism_feather'),
 (38640,'spell_koi_koi_death'),
 (38915,'spell_mental_interference'),
+(40309,'spell_possess_demon_shartuul'),
+(40222,'spell_smash_shield'),
+(40503,'spell_possession_transfer'),
+(41962,'spell_possession_transfer'),
+(40821,'spell_touch_of_madness'),
+(40824,'spell_madness_rift'),
+(40605,'spell_eredar_pre_gate_beam'),
+(40563,'spell_throw_axe'),
+(40493,'spell_super_jump'),
+(41589,'spell_cleansing_flame'),
+(41939,'spell_rampaging_charge'),
+(40736,'spell_death_blast'),
+(41579,'spell_iceblast'),
+(40658,'spell_absorb_life'),
+(40659,'spell_shartuul_dive_bomb'),
+(40557,'spell_flying_attack_aura'),
+(40556,'spell_fireball_barrage'),
+(40741,'spell_chaos_strike'),
+(41629,'spell_chaos_strike_transform'),
+(41593,'spell_shivan_shapeshift_form'),
+(41594,'spell_shivan_shapeshift_form'),
+(41595,'spell_shivan_shapeshift_form'),
+(40675,'spell_build_portable_fel_cannon'),
+(40777,'spell_stun_rope_attunement'),
 (40186,'spell_summon_blossom_move_target'),
 (40251,'spell_shadow_of_death'),
 (41289,'spell_ethereal_ring_signal_flare'),
@@ -163,10 +190,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (45043,'spell_power_circle'),
 (44006,'spell_teleport_self_akilzon'),
 (43681,'spell_inactive'),
+(40084,'spell_harpooners_mark'),
 (31258,'spell_winterchill_death_and_decay'),
 (31436,'spell_split_damage'),
 (31447,'spell_mark_of_kazrogal'),
 (31347,'spell_azgalor_doom'),
+(41625,'spell_fel_rage_3'),
 (40214,'spell_dragonmaw_illusion_base'),
 (42016,'spell_dragonmaw_illusion_transform'),
 (39810,'spell_sparrowhawk_net'),
@@ -178,6 +207,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (35864,'spell_nether_vapor_summon'),
 (35865,'spell_nether_vapor_summon_parent'),
 (45960,'spell_nether_vapor_lightning'),
+(39497,'spell_remove_weapons'),
 (31298,'spell_anetheron_sleep'),
 (41910,'spell_alar_phoenix_ember_blast'),
 (33985,'spell_use_corpse'),
@@ -185,6 +215,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (34012,'spell_raise_dead'),
 (34019,'spell_raise_dead'),
 (41071,'spell_raise_dead'),
+(40567,'spell_ogrila_flasks'),
+(40568,'spell_ogrila_flasks'),
+(40572,'spell_ogrila_flasks'),
+(40573,'spell_ogrila_flasks'),
+(40575,'spell_ogrila_flasks'),
+(40576,'spell_ogrila_flasks'),
 (34630,'spell_scrap_reaver_spell'),
 (34800,'spell_getting_sleepy_aura'),
 (43364,'spell_getting_sleepy_aura');
@@ -204,6 +240,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 -- Priest
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (10060,'spell_stacking_rules_override'),
+(15268,'spell_blackout'),
+(15323,'spell_blackout'),
+(15324,'spell_blackout'),
+(15325,'spell_blackout'),
+(15326,'spell_blackout'),
+(27827,'spell_spirit_of_redemption_heal'),
 (32676,'spell_consume_magic');
 
 -- Paladin
@@ -292,6 +334,19 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (12575,'spell_arcane_concentration'),
 (12576,'spell_arcane_concentration'),
 (12577,'spell_arcane_concentration');
+
+-- Druid
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(8936,'spell_regrowth'),
+(8938,'spell_regrowth'),
+(8939,'spell_regrowth'),
+(8940,'spell_regrowth'),
+(8941,'spell_regrowth'),
+(9750,'spell_regrowth'),
+(9856,'spell_regrowth'),
+(9857,'spell_regrowth'),
+(9858,'spell_regrowth'),
+(26980,'spell_regrowth');
 
 -- Battleground and Outdoor PvP
 -- Alterac Valley

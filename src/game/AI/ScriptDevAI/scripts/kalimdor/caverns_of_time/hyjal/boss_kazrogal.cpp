@@ -85,7 +85,7 @@ struct boss_kazrogalAI : public CombatAI
             case KAZROGAL_ACTION_WAR_STOMP: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(15000, 30000), SPELL_WAR_STOMP);
             case KAZROGAL_ACTION_CRIPPLE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(12000, 20000), SPELL_CRIPPLE);
             case KAZROGAL_ACTION_MARK_OF_KAZROGAL: 
-                return sObjectMgr.GetScaleSpellTimer(m_creature, 45000 - std::min(m_markOfKazrogalCounter, uint32(8)) * 5000, SPELL_MARK_OF_KAZROGAL); // reduce each use by 5000 until 5000
+                return sObjectMgr.GetScaleSpellTimer(m_creature, 45000 - std::min(m_markOfKazrogalCounter, uint32(7)) * 5000, SPELL_MARK_OF_KAZROGAL); // reduce each use by 5000 until 10000
             default: return 0; // never occurs but for compiler
         }
     }

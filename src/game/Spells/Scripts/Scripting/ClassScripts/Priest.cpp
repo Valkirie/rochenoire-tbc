@@ -19,6 +19,15 @@
 #include "Spells/Scripts/SpellScript.h"
 #include "Spells/SpellAuras.h"
 
+struct SpiritOfRedemptionHeal : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx == EFFECT_INDEX_0)
+            spell->SetDamage(spell->GetCaster()->GetMaxHealth());
+    }
+};
+
 enum
 {
     SPELL_PLAYER_CONSUME_MAGIC = 32676,
@@ -67,8 +76,20 @@ struct ShadowWordDeath : public SpellScript
     }
 };
 
+struct Blackout : public AuraScript
+{
+    bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override
+    {
+        if (!data.damage || data.isHeal)
+            return false;
+        return true;
+    }
+};
+
 void LoadPriestScripts()
 {
     RegisterSpellScript<ConsumeMagicSpellScript>("spell_consume_magic");
     RegisterSpellScript<ShadowWordDeath>("spell_shadow_word_death");
+    RegisterSpellScript<SpiritOfRedemptionHeal>("spell_spirit_of_redemption_heal");
+    RegisterAuraScript<Blackout>("spell_blackout");
 }

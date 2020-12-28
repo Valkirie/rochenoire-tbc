@@ -18,6 +18,7 @@
 SDName: Bosses_Opera
 SD%Complete: 95
 SDComment: Oz, Hood, and RAJ event implemented. Spell timers may need adjustments.
+Romulo's Poisoned Thrust will now be used less frequently. - Patch_2.1.0
 SDCategory: Karazhan
 EndScriptData */
 
@@ -1344,7 +1345,11 @@ struct boss_romuloAI : public ScriptedAI
         if (m_uiPoisonThrustTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_POISON_THRUST) == CAST_OK)
+#ifdef PRENERF_2_0_3
+                m_uiPoisonThrustTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(8000, 16000), SPELL_POISON_THRUST);
+#else
                 m_uiPoisonThrustTimer = sObjectMgr.GetScaleSpellTimer(m_creature, urand(10000, 20000), SPELL_POISON_THRUST);
+#endif
         }
         else
             m_uiPoisonThrustTimer -= uiDiff;

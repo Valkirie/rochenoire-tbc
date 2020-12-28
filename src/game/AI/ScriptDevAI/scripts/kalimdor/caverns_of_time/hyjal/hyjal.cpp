@@ -958,14 +958,7 @@ void instance_mount_hyjal::OnCreatureCreate(Creature* creature)
         case NPC_STALK:
         {
             ObjectGuid spawner = creature->GetSpawnerGuid(); // not loaded in map - guid is enough
-            if (!spawner) // Static spawns in Scourge base should never grant XP, loot or reputation
-            {
-                creature->SetNoXP(true);
-                creature->SetNoLoot(true);
-                creature->SetNoReputation(true);
-                return;
-            }
-            else if (spawner.GetEntry() != NPC_HYJAL_DESPAWN_TRIGGER && m_hyjalOverheadEnable) // Overrun mobs are not counted
+            if (spawner && spawner.GetEntry() != NPC_HYJAL_DESPAWN_TRIGGER && m_hyjalOverheadEnable) // Overrun mobs are not counted
                 m_waveSpawns.push_back(creature->GetObjectGuid());
             break;
         }
@@ -1021,6 +1014,32 @@ void instance_mount_hyjal::OnObjectCreate(GameObject* go)
     }
 }
 
+void instance_mount_hyjal::OnCreatureRespawn(Creature* creature)
+{
+    switch (creature->GetEntry())
+    {
+        case NPC_LESSER_INFERNAL: // need to despawn like wave mobs
+        case NPC_GHOUL:
+        case NPC_NECRO:
+        case NPC_ABOMI:
+        case NPC_BANSH:
+        case NPC_CRYPT:
+        case NPC_GARGO:
+        case NPC_FROST:
+        case NPC_INFERNAL:
+        case NPC_STALK:
+            ObjectGuid spawner = creature->GetSpawnerGuid(); // not loaded in map - guid is enough
+            if (!spawner) // Static spawns in Scourge base should never grant XP, loot or reputation
+            {
+                creature->SetNoXP(true);
+                creature->SetNoLoot(true);
+                creature->SetNoReputation(true);
+                return;
+            }
+            break;
+    }
+}
+
 void instance_mount_hyjal::OnCreatureEnterCombat(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
@@ -1042,6 +1061,11 @@ void instance_mount_hyjal::OnCreatureDeath(Creature* creature)
     {
         case NPC_WINTERCHILL:
             SetData(TYPE_WINTERCHILL, DONE);
+            if (Creature* jaina = GetSingleCreatureFromStorage(NPC_JAINA))
+            {
+                jaina->AI()->SendAIEvent(AI_EVENT_CUSTOM_D, jaina, jaina);
+                jaina->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+            }
             m_waveSpawns.erase(std::remove(m_waveSpawns.begin(), m_waveSpawns.end(), creature->GetObjectGuid()), m_waveSpawns.end());
             break;
         case NPC_ANETHERON:
@@ -1059,6 +1083,11 @@ void instance_mount_hyjal::OnCreatureDeath(Creature* creature)
         }
         case NPC_KAZROGAL:
             SetData(TYPE_KAZROGAL, DONE);
+            if (Creature* thrall = GetSingleCreatureFromStorage(NPC_THRALL))
+            {
+                thrall->AI()->SendAIEvent(AI_EVENT_CUSTOM_D, thrall, thrall);
+                thrall->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+            }
             m_waveSpawns.erase(std::remove(m_waveSpawns.begin(), m_waveSpawns.end(), creature->GetObjectGuid()), m_waveSpawns.end());
             break;
         case NPC_AZGALOR:
@@ -1459,19 +1488,22 @@ void instance_mount_hyjal::SpawnInvasionWave(uint32 index, bool setTimer)
         {
             HyjalWaveMob& mob = waveMobs[i];
 
+            TempSpawnSettings settings(spawner, mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_DEAD_DESPAWN, 0, true, true, GetRandomWavePath(mob.path));
+            if (mob.path == PATH_NONE)
+                settings.movegen = IDLE_MOTION_TYPE;
             if (index < 7)
             {
-                Creature* waveSpawn = spawner->SummonCreature(mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_DEAD_DESPAWN, 0, true, true, GetRandomWavePath(mob.path));
+                Creature* waveSpawn = WorldObject::SummonCreature(settings, spawner->GetMap());
                 m_overrunSpawns[BASE_ALLY].push_back(waveSpawn->GetObjectGuid());
             }
             else if (index < 14)
             {
-                Creature* waveSpawn = spawner->SummonCreature(mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_DEAD_DESPAWN, 0, true, true, GetRandomWavePath(mob.path));
+                Creature* waveSpawn = WorldObject::SummonCreature(settings, spawner->GetMap());
                 m_overrunSpawns[BASE_HORDE].push_back(waveSpawn->GetObjectGuid());
             }
             else
             {
-                Creature* waveSpawn = spawner->SummonCreature(mob.mobEntry, mob.x, mob.y, mob.z, mob.ori, TEMPSPAWN_MANUAL_DESPAWN, 0, true, true, GetRandomWavePath(mob.path));
+                Creature* waveSpawn = WorldObject::SummonCreature(settings, spawner->GetMap());
                 waveSpawn->SetRespawnDelay(350);
                 waveSpawn->SetCorpseDelay(300);
                 m_overrunSpawns[BASE_ELF].push_back(waveSpawn->GetObjectGuid());

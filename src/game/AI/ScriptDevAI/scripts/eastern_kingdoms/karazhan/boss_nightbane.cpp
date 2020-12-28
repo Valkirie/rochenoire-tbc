@@ -132,7 +132,7 @@ struct boss_nightbaneAI : public CombatAI
 
     void StartIntro()
     {
-        m_creature->GetMotionMaster()->MovePath(0, PATH_FROM_EXTERNAL);
+        m_creature->GetMotionMaster()->MovePath(0, PATH_FROM_EXTERNAL, FORCED_MOVEMENT_RUN);
     }
 
     void Aggro(Unit* /*who*/) override
@@ -179,6 +179,8 @@ struct boss_nightbaneAI : public CombatAI
     void SummonedCreatureJustDied(Creature* summoned) override
     {
         m_skeletons.erase(std::remove(m_skeletons.begin(), m_skeletons.end(), summoned->GetObjectGuid()), m_skeletons.end());
+        if (m_skeletons.empty() && m_phase == PHASE_AIR && !m_creature->HasAura(SPELL_RAIN_OF_BONES))
+            ResetCombatAction(NIGHTBANE_PHASE_RESET, 1000);
     }
 
     void MovementInform(uint32 motionType, uint32 pointId) override
@@ -322,7 +324,7 @@ struct boss_nightbaneAI : public CombatAI
             case NIGHTBANE_PHASE_RESET:
             {
                 DoScriptText(urand(0, 1) ? SAY_LAND_PHASE_1 : SAY_LAND_PHASE_2, m_creature);
-                m_creature->GetMotionMaster()->MovePath(1, PATH_FROM_ENTRY);
+                m_creature->GetMotionMaster()->MovePath(1, PATH_FROM_ENTRY, FORCED_MOVEMENT_WALK);
                 m_phase = PHASE_TRANSITION;
                 SetCombatScriptStatus(true);
                 DisableCombatAction(action);
@@ -356,7 +358,11 @@ struct boss_nightbaneAI : public CombatAI
             case NIGHTBANE_BELLOWING_ROAR:
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_BELLOWING_ROAR) == CAST_OK)
+#ifdef PRENERF_2_0_3
+                    ResetCombatAction(action, urand(30000, 45000));
+#else
                     ResetCombatAction(action, urand(38000, 48000));
+#endif
                 break;
             }
             case NIGHTBANE_CHARRED_EARTH:

@@ -220,7 +220,7 @@ struct LootItem
 	void setRandomSuffixScaled();
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot
-    bool AllowedForPlayer(Player const* player, WorldObject const* lootTarget) const;
+    bool AllowedForPlayer(Player const* player, WorldObject const* lootTarget, Player const* masterLooter) const;
     LootSlotType GetSlotTypeForSharedLoot(Player const* player, Loot const* loot) const;
     bool IsAllowed(Player const* player, Loot const* loot) const;
 };
@@ -331,7 +331,7 @@ class Loot
         LootItem* GetLootItemInSlot(uint32 itemSlot);
         GroupLootRoll* GetRollForSlot(uint32 itemSlot);
         InventoryResult SendItem(Player* target, uint32 itemSlot);
-        InventoryResult SendItem(Player* target, LootItem* lootItem);
+        InventoryResult SendItem(Player* target, LootItem* lootItem, bool sendError = true);
         WorldObject const* GetLootTarget() const { return m_lootTarget; }
         ObjectGuid const& GetLootGuid() const { return m_guidTarget; }
         ObjectGuid const& GetMasterLootGuid() const { return m_masterOwnerGuid; }
