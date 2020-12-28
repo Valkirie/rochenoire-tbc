@@ -7878,6 +7878,7 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets& targets, uint8 cast_
 
         Spell* spell = new Spell(this, spellInfo, TRIGGERED_NONE);
         spell->m_CastItem = item;
+        item->SetUsedInSpell(true);
         spell->m_cast_count = cast_count;                   // set count of casts
         spell->m_currentBasePoints[EFFECT_INDEX_0] = learning_spell_id;
         spell->SpellStart(&targets);
@@ -7914,6 +7915,7 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets& targets, uint8 cast_
 
         Spell* spell = new Spell(this, spellInfo, (count > 0));
         spell->m_CastItem = item;
+        item->SetUsedInSpell(true);
         spell->m_cast_count = cast_count;                   // set count of casts
         spell->SpellStart(&targets);
 

@@ -108,6 +108,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (30469,'spell_nether_beam'),
 (38546,'spell_face_random_target'),
 (30659,'spell_fel_infusion'),
+(31427,'spell_allergies'),
 (35139,'spell_throw_booms_doom'),
 (35150,'spell_nether_charge_passive'),
 (37670,'spell_nether_charge_timer'),
@@ -131,12 +132,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (36921,'spell_vazruden_liquid_fire_script'),
 (30700,'spell_face_highest_threat'),
 (36153,'spell_soulbind'),
+(35181,'spell_dive_bomb'),
 (36460,'spell_ultra_deconsolodation_zapper'),
 (37431,'spell_lurker_spout_initial'),
 (37429,'spell_lurker_spout_turning'),
 (37430,'spell_lurker_spout_turning'),
 (37851,'spell_tag_for_single_use'),
-(33985,'spell_tag_for_single_use'),
 (37896,'spell_to_infinity_and_above'),
 (38606,'spell_exorcism_feather'),
 (38640,'spell_koi_koi_death'),
@@ -162,12 +163,28 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (45043,'spell_power_circle'),
 (44006,'spell_teleport_self_akilzon'),
 (43681,'spell_inactive'),
+(31258,'spell_winterchill_death_and_decay'),
+(31436,'spell_split_damage'),
+(31447,'spell_mark_of_kazrogal'),
+(31347,'spell_azgalor_doom'),
+(40214,'spell_dragonmaw_illusion_base'),
+(42016,'spell_dragonmaw_illusion_transform'),
+(39810,'spell_sparrowhawk_net'),
+(34190,'spell_void_reaver_arcane_orb'),
+(41034,'spell_spell_absorption'),
 (35861,'spell_nether_vapor_summon'),
 (35862,'spell_nether_vapor_summon'),
 (35863,'spell_nether_vapor_summon'),
 (35864,'spell_nether_vapor_summon'),
 (35865,'spell_nether_vapor_summon_parent'),
 (45960,'spell_nether_vapor_lightning'),
+(31298,'spell_anetheron_sleep'),
+(41910,'spell_alar_phoenix_ember_blast'),
+(33985,'spell_use_corpse'),
+(34011,'spell_raise_dead'),
+(34012,'spell_raise_dead'),
+(34019,'spell_raise_dead'),
+(41071,'spell_raise_dead'),
 (34630,'spell_scrap_reaver_spell'),
 (34800,'spell_getting_sleepy_aura'),
 (43364,'spell_getting_sleepy_aura');
@@ -188,6 +205,10 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (10060,'spell_stacking_rules_override'),
 (32676,'spell_consume_magic');
+
+-- Paladin
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(31789,'spell_righteous_defense');
 
 -- Warlock
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
@@ -261,7 +282,8 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (20662,'spell_warrior_execute'),
 (25234,'spell_warrior_execute'),
 (25236,'spell_warrior_execute'),
-(20647,'spell_warrior_execute_damage');
+(20647,'spell_warrior_execute_damage'),
+(34428,'spell_warrior_victory_rush');
 
 -- Mage
 INSERT INTO spell_scripts(Id, ScriptName) VALUES

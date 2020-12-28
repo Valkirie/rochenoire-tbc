@@ -1382,7 +1382,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 30541:                                 // Blaze (Magtheridon)
                 case 30769:                                 // Pick Red Riding Hood (Karazhan, Big Bad Wolf)
                 case 30835:                                 // Infernal Relay (Karazhan, Prince Malchezaar)
-                case 31347:                                 // Doom (Hyjal Summit, Azgalor)
                 case 32312:                                 // Move 1 (Karazhan, Chess Event)
                 case 33711:                                 // Murmur's Touch (Shadow Labyrinth, Murmur)
                 case 37388:                                 // Move 2 (Karazhan, Chess Event)
@@ -1402,7 +1401,6 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo, WorldObject* caste
                 case 28542:                                 // Life Drain (Naxx, Sapphiron)
                     return 2;
                 case 30004:                                 // Flame Wreath (Karazhan, Shade of Aran)
-                case 31298:                                 // Sleep (Hyjal Summit, Anetheron)
                 case 39341:                                 // Karazhan - Chess, Medivh CHEAT: Fury of Medivh, Target Horde
                 case 39344:                                 // Karazhan - Chess, Medivh CHEAT: Fury of Medivh, Target Alliance
                     return 3;

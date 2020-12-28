@@ -302,15 +302,10 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
 
                 switch (m_spellInfo->Id)                    // better way to check unknown
                 {
-                    case 35181:                             // Al'ar - Dive Bomb
-                        if (unitTarget->GetObjectGuid() == m_targets.getUnitTargetGuid()) // summons two adds
-                            unitTarget->CastSpell(nullptr, 39110, TRIGGERED_OLD_TRIGGERED);
-                    // [[fallthrough]]
                     // Meteor like spells (divided damage to targets)
                     case 24340: case 26558: case 28884:     // Meteor
                     case 36837: case 38903: case 41276:     // Meteor
                     case 26789:                             // Shard of the Fallen Star
-                    case 31436:                             // Malevolent Cleave
                     case 40810: case 43267: case 43268:     // Saber Lash
                     case 42384:                             // Brutal Swipe
                     case 45150:                             // Meteor Slash
@@ -355,7 +350,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                         break;
                     case 38977:                             // Spore Quake Effect
                         if (roll_chance_i(33))
-                            unitTarget->CastSpell(unitTarget, 39002, TRIGGERED_OLD_TRIGGERED); // Spore Quake Knockdown
+                            m_caster->CastSpell(unitTarget, 39002, TRIGGERED_OLD_TRIGGERED); // Spore Quake Knockdown
                         break;
                     case 39384:
                     {
@@ -407,12 +402,6 @@ void Spell::EffectSchoolDMG(SpellEffectIndex eff_idx)
                 // Shield Slam
                 else if (m_spellInfo->SpellFamilyFlags & uint64(0x100000000))
                     damage += int32(m_caster->GetShieldBlockValue());
-                // Victory Rush
-                else if (m_spellInfo->SpellFamilyFlags & uint64(0x10000000000))
-                {
-                    damage = uint32(damage * m_caster->GetTotalAttackPowerValue(BASE_ATTACK) / 100);
-                    m_caster->ModifyAuraState(AURA_STATE_WARRIOR_VICTORY_RUSH, false);
-                }
                 break;
             }
             case SPELLFAMILY_WARLOCK:
@@ -3186,39 +3175,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
             }
             switch (m_spellInfo->Id)
             {
-                case 31789:                                 // Righteous Defense (step 1)
-                {
-                    if (m_caster->GetTypeId() != TYPEID_PLAYER)
-                    {
-                        SendCastResult(SPELL_FAILED_TARGET_AFFECTING_COMBAT);
-                        return;
-                    }
-
-                    // 31989 -> dummy effect (step 1) + taunt (step 2) -> 31790 (hits each target) + 31980 - UNK purpose
-                    Unit* friendTarget = !unitTarget || m_caster->CanAssistSpell(unitTarget, m_spellInfo) ? unitTarget : unitTarget->GetVictim();
-
-                    // non-standard cast requirement check
-                    if (!friendTarget || friendTarget->getAttackers().empty())
-                    {
-                        m_caster->RemoveSpellCooldown(*m_spellInfo, true);
-                        SendCastResult(SPELL_FAILED_TARGET_AFFECTING_COMBAT);
-                        return;
-                    }
-
-                    // not empty (checked), copy
-                    Unit::AttackerSet attackers = friendTarget->getAttackers();
-
-                    // selected from list 3
-                    size_t size = std::min(size_t(3), attackers.size());
-                    for (uint32 i = 0; i < size; ++i)
-                    {
-                        Unit::AttackerSet::iterator aItr = attackers.begin();
-                        std::advance(aItr, urand() % attackers.size());
-                        m_caster->CastSpell((*aItr), 31790, TRIGGERED_NONE); // step 2
-                        attackers.erase(aItr);
-                    }
-                    return;
-                }
                 case 37877:                                 // Blessing of Faith
                 {
                     if (!unitTarget)
@@ -4497,6 +4453,8 @@ void Spell::EffectSummonChangeItem(SpellEffectIndex eff_idx)
 
     Item* oldItem = m_CastItem;
 
+    if (m_CastItem)
+        m_CastItem->SetUsedInSpell(false);
     // prevent crash at access and unexpected charges counting with item update queue corrupt
     ClearCastItem();
 

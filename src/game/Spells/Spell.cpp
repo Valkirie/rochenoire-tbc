@@ -413,6 +413,8 @@ Spell::Spell(Unit* caster, SpellEntry const* info, uint32 triggeredFlags, Object
 
 Spell::~Spell()
 {
+    if (m_CastItem)
+        m_CastItem->SetUsedInSpell(false);
 }
 
 template<typename T>
@@ -2025,12 +2027,29 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
             if (!newUnitTarget)
                 break;
 
-            if (m_caster->CanAssistSpell(newUnitTarget, m_spellInfo))
-                tempUnitList.push_back(newUnitTarget);
-            else
+            if (!m_caster->CanAssistSpell(newUnitTarget, m_spellInfo))
             {
-                if (!CheckAndAddMagnetTarget(newUnitTarget, effIndex, targetB, targetingData))
-                    tempUnitList.push_back(newUnitTarget);
+                if (CheckAndAddMagnetTarget(newUnitTarget, effIndex, targetB, targetingData))
+                    break;
+            }
+
+            tempUnitList.push_back(newUnitTarget);
+
+            // More than one target
+            if (targetingData.chainTargetCount[effIndex] > 1)
+            {
+                // Getting spell casting distance
+                float minRadiusCaster = 0, maxRadiusTarget = 0;
+                GetChainJumpRange(m_spellInfo, effIndex, minRadiusCaster, maxRadiusTarget);
+
+                // Filling target map
+                UnitList tempAoeList;
+                {
+                    FillAreaTargets(tempAoeList, maxRadiusTarget, cone, PUSH_TARGET_CENTER, SPELL_TARGETS_ALL);
+                    tempAoeList.erase(std::remove(tempAoeList.begin(), tempAoeList.end(), newUnitTarget), tempAoeList.end());
+                }
+
+                tempUnitList.splice(tempUnitList.end(), tempAoeList);
             }
             break;
         }
@@ -3167,6 +3186,9 @@ void Spell::handle_immediate()
     // Remove used for cast item if need (it can be already nullptr after TakeReagents call
     TakeCastItem();
 
+    // AOE caps implementation - only works for non-travelling spells
+    ProcessAOECaps();
+
     DoAllTargetlessEffects(true);
 
     for (auto& ihit : m_UniqueTargetInfo)
@@ -3311,6 +3333,35 @@ void Spell::_handle_finish_phase()
             m_caster->DoExtraAttacks(target);
         else
             m_caster->m_extraAttacks = 0;
+    }
+}
+
+void Spell::ProcessAOECaps()
+{
+    if (!m_spellInfo->HasAttribute(SPELL_ATTR_AOE_CAP))
+        return;
+
+    uint32 i;
+    for (i = 0; i < MAX_EFFECT_INDEX; ++i)
+        if (m_spellInfo->Effect[i] == SPELL_EFFECT_SCHOOL_DAMAGE)
+            break;
+
+    uint32 aggregatedDamage = 0;
+    uint32 count = 0;
+    for (auto& ihit : m_UniqueTargetInfo)
+    {
+        if (ihit.effectMask & (1 << i))
+        {
+            aggregatedDamage += ihit.damage;
+            ++count;
+        }
+    }
+
+    int32 value = CalculateSpellEffectValue(SpellEffectIndex(i), nullptr, true) * 10;
+    if (int32(aggregatedDamage) > value)
+    {
+        for (auto& ihit : m_UniqueTargetInfo)
+            ihit.damage = (value / count);
     }
 }
 
@@ -3554,8 +3605,6 @@ void Spell::finish(bool ok)
             {
                 case SPELL_MISS_MISS:
                 case SPELL_MISS_DODGE:
-                    if (m_spellInfo->powerType == POWER_RAGE) // For Warriors only refund on parry/deflect, for rogues on all 4
-                        break;
                 case SPELL_MISS_PARRY:
                 case SPELL_MISS_DEFLECT:
                     m_caster->ModifyPower(Powers(m_spellInfo->powerType), int32(float(m_powerCost) * 0.8f));
@@ -4112,6 +4161,8 @@ void Spell::TakeCastItem()
 
     if (expendable && withoutCharges)
     {
+        if (m_CastItem)
+            m_CastItem->SetUsedInSpell(false);
         uint32 count = 1;
         ((Player*)m_caster)->DestroyItemCount(m_CastItem, count, true);
 
@@ -4214,6 +4265,7 @@ void Spell::TakeReagents()
                     }
                 }
 
+                m_CastItem->SetUsedInSpell(false);
                 m_CastItem = nullptr;
                 m_CastItemGuid.Clear();
             }
@@ -4438,7 +4490,7 @@ SpellCastResult Spell::CheckCast(bool strict)
     {
         if (m_spellInfo->HasAttribute(SPELL_ATTR_OUTDOORS_ONLY) &&
                 !m_caster->GetTerrain()->IsOutdoors(m_caster->GetPositionX(), m_caster->GetPositionY(), m_caster->GetPositionZ()))
-            return SPELL_FAILED_ONLY_OUTDOORS;
+            return SPELL_FAILED_ONLY_OUTDOORS; // TODO: If at least one effect is SPELL_AURA_MOUNTED return mounts not allowed
 
         if (m_spellInfo->HasAttribute(SPELL_ATTR_INDOORS_ONLY) &&
                 m_caster->GetTerrain()->IsOutdoors(m_caster->GetPositionX(), m_caster->GetPositionY(), m_caster->GetPositionZ()))
@@ -4522,6 +4574,20 @@ SpellCastResult Spell::CheckCast(bool strict)
         return SPELL_FAILED_CASTER_AURASTATE;
 
     Unit* target = m_targets.getUnitTarget();
+    if (m_spellInfo->HasAttribute(SPELL_ATTR_EX5_ALLOW_TARGET_OF_TARGET_AS_TARGET) && target)
+    {
+        if (!(m_caster->CanAssistSpell(target, m_spellInfo)))
+        {
+            if (m_spellInfo->HasAttribute(SPELL_ATTR_EX5_ALLOW_TARGET_OF_TARGET_AS_TARGET))
+            {
+                if (Unit* targetOfUnitTarget = target->GetTarget(m_caster))
+                {
+                    if (m_caster->CanAssistSpell(targetOfUnitTarget, m_spellInfo))
+                        target = targetOfUnitTarget;
+                }
+            }
+        }
+    }
     if (target)
     {
         // TARGET_UNIT_SCRIPT_NEAR_CASTER fills unit target per client requirement but should not be checked against common things
@@ -6632,7 +6698,7 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, CheckE
             if (((Player*)target)->GetVisibility() == VISIBILITY_OFF)
                 return false;
 
-            if (((Player*)target)->isGameMaster() && !IsPositiveSpell(m_spellInfo->Id, realCaster, target))
+            if (((Player*)target)->isGameMaster() && !IsPositiveEffect(m_spellInfo, eff, realCaster, target))
                 return false;
         }
 
@@ -6696,8 +6762,16 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, CheckE
         if (m_spellInfo->HasAttribute(SPELL_ATTR_EX3_CAST_ON_DEAD) && target->IsAlive())
             return false;
 
-        if (!IsAllowingDeadTarget(m_spellInfo) && !target->IsAlive() && !(target == m_caster && m_spellInfo->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_DEAD)) && m_caster->GetTypeId() == TYPEID_PLAYER)
-            return false;
+        if (!IsAllowingDeadTarget(m_spellInfo) && !target->IsAlive())
+        {
+            if (m_caster->GetTypeId() == TYPEID_PLAYER)
+                if (target != m_caster || !m_spellInfo->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_DEAD))
+                    return false;
+
+            if (target != m_caster)
+				if (info.filter == TARGET_HELPFUL)
+					return false;
+        }
     }
 
     if (target->IsCreature() && target != m_targets.getUnitTarget() && info.enumerator == TARGET_ENUMERATOR_CHAIN && info.filter == TARGET_HARMFUL) // TODO: Mother Shahraz beams can target totems
@@ -7322,6 +7396,24 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex /*effInde
             filterUnitList.push_back(hatedTarget);
             break;
         }
+        case SCHEME_RANDOM_CHAIN:
+        {
+            Unit* unitTarget = m_targets.getUnitTarget();
+            if (filterUnitList.empty() || filterUnitList.front() != unitTarget)
+                break;
+            if (chainTargetCount > 1 && filterUnitList.size() > chainTargetCount)
+            {
+                // remove random units from the map
+                while (filterUnitList.size() > chainTargetCount)
+                {
+                    uint32 poz = urand(1, filterUnitList.size() - 1);
+                    auto itr = filterUnitList.begin();
+                    std::advance(itr, poz);
+                    itr = filterUnitList.erase(itr);
+                }
+            }
+            break;
+        }
         case SCHEME_CLOSEST_CHAIN:
         {
             Unit* unitTarget = m_targets.getUnitTarget();
@@ -7353,7 +7445,7 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex /*effInde
 
                 --chainTargetCount;
             }
-            filterUnitList = newList;
+            std::swap(filterUnitList, newList);
             break;
         }
         case SCHEME_LOWEST_HP_CHAIN:
@@ -7398,7 +7490,7 @@ void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex /*effInde
 
                 --chainTargetCount;
             }
-            filterUnitList = newList;
+            std::swap(filterUnitList, newList);
             break;
         }
     }
@@ -7721,7 +7813,6 @@ bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
         case 25754:
         case 26457:
         case 26559:
-        case 31447:                                         // Mark of Kazrogal
             if (target->GetPowerType() != POWER_MANA)
                 return false;
             break;
@@ -7752,10 +7843,6 @@ bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
                     return false;
             break;
         }
-        case 31789: // Righteous defense needs player target
-            if (target->GetTypeId() != TYPEID_PLAYER)
-                return false;
-            break;
         case 32124:                                         // Cant hit players
         case 33512:                                         // Kazzak's Assault - likely should not hit players
             if (target->GetTypeId() == TYPEID_PLAYER)
@@ -7877,8 +7964,6 @@ bool Spell::OnCheckTarget(Unit* target, SpellEffectIndex eff) const
         }
         case 30769:                             // Pick Red Riding Hood
         case 30843:                             // Enfeeble
-        case 31298:                             // Sleep
-        case 31347:                             // Doom
         case 36797:                             // Mind Control (Kael'thas)
         case 40243:                             // Crushing Shadows - Teron Gorefiend
         case 41376:                             // Spite

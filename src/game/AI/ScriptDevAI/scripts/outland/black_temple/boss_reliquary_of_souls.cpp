@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Reliquary_of_Souls
-SD%Complete: 90
-SDComment: Persistent Area Auras for each Essence (Aura of Suffering, Aura of Desire, Aura of Anger) requires core support.
+SD%Complete: 100
+SDComment:
 SDCategory: Black Temple
 EndScriptData */
 
@@ -320,7 +320,7 @@ struct essence_base_AI : public ScriptedAI, public CombatActions
 
         // Move to home position
         if (Creature* pReliquary = m_instance->GetSingleCreatureFromStorage(NPC_RELIQUARY_OF_SOULS))
-            m_creature->GetMotionMaster()->MovePoint(1, pReliquary->GetPositionX(), pReliquary->GetPositionY(), pReliquary->GetPositionZ());
+            m_creature->GetMotionMaster()->MovePoint(1, pReliquary->GetPositionX(), pReliquary->GetPositionY(), pReliquary->GetPositionZ(), FORCED_MOVEMENT_RUN);
 
         m_bIsPhaseFinished = true;
 
@@ -493,7 +493,7 @@ struct boss_essence_of_desireAI : public essence_base_AI
         {
             case DESIRE_ACTION_RUNE_SHIELD: return sObjectMgr.GetScaleSpellTimer(m_creature, 15000u, SPELL_RUNE_SHIELD);
             case DESIRE_ACTION_DEADEN: return sObjectMgr.GetScaleSpellTimer(m_creature, 30000u, SPELL_DEADEN);
-            case DESIRE_ACTION_SPIRIT_SHOCK: return sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, SPELL_SPIRIT_SHOCK); // chain cast during tbc
+            case DESIRE_ACTION_SPIRIT_SHOCK: return sObjectMgr.GetScaleSpellTimer(m_creature, 2000u, SPELL_SPIRIT_SHOCK); // chain cast during tbc
             default: return 0;
         }
     }
@@ -525,6 +525,12 @@ struct boss_essence_of_desireAI : public essence_base_AI
         if (dealer)
             dealer->CastCustomSpell(dealer, SPELL_AURA_OF_DESIRE_SELF_DMG, &damageTaken, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED);
         ScriptedAI::DamageTaken(dealer, damage, damagetype, spellInfo);
+    }
+
+    void OnSpellInterrupt(SpellEntry const* spellInfo)
+    {
+        if (spellInfo->Id == SPELL_SPIRIT_SHOCK)
+            ResetCombatAction(DESIRE_ACTION_SPIRIT_SHOCK, 5000);
     }
 
     void ExecuteActions() override

@@ -640,6 +640,66 @@ struct GettingSleepyAura : public AuraScript
     }
 };
 
+struct AllergiesAura : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (apply)
+            aura->ForcePeriodicity(10 * IN_MILLISECONDS);
+    }
+
+    void OnPeriodicDummy(Aura* aura) const override
+    {
+        if (urand(0, 2) > 0)
+            aura->GetTarget()->CastSpell(nullptr, 31428, TRIGGERED_OLD_TRIGGERED); // Sneeze
+    }
+};
+
+enum
+{
+    SPELL_USE_CORPSE = 33985,
+};
+
+struct RaiseDead : public SpellScript
+{
+    bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        if (!target->IsCreature() || static_cast<Creature*>(target)->HasBeenHitBySpell(SPELL_USE_CORPSE))
+            return false;
+
+        return true;
+    }
+};
+
+struct UseCorpse : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Unit* target = spell->GetUnitTarget();
+        if (!target || !target->IsCreature())
+            return;
+
+        static_cast<Creature*>(target)->RegisterHitBySpell(SPELL_USE_CORPSE);
+    }
+};
+
+struct SplitDamage : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (spell->m_spellInfo->Effect[effIdx] != SPELL_EFFECT_SCHOOL_DAMAGE)
+            return;
+
+        uint32 count = 0;
+        auto& targetList = spell->GetTargetList();
+        for (Spell::TargetList::const_iterator ihit = targetList.begin(); ihit != targetList.end(); ++ihit)
+            if (ihit->effectHitMask & (1 << effIdx))
+                ++count;
+
+        spell->SetDamage(spell->GetDamage() / count); // divide to all targets
+    }
+};
+
 void AddSC_spell_scripts()
 {
     Script* pNewScript = new Script;
@@ -660,6 +720,10 @@ void AddSC_spell_scripts()
     RegisterSpellScript<FelInfusion>("spell_fel_infusion");
     RegisterAuraScript<AuchenaiPossess>("spell_auchenai_possess");
     RegisterAuraScript<GettingSleepyAura>("spell_getting_sleepy_aura");
+    RegisterAuraScript<AllergiesAura>("spell_allergies");
+    RegisterSpellScript<UseCorpse>("spell_use_corpse");
+    RegisterSpellScript<RaiseDead>("spell_raise_dead");
+    RegisterSpellScript<SplitDamage>("spell_split_damage");
     RegisterSpellScript<spell_battleground_banner_trigger>("spell_battleground_banner_trigger");
     RegisterSpellScript<spell_outdoor_pvp_banner_trigger>("spell_outdoor_pvp_banner_trigger");
 }
