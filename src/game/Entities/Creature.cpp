@@ -1859,7 +1859,7 @@ void Creature::Respawn()
 	RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
 }
 
-void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale, bool TriggerScript)
+void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale)
 {
     if (timeMSToDespawn)
     {
@@ -1876,16 +1876,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool Forced
         SetDeathState(JUST_DIED);
 
     if (ForcedScale)
-    {
         SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SCALED);
-
-        if (TriggerScript)
-        {
-            // Inform Instance Data and Linking
-            if (InstanceData* mapInstance = GetInstanceData())
-                mapInstance->OnCreatureDeath(this);
-        }
-    }
 
     RemoveCorpse(true);                                     // force corpse removal in the same grid
 

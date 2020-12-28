@@ -2681,7 +2681,7 @@ void Pet::ResetCorpseRespawn()
     m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(1000); // rudimentary value - just need more than now
 }
 
-void Pet::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
+void Pet::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive, bool ForcedScale)
 {
     if (timeMSToDespawn)
     {

@@ -854,7 +854,7 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
                     else
                         weaponSpeedHitFactor = uint32(dealer->GetAttackTime(cleanDamage->attackType) / 1000.0f * 3.5f);
 
-                    static_cast<Player*>(dealer)->RewardRage(olddamage->damage, weaponSpeedHitFactor, true);
+                    static_cast<Player*>(dealer)->RewardRage(olddamage, weaponSpeedHitFactor, true);
 
                     break;
                 }
@@ -865,7 +865,7 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
                     else
                         weaponSpeedHitFactor = uint32(dealer->GetAttackTime(cleanDamage->attackType) / 1000.0f * 1.75f);
 
-                    static_cast<Player*>(dealer)->RewardRage(olddamage->damage, weaponSpeedHitFactor, true);
+                    static_cast<Player*>(dealer)->RewardRage(olddamage, weaponSpeedHitFactor, true);
 
                     break;
                 }

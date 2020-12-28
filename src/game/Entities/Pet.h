@@ -300,7 +300,7 @@ class Pet : public Creature
 
         void ResetCorpseRespawn();
 
-        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false) override;
+        void ForcedDespawn(uint32 timeMSToDespawn = 0, bool onlyAlive = false, bool ForcedScale = false) override;
     protected:
         uint32  m_happinessTimer;
         uint32  m_loyaltyTimer;
