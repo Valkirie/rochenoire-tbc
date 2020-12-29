@@ -201,7 +201,7 @@ class Quest
         int32  GetZoneOrSort() const { return ZoneOrSort; }
         uint32 GetMinLevel() const { return MinLevel; }
         int32  GetQuestLevel() const { return QuestLevel; }
-        int32  GetQuestRelativeLevel() const { return QuestLevel - MinLevel; }
+        int32  GetQuestRelativeLevel() const;
         uint32 GetType() const { return Type; }
         uint32 GetRequiredClasses() const { return RequiredClasses; }
         uint32 GetRequiredRaces() const { return RequiredRaces; }
@@ -264,7 +264,7 @@ class Quest
         bool IsActive() const { return m_isActive; }
 
 		// scaling
-		bool IsSpecificQuest() const { return (Type == 62 /* RAID */ || Type == 41 /* PVP */ || GetRequiredClasses() == 1 || GetRequiredClasses() == 2 || GetRequiredClasses() == 4 || GetRequiredClasses() == 8 || GetRequiredClasses() == 16 || GetRequiredClasses() == 32 || GetRequiredClasses() == 64 || GetRequiredClasses() == 128 || GetRequiredClasses() == 256 || GetRequiredClasses() == 512 || GetRequiredClasses() == 1024); }
+		bool IsSpecificQuest() const { return (Type == QUEST_TYPE_RAID || Type == QUEST_TYPE_PVP || GetRequiredClasses() >= CLASS_WARRIOR); }
 
         // multiple values
         std::string ObjectiveText[QUEST_OBJECTIVES_COUNT];

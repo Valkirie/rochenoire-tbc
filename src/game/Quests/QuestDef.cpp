@@ -217,11 +217,8 @@ uint32 Quest::XPValue(Player* pPlayer) const
 int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 {
 	int32 sRewOrReqMoney = RewOrReqMoney;
-	if (pPlayer)
+	if (pPlayer && GetQuestRelativeLevel())
 	{
-		/* if (RewOrReqMoney <= 0)
-			return RewOrReqMoney; */
-
 		uint32 pQuest_slevel = pPlayer->GetQuestLevelForPlayer(this);
 
 		int32 expected_RewOrReqMoney = int32(0.0472 * pow(QuestLevel, 3) + 1.894 * pow(QuestLevel, 2) + 8.6352 * (QuestLevel));
@@ -230,12 +227,15 @@ int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 
 		sRewOrReqMoney = difference_RewOrReqMoney * (float)leveled_RewOrReqMoney;
 	}
+    else if(RewOrReqMoney <= 0)
+        return RewOrReqMoney;
+
 	return sRewOrReqMoney * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY);
 }
 
 uint32 Quest::GetRewMoneyMaxLevel(Player *pPlayer) const
 {
-    if (pPlayer)
+    if (pPlayer && GetQuestRelativeLevel())
 	{
         uint32 pQuest_slevel = pPlayer->GetQuestLevelForPlayer(this);
 
@@ -264,4 +264,12 @@ uint32 Quest::GetCharTitleBitIndex() const
         return 0;
     CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(CharTitleId);
     return titleEntry ? titleEntry->bit_index : 0;
+}
+
+int32 Quest::GetQuestRelativeLevel() const
+{
+    if (QuestLevel <= 0 || MinLevel <= 0)
+        return 0;
+
+    return std::min(uint32(QuestLevel - MinLevel), uint32(sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF)));
 }
