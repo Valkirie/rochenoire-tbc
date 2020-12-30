@@ -2242,23 +2242,117 @@ struct mob_phoenix_tkAI : public CombatAI
     void ExecuteAction(uint32 action) override { }
 };
 
+enum
+{
+    BLACKMARKET_ARMOR_MISC = 11041,
+    BLACKMARKET_ARMOR_CLOTH = 11042,
+    BLACKMARKET_ARMOR_LEATHER = 11043,
+    BLACKMARKET_ARMOR_MAIL = 11044,
+    BLACKMARKET_ARMOR_PLATE = 11045,
+    BLACKMARKET_ARMOR_SHIELD = 11046,
+
+    BLACKMARKET_WEAPON_AXE = 11050,
+    BLACKMARKET_WEAPON_AXE2 = 11051,
+    BLACKMARKET_WEAPON_BOW = 11052,
+    BLACKMARKET_WEAPON_GUN = 11053,
+    BLACKMARKET_WEAPON_MACE = 11054,
+    BLACKMARKET_WEAPON_MACE2 = 11055,
+    BLACKMARKET_WEAPON_POLEARM = 11056,
+    BLACKMARKET_WEAPON_SWORD = 11057,
+    BLACKMARKET_WEAPON_SWORD2 = 11058,
+    BLACKMARKET_WEAPON_STAFF = 11059,
+    BLACKMARKET_WEAPON_FIST = 11060,
+    BLACKMARKET_WEAPON_MISC = 11061,
+    BLACKMARKET_WEAPON_DAGGER = 11062,
+    BLACKMARKET_WEAPON_THROWN = 11063,
+    BLACKMARKET_WEAPON_SPEAR = 11064,
+    BLACKMARKET_WEAPON_CROSSBOW = 11065,
+    BLACKMARKET_WEAPON_WAND = 11066,
+    BLACKMARKET_WEAPON_FISHING_POLE = 11067,
+
+    BLACKMARKET_ANSWER_YES = 11100,
+    BLACKMARKET_ANSWER_NO = 11101,
+    BLACKMARKET_ANSWER_DETAILS = 11102,
+
+    BLACKMARKET_SAY1 = -1901060, // You don't have enough inventory space $N!
+    BLACKMARKET_SAY2 = -1901061, // What a scammer, $N ! You don't have enough tokens !
+    BLACKMARKET_SAY3 = -1901062, // You're wasting my time...
+
+    BLACKMARKET_CALL1 = -1901063, // Time is money friend, thats all I ever hear, hows about moving this dang mailbox to me if time is so important.
+    BLACKMARKET_CALL2 = -1901064, // Go there... Do this...
+    BLACKMARKET_CALL3 = -1901065, // Why don't you just go and raid yourself some new damn items, instead of bothering me?
+
+    BLACKMARKET_MAIL1 = -1901066, // I don't get paid enough for this...
+    BLACKMARKET_MAIL2 = -1901067, // Used to be chief engineer back in Kezan, you know. Now look at me...
+    BLACKMARKET_MAIL3 = -1901068, // My back is killing me...
+
+    NPC_START = 39700,
+    MAX_NPC   = 3,
+
+    PHASE_INACTIVE = 0,
+    PHASE_CALLING  = 1,
+    PHASE_REACHING = 2,
+    PHASE_REACHED  = 3,
+    PHASE_HOMING   = 4,
+
+    BLACKMARKET_MAIL_SUBJECT = 11039,
+    BLACKMARKET_MAIL_BODY    = 11040,
+
+    BLACKMARKET_TOKEN = 29434
+};
+
+static uint32 Mailboxes[MAX_NPC][2] =
+{
+    { 48996, 176404 }, // Graxle Sheeftlevel (Everlook)
+    { 17473, 144112 }, // Ezka Ajustgear     (Gadgetzan)
+    { 10764, 144126 }  // Haughty Miixstaat  (Booty Bay)
+};
+
 struct npc_BlackMarket : public ScriptedAI
 {
+    npc_BlackMarket(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
     std::map<ObjectGuid, Item*> m_objectsStore;
     std::map<ObjectGuid, Item* >::iterator ite;
     std::map<ObjectGuid, ObjectGuid> m_tradesStore;
     std::map<ObjectGuid, ObjectGuid>::iterator ite2;
 
     uint32 checkTimer;
+    uint32 m_phase;
+    uint32 m_departTimer;
+    uint32 m_returnTimer;
 
-    npc_BlackMarket(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
+    float mailbox_x, mailbox_y, mailbox_z;
+
+    Item* cItem;
+    Player* cPlayer;
 
     void Reset()
     {
         checkTimer = 1000;
+
+        m_phase = PHASE_INACTIVE;
+        m_departTimer = 1 * IN_MILLISECONDS;
+        m_returnTimer = 5 * IN_MILLISECONDS;
+
+        cItem = nullptr;
+        cPlayer = nullptr;
+    }
+
+    void CloseDeal(Item* pItem, Player* pPlayer)
+    {
+        cItem = pItem;
+        cPlayer = pPlayer;
+
+        m_phase = PHASE_CALLING;
+    }
+
+    bool IsAvailable()
+    {
+        return m_phase == PHASE_INACTIVE;
     }
 
     void InsertTrade(ObjectGuid guid, ObjectGuid trade)
@@ -2291,7 +2385,6 @@ struct npc_BlackMarket : public ScriptedAI
             InsertObject(guid, it);
         }
     }
-
 
     void EraseObject(ObjectGuid guid)
     {
@@ -2350,49 +2443,106 @@ struct npc_BlackMarket : public ScriptedAI
         }
         else
             checkTimer -= diff;
+
+        switch (m_phase)
+        {
+            case PHASE_CALLING:
+            {
+                if (m_departTimer < diff)
+                {
+                    uint32 rand = urand(0, 2);
+                    switch (rand)
+                    {
+                    case 0:
+                        DoScriptText(BLACKMARKET_CALL1, m_creature, cPlayer);
+                        break;
+                    case 1:
+                        DoScriptText(BLACKMARKET_CALL2, m_creature, cPlayer);
+                        break;
+                    case 2:
+                        DoScriptText(BLACKMARKET_CALL3, m_creature, cPlayer);
+                        break;
+                    }
+
+                    // Move to closest Mailbox
+                    uint32 idx = m_creature->GetEntry() - NPC_START;
+                    ObjectGuid guid = ObjectGuid(HIGHGUID_GAMEOBJECT, Mailboxes[idx][1], Mailboxes[idx][0]);
+                    if (GameObject* Mailbox = m_creature->GetMap()->GetGameObject(guid))
+                    {
+                        Mailbox->GetContactPoint(m_creature, mailbox_x, mailbox_y, mailbox_z, 1.0f);
+
+                        m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+
+                        m_creature->GetMotionMaster()->MoveIdle();
+                        m_creature->GetMotionMaster()->MovePoint(1, mailbox_x, mailbox_y, mailbox_z);
+
+                        m_phase = PHASE_REACHING;
+                    }
+                    else
+                        m_phase = PHASE_REACHED;
+                }
+                else
+                    m_departTimer -= diff;
+                break;
+            }
+            case PHASE_REACHING:
+            {
+                if (m_creature->GetDistance(mailbox_x, mailbox_y, mailbox_z) <= 1.0f)
+                    m_phase = PHASE_REACHED;
+                break;
+            }
+            case PHASE_REACHED:
+            {
+                uint32 rand = urand(0, 2);
+                switch (rand)
+                {
+                case 0:
+                    DoScriptText(BLACKMARKET_MAIL1, m_creature, cPlayer);
+                    break;
+                case 1:
+                    DoScriptText(BLACKMARKET_MAIL2, m_creature, cPlayer);
+                    break;
+                case 2:
+                    DoScriptText(BLACKMARKET_MAIL3, m_creature, cPlayer);
+                    break;
+                }
+
+                m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
+                m_phase = PHASE_HOMING;
+                break;
+            }
+            case PHASE_HOMING:
+            {
+                if (m_returnTimer < diff)
+                {
+                    m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+                    m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
+                    int loc_idx = cPlayer->GetSession()->GetSessionDbLocaleIndex();
+                    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(cItem->GetEntry());
+
+                    // item name
+                    std::string pName = pProto->Name1;
+                    sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+
+                    // text
+                    std::string body = cPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_BODY);
+                    char textBuf[300];
+                    snprintf(textBuf, 300, body.c_str(), pName.c_str(), cPlayer->GetName());
+
+                    std::string subject = cPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
+                    MailDraft(subject, textBuf).AddItem(cItem).SendMailTo(cPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
+
+                    m_creature->GetMotionMaster()->MoveTargetedHome(false);
+
+                    Reset();
+                }
+                else
+                    m_returnTimer -= diff;
+                break;
+            }
+        }
     }
-};
-
-enum
-{
-    BLACKMARKET_ARMOR_MISC = 11041,
-    BLACKMARKET_ARMOR_CLOTH = 11042,
-    BLACKMARKET_ARMOR_LEATHER = 11043,
-    BLACKMARKET_ARMOR_MAIL = 11044,
-    BLACKMARKET_ARMOR_PLATE = 11045,
-    BLACKMARKET_ARMOR_SHIELD = 11046,
-
-    BLACKMARKET_WEAPON_AXE = 11050,
-    BLACKMARKET_WEAPON_AXE2 = 11051,
-    BLACKMARKET_WEAPON_BOW = 11052,
-    BLACKMARKET_WEAPON_GUN = 11053,
-    BLACKMARKET_WEAPON_MACE = 11054,
-    BLACKMARKET_WEAPON_MACE2 = 11055,
-    BLACKMARKET_WEAPON_POLEARM = 11056,
-    BLACKMARKET_WEAPON_SWORD = 11057,
-    BLACKMARKET_WEAPON_SWORD2 = 11058,
-    BLACKMARKET_WEAPON_STAFF = 11059,
-    BLACKMARKET_WEAPON_FIST = 11060,
-    BLACKMARKET_WEAPON_MISC = 11061,
-    BLACKMARKET_WEAPON_DAGGER = 11062,
-    BLACKMARKET_WEAPON_THROWN = 11063,
-    BLACKMARKET_WEAPON_SPEAR = 11064,
-    BLACKMARKET_WEAPON_CROSSBOW = 11065,
-    BLACKMARKET_WEAPON_WAND = 11066,
-    BLACKMARKET_WEAPON_FISHING_POLE = 11067,
-
-    BLACKMARKET_MAIL_SUBJECT = 11039,
-    BLACKMARKET_MAIL_BODY = 11040,
-
-    BLACKMARKET_ANSWER_YES = 11100,
-    BLACKMARKET_ANSWER_NO = 11101,
-    BLACKMARKET_ANSWER_DETAILS = 11102,
-
-    BLACKMARKET_SAY1 = -1901060,
-    BLACKMARKET_SAY2 = -1901061,
-    BLACKMARKET_SAY3 = -1901062,
-
-    BLACKMARKET_TOKEN = 29434
 };
 
 UnitAI* GetAI_npc_BlackMarket(Creature* pCreature)
@@ -2402,6 +2552,10 @@ UnitAI* GetAI_npc_BlackMarket(Creature* pCreature)
 
 bool GossipHello_BlackMarket(Player* pPlayer, Creature* pCreature)
 {
+    if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
+        if (!pBlackMarketAI->IsAvailable())
+            return false;
+
     std::string armor_misc = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_MISC);
     std::string armor_cloth = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_CLOTH);
     std::string armor_leather = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_LEATHER);
@@ -2484,23 +2638,6 @@ bool GossipHello_BlackMarket(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-std::string getLocalItemName(ItemPrototype const* pProto, Player* pPlayer)
-{
-    std::string Name = pProto->Name1;
-
-    int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
-    if (loc_idx >= 0)
-    {
-        if (ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId))
-        {
-            if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
-                Name = il->Name[loc_idx];
-        }
-    }
-
-    return Name;
-}
-
 uint32 GetTokenValue(Item* Target)
 {
     if (!Target)
@@ -2522,20 +2659,26 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
     {
         for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
             if (Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
-                if (pItem->GetProto()->Class == i_Class && pItem->GetProto()->SubClass == i_SubClass)
-                {
-                    uint32 ItemId = pItem->GetProto()->ItemId;
-                    uint32 p_ItemId = Item::LoadScaledParent(ItemId);
-                    uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, pPlayer->getLevel());
-                    uint32 RequiredLevel = pItem->GetProto()->RequiredLevel;
-                    bool canScale = (ItemId != s_ItemId) && RequiredLevel >= 10 && RequiredLevel <= pPlayer->getLevel();
-
-                    if (canScale)
+                if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry()))
+                    if (pProto->Class == i_Class && pProto->SubClass == i_SubClass)
                     {
-                        std::string Name = getLocalItemName(pItem->GetProto(), pPlayer) + " [" + std::to_string(RequiredLevel) + "]";
-                        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, Name.c_str(), GOSSIP_SENDER_MAIN, 1000 + ItemId);
+                        uint32 ItemId = pItem->GetProto()->ItemId;
+                        uint32 p_ItemId = Item::LoadScaledParent(ItemId);
+                        uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, pPlayer->getLevel());
+                        uint32 RequiredLevel = pItem->GetProto()->RequiredLevel;
+                        bool canScale = (ItemId != s_ItemId) && RequiredLevel >= 10 && RequiredLevel <= pPlayer->getLevel();
+
+                        if (canScale)
+                        {
+                            // item name
+                            int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
+                            std::string pName = pProto->Name1;
+                            sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+                            pName += " [" + std::to_string(RequiredLevel) + "]";
+
+                            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, pName.c_str(), GOSSIP_SENDER_MAIN, 1000 + ItemId);
+                        }
                     }
-                }
 
         pPlayer->SEND_GOSSIP_MENU(55137, pCreature->GetObjectGuid());
     }
@@ -2548,7 +2691,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pProto)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
 
         Item* pItem = pPlayer->GetItemByEntry(ItemId);
@@ -2556,7 +2699,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
 
         if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
@@ -2575,8 +2718,13 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         {
             uint32 s_ItemId = Item::LoadScaledLoot(parent_ItemId, i, false, nullptr, BonusUpgrade);
 
-            std::string Name = getLocalItemName(pProto, pPlayer) + " [" + std::to_string(i) + "]";
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, Name.c_str(), GOSSIP_SENDER_MAIN, 20000000 + s_ItemId);
+            // item name
+            int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
+            std::string pName = pProto->Name1;
+            sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+            pName += " [" + std::to_string(i) + "]";
+
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, pName.c_str(), GOSSIP_SENDER_MAIN, 20000000 + s_ItemId);
         }
 
         pPlayer->SEND_GOSSIP_MENU(55138, pCreature->GetObjectGuid());
@@ -2589,7 +2737,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pProto)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
 
         npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
@@ -2598,7 +2746,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!gItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
 
         Item* pItem = pPlayer->GetItemByGuid(gItem);
@@ -2606,7 +2754,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!pItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
 
         Item* newItem = Item::CreateItem(ItemId, 1);
@@ -2614,12 +2762,8 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (!newItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            return;
+            pPlayer->PlayerTalkClass->CloseGossip();
         }
-
-        // Transfert item properties : Soulbound
-        newItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer ? pPlayer->GetObjectGuid() : ObjectGuid());
-        newItem->SetBinding(pItem->IsSoulBound());
 
         // Transfert item properties : RandomProperty
         //                           : RandomSuffix
@@ -2661,7 +2805,6 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
 
         pBlackMarketAI->InsertObject(pPlayer->GetObjectGuid(), newItem);
 
-        std::string Name = getLocalItemName(pProto, pPlayer);
         ChatHandler(pPlayer).PSendSysMessage(pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_DETAILS), ChatHandler(pPlayer).GetLocalItemLink(newItem).c_str());
 
         pPlayer->SEND_GOSSIP_MENU(55139, pCreature->GetObjectGuid());
@@ -2675,12 +2818,12 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
 
             ObjectGuid gItem_guid = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
             if (!gItem_guid)
-                return;
+                pPlayer->PlayerTalkClass->CloseGossip();
 
             Item* gItem = pPlayer->GetItemByGuid(gItem_guid); // original item
             Item* pItem = pBlackMarketAI->GetItem(pPlayer->GetObjectGuid()); // scaled item
             if (!gItem || !pItem)
-                return;
+                pPlayer->PlayerTalkClass->CloseGossip();
 
             uint32 value = GetTokenValue(pItem);
             if (pPlayer->HasItemCount(BLACKMARKET_TOKEN, value))
@@ -2689,6 +2832,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                 InventoryResult res = pPlayer->CanStoreItem(NULL_BAG, NULL_SLOT, dest, pItem, true);
                 if (res == EQUIP_ERR_OK)
                 {
+                    bool IsSoulBound = gItem->IsSoulBound();
                     uint32 count = pPlayer->GetItemCount(gItem->GetEntry());
                     pPlayer->DestroyItemCount(gItem, count, true);
 
@@ -2696,9 +2840,11 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                     {
                         pPlayer->DestroyItemCount(BLACKMARKET_TOKEN, value, true, true);
 
-                        std::string subject = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
-                        std::string body = pPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_BODY);
-                        MailDraft(subject, body).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, pCreature->GetEntry()));
+                        // Transfert item properties : Soulbound
+                        pItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer->GetObjectGuid());
+                        pItem->SetBinding(IsSoulBound);
+
+                        pBlackMarketAI->CloseDeal(pItem, pPlayer);
                     }
                 }
                 else
