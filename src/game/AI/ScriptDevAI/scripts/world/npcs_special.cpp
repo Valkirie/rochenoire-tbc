@@ -2286,8 +2286,10 @@ enum
     BLACKMARKET_MAIL2 = -1901067, // Used to be chief engineer back in Kezan, you know. Now look at me...
     BLACKMARKET_MAIL3 = -1901068, // My back is killing me...
 
+    BLACKMARKET_DONE  = -1901069, // I'll mail it ta you as soon as I've found it. Don't worry bout the shipping cost, its included.
+
     NPC_START = 39700,
-    MAX_NPC   = 3,
+    MAX_NPC   = 4,
 
     PHASE_INACTIVE = 0,
     PHASE_CALLING  = 1,
@@ -2305,7 +2307,8 @@ static uint32 Mailboxes[MAX_NPC][2] =
 {
     { 48996, 176404 }, // Graxle Sheeftlevel (Everlook)
     { 17473, 144112 }, // Ezka Ajustgear     (Gadgetzan)
-    { 10764, 144126 }  // Haughty Miixstaat  (Booty Bay)
+    { 10764, 144126 }, // Haughty Miixstaat  (Booty Bay)
+    { 15753, 144125 }  // Sully Wellgeared   (Ratchet)
 };
 
 struct npc_BlackMarket : public ScriptedAI
@@ -2315,39 +2318,28 @@ struct npc_BlackMarket : public ScriptedAI
         Reset();
     }
 
-    std::map<ObjectGuid, Item*> m_objectsStore;
-    std::map<ObjectGuid, Item* >::iterator ite;
-    std::map<ObjectGuid, ObjectGuid> m_tradesStore;
-    std::map<ObjectGuid, ObjectGuid>::iterator ite2;
+    std::map<ObjectGuid, Item*> m_tradesStore;
+    std::map<ObjectGuid, Item*> m_offersStore;
+    std::map<ObjectGuid, Item*> m_dealsStore;
 
-    uint32 checkTimer;
+    std::map<ObjectGuid, Item*>::iterator ite;
+
     uint32 m_phase;
+    uint32 m_watchTimer;
     uint32 m_departTimer;
     uint32 m_returnTimer;
+    uint32 m_checkTimer;
 
     float mailbox_x, mailbox_y, mailbox_z;
 
-    Item* cItem;
-    Player* cPlayer;
-
     void Reset()
     {
-        checkTimer = 1000;
-
         m_phase = PHASE_INACTIVE;
+
+        m_watchTimer = 1 * IN_MILLISECONDS;
         m_departTimer = 1 * IN_MILLISECONDS;
         m_returnTimer = 5 * IN_MILLISECONDS;
-
-        cItem = nullptr;
-        cPlayer = nullptr;
-    }
-
-    void CloseDeal(Item* pItem, Player* pPlayer)
-    {
-        cItem = pItem;
-        cPlayer = pPlayer;
-
-        m_phase = PHASE_CALLING;
+        m_checkTimer = 30 * IN_MILLISECONDS;
     }
 
     bool IsAvailable()
@@ -2355,82 +2347,98 @@ struct npc_BlackMarket : public ScriptedAI
         return m_phase == PHASE_INACTIVE;
     }
 
-    void InsertTrade(ObjectGuid guid, ObjectGuid trade)
+    void InsertOffer(ObjectGuid guid, Item* it)
     {
-        ite2 = m_tradesStore.find(guid);
-        if (ite2 == m_tradesStore.end())
-            m_tradesStore.insert({ guid, trade });
+        ite = m_offersStore.find(guid);
+        if (ite == m_offersStore.end())
+            m_offersStore.insert({ guid, it });
+        else
+        {
+            EraseOffer(guid);
+            InsertOffer(guid, it);
+        }
+    }
+
+    void InsertTrade(ObjectGuid guid, Item* it)
+    {
+        ite = m_tradesStore.find(guid);
+        if (ite == m_tradesStore.end())
+            m_tradesStore.insert({ guid, it });
         else
         {
             EraseTrade(guid);
-            InsertTrade(guid, trade);
+            InsertTrade(guid, it);
         }
+    }
+
+    void InsertDeal(ObjectGuid guid, Item* it)
+    {
+        ite = m_dealsStore.find(guid);
+        if (ite == m_dealsStore.end())
+            m_dealsStore.insert({ guid, it });
+        else
+        {
+            EraseDeal(guid);
+            InsertDeal(guid, it);
+        }
+    }
+
+    void EraseOffer(ObjectGuid guid)
+    {
+        ite = m_offersStore.find(guid);
+        if (ite != m_offersStore.end())
+            m_offersStore.erase(guid);
     }
 
     void EraseTrade(ObjectGuid guid)
     {
-        ite2 = m_tradesStore.find(guid);
-        if (ite2 != m_tradesStore.end())
+        ite = m_tradesStore.find(guid);
+        if (ite != m_tradesStore.end())
             m_tradesStore.erase(guid);
     }
 
-    void InsertObject(ObjectGuid guid, Item* it)
+    void EraseDeal(ObjectGuid guid)
     {
-        ite = m_objectsStore.find(guid);
-        if (ite == m_objectsStore.end())
-            m_objectsStore.insert({ guid, it });
-        else
-        {
-            EraseObject(guid);
-            InsertObject(guid, it);
-        }
+        ite = m_dealsStore.find(guid);
+        if (ite != m_dealsStore.end())
+            m_dealsStore.erase(guid);
     }
 
-    void EraseObject(ObjectGuid guid)
+    Item* GetOffer(ObjectGuid guid)
     {
-        ite = m_objectsStore.find(guid);
-        if (ite != m_objectsStore.end())
-            m_objectsStore.erase(guid);
+        ite = m_offersStore.find(guid);
+        if (ite != m_offersStore.end())
+            return m_offersStore.at(guid);
+
+        return nullptr;
     }
 
-    ObjectGuid GetTrade(ObjectGuid guid)
+    Item* GetTrade(ObjectGuid guid)
     {
-        ite2 = m_tradesStore.find(guid);
-        if (ite2 != m_tradesStore.end())
+        ite = m_tradesStore.find(guid);
+        if (ite != m_tradesStore.end())
             return m_tradesStore.at(guid);
 
-        return ObjectGuid();
+        return nullptr;
     }
 
-    Item* GetItem(ObjectGuid guid)
+    Item* GetDeal(ObjectGuid guid)
     {
-        ite = m_objectsStore.find(guid);
-        if (ite != m_objectsStore.end())
-            return m_objectsStore.at(guid);
+        ite = m_dealsStore.find(guid);
+        if (ite != m_dealsStore.end())
+            return m_dealsStore.at(guid);
 
         return nullptr;
     }
 
     void UpdateAI(const uint32 diff)
     {
-        if (checkTimer < diff)
+        if (m_watchTimer < diff)
         {
-            for (auto it = m_objectsStore.cbegin(), next_it = it; it != m_objectsStore.cend(); it = next_it)
-            {
-                ++next_it;
-                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(it->first))
-                {
-                    if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
-                        EraseObject(it->first);
-                }
-                else
-                    EraseObject(it->first);
-            }
-
             for (auto it = m_tradesStore.cbegin(), next_it = it; it != m_tradesStore.cend(); it = next_it)
             {
                 ++next_it;
-                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(it->first))
+                if (Player* pPlayer = sObjectMgr.GetPlayer(it->first))
                 {
                     if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
                         EraseTrade(it->first);
@@ -2439,10 +2447,31 @@ struct npc_BlackMarket : public ScriptedAI
                     EraseTrade(it->first);
             }
 
-            checkTimer = 1000;
+            for (auto it = m_offersStore.cbegin(), next_it = it; it != m_offersStore.cend(); it = next_it)
+            {
+                ++next_it;
+                if (Player* pPlayer = sObjectMgr.GetPlayer(it->first))
+                {
+                    if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
+                        EraseOffer(it->first);
+                }
+                else
+                    EraseOffer(it->first);
+            }
+
+            m_watchTimer = 1 * IN_MILLISECONDS;
         }
         else
-            checkTimer -= diff;
+            m_watchTimer -= diff;
+
+        if (m_checkTimer < diff)
+        {
+            if(m_phase == PHASE_INACTIVE && !m_dealsStore.empty())
+                m_phase = PHASE_CALLING;
+            m_checkTimer = 30 * IN_MILLISECONDS;
+        }
+        else
+            m_checkTimer -= diff;
 
         switch (m_phase)
         {
@@ -2454,32 +2483,34 @@ struct npc_BlackMarket : public ScriptedAI
                     switch (rand)
                     {
                     case 0:
-                        DoScriptText(BLACKMARKET_CALL1, m_creature, cPlayer);
+                        DoScriptText(BLACKMARKET_CALL1, m_creature);
                         break;
                     case 1:
-                        DoScriptText(BLACKMARKET_CALL2, m_creature, cPlayer);
+                        DoScriptText(BLACKMARKET_CALL2, m_creature);
                         break;
                     case 2:
-                        DoScriptText(BLACKMARKET_CALL3, m_creature, cPlayer);
+                        DoScriptText(BLACKMARKET_CALL3, m_creature);
                         break;
                     }
 
                     // Move to closest Mailbox
                     uint32 idx = m_creature->GetEntry() - NPC_START;
-                    ObjectGuid guid = ObjectGuid(HIGHGUID_GAMEOBJECT, Mailboxes[idx][1], Mailboxes[idx][0]);
-                    if (GameObject* Mailbox = m_creature->GetMap()->GetGameObject(guid))
+                    if (ObjectGuid guid = ObjectGuid(HIGHGUID_GAMEOBJECT, Mailboxes[idx][1], Mailboxes[idx][0]))
                     {
-                        Mailbox->GetContactPoint(m_creature, mailbox_x, mailbox_y, mailbox_z, 1.0f);
+                        if (GameObject* Mailbox = m_creature->GetMap()->GetGameObject(guid))
+                        {
+                            Mailbox->GetContactPoint(m_creature, mailbox_x, mailbox_y, mailbox_z, 1.0f);
 
-                        m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+                            m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
-                        m_creature->GetMotionMaster()->MoveIdle();
-                        m_creature->GetMotionMaster()->MovePoint(1, mailbox_x, mailbox_y, mailbox_z);
+                            m_creature->GetMotionMaster()->MoveIdle();
+                            m_creature->GetMotionMaster()->MovePoint(1, mailbox_x, mailbox_y, mailbox_z);
 
-                        m_phase = PHASE_REACHING;
+                            m_phase = PHASE_REACHING;
+                            break;
+                        }
                     }
-                    else
-                        m_phase = PHASE_REACHED;
+                    m_phase = PHASE_HOMING; // if no mailbox nearby...
                 }
                 else
                     m_departTimer -= diff;
@@ -2487,7 +2518,8 @@ struct npc_BlackMarket : public ScriptedAI
             }
             case PHASE_REACHING:
             {
-                if (m_creature->GetDistance(mailbox_x, mailbox_y, mailbox_z) <= 1.0f)
+                m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+                if (m_creature->GetDistance(mailbox_x, mailbox_y, mailbox_z) <= 2.0f)
                     m_phase = PHASE_REACHED;
                 break;
             }
@@ -2497,13 +2529,13 @@ struct npc_BlackMarket : public ScriptedAI
                 switch (rand)
                 {
                 case 0:
-                    DoScriptText(BLACKMARKET_MAIL1, m_creature, cPlayer);
+                    DoScriptText(BLACKMARKET_MAIL1, m_creature);
                     break;
                 case 1:
-                    DoScriptText(BLACKMARKET_MAIL2, m_creature, cPlayer);
+                    DoScriptText(BLACKMARKET_MAIL2, m_creature);
                     break;
                 case 2:
-                    DoScriptText(BLACKMARKET_MAIL3, m_creature, cPlayer);
+                    DoScriptText(BLACKMARKET_MAIL3, m_creature);
                     break;
                 }
 
@@ -2515,23 +2547,45 @@ struct npc_BlackMarket : public ScriptedAI
             {
                 if (m_returnTimer < diff)
                 {
-                    m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+                    npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(m_creature->AI());
+
+                    if(CreatureDataAddon const* cainfo = m_creature->GetCreatureAddon())
+                        m_creature->HandleEmote(cainfo->emote);
+
                     m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
-                    int loc_idx = cPlayer->GetSession()->GetSessionDbLocaleIndex();
-                    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(cItem->GetEntry());
+                    for (auto it = m_dealsStore.cbegin(), next_it = it; it != m_dealsStore.cend(); it = next_it)
+                    {
+                        ++next_it;
 
-                    // item name
-                    std::string pName = pProto->Name1;
-                    sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+                        if (Item* pItem = pBlackMarketAI->GetDeal(it->first))
+                        {
+                            if (Player* pPlayer = pItem->GetOwner())
+                            {
+                                if (!pPlayer->IsInWorld())
+                                    continue;
 
-                    // text
-                    std::string body = cPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_BODY);
-                    char textBuf[300];
-                    snprintf(textBuf, 300, body.c_str(), pName.c_str(), cPlayer->GetName());
+                                if (WorldSession* m_session = pPlayer->GetSession())
+                                {
+                                    int loc_idx = m_session->GetSessionDbLocaleIndex();
 
-                    std::string subject = cPlayer->GetSession()->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
-                    MailDraft(subject, textBuf).AddItem(cItem).SendMailTo(cPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
+                                    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
+
+                                    std::string pName = pProto->Name1;
+                                    sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+
+                                    std::string body = m_session->GetMangosString(BLACKMARKET_MAIL_BODY);
+                                    char textBuf[300];
+                                    snprintf(textBuf, 300, body.c_str(), pName.c_str(), pPlayer->GetName());
+
+                                    const char* cSubject = m_session->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
+
+                                    MailDraft(cSubject, textBuf).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
+                                    EraseDeal(it->first);
+                                }
+                            }
+                        }
+                    }
 
                     m_creature->GetMotionMaster()->MoveTargetedHome(false);
 
@@ -2703,7 +2757,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         }
 
         if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
-            pBlackMarketAI->InsertTrade(pPlayer->GetObjectGuid(), pItem->GetObjectGuid());
+            pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), pItem);
 
         uint32 RequiredLevel = pPlayer->getLevel();
         uint32 s_RequiredLevel = std::max(pProto->Quality >= 4 ? 40 : pProto->RequiredLevel, RequiredLevel - 10) + 1;
@@ -2741,15 +2795,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         }
 
         npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
-        ObjectGuid gItem = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
-
-        if (!gItem)
-        {
-            pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
-        }
-
-        Item* pItem = pPlayer->GetItemByGuid(gItem);
+        Item* pItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid());
 
         if (!pItem)
         {
@@ -2803,7 +2849,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, buffer, GOSSIP_SENDER_MAIN, 0);
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, answer_no.c_str(), GOSSIP_SENDER_MAIN, 1);
 
-        pBlackMarketAI->InsertObject(pPlayer->GetObjectGuid(), newItem);
+        pBlackMarketAI->InsertTrade(pPlayer->GetObjectGuid(), newItem);
 
         ChatHandler(pPlayer).PSendSysMessage(pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_DETAILS), ChatHandler(pPlayer).GetLocalItemLink(newItem).c_str());
 
@@ -2816,12 +2862,8 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             // Proceed
             npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
 
-            ObjectGuid gItem_guid = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
-            if (!gItem_guid)
-                pPlayer->PlayerTalkClass->CloseGossip();
-
-            Item* gItem = pPlayer->GetItemByGuid(gItem_guid); // original item
-            Item* pItem = pBlackMarketAI->GetItem(pPlayer->GetObjectGuid()); // scaled item
+            Item* gItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid());
+            Item* pItem = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
             if (!gItem || !pItem)
                 pPlayer->PlayerTalkClass->CloseGossip();
 
@@ -2833,10 +2875,11 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                 if (res == EQUIP_ERR_OK)
                 {
                     bool IsSoulBound = gItem->IsSoulBound();
-                    uint32 count = pPlayer->GetItemCount(gItem->GetEntry());
+                    uint32 prev_count = pPlayer->GetItemCount(gItem->GetEntry());
+                    uint32 count = prev_count;
                     pPlayer->DestroyItemCount(gItem, count, true);
 
-                    if (!count)
+                    if (prev_count > count)
                     {
                         pPlayer->DestroyItemCount(BLACKMARKET_TOKEN, value, true, true);
 
@@ -2844,7 +2887,8 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                         pItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer->GetObjectGuid());
                         pItem->SetBinding(IsSoulBound);
 
-                        pBlackMarketAI->CloseDeal(pItem, pPlayer);
+                        pBlackMarketAI->InsertDeal(pItem->GetObjectGuid(), pItem);
+                        DoScriptText(BLACKMARKET_DONE, pCreature, pPlayer);
                     }
                 }
                 else
