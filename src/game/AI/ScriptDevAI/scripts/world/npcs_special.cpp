@@ -2244,31 +2244,8 @@ struct mob_phoenix_tkAI : public CombatAI
 
 enum
 {
-    BLACKMARKET_ARMOR_MISC = 11041,
-    BLACKMARKET_ARMOR_CLOTH = 11042,
-    BLACKMARKET_ARMOR_LEATHER = 11043,
-    BLACKMARKET_ARMOR_MAIL = 11044,
-    BLACKMARKET_ARMOR_PLATE = 11045,
-    BLACKMARKET_ARMOR_SHIELD = 11046,
-
-    BLACKMARKET_WEAPON_AXE = 11050,
-    BLACKMARKET_WEAPON_AXE2 = 11051,
-    BLACKMARKET_WEAPON_BOW = 11052,
-    BLACKMARKET_WEAPON_GUN = 11053,
-    BLACKMARKET_WEAPON_MACE = 11054,
-    BLACKMARKET_WEAPON_MACE2 = 11055,
-    BLACKMARKET_WEAPON_POLEARM = 11056,
-    BLACKMARKET_WEAPON_SWORD = 11057,
-    BLACKMARKET_WEAPON_SWORD2 = 11058,
-    BLACKMARKET_WEAPON_STAFF = 11059,
-    BLACKMARKET_WEAPON_FIST = 11060,
-    BLACKMARKET_WEAPON_MISC = 11061,
-    BLACKMARKET_WEAPON_DAGGER = 11062,
-    BLACKMARKET_WEAPON_THROWN = 11063,
-    BLACKMARKET_WEAPON_SPEAR = 11064,
-    BLACKMARKET_WEAPON_CROSSBOW = 11065,
-    BLACKMARKET_WEAPON_WAND = 11066,
-    BLACKMARKET_WEAPON_FISHING_POLE = 11067,
+    BLACKMARKET_ARMOR_START = 11041,
+    BLACKMARKET_WEAPON_START = 11050,
 
     BLACKMARKET_ANSWER_YES = 11100,
     BLACKMARKET_ANSWER_NO = 11101,
@@ -2297,6 +2274,11 @@ enum
     PHASE_REACHED  = 3,
     PHASE_HOMING   = 4,
 
+    STATUS_OFFER   = 0,
+    STATUS_TRADE   = 1,
+    STATUS_DEAL    = 2,
+    STATUS_MAX     = 3,
+
     BLACKMARKET_MAIL_SUBJECT = 11039,
     BLACKMARKET_MAIL_BODY    = 11040,
 
@@ -2318,11 +2300,15 @@ struct npc_BlackMarket : public ScriptedAI
         Reset();
     }
 
-    std::map<ObjectGuid, Item*> m_tradesStore;
-    std::map<ObjectGuid, Item*> m_offersStore;
-    std::map<ObjectGuid, Item*> m_dealsStore;
-
-    std::map<ObjectGuid, Item*>::iterator ite;
+    typedef std::unordered_map<ObjectGuid, Item*> TradeMap;
+    TradeMap m_tradesStore;
+    TradeMap m_offersStore;
+    TradeMap m_dealsStore;
+    std::vector<TradeMap> TradeMaps {
+        m_tradesStore,
+        m_offersStore,
+        m_dealsStore
+    };
 
     uint32 m_phase;
     uint32 m_watchTimer;
@@ -2347,86 +2333,27 @@ struct npc_BlackMarket : public ScriptedAI
         return m_phase == PHASE_INACTIVE;
     }
 
-    void InsertOffer(ObjectGuid guid, Item* it)
+    void InsertOffer(ObjectGuid guid, Item* it, uint32 idx)
     {
-        ite = m_offersStore.find(guid);
-        if (ite == m_offersStore.end())
-            m_offersStore.insert({ guid, it });
+        if (TradeMaps[idx].find(guid) == TradeMaps[idx].end())
+            TradeMaps[idx].insert({ guid, it });
         else
         {
-            EraseOffer(guid);
-            InsertOffer(guid, it);
+            EraseOffer(guid, idx);
+            InsertOffer(guid, it, idx);
         }
     }
 
-    void InsertTrade(ObjectGuid guid, Item* it)
+    void EraseOffer(ObjectGuid guid, uint32 idx)
     {
-        ite = m_tradesStore.find(guid);
-        if (ite == m_tradesStore.end())
-            m_tradesStore.insert({ guid, it });
-        else
-        {
-            EraseTrade(guid);
-            InsertTrade(guid, it);
-        }
+        if (TradeMaps[idx].find(guid) != TradeMaps[idx].end())
+            TradeMaps[idx].erase(guid);
     }
 
-    void InsertDeal(ObjectGuid guid, Item* it)
+    Item* GetOffer(ObjectGuid guid, uint32 idx)
     {
-        ite = m_dealsStore.find(guid);
-        if (ite == m_dealsStore.end())
-            m_dealsStore.insert({ guid, it });
-        else
-        {
-            EraseDeal(guid);
-            InsertDeal(guid, it);
-        }
-    }
-
-    void EraseOffer(ObjectGuid guid)
-    {
-        ite = m_offersStore.find(guid);
-        if (ite != m_offersStore.end())
-            m_offersStore.erase(guid);
-    }
-
-    void EraseTrade(ObjectGuid guid)
-    {
-        ite = m_tradesStore.find(guid);
-        if (ite != m_tradesStore.end())
-            m_tradesStore.erase(guid);
-    }
-
-    void EraseDeal(ObjectGuid guid)
-    {
-        ite = m_dealsStore.find(guid);
-        if (ite != m_dealsStore.end())
-            m_dealsStore.erase(guid);
-    }
-
-    Item* GetOffer(ObjectGuid guid)
-    {
-        ite = m_offersStore.find(guid);
-        if (ite != m_offersStore.end())
-            return m_offersStore.at(guid);
-
-        return nullptr;
-    }
-
-    Item* GetTrade(ObjectGuid guid)
-    {
-        ite = m_tradesStore.find(guid);
-        if (ite != m_tradesStore.end())
-            return m_tradesStore.at(guid);
-
-        return nullptr;
-    }
-
-    Item* GetDeal(ObjectGuid guid)
-    {
-        ite = m_dealsStore.find(guid);
-        if (ite != m_dealsStore.end())
-            return m_dealsStore.at(guid);
+        if (TradeMaps[idx].find(guid) != TradeMaps[idx].end())
+            return TradeMaps[idx].at(guid);
 
         return nullptr;
     }
@@ -2435,29 +2362,20 @@ struct npc_BlackMarket : public ScriptedAI
     {
         if (m_watchTimer < diff)
         {
-            for (auto it = m_tradesStore.cbegin(), next_it = it; it != m_tradesStore.cend(); it = next_it)
-            {
-                ++next_it;
-                if (Player* pPlayer = sObjectMgr.GetPlayer(it->first))
+            for (uint32 idx = STATUS_OFFER; idx < STATUS_DEAL; idx++)
+                for (auto it = TradeMaps[idx].cbegin(), next_it = it; it != TradeMaps[idx].cend(); it = next_it)
                 {
-                    if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
-                        EraseTrade(it->first);
-                }
-                else
-                    EraseTrade(it->first);
-            }
+                    ++next_it;
 
-            for (auto it = m_offersStore.cbegin(), next_it = it; it != m_offersStore.cend(); it = next_it)
-            {
-                ++next_it;
-                if (Player* pPlayer = sObjectMgr.GetPlayer(it->first))
-                {
-                    if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
-                        EraseOffer(it->first);
+                    if (Item* pItem = GetOffer(it->first, idx))
+                    {
+                        if (Player* pPlayer = pItem->GetOwner())
+                            if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
+                                EraseOffer(it->first, idx);
+                    }
+                    else
+                        EraseOffer(it->first, idx);
                 }
-                else
-                    EraseOffer(it->first);
-            }
 
             m_watchTimer = 1 * IN_MILLISECONDS;
         }
@@ -2466,7 +2384,7 @@ struct npc_BlackMarket : public ScriptedAI
 
         if (m_checkTimer < diff)
         {
-            if(m_phase == PHASE_INACTIVE && !m_dealsStore.empty())
+            if(IsAvailable() && !TradeMaps[STATUS_DEAL].empty())
                 m_phase = PHASE_CALLING;
             m_checkTimer = 30 * IN_MILLISECONDS;
         }
@@ -2549,16 +2467,18 @@ struct npc_BlackMarket : public ScriptedAI
                 {
                     npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(m_creature->AI());
 
-                    if(CreatureDataAddon const* cainfo = m_creature->GetCreatureAddon())
+                    if (CreatureDataAddon const* cainfo = m_creature->GetCreatureAddon())
                         m_creature->HandleEmote(cainfo->emote);
+                    else
+                        m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
 
                     m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
-                    for (auto it = m_dealsStore.cbegin(), next_it = it; it != m_dealsStore.cend(); it = next_it)
+                    for (auto it = TradeMaps[STATUS_DEAL].cbegin(), next_it = it; it != TradeMaps[STATUS_DEAL].cend(); it = next_it)
                     {
                         ++next_it;
 
-                        if (Item* pItem = pBlackMarketAI->GetDeal(it->first))
+                        if (Item* pItem = pBlackMarketAI->GetOffer(it->first, STATUS_DEAL))
                         {
                             if (Player* pPlayer = pItem->GetOwner())
                             {
@@ -2581,7 +2501,9 @@ struct npc_BlackMarket : public ScriptedAI
                                     const char* cSubject = m_session->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
 
                                     MailDraft(cSubject, textBuf).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
-                                    EraseDeal(it->first);
+                                    
+                                    for(uint32 idx = STATUS_OFFER; idx < STATUS_MAX; idx++)
+                                        EraseOffer(it->first, idx);
                                 }
                             }
                         }
@@ -2610,129 +2532,70 @@ bool GossipHello_BlackMarket(Player* pPlayer, Creature* pCreature)
         if (!pBlackMarketAI->IsAvailable())
             return false;
 
-    std::string armor_misc = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_MISC);
-    std::string armor_cloth = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_CLOTH);
-    std::string armor_leather = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_LEATHER);
-    std::string armor_mail = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_MAIL);
-    std::string armor_plate = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_PLATE);
-    std::string armor_shield = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_SHIELD);
-
-    std::string weapon_axe = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_AXE);
-    std::string weapon_axe2 = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_AXE2);
-    std::string weapon_bow = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_BOW);
-    std::string weapon_gun = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_GUN);
-    std::string weapon_mace = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_MACE);
-    std::string weapon_mace2 = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_MACE2);
-    std::string weapon_polearm = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_POLEARM);
-    std::string weapon_sword = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_SWORD);
-    std::string weapon_sword2 = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_SWORD2);
-    std::string weapon_staff = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_STAFF);
-    std::string weapon_fist = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_FIST);
-    std::string weapon_misc = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_MISC);
-    std::string weapon_dagger = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_DAGGER);
-    std::string weapon_thrown = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_THROWN);
-    std::string weapon_spear = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_SPEAR);
-    std::string weapon_crossbow = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_CROSSBOW);
-    std::string weapon_wand = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_WAND);
-    std::string weapon_fishing_pole = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_FISHING_POLE);
-
     // ARMORS (ID = 400 + Subclass)
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_MISC))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_misc.c_str(), GOSSIP_SENDER_MAIN, 400);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_CLOTH))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_cloth.c_str(), GOSSIP_SENDER_MAIN, 401);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_LEATHER))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_leather.c_str(), GOSSIP_SENDER_MAIN, 402);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_MAIL))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_mail.c_str(), GOSSIP_SENDER_MAIN, 403);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_PLATE))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_plate.c_str(), GOSSIP_SENDER_MAIN, 404);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, ITEM_SUBCLASS_ARMOR_SHIELD))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, armor_shield.c_str(), GOSSIP_SENDER_MAIN, 406);
+    for (uint32 idx = ITEM_SUBCLASS_ARMOR_MISC; idx < ITEM_SUBCLASS_ARMOR_LIBRAM; idx++)
+    {
+        std::string header = pPlayer->GetSession()->GetMangosString(BLACKMARKET_ARMOR_START + idx);
+        if (pPlayer->HasItemCategory(ITEM_CLASS_ARMOR, idx))
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, header.c_str(), GOSSIP_SENDER_MAIN, 400 + idx);
+    }
 
     // WEAPONS (ID = 200 + Subclass)
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_AXE))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_axe.c_str(), GOSSIP_SENDER_MAIN, 200);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_AXE2))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_axe2.c_str(), GOSSIP_SENDER_MAIN, 201);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_BOW))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_bow.c_str(), GOSSIP_SENDER_MAIN, 202);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_GUN))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_gun.c_str(), GOSSIP_SENDER_MAIN, 203);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_MACE))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_mace.c_str(), GOSSIP_SENDER_MAIN, 204);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_MACE2))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_mace2.c_str(), GOSSIP_SENDER_MAIN, 205);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_POLEARM))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_polearm.c_str(), GOSSIP_SENDER_MAIN, 206);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_SWORD))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_sword.c_str(), GOSSIP_SENDER_MAIN, 207);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_SWORD2))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_sword2.c_str(), GOSSIP_SENDER_MAIN, 208);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_STAFF))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_staff.c_str(), GOSSIP_SENDER_MAIN, 210);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_FIST))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_fist.c_str(), GOSSIP_SENDER_MAIN, 213);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_MISC))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_misc.c_str(), GOSSIP_SENDER_MAIN, 214);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_DAGGER))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_dagger.c_str(), GOSSIP_SENDER_MAIN, 215);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_THROWN))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_thrown.c_str(), GOSSIP_SENDER_MAIN, 216);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_SPEAR))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_spear.c_str(), GOSSIP_SENDER_MAIN, 217);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_CROSSBOW))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_crossbow.c_str(), GOSSIP_SENDER_MAIN, 218);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_WAND))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_wand.c_str(), GOSSIP_SENDER_MAIN, 219);
-    if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, ITEM_SUBCLASS_WEAPON_FISHING_POLE))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, weapon_fishing_pole.c_str(), GOSSIP_SENDER_MAIN, 220);
+    for (uint32 idx = ITEM_SUBCLASS_WEAPON_AXE; idx < ITEM_SUBCLASS_WEAPON_FISHING_POLE; idx++)
+    {
+        std::string header = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_START + idx);
+        if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, idx))
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, header.c_str(), GOSSIP_SENDER_MAIN, 200 + idx);
+    }
 
     pPlayer->SEND_GOSSIP_MENU(55136, pCreature->GetObjectGuid());
     return true;
 }
 
-uint32 GetTokenValue(Item* Target)
+uint32 GetTokenValue(Item* pItem)
 {
-    if (!Target)
+    if (!pItem)
         return 0;
 
-    float RequiredLevel = Target->GetProto()->RequiredLevel;
-    float ItemLevel = Target->GetProto()->ItemLevel;
-    float Quality = Target->GetProto()->Quality;
+    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
+    if (!pProto)
+        return 0;
+
+    float RequiredLevel = pProto->RequiredLevel;
+    float ItemLevel = pProto->ItemLevel;
+    float Quality = pProto->Quality;
 
     return RequiredLevel != 0 ? Quality + (ItemLevel / RequiredLevel) : Quality + 1;
 }
 
 void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 action)
 {
-    uint32 i_Class = action / 100; // 2: Weapon, 4: Armor
-    uint32 i_SubClass = action - (i_Class * 100);
-
     if (action >= 200 && action < 1000)
     {
+        uint32 Class = action / 100; // 2: Weapon, 4: Armor
+        uint32 SubClass = action - (Class * 100);
+
         for (int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
-            if (Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
-                if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry()))
-                    if (pProto->Class == i_Class && pProto->SubClass == i_SubClass)
-                    {
-                        uint32 ItemId = pItem->GetProto()->ItemId;
-                        uint32 p_ItemId = Item::LoadScaledParent(ItemId);
-                        uint32 s_ItemId = Item::LoadScaledLoot(p_ItemId, pPlayer->getLevel());
-                        uint32 RequiredLevel = pItem->GetProto()->RequiredLevel;
-                        bool canScale = (ItemId != s_ItemId) && RequiredLevel >= 10 && RequiredLevel <= pPlayer->getLevel();
+        {
+            Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+            if (!pItem)
+                continue;
 
-                        if (canScale)
-                        {
-                            // item name
-                            int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
-                            std::string pName = pProto->Name1;
-                            sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
-                            pName += " [" + std::to_string(RequiredLevel) + "]";
+            ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
+            if (pProto->Class != Class || !pProto->SubClass == SubClass)
+                continue;
 
-                            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, pName.c_str(), GOSSIP_SENDER_MAIN, 1000 + ItemId);
-                        }
-                    }
+            if (pProto->RequiredLevel >= 10 && pProto->RequiredLevel < pPlayer->getLevel())
+            {
+                std::string pName = pProto->Name1;
+                
+                int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
+                sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+                pName += " [" + std::to_string(pProto->RequiredLevel) + "]";
+
+                pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, pName.c_str(), GOSSIP_SENDER_MAIN, 1000 + pProto->ItemId);
+            }
+        }
 
         pPlayer->SEND_GOSSIP_MENU(55137, pCreature->GetObjectGuid());
     }
@@ -2741,26 +2604,24 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         uint32 ItemId = action - 1000;
 
         ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(ItemId);
-
         if (!pProto)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
+            return;
         }
 
         Item* pItem = pPlayer->GetItemByEntry(ItemId);
-
         if (!pItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
+            return;
         }
 
         if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
-            pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), pItem);
+            pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), pItem, STATUS_OFFER);
 
-        uint32 RequiredLevel = pPlayer->getLevel();
-        uint32 s_RequiredLevel = std::max(pProto->Quality >= 4 ? 40 : pProto->RequiredLevel, RequiredLevel - 10) + 1;
+        uint32 MaxLevel = pPlayer->getLevel();
+        uint32 MinLevel = std::max(pProto->Quality >= 4 ? 40 : pProto->RequiredLevel, MaxLevel - 10) + 1;
 
         uint32 parent_ItemId = Item::LoadScaledParent(ItemId);
 
@@ -2768,13 +2629,13 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (ItemPrototype const* parent_pProto = ObjectMgr::GetItemPrototype(parent_ItemId))
             BonusUpgrade = pProto->Quality - parent_pProto->Quality;
 
-        for (int i = s_RequiredLevel; i <= RequiredLevel; i ++)
+        for (uint32 i = MinLevel; i <= MaxLevel; i++)
         {
             uint32 s_ItemId = Item::LoadScaledLoot(parent_ItemId, i, false, nullptr, BonusUpgrade);
 
-            // item name
-            int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
             std::string pName = pProto->Name1;
+
+            int loc_idx = pPlayer->GetSession()->GetSessionDbLocaleIndex();
             sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
             pName += " [" + std::to_string(i) + "]";
 
@@ -2787,28 +2648,25 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
     {
         uint32 ItemId = action - 20000000;
         ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(ItemId);
-
         if (!pProto)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
+            return;
         }
 
         npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
-        Item* pItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid());
-
+        Item* pItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid(), STATUS_OFFER);
         if (!pItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
+            return;
         }
 
         Item* newItem = Item::CreateItem(ItemId, 1);
-
         if (!newItem)
         {
             pPlayer->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, ItemId, 0);
-            pPlayer->PlayerTalkClass->CloseGossip();
+            return;
         }
 
         // Transfert item properties : RandomProperty
@@ -2849,7 +2707,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, buffer, GOSSIP_SENDER_MAIN, 0);
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_DOT, answer_no.c_str(), GOSSIP_SENDER_MAIN, 1);
 
-        pBlackMarketAI->InsertTrade(pPlayer->GetObjectGuid(), newItem);
+        pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), newItem, STATUS_TRADE);
 
         ChatHandler(pPlayer).PSendSysMessage(pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_DETAILS), ChatHandler(pPlayer).GetLocalItemLink(newItem).c_str());
 
@@ -2859,13 +2717,12 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
     {
         if (action == 0)
         {
-            // Proceed
             npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI());
 
-            Item* gItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid());
-            Item* pItem = pBlackMarketAI->GetTrade(pPlayer->GetObjectGuid());
+            Item* gItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid(), STATUS_OFFER);
+            Item* pItem = pBlackMarketAI->GetOffer(pPlayer->GetObjectGuid(), STATUS_TRADE);
             if (!gItem || !pItem)
-                pPlayer->PlayerTalkClass->CloseGossip();
+                return;
 
             uint32 value = GetTokenValue(pItem);
             if (pPlayer->HasItemCount(BLACKMARKET_TOKEN, value))
@@ -2887,7 +2744,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                         pItem->SetGuidValue(ITEM_FIELD_OWNER, pPlayer->GetObjectGuid());
                         pItem->SetBinding(IsSoulBound);
 
-                        pBlackMarketAI->InsertDeal(pItem->GetObjectGuid(), pItem);
+                        pBlackMarketAI->InsertOffer(pItem->GetObjectGuid(), pItem, STATUS_DEAL);
                         DoScriptText(BLACKMARKET_DONE, pCreature, pPlayer);
                     }
                 }
@@ -2906,7 +2763,6 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
 
 bool GossipSelect_BlackMarket(Player* player, Creature* _Creature, uint32 sender, uint32 action)
 {
-    // Main menu
     if (sender == GOSSIP_SENDER_MAIN)
         SendDefaultMenu_BlackMarket(player, _Creature, action);
 
