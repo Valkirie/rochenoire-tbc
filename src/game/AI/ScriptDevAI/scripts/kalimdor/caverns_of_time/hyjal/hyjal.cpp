@@ -1028,6 +1028,7 @@ void instance_mount_hyjal::OnCreatureRespawn(Creature* creature)
         case NPC_FROST:
         case NPC_INFERNAL:
         case NPC_STALK:
+        {
             ObjectGuid spawner = creature->GetSpawnerGuid(); // not loaded in map - guid is enough
             if (!spawner) // Static spawns in Scourge base should never grant XP, loot or reputation
             {
@@ -1036,6 +1037,12 @@ void instance_mount_hyjal::OnCreatureRespawn(Creature* creature)
                 creature->SetNoReputation(true);
                 return;
             }
+            break;
+        }
+        case NPC_INFERNAL_RELAY:
+        case NPC_INFERNAL_TARGET:
+            static_cast<CreatureAI*>(creature->AI())->SetDeathPrevention(true);
+            creature->SetCanEnterCombat(false); // on retail they enter combat, likely for some guardian purposes for the infernals - on our end they bug out friendlies
             break;
     }
 }
@@ -1161,9 +1168,6 @@ void instance_mount_hyjal::SetData(uint32 type, uint32 data)
     switch (type)
     {
         case TYPE_AZGALOR:
-            if (data == DONE)
-                SpawnArchimonde();
-            // no break
         case TYPE_WINTERCHILL:
         case TYPE_ANETHERON:
         case TYPE_KAZROGAL:
@@ -1187,6 +1191,12 @@ void instance_mount_hyjal::SetData(uint32 type, uint32 data)
             {
                 DespawnOverrun(BASE_ELF);
                 m_nextInvasionWaveTimer = 0;
+
+                if (Creature* archimonde = GetSingleCreatureFromStorage(NPC_ARCHIMONDE))
+                {
+                    archimonde->SetRespawnDelay(30, true);
+                    archimonde->ForcedDespawn();
+                }
             }
             break;
         case TYPE_WIN:
@@ -1548,6 +1558,7 @@ void instance_mount_hyjal::StartEvent(HyjalEvents eventId)
             break;
         case THRALL_WIN:
             RetreatBase(BASE_HORDE);
+            SpawnArchimonde();
             break;
     }
 }

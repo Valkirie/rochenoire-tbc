@@ -2045,6 +2045,7 @@ void Aura::TriggerSpell()
                 break;
             }
             case 38652:                                     // Spore Cloud
+            case 40106:                                     // Merge
             {
                 triggerCaster = GetCaster();
                 break;
@@ -4616,6 +4617,8 @@ void Aura::HandleInvisibilityDetect(bool apply, bool Real)
         for (auto aura : auras)
             target->GetVisibilityData().SetInvisibilityDetectMask(aura->GetModifier()->m_miscvalue, true);
     }
+    if (GetId() == 44855) // hack for nonexistant phasing system in tbc core
+        HandleInvisibility(apply, Real);
     if (Real && target->GetTypeId() == TYPEID_PLAYER)
         ((Player*)target)->GetCamera().UpdateVisibilityForOwner();
 }
@@ -5733,7 +5736,7 @@ void Aura::HandleAuraModStat(bool apply, bool /*Real*/)
             // m_target->ApplyStatMod(Stats(i), m_modifier.m_amount,apply);
             target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_VALUE, float(m_modifier.m_amount), apply);
             if (target->GetTypeId() == TYPEID_PLAYER || ((Creature*)target)->IsPet())
-                target->ApplyStatBuffMod(Stats(i), float(m_modifier.m_amount), apply);
+                target->ApplyStatBuffMod(Stats(i), m_removeMode == AURA_REMOVE_BY_GAINED_STACK ? float(m_modifier.m_recentAmount) : float(m_modifier.m_amount), apply);
         }
     }
 }

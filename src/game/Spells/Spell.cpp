@@ -3703,7 +3703,8 @@ void Spell::SendCastResult(Player const* caster, SpellEntry const* spellInfo, ui
     WorldPacket data(isPetCastResult ? SMSG_PET_CAST_FAILED : SMSG_CAST_RESULT, (4 + 1 + 2));                              // single cast or multi 2.3 (0/1)
     data << uint32(spellInfo->Id);
     data << uint8(!IsPassiveSpell(spellInfo) ? result : SPELL_FAILED_DONT_REPORT); // do not report failed passive spells
-    data << uint8(cast_count);                              // single cast or multi 2.3 (0/1)
+    if (!isPetCastResult)
+        data << uint8(cast_count);                              // single cast or multi 2.3 (0/1)
     switch (result)
     {
         case SPELL_FAILED_REQUIRES_SPELL_FOCUS:
@@ -4951,6 +4952,9 @@ SpellCastResult Spell::CheckCast(bool strict)
                 {
                     if (target->GetTypeId() != TYPEID_PLAYER)
                         return SPELL_FAILED_BAD_TARGETS;
+
+                    if (i != EFFECT_INDEX_0) // TODO: Partial application
+                        break;
 
                     uint32 count = CalculateSpellEffectValue(SpellEffectIndex(i), target);
                     ItemPosCountVec dest;

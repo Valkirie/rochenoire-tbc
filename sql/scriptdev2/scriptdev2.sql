@@ -730,6 +730,7 @@ INSERT INTO scripted_event_id VALUES(10745,'npc_vindicator_sedai');
 UPDATE gameobject_template SET ScriptName='go_kaliri_nest' WHERE entry IN(181582);
 UPDATE gameobject_template SET ScriptName='go_smoke_beacon' WHERE entry=184661;
 UPDATE creature_template SET ScriptName='npc_credit_marker_they_must_burn' WHERE entry=21173;
+UPDATE creature_template SET ScriptName='npc_razorthorn_ravager' WHERE entry=24922;
 
 /* HILLSBRAD FOOTHILLS */
 
@@ -743,6 +744,7 @@ INSERT INTO scripted_event_id VALUES
 
 /* ISLE OF QUEL'DANAS */
 UPDATE creature_template SET ScriptName='npc_converted_sentry' WHERE entry=24981;
+UPDATE creature_template SET ScriptName='npc_suns_reach_reclamation' WHERE entry IN(24965,24967,25061,25057,24932,25108,25069,25046,24975,25112,25163);
 
 /* KARAZHAN */
 UPDATE instance_template SET ScriptName='instance_karazhan' WHERE map=532;
