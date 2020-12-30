@@ -76,11 +76,13 @@ enum
     NPC_INFERNAL                = 17908,
     NPC_STALK                   = 17916,
 
-    // Boss Mobs
-    NPC_LESSER_INFERNAL         = 17864,
-
     // Final Archimonde event
     NPC_ANCIENT_WISP            = 17946,
+
+    // Anetheron infernal
+    NPC_TOWERING_INFERNAL       = 17818,
+    // Azgalor Doomguard
+    NPC_LESSER_DOOMGUARD        = 17864,
 
     GO_ANCIENT_GEM              = 185557,
     GO_HORDE_ENCAMPMENT_PORTAL  = 182060,
@@ -216,6 +218,8 @@ class instance_mount_hyjal : public ScriptedInstance
         GuidVector m_waveSpawns;
         GuidVector m_baseSpawns[MAX_BASE];
         GuidVector m_overrunSpawns[MAX_BASE];
+
+        GuidVector m_additionalSpawns;
 
         uint32 m_hyjalOverheadEnable;
         uint32 m_hyjalEnemyCount;

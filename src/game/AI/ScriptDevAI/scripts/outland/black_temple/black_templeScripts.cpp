@@ -279,6 +279,56 @@ struct HarpoonersMark : public AuraScript
     }
 };
 
+struct AssistBT : public SpellScript
+{
+    bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        if (target->HasAura(40893) || target->GetHealthPercent() < 20.f)
+            return false;
+        return true;
+    }
+
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Unit* unitTarget = spell->GetUnitTarget();
+        if (!unitTarget || !unitTarget->IsInCombat())
+            return;
+
+        if (!unitTarget->IsInWorld())
+        {
+            return;
+        }
+
+        unitTarget->CastSpell(spell->GetCaster(), 40892, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+struct FixateBT : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx != EFFECT_INDEX_2)
+            return;
+
+        Unit* unitTarget = spell->GetUnitTarget();
+        if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        spell->GetCaster()->AI()->SendAIEvent(AI_EVENT_CUSTOM_EVENTAI_A, unitTarget, spell->GetCaster());
+        unitTarget->CastSpell(spell->GetCaster(), spell->m_spellInfo->CalculateSimpleValue(effIdx), TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+struct StormBlink : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (!spell->GetUnitTarget() || effIdx != EFFECT_INDEX_0)
+            return;
+        spell->GetCaster()->CastSpell(spell->GetUnitTarget(), 39582, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
 void AddSC_black_temple()
 {
     Script* pNewScript = new Script;
@@ -298,4 +348,7 @@ void AddSC_black_temple()
 
     RegisterAuraScript<SpellAbsorption>("spell_spell_absorption");
     RegisterAuraScript<HarpoonersMark>("spell_harpooners_mark");
+    RegisterSpellScript<AssistBT>("spell_assist_bt");
+    RegisterSpellScript<FixateBT>("spell_fixate_bt");
+    RegisterSpellScript<StormBlink>("spell_storm_blink");
 }

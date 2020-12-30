@@ -56,6 +56,7 @@
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
 #include "World/WorldState.h"
+#include "Arena/ArenaTeam.h"
 
 #ifdef BUILD_AHBOT
 #include "AuctionHouseBot/AuctionHouseBot.h"
@@ -4880,7 +4881,7 @@ bool ChatHandler::HandleQuestCompleteCommand(char* args)
         if (uint32 spell_id = pQuest->ReqSpell[i])
         {
             for (uint16 z = 0; z < creaturecount; ++z)
-                player->CastedCreatureOrGO(creature, ObjectGuid(), spell_id);
+                player->CastedCreatureOrGO(creature, ObjectGuid((creature > 0 ? HIGHGUID_UNIT : HIGHGUID_GAMEOBJECT), uint32(std::abs(creature)), 1u), spell_id);
         }
         else if (creature > 0)
         {
@@ -6672,11 +6673,41 @@ bool ChatHandler::HandleArenaSeasonRewardsCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleArenaDataReset(char* /*args*/)
+bool ChatHandler::HandleArenaDataReset(char* args)
 {
+    uint32 bulgarianValue;
+    if (!ExtractUInt32(&args, bulgarianValue) || bulgarianValue != 42)
+    {
+        SendSysMessage("For this command to work, add 42 as a parameter. Note, this resets data for all teams on the whole realm.");
+        return false;
+    }
+
     PSendSysMessage("Resetting all arena data.");
     sBattleGroundMgr.ResetAllArenaData();
     return true;
+}
+
+bool ChatHandler::HandleArenaTeamPointSet(char* args)
+{
+    char* teamName = ExtractQuotedArg(&args);
+    if (!teamName)
+        return false;
+
+    uint32 newRating;
+    if (!ExtractUInt32(&args, newRating))
+        return false;
+
+    std::string nameString = teamName;
+    ArenaTeam* team = sObjectMgr.GetArenaTeamByName(nameString);
+    if (!team)
+    {
+        PSendSysMessage("Could not find arena team with name %s", nameString.data());
+        SetSentErrorMessage(true);
+        return false;
+    }
+    team->SetRatingForAll(newRating);
+    team->SaveToDB();
+    return false;
 }
 
 bool ChatHandler::HandleModifyGenderCommand(char* args)

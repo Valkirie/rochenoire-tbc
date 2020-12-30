@@ -94,6 +94,10 @@ struct boss_teron_gorefiendAI : public ScriptedAI, public CombatActions
         AddCombatAction(GOREFIEND_ACTION_SHADOW_OF_DEATH, 0u);
         AddCombatAction(GOREFIEND_ACTION_CRUSHING_SHADOWS, 0u);
         AddCombatAction(GOREFIEND_ACTION_BERSERK, 0u);
+        m_creature->GetCombatManager().SetLeashingCheck([&](Unit*, float x, float y, float z)
+            {
+                return x < 516.8f && y > 402.7f;
+            });
         Reset();
     }
 
@@ -142,13 +146,13 @@ struct boss_teron_gorefiendAI : public ScriptedAI, public CombatActions
         }
     }
 
-    void JustReachedHome() override
+    void EnterEvadeMode() override
     {
         if (m_instance)
             m_instance->SetData(TYPE_GOREFIEND, FAIL);
-
         DespawnSummons();
         DoCastSpellIfCan(nullptr, SPELL_DESTROY_ALL_SPIRITS);
+        ScriptedAI::EnterEvadeMode();
     }
 
     void Aggro(Unit* /*pWho*/) override

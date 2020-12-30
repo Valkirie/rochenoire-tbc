@@ -82,7 +82,7 @@ struct boss_rage_winterchillAI : public CombatAI
         {
             case WINTERCHILL_ACTION_FROST_ARMOR: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(30000, 45000), SPELL_FROST_ARMOR);
             case WINTERCHILL_ACTION_ICEBOLT: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(9000, 15000), SPELL_ICEBOLT);
-            case WINTERCHILL_ACTION_FROST_NOVA: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(19000, 26000), SPELL_FROST_NOVA);
+            case WINTERCHILL_ACTION_FROST_NOVA: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(25000, 30000), SPELL_FROST_NOVA);
             case WINTERCHILL_ACTION_DEATH_AND_DECAY: return sObjectMgr.GetScaleSpellTimer(m_creature, 45000u, SPELL_DEATH_AND_DECAY);
             case WINTERCHILL_ACTION_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, 300000u, SPELL_ENRAGE);
             default: return 0; // never occurs but for compiler
@@ -150,7 +150,7 @@ struct boss_rage_winterchillAI : public CombatAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_DEATH_AND_DECAY, SELECT_FLAG_PLAYER))
                 {
-                    if (DoCastSpellIfCan(target, SPELL_DEATH_AND_DECAY) == CAST_OK)
+                    if (DoCastSpellIfCan(target, SPELL_DEATH_AND_DECAY, CAST_ONLY_XYZ) == CAST_OK)
                     {
                         DoScriptText(urand(0, 1) ? SAY_DND1 : SAY_DND2, m_creature);
                         ResetCombatAction(action, GetSubsequentActionTimer(action));

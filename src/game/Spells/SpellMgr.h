@@ -504,6 +504,9 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 33900:         // Shroud of Death
         case 33908:         // Burning Spikes
         case 34343:         // Thorns
+        case 35184:         // Unstable Affliction Proc
+        case 35186:         // Melt Armor Proc
+        case 35188:         // Chilling Touch
         case 35194:         // Shadowform
         case 35281:         // Raging Flames
         case 35319:         // Electric Skin
@@ -536,6 +539,7 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 39920:         // Soulgrinder Ritual Visual ( beam)
         case 40453:         // Aura of Fear
         case 40816:         // Saber Lash - Mother Shahraz
+        case 40899:         // Felfire Proc
         case 41634:         // Invisibility and Stealth Detection
         case 42459:         // Dual Wield (Passive)
         case 44537:         // Fel Lightning
@@ -552,6 +556,9 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
         case 45830:         // Stonehearth Marshal
         case 45831:         // Icewing Marshal
         case 46048:         // Fel Lightning
+        case 46277:         // Bring Pain
+        case 46308:         // Burning Winds
+        case 47287:         // Burning Destruction
             return false;
         default:
             return true;

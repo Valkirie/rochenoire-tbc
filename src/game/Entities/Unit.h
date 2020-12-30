@@ -829,6 +829,7 @@ struct ProcExecutionData
     uint32 triggeredSpellId;
     std::array<int32, MAX_EFFECT_INDEX> basepoints = { 0, 0, 0 };
     bool procOnce;
+    Unit* triggerTarget;
 
     ProcExecutionData(ProcSystemArguments& data, bool isVictim);
 };
@@ -982,6 +983,8 @@ struct CharmInfo
         void SetWalk(bool walk) { m_walk = walk; }
         bool GetWalk() const { return m_walk; }
 
+        Unit* GetUnit() { return m_unit; }
+
     private:
         Unit*               m_unit;
         UnitAI*             m_ai;
@@ -1004,6 +1007,8 @@ struct CharmInfo
 
         Position            m_charmStartPosition;
         bool                m_walk;
+
+        bool                m_deleted;
 };
 
 // used in CallForAllControlledUnits/CheckAllControlledUnits
@@ -1757,6 +1762,7 @@ class Unit : public WorldObject
         void SendMoveRoot(bool state, bool broadcastOnly = false);
 
         bool IsMoving() const { return m_movementInfo.HasMovementFlag(movementFlagsMask); }
+        bool IsMovingIgnoreFlying() const { return m_movementInfo.HasMovementFlag(movementFlagsIgnoreFlyingMask); }
         bool IsMovingForward() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_MASK_MOVING_FORWARD); }
         bool IsLevitating() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_LEVITATING); }
         bool IsWalking() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_WALK_MODE); }

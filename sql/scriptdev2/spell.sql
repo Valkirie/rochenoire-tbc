@@ -221,6 +221,9 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (40573,'spell_ogrila_flasks'),
 (40575,'spell_ogrila_flasks'),
 (40576,'spell_ogrila_flasks'),
+(40887,'spell_assist_bt'),
+(40892,'spell_fixate_bt'),
+(39581,'spell_storm_blink'),
 (34630,'spell_scrap_reaver_spell'),
 (44935,'spell_razorthorn_root'),
 (44881,'spell_charm_ravager'),
@@ -230,7 +233,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (45188,'spell_dawnblade_attack'),
 (38858,'spell_queldanas_shoot'),
 (34800,'spell_getting_sleepy_aura'),
-(43364,'spell_getting_sleepy_aura');
+(43364,'spell_getting_sleepy_aura'),
+(37156,'spell_tk_dive'),
+(41951,'spell_supremus_random_target'),
+(34438,'spell_unstable_affliction'),
+(34439,'spell_unstable_affliction'),
+(35183,'spell_unstable_affliction');
 
 -- Wotlk
 
@@ -354,6 +362,12 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (9857,'spell_regrowth'),
 (9858,'spell_regrowth'),
 (26980,'spell_regrowth');
+
+-- Shaman
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(974,'spell_earth_shield'),
+(32593,'spell_earth_shield'),
+(32594,'spell_earth_shield');
 
 -- Battleground and Outdoor PvP
 -- Alterac Valley

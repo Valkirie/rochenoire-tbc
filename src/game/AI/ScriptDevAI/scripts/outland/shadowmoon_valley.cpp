@@ -1454,6 +1454,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
         SetReactState(REACT_PASSIVE);
         m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
         m_creature->SetLevitate(true);
+        SetDeathPrevention(true);
         Reset();
     }
 
@@ -1499,6 +1500,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
         m_bDeathwailGrounded = true;
         m_creature->GetMotionMaster()->MovePoint(0, DeathwailDescentCoords[0].xCoord, DeathwailDescentCoords[0].yCoord, DeathwailDescentCoords[0].zCoord);
         DoScriptText(SAY_BEGIN_DESCENT, m_creature);
+        SetDeathPrevention(false);
     }
 
     void MovementInform(uint32 motionType, uint32 pointId) override
