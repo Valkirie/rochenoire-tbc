@@ -2311,7 +2311,6 @@ struct npc_BlackMarket : public ScriptedAI
     };
 
     uint32 m_phase;
-    uint32 m_watchTimer;
     uint32 m_departTimer;
     uint32 m_returnTimer;
     uint32 m_checkTimer;
@@ -2322,7 +2321,6 @@ struct npc_BlackMarket : public ScriptedAI
     {
         m_phase = PHASE_INACTIVE;
 
-        m_watchTimer = 1 * IN_MILLISECONDS;
         m_departTimer = 1 * IN_MILLISECONDS;
         m_returnTimer = 5 * IN_MILLISECONDS;
         m_checkTimer = 30 * IN_MILLISECONDS;
@@ -2360,28 +2358,6 @@ struct npc_BlackMarket : public ScriptedAI
 
     void UpdateAI(const uint32 diff)
     {
-        if (m_watchTimer < diff)
-        {
-            for (uint32 idx = STATUS_OFFER; idx < STATUS_DEAL; idx++)
-                for (auto it = TradeMaps[idx].cbegin(), next_it = it; it != TradeMaps[idx].cend(); it = next_it)
-                {
-                    ++next_it;
-
-                    if (Item* pItem = GetOffer(it->first, idx))
-                    {
-                        if (Player* pPlayer = pItem->GetOwner())
-                            if (pPlayer->GetDistance(m_creature) > INTERACTION_DISTANCE || !pPlayer->IsInWorld() || pPlayer->IsDead())
-                                EraseOffer(it->first, idx);
-                    }
-                    else
-                        EraseOffer(it->first, idx);
-                }
-
-            m_watchTimer = 1 * IN_MILLISECONDS;
-        }
-        else
-            m_watchTimer -= diff;
-
         if (m_checkTimer < diff)
         {
             if(IsAvailable() && !TradeMaps[STATUS_DEAL].empty())
@@ -2501,9 +2477,10 @@ struct npc_BlackMarket : public ScriptedAI
                                     const char* cSubject = m_session->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
 
                                     MailDraft(cSubject, textBuf).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
-                                    
-                                    for(uint32 idx = STATUS_OFFER; idx < STATUS_MAX; idx++)
-                                        EraseOffer(it->first, idx);
+
+                                    EraseOffer(pPlayer->GetObjectGuid(), STATUS_OFFER);
+                                    EraseOffer(pPlayer->GetObjectGuid(), STATUS_TRADE);
+                                    EraseOffer(pItem->GetObjectGuid(), STATUS_DEAL);
                                 }
                             }
                         }
@@ -2541,7 +2518,7 @@ bool GossipHello_BlackMarket(Player* pPlayer, Creature* pCreature)
     }
 
     // WEAPONS (ID = 200 + Subclass)
-    for (uint32 idx = ITEM_SUBCLASS_WEAPON_AXE; idx < ITEM_SUBCLASS_WEAPON_FISHING_POLE; idx++)
+    for (uint32 idx = ITEM_SUBCLASS_WEAPON_AXE; idx <= ITEM_SUBCLASS_WEAPON_FISHING_POLE; idx++)
     {
         std::string header = pPlayer->GetSession()->GetMangosString(BLACKMARKET_WEAPON_START + idx);
         if (pPlayer->HasItemCategory(ITEM_CLASS_WEAPON, idx))
@@ -2582,7 +2559,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                 continue;
 
             ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
-            if (pProto->Class != Class || !pProto->SubClass == SubClass)
+            if (pProto->Class != Class || pProto->SubClass != SubClass)
                 continue;
 
             if (pProto->RequiredLevel >= 10 && pProto->RequiredLevel < pPlayer->getLevel())
