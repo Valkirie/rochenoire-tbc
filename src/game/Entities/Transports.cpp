@@ -272,12 +272,14 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
         RemoveModelFromMap();
         oldMap->RemoveTransport(this);
         UpdateForMap(oldMap, false);
+        Object::RemoveFromWorld();
         ResetMap();
 
         Map* newMap = sMapMgr.CreateMap(newMapid, this);
         newMap->GetMessager().AddMessage([transport = this](Map* map)
         {
             transport->SetMap(map);
+            transport->Object::AddToWorld();
             map->AddTransport(transport);
             transport->AddModelToMap();
             transport->SpawnPassengers();
@@ -299,7 +301,7 @@ bool GenericTransport::AddPassenger(Unit* passenger, bool adjustCoords)
         m_passengers.insert(passenger);
         passenger->SetTransport(this);
         passenger->m_movementInfo.AddMovementFlag(MOVEFLAG_ONTRANSPORT);
-        bool changedTransports = passenger->m_movementInfo.t_guid != GetObjectGuid();
+        bool changedTransports = !passenger->m_movementInfo.t_pos.x; // passenger->m_movementInfo.t_guid != GetObjectGuid();
         passenger->m_movementInfo.t_guid = GetObjectGuid();
         passenger->m_movementInfo.t_time = GetPathProgress();
         if (changedTransports && adjustCoords)
