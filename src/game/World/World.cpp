@@ -706,6 +706,7 @@ void World::LoadConfigSettings(bool reload)
     setConfigMinMax(CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF, "Quests.LowLevelHideDiff", 4, -1, MAX_LEVEL);
     setConfigMinMax(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF, "Quests.HighLevelHideDiff", 7, -1, MAX_LEVEL);
 
+    setConfigMinMax(CONFIG_UINT32_QUEST_DAILY_MAX_LIMIT, "Quests.Daily.MaxLimit", 25, 1, 25);
     setConfigMinMax(CONFIG_UINT32_QUEST_DAILY_RESET_HOUR, "Quests.Daily.ResetHour", 6, 0, 23);
     setConfigMinMax(CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY, "Quests.Weekly.ResetWeekDay", 3, 0, 6);
     setConfigMinMax(CONFIG_UINT32_QUEST_WEEKLY_RESET_HOUR, "Quests.Weekly.ResetHour", 6, 0, 23);
@@ -2724,6 +2725,12 @@ void World::InvalidatePlayerDataToAllClient(ObjectGuid guid) const
 uint32 World::GetCurrentMaxLevel() const
 {
 	return GetWowPatch() >= WOW_PATCH_203 ? getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) : DEFAULT_VAN_MAX_LEVEL;
+}
+
+uint32 World::GetCurrentMaxDaily() const
+{
+    return getConfig(CONFIG_UINT32_QUEST_DAILY_MAX_LIMIT);
+    // return GetWowPatch() <= WOW_PATCH_210 ? PLAYER_MAX_DAILY_QUESTS_210 : PLAYER_MAX_DAILY_QUESTS_240;
 }
 
 void World::IncrementOpcodeCounter(uint32 opcodeId)

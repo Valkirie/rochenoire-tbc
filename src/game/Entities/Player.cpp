@@ -14413,7 +14413,7 @@ bool Player::SatisfyQuestDay(Quest const* qInfo, bool msg) const
         return true;
 
     bool have_slot = false;
-    for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
+    for (uint32 quest_daily_idx = 0; quest_daily_idx < sWorld.GetCurrentMaxDaily(); ++quest_daily_idx)
     {
         uint32 id = GetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx);
         if (qInfo->GetQuestId() == id)
@@ -16674,7 +16674,7 @@ void Player::_LoadQuestStatus(QueryResult* result)
 
 void Player::_LoadDailyQuestStatus(QueryResult* result)
 {
-    for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
+    for (uint32 quest_daily_idx = 0; quest_daily_idx < sWorld.GetCurrentMaxDaily(); ++quest_daily_idx)
         SetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx, 0);
 
     // QueryResult *result = CharacterDatabase.PQuery("SELECT quest FROM character_queststatus_daily WHERE guid = '%u'", GetGUIDLow());
@@ -16685,7 +16685,7 @@ void Player::_LoadDailyQuestStatus(QueryResult* result)
 
         do
         {
-            if (quest_daily_idx >= PLAYER_MAX_DAILY_QUESTS) // max amount with exist data in query
+            if (quest_daily_idx >= sWorld.GetCurrentMaxDaily()) // max amount with exist data in query
             {
                 sLog.outError("Player (GUID: %u) have more 25 daily quest records in `charcter_queststatus_daily`", GetGUIDLow());
                 break;
@@ -17712,7 +17712,7 @@ void Player::_SaveDailyQuestStatus()
 
     stmtDel.PExecute(GetGUIDLow());
 
-    for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
+    for (uint32 quest_daily_idx = 0; quest_daily_idx < sWorld.GetCurrentMaxDaily(); ++quest_daily_idx)
         if (GetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx))
             stmtIns.PExecute(GetGUIDLow(), GetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx));
 
@@ -20372,7 +20372,7 @@ void Player::SendAuraDurationsForTarget(Unit* target)
 
 void Player::SetDailyQuestStatus(uint32 quest_id)
 {
-    for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
+    for (uint32 quest_daily_idx = 0; quest_daily_idx < sWorld.GetCurrentMaxDaily(); ++quest_daily_idx)
     {
         if (!GetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx))
         {
@@ -20397,7 +20397,7 @@ void Player::SetMonthlyQuestStatus(uint32 quest_id)
 
 void Player::ResetDailyQuestStatus()
 {
-    for (uint32 quest_daily_idx = 0; quest_daily_idx < PLAYER_MAX_DAILY_QUESTS; ++quest_daily_idx)
+    for (uint32 quest_daily_idx = 0; quest_daily_idx < sWorld.GetCurrentMaxDaily(); ++quest_daily_idx)
         SetUInt32Value(PLAYER_FIELD_DAILY_QUESTS_1 + quest_daily_idx, 0);
 
     // DB data deleted in caller

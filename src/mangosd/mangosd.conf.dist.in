@@ -802,6 +802,10 @@ LogColors = ""
 #        Hour when daily quests reset (0..23)
 #        Default: 6
 #
+#    Quests.Daily.MaxLimit
+#        Maximum of daily quests a day (1..25)
+#        Default: 25
+#
 #    Quests.IgnoreRaid
 #        Non-raid quests allowed in raids
 #        Default: 0 (not allowed)
@@ -974,6 +978,7 @@ Instance.UnloadDelay = 1800000
 Quests.LowLevelHideDiff = 4
 Quests.HighLevelHideDiff = 7
 Quests.Daily.ResetHour = 6
+Quests.Daily.MaxLimit = 25
 Quests.IgnoreRaid = 0
 Group.OfflineLeaderDelay = 300
 Guild.EventLogRecordsCount = 100

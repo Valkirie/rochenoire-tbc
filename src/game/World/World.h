@@ -193,6 +193,7 @@ enum eConfigUInt32Values
     CONFIG_UINT32_CREATURE_FAMILY_ASSISTANCE_DELAY,
     CONFIG_UINT32_CREATURE_FAMILY_FLEE_DELAY,
     CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF,
+    CONFIG_UINT32_QUEST_DAILY_MAX_LIMIT,
     CONFIG_UINT32_QUEST_DAILY_RESET_HOUR,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_HOUR,
@@ -729,6 +730,7 @@ class World
         static uint32 GetCurrentDiff() { return m_currentDiff; }
 
 		uint32 GetCurrentMaxLevel() const;
+        uint32 GetCurrentMaxDaily() const;
         void UpdateSessionExpansion(uint8 expansion);
 
         template<typename T>
