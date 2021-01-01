@@ -1087,12 +1087,11 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
             }
         }
 
-        // Save scaling
         spellDamageInfo.scaled = IsScaledForTarget(unitTarget->GetGUIDLow());
 
         unitTarget->CalculateAbsorbResistBlock(caster, &spellDamageInfo, m_spellInfo);
 
-        bool IsScaled = spellDamageInfo.scaled;
+        bool IsScaled = spellDamageInfo.scaled; // do not use spellDamageInfo.scaled directly
         Unit::DealDamageMods(caster, spellDamageInfo.target, spellDamageInfo.damage, &spellDamageInfo.absorb, SPELL_DIRECT_DAMAGE, m_spellInfo, IsScaled);
 
         // Send log damage message to client        
@@ -3175,7 +3174,7 @@ bool Spell::IsScaledForTarget(uint32 guid, int eff_idx)
         return m_effectScaled[std::make_pair(eff_idx, guid)];
 
     for (int i = 0; i < MAX_EFFECT_INDEX; i++)
-        if (m_effectScaled[std::make_pair(m_spellInfo->Effect[i], guid)])
+        if (m_effectScaled[std::make_pair(i, guid)])
             return true;
 
     return false;
