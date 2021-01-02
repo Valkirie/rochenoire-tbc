@@ -9243,7 +9243,7 @@ bool Player::HasItemCategory(uint32 ItemCategory, uint32 ItemSubCategory) const
         pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
         if (pItem && pItem->GetProto()->Class == ItemCategory && pItem->GetProto()->SubClass == ItemSubCategory)
             return true;
-    }
+    }*/
     for (uint8 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
     {
         if (Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, i))
@@ -9255,7 +9255,7 @@ bool Player::HasItemCategory(uint32 ItemCategory, uint32 ItemSubCategory) const
                     return true;
             }
         }
-    }*/
+    }
     return false;
 }
 
