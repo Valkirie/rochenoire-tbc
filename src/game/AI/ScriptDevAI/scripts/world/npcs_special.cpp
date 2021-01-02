@@ -2257,13 +2257,23 @@ enum
 
     BLACKMARKET_CALL1 = -1901063, // Time is money friend, thats all I ever hear, hows about moving this dang mailbox to me if time is so important.
     BLACKMARKET_CALL2 = -1901064, // Go there... Do this...
-    BLACKMARKET_CALL3 = -1901065, // Why don't you just go and raid yourself some new damn items, instead of bothering me?
+    BLACKMARKET_CALL3 = -1901065, // Why don't you just go get your own damn items instead of bothering me?
+    BLACKMARKET_CALL4 = -1901066, // Maybe I could talk one of those gnomes over there into doing this walking for me.
 
-    BLACKMARKET_MAIL1 = -1901066, // I don't get paid enough for this...
-    BLACKMARKET_MAIL2 = -1901067, // Used to be chief engineer back in Kezan, you know. Now look at me...
-    BLACKMARKET_MAIL3 = -1901068, // My back is killing me...
+    BLACKMARKET_MAIL1 = -1901067, // I'm not gettin' paid enough for this.
+    BLACKMARKET_MAIL2 = -1901068, // ...Used to be a chief engineer back in Kezan, you know. Now look at me...
+    BLACKMARKET_MAIL3 = -1901069, // Ah! Wait, I didn't mean to mail those! Those pictures are definitely going to land in Booty Bay now...
+    BLACKMARKET_MAIL4 = -1901070, // I hear those damn gnomes have machines that can fly now... I'd kill to get my hands on one of those.
 
-    BLACKMARKET_DONE  = -1901069, // I'll mail it ta you as soon as I've found it. Don't worry bout the shipping cost, its included.
+    BLACKMARKET_DEAL1  = -1901071, // That's it? A rusty %s? I got mouths to feed, %s! Find me something where I can turn'a profit at least.
+    BLACKMARKET_DEAL2  = -1901072, // I'll mail this %s to ya as soon as I've found it. Don'cha worry bout the shipping cost, its *included*.
+    BLACKMARKET_DEAL3  = -1901073, // Don't forget, I got the best deals anywhere, even on the hard ta' find stuff!
+    BLACKMARKET_DEAL4  = -1901074, // Some of this stuff might be hard to find... Don'cha worry though, I'm on it!
+
+    BLACKMARKET_YELL1 = -1901075, // (whisper) Hey ya, stop by the black market...
+    BLACKMARKET_YELL2 = -1901076, // Upgrades! Get your upgrades here!
+    BLACKMARKET_YELL3 = -1901077, // Got some old gear you're thinking about selling? Give me a minute of your time and I can make it worth your while to save it pal!
+    BLACKMARKET_YELL4 = -1901078, // (whisper) Make that rusty gear of yours shine like a new Goblin Drag Car!
 
     NPC_START = 39700,
     MAX_NPC   = 4,
@@ -2283,6 +2293,14 @@ enum
     BLACKMARKET_MAIL_BODY    = 11040,
 
     BLACKMARKET_TOKEN = 29434
+};
+
+static int32 Speeches[4][4]
+{
+    { BLACKMARKET_CALL1, BLACKMARKET_CALL2, BLACKMARKET_CALL3, BLACKMARKET_CALL4 }, // When deal is submitted
+    { BLACKMARKET_MAIL1, BLACKMARKET_MAIL2, BLACKMARKET_MAIL3, BLACKMARKET_MAIL4 }, // When vendor is walking
+    { BLACKMARKET_DEAL1, BLACKMARKET_DEAL2, BLACKMARKET_DEAL3, BLACKMARKET_DEAL4 }, // When deal is posted
+    { BLACKMARKET_YELL1, BLACKMARKET_YELL2, BLACKMARKET_YELL3, BLACKMARKET_YELL4 }, // When waiting
 };
 
 static uint32 Mailboxes[MAX_NPC][2] =
@@ -2311,6 +2329,7 @@ struct npc_BlackMarket : public ScriptedAI
     };
 
     uint32 m_phase;
+    uint32 m_watchTimer;
     uint32 m_departTimer;
     uint32 m_returnTimer;
     uint32 m_checkTimer;
@@ -2321,8 +2340,9 @@ struct npc_BlackMarket : public ScriptedAI
     {
         m_phase = PHASE_INACTIVE;
 
+        m_watchTimer = 30 * IN_MILLISECONDS;
         m_departTimer = 1 * IN_MILLISECONDS;
-        m_returnTimer = 5 * IN_MILLISECONDS;
+        m_returnTimer = 6 * IN_MILLISECONDS;
         m_checkTimer = 30 * IN_MILLISECONDS;
     }
 
@@ -2358,6 +2378,28 @@ struct npc_BlackMarket : public ScriptedAI
 
     void UpdateAI(const uint32 diff)
     {
+        if (m_watchTimer < diff)
+        {
+            PlayerList playerList;
+            GetPlayerListWithEntryInWorld(playerList, m_creature, 30);
+
+            uint32 rand = urand(0, 3);
+            switch (rand)
+            {
+            default:
+                DoScriptText(Speeches[3][rand], m_creature);
+                break;
+            case 0:
+            case 3:
+                for (auto& itr : playerList)
+                    DoScriptText(Speeches[3][rand], m_creature, itr); // whisper
+                break;
+            }
+            m_watchTimer = urand(30, 60) * IN_MILLISECONDS;
+        }
+        else
+            m_watchTimer -= diff;
+
         if (m_checkTimer < diff)
         {
             if(IsAvailable() && !TradeMaps[STATUS_DEAL].empty())
@@ -2373,19 +2415,7 @@ struct npc_BlackMarket : public ScriptedAI
             {
                 if (m_departTimer < diff)
                 {
-                    uint32 rand = urand(0, 2);
-                    switch (rand)
-                    {
-                    case 0:
-                        DoScriptText(BLACKMARKET_CALL1, m_creature);
-                        break;
-                    case 1:
-                        DoScriptText(BLACKMARKET_CALL2, m_creature);
-                        break;
-                    case 2:
-                        DoScriptText(BLACKMARKET_CALL3, m_creature);
-                        break;
-                    }
+                    DoScriptText(Speeches[0][urand(0, 3)], m_creature);
 
                     // Move to closest Mailbox
                     uint32 idx = m_creature->GetEntry() - NPC_START;
@@ -2419,21 +2449,8 @@ struct npc_BlackMarket : public ScriptedAI
             }
             case PHASE_REACHED:
             {
-                uint32 rand = urand(0, 2);
-                switch (rand)
-                {
-                case 0:
-                    DoScriptText(BLACKMARKET_MAIL1, m_creature);
-                    break;
-                case 1:
-                    DoScriptText(BLACKMARKET_MAIL2, m_creature);
-                    break;
-                case 2:
-                    DoScriptText(BLACKMARKET_MAIL3, m_creature);
-                    break;
-                }
-
                 m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
+                DoScriptText(Speeches[1][urand(0, 3)], m_creature);
                 m_phase = PHASE_HOMING;
                 break;
             }
@@ -2722,7 +2739,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
                         pItem->SetBinding(IsSoulBound);
 
                         pBlackMarketAI->InsertOffer(pItem->GetObjectGuid(), pItem, STATUS_DEAL);
-                        DoScriptText(BLACKMARKET_DONE, pCreature, pPlayer);
+                        DoScriptText(Speeches[2][urand(0, 3)], pCreature, pPlayer);
                     }
                 }
                 else
