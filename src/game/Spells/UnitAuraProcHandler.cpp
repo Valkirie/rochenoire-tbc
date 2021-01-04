@@ -805,10 +805,13 @@ SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
 
 SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
 {
-    Unit* pVictim = data.victim; uint32 damage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* procSpell = data.procSpell; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
+    Unit* pVictim = data.victim; uint32 damage = data.damage; uint32 olddamage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* procSpell = data.procSpell; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
     SpellEntry const* dummySpell = triggeredByAura->GetSpellProto();
     SpellEffectIndex effIndex = triggeredByAura->GetEffIndex();
     int32  triggerAmount = triggeredByAura->GetModifier()->m_amount;
+
+    bool spellScaled = data.spell ? data.spell->IsScaledForTarget(pVictim->GetGUIDLow()) : false;
+    bool triggerScaled = triggeredByAura->GetModifier()->m_scaled;
 
     Item* castItem = triggeredByAura->GetCastItemGuid() && GetTypeId() == TYPEID_PLAYER
                      ? ((Player*)this)->GetItemByGuid(triggeredByAura->GetCastItemGuid()) : nullptr;
@@ -816,6 +819,16 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
     uint32 triggered_spell_id = data.triggeredSpellId;
     Unit* target = triggered_spell_id ? data.triggerTarget : pVictim;
     std::array<int32, MAX_EFFECT_INDEX>& basepoints = data.basepoints;
+
+    if (spellScaled || triggerScaled)
+    {
+        bool m_scaled = false;
+
+        Unit* owner = triggerScaled ? data.victim : data.attacker;
+        Unit* victim = triggerScaled ? data.attacker : data.victim;
+
+        olddamage = sObjectMgr.ScaleDamage(owner, victim, damage, m_scaled, triggerScaled ? dummySpell : procSpell, triggeredByAura->GetEffIndex(), true);
+    }
 
     switch (dummySpell->SpellFamilyName)
     {
@@ -1258,11 +1271,11 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 {
                     switch (dummySpell->Id)
                     {
-                        case 11119: basepoints[0] = int32(0.04f * damage); break;
-                        case 11120: basepoints[0] = int32(0.08f * damage); break;
-                        case 12846: basepoints[0] = int32(0.12f * damage); break;
-                        case 12847: basepoints[0] = int32(0.16f * damage); break;
-                        case 12848: basepoints[0] = int32(0.20f * damage); break;
+                        case 11119: basepoints[0] = int32(0.04f * olddamage); break;
+                        case 11120: basepoints[0] = int32(0.08f * olddamage); break;
+                        case 12846: basepoints[0] = int32(0.12f * olddamage); break;
+                        case 12847: basepoints[0] = int32(0.16f * olddamage); break;
+                        case 12848: basepoints[0] = int32(0.20f * olddamage); break;
                         default:
                             sLog.outError("Unit::HandleDummyAuraProc: non handled spell id: %u (IG)", dummySpell->Id);
                             return SPELL_AURA_PROC_FAILED;
@@ -1399,7 +1412,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 case 30296:
                 {
                     // health
-                    basepoints[0] = int32(damage * triggerAmount / 100);
+                    basepoints[0] = int32(olddamage * triggerAmount / 100);
                     target = this;
                     triggered_spell_id = 30294;
                     break;
@@ -1418,7 +1431,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         return SPELL_AURA_PROC_FAILED;
 
                     // heal amount
-                    basepoints[0] = damage * triggerAmount / 100;
+                    basepoints[0] = olddamage * triggerAmount / 100;
                     triggered_spell_id = 37382;
                     break;
                 }
@@ -1444,7 +1457,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     return SPELL_AURA_PROC_FAILED;
 
                 // energize amount
-                basepoints[0] = triggerAmount * damage / 100;
+                basepoints[0] = triggerAmount * olddamage / 100;
                 pVictim->CastCustomSpell(pVictim, 34919, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
                 return SPELL_AURA_PROC_OK;                  // no hidden cooldown
             }
@@ -1461,7 +1474,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         return SPELL_AURA_PROC_FAILED;
 
                     // heal amount
-                    basepoints[0] = triggerAmount * damage / 100;
+                    basepoints[0] = triggerAmount * olddamage / 100;
                     pVictim->CastCustomSpell(pVictim, 15290, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
                     return SPELL_AURA_PROC_OK;              // no hidden cooldown
                 }
@@ -1484,7 +1497,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 case 26169:
                 {
                     // heal amount
-                    basepoints[0] = int32(damage * 10 / 100);
+                    basepoints[0] = int32(olddamage * 10 / 100);
                     target = this;
                     triggered_spell_id = 26170;
                     break;
@@ -1496,7 +1509,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         return SPELL_AURA_PROC_FAILED;
 
                     // heal amount
-                    basepoints[0] = damage * triggerAmount / 100;
+                    basepoints[0] = olddamage * triggerAmount / 100;
                     target = this;
                     triggered_spell_id = 39373;
                     break;
@@ -1712,7 +1725,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         if (!(procSpell->SpellFamilyFlags & uint64(0x0000040000000000)))
                             return SPELL_AURA_PROC_FAILED;
                         // damage
-                        basepoints[0] = triggerAmount * damage / 100;
+                        basepoints[0] = triggerAmount * olddamage / 100;
                         target = this;
                         triggered_spell_id = 32221;
                         break;

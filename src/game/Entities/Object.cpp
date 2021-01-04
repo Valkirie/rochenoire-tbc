@@ -3012,7 +3012,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
                 value *= casterScaler->ratio / spellScaler->ratio;
         }
 
-        if (spell && spell->IsReferencedFromCurrent())
+        if (spell && (spell->IsReferencedFromCurrent() || spell->m_IsTriggeredSpell))
         {
             if (value == -1 || value == 0 || value == 1)
                 return value;
