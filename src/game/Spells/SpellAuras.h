@@ -73,7 +73,7 @@ struct Modifier
     /**
     * Is the aura scaled ?
     */
-    bool m_isScaled = false;
+    bool m_scaled = false;
 };
 
 class Unit;
