@@ -268,8 +268,8 @@ uint32 Quest::GetCharTitleBitIndex() const
 
 int32 Quest::GetQuestRelativeLevel() const
 {
-    if (QuestLevel <= 0 || MinLevel <= 0)
+    if (QuestLevel <= 0 || MinLevel <= 0 || QuestLevel < MinLevel)
         return 0;
 
-    return std::min(uint32(QuestLevel - MinLevel), uint32(sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF)));
+    return uint32(QuestLevel - MinLevel);
 }

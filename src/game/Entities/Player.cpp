@@ -13417,28 +13417,22 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
         SatisfyQuestMonth(pQuest) &&
         pQuest->IsActive())
     {
-        uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
-        if (highLevelDiff < 0)
-            return true;
-
-        if (pQuest->IsSpecificQuest())
-            return getLevel() + uint32(highLevelDiff) >= pQuest->GetMinLevel();
-        else
-        {
-            return (hasAreaZoneLevel(0 /* AreaID */, pQuest->GetZoneOrSort()) ||
-                (!hasAreaZoneLevel(0 /* AreaID */, pQuest->GetZoneOrSort()) && getLevel() + uint32(highLevelDiff) >= GetQuestLevelForPlayer(pQuest)));
-        }
+        return SatisfyQuestLevel(pQuest, false);
     }
 
     return false;
 }
 
-uint32 Player::GetQuestLevelForPlayer(Quest const* pQuest) const
+uint32 Player::GetQuestLevelForPlayer(Quest const* pQuest, bool min) const
 {
     if (pQuest->IsSpecificQuest())
-        return pQuest && (pQuest->GetQuestLevel() > 0) ? (uint32)pQuest->GetQuestLevel() : getLevel();
+        return pQuest->GetQuestLevel() > 0 ? (uint32)pQuest->GetQuestLevel() : getLevel();
     else
-        return getAreaZoneLevel(0 /* AreadID */, pQuest->GetZoneOrSort()) + pQuest->GetQuestRelativeLevel();
+    {
+        uint32 ZoneLevel = getAreaZoneLevel(0 /* AreadID */, pQuest->GetZoneOrSort());
+        uint32 QuestLevel = ZoneLevel + (min ? 0 : pQuest->GetQuestRelativeLevel());
+        return std::min(QuestLevel, ZoneLevel);
+    }
 }
 
 bool Player::CanTakeQuest(Quest const* pQuest, bool msg) const
@@ -14102,8 +14096,13 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
-    if ((qInfo->IsSpecificQuest() && getLevel() < qInfo->GetMinLevel()) ||
-        (!qInfo->IsSpecificQuest() && !hasAreaZoneLevel(0 /* AreaID */, qInfo->GetZoneOrSort()) && getLevel() < GetQuestLevelForPlayer(qInfo)))
+    int32 lowLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF);
+    uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
+
+    uint32 QuestMinLevel = qInfo->IsSpecificQuest() ? qInfo->GetMinLevel() : GetQuestLevelForPlayer(qInfo, true);
+
+    if ((getLevel() + uint32(lowLevelDiff) < QuestMinLevel) ||
+        (getLevel() - uint32(highLevelDiff) > QuestMinLevel))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
