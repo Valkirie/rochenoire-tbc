@@ -810,9 +810,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
     SpellEffectIndex effIndex = triggeredByAura->GetEffIndex();
     int32  triggerAmount = triggeredByAura->GetModifier()->m_amount;
 
-    bool spellScaled = data.spell ? data.spell->IsScaledForTarget(pVictim->GetGUIDLow()) : false;
-    bool triggerScaled = triggeredByAura->GetModifier()->m_scaled;
-
     Item* castItem = triggeredByAura->GetCastItemGuid() && GetTypeId() == TYPEID_PLAYER
                      ? ((Player*)this)->GetItemByGuid(triggeredByAura->GetCastItemGuid()) : nullptr;
 
@@ -820,6 +817,8 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
     Unit* target = triggered_spell_id ? data.triggerTarget : pVictim;
     std::array<int32, MAX_EFFECT_INDEX>& basepoints = data.basepoints;
 
+    bool spellScaled = data.spell ? data.spell->IsScaledForTarget(pVictim->GetGUIDLow()) : false;
+    bool triggerScaled = triggeredByAura->GetModifier()->m_scaled;
     if (spellScaled || triggerScaled)
     {
         bool m_scaled = false;
@@ -883,7 +882,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         triggered_spell_id = 12723;
 
                     if (triggered_spell_id == 12723)
-                        basepoints[0] = damage;
+                        basepoints[0] = olddamage;
                     break;
                 }
                 // Twisted Reflection (boss spell)
