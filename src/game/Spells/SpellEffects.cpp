@@ -8779,23 +8779,10 @@ void Spell::EffectLeapForward(SpellEffectIndex /*eff_idx*/)
 
 void Spell::EffectLeapBack(SpellEffectIndex eff_idx)
 {
-    if (!m_caster)
-        return;
-
     if (unitTarget->IsTaxiFlying())
         return;
 
-    Player* caster = nullptr;
-    if (m_caster->IsPlayer())
-        caster = static_cast<Player*>(m_caster);
-    else if (Unit* charmer = m_caster->GetCharmer())
-    {
-        if (charmer->IsPlayer())
-            caster = static_cast<Player*>(charmer);
-    }
-
-    if (caster)
-        caster->KnockBackFrom(m_caster, unitTarget, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
+    m_caster->KnockBackFrom(unitTarget, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
 }
 
 void Spell::EffectReputation(SpellEffectIndex eff_idx)
@@ -9022,18 +9009,6 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
     if (!unitTarget)
         return;
 
-    Player* target = nullptr;
-    if (unitTarget->IsPlayer())
-        target = static_cast<Player*>(unitTarget);
-    else if (Unit* charmer = unitTarget->GetCharmer())
-    {
-        if (charmer->IsPlayer())
-            target = static_cast<Player*>(charmer);
-    }
-
-    if (!target)
-        return;
-
     switch (m_spellInfo->Id)
     {
         case 36812:                                     // Soaring - Test Flight quests
@@ -9048,7 +9023,7 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
             break;
     }
 
-    target->KnockBackFrom(unitTarget, m_caster, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
+    unitTarget->KnockBackFrom(m_caster, float(m_spellInfo->EffectMiscValue[eff_idx]) / 10, float(damage) / 10);
 }
 
 void Spell::EffectSendTaxi(SpellEffectIndex eff_idx)
@@ -9062,18 +9037,6 @@ void Spell::EffectSendTaxi(SpellEffectIndex eff_idx)
 void Spell::EffectPullTowards(SpellEffectIndex eff_idx)
 {
     if (!unitTarget)
-        return;
-
-    Player* target = nullptr;
-    if (unitTarget->IsPlayer())
-        target = static_cast<Player*>(unitTarget);
-    else if (Unit* charmer = unitTarget->GetCharmer())
-    {
-        if (charmer->IsPlayer())
-            target = static_cast<Player*>(charmer);
-    }
-
-    if (!target)
         return;
 
     float x, y, z, dist;
@@ -9100,7 +9063,7 @@ void Spell::EffectPullTowards(SpellEffectIndex eff_idx)
     float time = dist / speedXY;
     float speedZ = ((z - unitTarget->GetPositionZ()) + 0.5f * time * time * Movement::gravity) / time;
 
-    target->KnockBackFrom(unitTarget, m_caster, -speedXY, speedZ);
+    unitTarget->KnockBackFrom(m_caster, -speedXY, speedZ);
 }
 
 void Spell::EffectSummonDeadPet(SpellEffectIndex /*eff_idx*/)
@@ -9601,18 +9564,6 @@ void Spell::EffectKnockBackFromPosition(SpellEffectIndex eff_idx)
     if (!unitTarget)
         return;
 
-    Player* target = nullptr;
-    if (unitTarget->IsPlayer())
-        target = static_cast<Player*>(unitTarget);
-    else if (Unit* charmer = unitTarget->GetCharmer())
-    {
-        if (charmer->IsPlayer())
-            target = static_cast<Player*>(charmer);
-    }
-
-    if (!target)
-        return;
-
     float x, y, z;
     if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
         m_targets.getDestination(x, y, z);
@@ -9622,7 +9573,7 @@ void Spell::EffectKnockBackFromPosition(SpellEffectIndex eff_idx)
     float angle = unitTarget->GetAngle(x, y) + M_PI_F;
     float horizontalSpeed = m_spellInfo->EffectMiscValue[eff_idx] * 0.1f;
     float verticalSpeed = damage * 0.1f;
-    target->GetSession()->SendKnockBack(unitTarget, angle, horizontalSpeed, verticalSpeed);
+    unitTarget->KnockBackWithAngle(angle, horizontalSpeed, verticalSpeed);
 }
 
 void Spell::EffectCreateTamedPet(SpellEffectIndex eff_idx)
