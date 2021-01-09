@@ -35,6 +35,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (26180,'spell_huhuran_wyvern_string'),
 (26205,'spell_hook_tentacle_trigger'),
 (26217,'spell_cthun_tentacles_summon'),
+(26230,'spell_cthun_exit_stomach'),
 (26237,'spell_cthun_tentacles_summon'),
 (26332,'spell_cthun_mouth_tentacle'),
 (26398,'spell_cthun_tentacles_summon'),
@@ -250,11 +251,11 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (14324,'spell_hunters_mark'),
 (14325,'spell_hunters_mark'),
 (34026,'spell_kill_command'),
-(34477,'spell_stacking_rules_override');
+(34477,'spell_misdirection');
 
 -- Priest
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
-(10060,'spell_stacking_rules_override'),
+(10060,'spell_power_infusion'),
 (15268,'spell_blackout'),
 (15323,'spell_blackout'),
 (15324,'spell_blackout'),
