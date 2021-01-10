@@ -663,12 +663,15 @@ class Spell
         void OnSuccessfulFinish();
         SpellCastResult OnCheckCast(bool strict);
         void OnEffectExecute(SpellEffectIndex effIndex);
+        void OnRadiusCalculate(SpellEffectIndex effIndex, bool targetB, float& radius);
         void OnDestTarget();
         bool OnCheckTarget(GameObject* target, SpellEffectIndex eff) const;
         bool OnCheckTarget(Unit* target, SpellEffectIndex eff) const;
         void OnCast();
         void OnHit(SpellMissInfo missInfo);
         void OnAfterHit();
+        void OnSummon(GameObject* summon);
+        void OnSummon(Creature* summon);
         // effect execution info access - only to be used in OnEffectExecute OnHit and OnAfterHit
         Unit* GetUnitTarget() { return unitTarget; }
         Item* GetItemTarget() { return itemTarget; }

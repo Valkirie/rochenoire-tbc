@@ -7360,6 +7360,8 @@ void Spell::GetSpellRangeAndRadius(SpellEffectIndex effIndex, float& radius, boo
         default:
             break;
     }
+
+    OnRadiusCalculate(effIndex, targetB, radius);
 }
 
 float Spell::GetCone()
@@ -7770,6 +7772,12 @@ void Spell::OnEffectExecute(SpellEffectIndex effIndex)
         script->OnEffectExecute(this, effIndex);
 }
 
+void Spell::OnRadiusCalculate(SpellEffectIndex effIndex, bool targetB, float& radius)
+{
+    if (SpellScript* script = GetSpellScript())
+        script->OnRadiusCalculate(this, effIndex, targetB, radius);
+}
+
 void Spell::OnDestTarget() // TODO
 {
     if (SpellScript* script = GetSpellScript())
@@ -8084,4 +8092,16 @@ void Spell::OnAfterHit()
 {
     if (SpellScript* script = GetSpellScript())
         return script->OnAfterHit(this);
+}
+
+void Spell::OnSummon(GameObject* summon)
+{
+    if (SpellScript* script = GetSpellScript())
+        return script->OnSummon(this, summon);
+}
+
+void Spell::OnSummon(Creature* summon)
+{
+    if (SpellScript* script = GetSpellScript())
+        return script->OnSummon(this, summon);
 }
