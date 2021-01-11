@@ -2738,6 +2738,81 @@ void Player::GiveLevel(uint32 level)
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
 
+    // auto-learn spells
+    if (sWorld.getConfig(CONFIG_BOOL_AUTOLEARN_ACTIVE))
+    {
+        if (ChrClassesEntry const* clsEntry = sChrClassesStore.LookupEntry(plClass))
+        {
+            uint32 family = clsEntry->spellfamily;
+
+            for (uint32 i = 0; i < sSkillLineAbilityStore.GetNumRows(); ++i)
+            {
+                SkillLineAbilityEntry const* entry = sSkillLineAbilityStore.LookupEntry(i);
+                if (!entry)
+                    continue;
+
+                SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(entry->spellId);
+                if (!spellInfo)
+                    continue;
+
+                // already known
+                if (HasSpell(entry->spellId))
+                    continue;
+
+                // skip too high level spells
+                if (spellInfo->spellLevel > level)
+                    continue;
+
+                // skip server-side/triggered spells
+                if (spellInfo->spellLevel == 0)
+                    continue;
+
+                // skip server-side/triggered spells
+                if (spellInfo->StartRecoveryCategory == 0)
+                    continue;
+
+                // skip wrong class/race skills
+                if (!IsSpellFitByClassAndRace(spellInfo->Id))
+                    continue;
+
+                // skip other spell families
+                if (spellInfo->SpellFamilyName != family)
+                    continue;
+
+                // skip racial
+                if (spellInfo->SpellFamilyFlags == 0)
+                    continue;
+
+                // skip spells with first rank learned as talent (and all talents then also)
+                uint32 first_rank = sSpellMgr.GetFirstSpellInChain(spellInfo->Id);
+                if (GetTalentSpellCost(first_rank) > 0)
+                    continue;
+
+                // skip broken spells
+                if (!SpellMgr::IsSpellValid(spellInfo, this, false))
+                    continue;
+
+                learnSpell(spellInfo->Id, false);
+
+                /* auto update actionbar
+                uint32 prev_spell = sSpellMgr.GetPrevSpellInChain(spellInfo->Id);
+                if (HasSpell(prev_spell))
+                    continue;
+
+                for (uint8 button = 0; button < MAX_ACTION_BUTTONS; ++button)
+                {
+                    ActionButtonList::iterator buttonItr = m_actionButtons.find(button);
+                    if (buttonItr == m_actionButtons.end())
+                    {
+                        ActionButton* ab = addActionButton(button, spellInfo->Id, 0);
+                        SendInitialActionButtons();
+                        break;
+                    }
+                } */
+            }
+        }
+    }
+
     if (MailLevelReward const* mailReward = sObjectMgr.GetMailLevelReward(level, getRaceMask()))
         MailDraft(mailReward->mailTemplateId).SendMailTo(this, MailSender(MAIL_CREATURE, mailReward->senderEntry));
 
