@@ -209,11 +209,14 @@ class FindGOData
 
 struct ZoneFlex
 {
-    std::string ZoneName;
-    uint32 ZoneID;
-    uint32 MapID;
+    std::string areaName;
+    uint32 areaId;
+    uint32 mapId;
     uint32 LevelRangeMin;
     uint32 LevelRangeMax;
+    uint32 areaFlags;
+
+    bool isStartingZone() const { return areaFlags == 1048640; }
 };
 
 struct pair_hash {

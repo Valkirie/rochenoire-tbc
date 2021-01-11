@@ -9617,15 +9617,20 @@ bool Unit::hasAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
     uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
     uint32 pLevel = getLevel();
+    const ZoneFlex* thisLocation = nullptr;
 
     if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))
-    {
-        if (pLevel < thisArea->LevelRangeMin || pLevel > thisArea->LevelRangeMax)
-            return false;
-    }
+        thisLocation = thisArea;
     else if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(zone))
+        thisLocation = thisZone;
+
+    if (thisLocation)
     {
-        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
+        // skip starting location
+        if (thisLocation->areaFlags == 1048640)
+            return false;
+
+        if (pLevel < thisLocation->LevelRangeMin || pLevel > thisLocation->LevelRangeMax)
             return false;
     }
 
@@ -9638,16 +9643,21 @@ uint32 Unit::getAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
     uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
     uint32 pLevel = getLevel();
+    const ZoneFlex* thisLocation = nullptr;
 
     if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))
-    {
-        if (pLevel < thisArea->LevelRangeMin || pLevel > thisArea->LevelRangeMax)
-            return pLevel > thisArea->LevelRangeMax ? thisArea->LevelRangeMax : thisArea->LevelRangeMin;
-    }
+        thisLocation = thisArea;
     else if (const ZoneFlex* thisZone = sObjectMgr.GetZoneFlex(zone))
+        thisLocation = thisZone;
+
+    if (thisLocation)
     {
-        if (pLevel < thisZone->LevelRangeMin || pLevel > thisZone->LevelRangeMax)
-            return pLevel > thisZone->LevelRangeMax ? thisZone->LevelRangeMax : thisZone->LevelRangeMin;
+        // skip starting location
+        if (thisLocation->areaFlags == 1048640)
+            return pLevel;
+
+        if (pLevel < thisLocation->LevelRangeMin || pLevel > thisLocation->LevelRangeMax)
+            return pLevel > thisLocation->LevelRangeMax ? thisLocation->LevelRangeMax : thisLocation->LevelRangeMin;
     }
 
     return pLevel;

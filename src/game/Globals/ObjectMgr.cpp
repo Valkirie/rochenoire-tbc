@@ -1286,31 +1286,43 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 	else
 		return target->getLevel();
 
-	uint32 p_level = player->getLevel();
+	uint32 level = player->getLevel();
 
     if (owner->IsCreature())
     {
+        // support specific behaviors
         uint32 AreaID = creature->GetTerrain() ? creature->GetAreaId() : 0;
-        p_level = player->getAreaZoneLevel(AreaID);
+        uint32 arealevel = player->getAreaZoneLevel(AreaID);
+        level = arealevel;
 
+        // worldboss level should be able to go up to level 70 no matter the area
         if (creature->IsWorldBoss())
-            p_level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+        {
+            if (arealevel < player->getLevel())
+                level = player->getLevel();
+
+            level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+        }
         else
         {
-            int v_level = creature->GetLevelVar();
+            if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(AreaID))
+                if (thisZone->isStartingZone())
+                    return creature->getLevel();
+
+            level += creature->GetLevelVar();
 
             // skip negative level
-            if ((int)p_level + v_level <= 0)
+            if ((int)level <= 0)
                 return 1;
             // skip anything above 70
-            else if ((int)p_level + v_level > sWorld.GetCurrentMaxLevel())
-                return p_level;
-            
-            p_level += v_level;
+            else if ((int)level > sWorld.GetCurrentMaxLevel())
+                return sWorld.GetCurrentMaxLevel();
+            else
+                return level;
         }
     }
 
-	return p_level;
+	return level;
 }
 
 uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
@@ -1497,14 +1509,14 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         float target_value = (0.0072 * pow(scaled_level, 2) + 1.2594 * (scaled_level) + 21.718);
         damage = target_value * caster_ratio;
     }
-    else if (spellType == SPELLTYPE_HEAL)
+    /* else if (spellType == SPELLTYPE_HEAL)
     {
         float caster_funct = (0.0792541 * pow(origin_level, 2) + 1.93556 * (origin_level) + 4.56252);
         float caster_ratio = damage / caster_funct;
 
         float target_value = (0.0792541 * pow(scaled_level, 2) + 1.93556 * (scaled_level) + 4.56252);
         damage = target_value * caster_ratio;
-    }
+    } */
     else if (pAggro == 1)
 	{
         uint32 max_value = spellType == SPELLTYPE_POWER ? creature->GetMaxPower(POWER_MANA) : creature->GetMaxHealth();
@@ -2645,18 +2657,20 @@ void ObjectMgr::LoadZoneScale()
 		Field *fields = result->Fetch();
 		bar.step();
 
-        std::string ZoneName = fields[0].GetString();
-        uint32 MapID = fields[1].GetUInt32();
-        uint32 ZoneID = fields[2].GetUInt32();
+        std::string areaName = fields[0].GetString();
+        uint32 mapId = fields[1].GetUInt32();
+        uint32 areaId = fields[2].GetUInt32();
         uint32 LevelRangeMin = fields[3].GetUInt32();
         uint32 LevelRangeMax = fields[4].GetUInt32();
+        uint32 areaFlags = fields[5].GetUInt32();
 
-        ZoneFlex& data = mZoneFlexMap[ZoneID];
-        data.ZoneName = ZoneName;
-        data.MapID = MapID;
-        data.ZoneID = ZoneID;
+        ZoneFlex& data = mZoneFlexMap[areaId];
+        data.areaName = areaName;
+        data.mapId = mapId;
+        data.areaId = areaId;
         data.LevelRangeMin = LevelRangeMin;
         data.LevelRangeMax = LevelRangeMax;
+        data.areaFlags = areaFlags;
 
 	} while (result->NextRow());
 
