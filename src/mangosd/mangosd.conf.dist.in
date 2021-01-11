@@ -330,6 +330,14 @@ AccountData = 0
 #        Description: Calculate at loading gameobject zoneId / areaId and save in gameobject table (WARNING: SLOW WORLD SERVER STARTUP)
 #        Default:     0  - (Do not show)
 #
+#     SummoningRitual.ReqParticipants
+#        Number of required party members to complete the Ritual of Summoning
+#        Default:     2
+#
+#     SummoningRitual.AllowSelfUse
+#        Skip party memebers requirement
+#        Default:     0
+#
 #    AutoLearn
 #        Automatically learn class spells on level up
 #        Default: 0 (disable)

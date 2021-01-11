@@ -7129,8 +7129,11 @@ void Player::UpdateArea(uint32 newArea)
         std::string current_zone_name = area->area_name[GetSession()->GetSessionDbcLocale()];
         if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(newArea, m_zoneUpdateId))
         {
-            GetSession()->SendAreaTriggerMessage("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
-            ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+            if (!thisZone->isStartingZone())
+            {
+                GetSession()->SendAreaTriggerMessage("%s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+                ChatHandler(this).PSendSysMessage("Entered %s: [%u-%u]", current_zone_name.c_str(), thisZone->LevelRangeMin, thisZone->LevelRangeMax);
+            }
         }
         else
             ChatHandler(this).PSendSysMessage("Entered %s: (missing details for entry %u)", current_zone_name.c_str(), newArea);
@@ -14172,12 +14175,12 @@ bool Player::SatisfyQuestCondition(Quest const* qInfo, bool msg) const
 bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 {
     int32 lowLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF);
-    uint32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
+    int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
 
-    uint32 QuestMinLevel = qInfo->IsSpecificQuest() ? qInfo->GetMinLevel() : GetQuestLevelForPlayer(qInfo, true);
+    int32 QuestMinLevel = qInfo->IsSpecificQuest() ? qInfo->GetMinLevel() : GetQuestLevelForPlayer(qInfo, true);
 
-    if ((getLevel() + uint32(lowLevelDiff) < QuestMinLevel) ||
-        (getLevel() - uint32(highLevelDiff) > QuestMinLevel))
+    if ((getLevel() + lowLevelDiff < QuestMinLevel) ||
+        (int32(getLevel()) - int32(highLevelDiff) > QuestMinLevel))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
