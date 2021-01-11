@@ -202,6 +202,7 @@ struct LootItem
     bool         isReleased        : 1;                             // true if item is released by looter or by roll system
     uint32       loot_level;
     uint32       type;
+    uint32       bonusUpgrade;
     std::map<uint32, uint32> randomPropertyIdArray;
     std::map<uint32, uint32> randomSuffixIdArray;
 

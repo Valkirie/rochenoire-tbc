@@ -330,11 +330,13 @@ AccountData = 0
 #        Description: Calculate at loading gameobject zoneId / areaId and save in gameobject table (WARNING: SLOW WORLD SERVER STARTUP)
 #        Default:     0  - (Do not show)
 #
+#    BonusUpgrade.Rate.Uncommon
 #    BonusUpgrade.Rate.Rare
 #    BonusUpgrade.Rate.Epic
 #        Upgrade rates (items by quality)
 #        Default: 1.0
 #
+#    BonusUpgrade.Loot
 #    BonusUpgrade.Quest
 #    BonusUpgrade.Crafting
 #        Enable/Disable item bonus upgrade
@@ -377,8 +379,10 @@ Calculate.Creature.Zone.Area.Data = 0
 Calculate.Gameoject.Zone.Area.Data = 0
 SummoningRitual.ReqParticipants = 1
 SummoningRitual.AllowSelfUse = 1
+BonusUpgrade.Rate.Uncommon = 35.0
 BonusUpgrade.Rate.Rare = 25.0
 BonusUpgrade.Rate.Epic = 12.5
+BonusUpgrade.Loot = 1
 BonusUpgrade.Quest = 1
 BonusUpgrade.Crafting = 1
 

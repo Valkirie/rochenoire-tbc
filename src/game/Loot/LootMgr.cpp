@@ -384,6 +384,7 @@ LootItem::LootItem(LootStoreItem const& li, uint32 _lootSlot, uint32 threshold)
         freeForAll       = (itemProto->Flags & ITEM_FLAG_MULTI_DROP) != 0;
         displayID        = itemProto->DisplayInfoID;
         isUnderThreshold = itemProto->Quality < threshold;
+        bonusUpgrade = Item::ComputeBonusUpgrade(itemProto->Quality);
     }
     else
     {
@@ -416,6 +417,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
     {
         freeForAll = (itemProto->Flags & ITEM_FLAG_MULTI_DROP) != 0;
         displayID = itemProto->DisplayInfoID;
+        bonusUpgrade = Item::ComputeBonusUpgrade(itemProto->Quality);
     }
     else
     {
@@ -426,7 +428,7 @@ LootItem::LootItem(uint32 _itemId, uint32 _count, uint32 _randomSuffix, int32 _r
 
     itemId            = _itemId;
     loot_level        = 0;
-    type       = _type;
+    type              = _type;
     lootSlot          = _lootSlot;
     conditionId       = 0;
     lootItemType      = LOOTITEM_TYPE_NORMAL;
@@ -470,7 +472,7 @@ void LootItem::setRandomPropertyScaled()
 
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
     {
-        uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+        uint32 itemid = Item::LoadScaledLoot(itemId, plevel, false, nullptr, bonusUpgrade);
         if (uint32 rproperty = randomPropertyId > 0 ? Item::GenerateItemRandomPropertyId(itemid, type) : randomPropertyId)
             randomPropertyIdArray[plevel] = rproperty;
     }
@@ -504,7 +506,7 @@ void LootItem::setRandomSuffixScaled()
 
     for (int plevel = 0; plevel <= sWorld.GetCurrentMaxLevel(); plevel++)
     {
-        uint32 itemid = Item::LoadScaledLoot(itemId, plevel);
+        uint32 itemid = Item::LoadScaledLoot(itemId, plevel, false, nullptr, bonusUpgrade);
         if (uint32 rproperty = GenerateEnchSuffixFactor(itemid))
             randomSuffixIdArray[plevel] = rproperty;
     }
@@ -666,7 +668,7 @@ void GroupLootRoll::SendStartRoll()
 
         uint32 plevel = plr->getAreaZoneLevel();
 
-        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr, false, m_lootItem->bonusUpgrade);
         uint32 randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
         uint32 randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
 
@@ -707,7 +709,7 @@ void GroupLootRoll::SendAllPassed()
 
         uint32 plevel = plr->getAreaZoneLevel();
 
-        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+        uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr, false, m_lootItem->bonusUpgrade);
         uint32 randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
         uint32 randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
 
@@ -759,7 +761,7 @@ void GroupLootRoll::SendLootRollWon(ObjectGuid const& targetGuid, uint32 rollNum
         if (!plr || !plr->GetSession())
             continue;
 
-        m_lootItem->itemId = Item::LoadScaledLoot(m_lootItem->itemId, winner);
+        m_lootItem->itemId = Item::LoadScaledLoot(m_lootItem->itemId, winner, false, m_lootItem->bonusUpgrade);
         m_lootItem->randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
         m_lootItem->randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
 
@@ -791,7 +793,7 @@ void GroupLootRoll::SendRoll(ObjectGuid const& targetGuid, uint32 rollNumber, ui
 
         uint32 plevel = plr->getAreaZoneLevel();
 
-		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr);
+		uint32 itemId = Item::LoadScaledLoot(m_lootItem->itemId, plr, false, m_lootItem->bonusUpgrade);
         uint32 randomSuffix = m_lootItem->getRandomSuffixScaled(plevel, false, true);
         uint32 randomPropertyId = m_lootItem->getRandomPropertyScaled(plevel, false, true);
 
@@ -2180,7 +2182,7 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem, bool sendErro
 
         if (lootItem->IsAllowed(target, this))
         {
-            itemId = Item::LoadScaledLoot(itemId, target);
+            itemId = Item::LoadScaledLoot(itemId, target, false, lootItem->bonusUpgrade);
             lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(target->getAreaZoneLevel(), true, true); // because of won
             lootItem->randomSuffix = lootItem->getRandomSuffixScaled(target->getAreaZoneLevel(), true, true); // because of won
         }
@@ -2491,7 +2493,7 @@ void Loot::GetLootContentFor(Player* player, ByteBuffer& buffer)
 		
         if (lootItem->IsAllowed(player, this))
         {
-            lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player);
+            lootItem->itemId = Item::LoadScaledLoot(lootItem->itemId, player, false, lootItem->bonusUpgrade);
             lootItem->randomPropertyId = lootItem->getRandomPropertyScaled(player->getAreaZoneLevel(), false, true); // because of buffer
             lootItem->randomSuffix = lootItem->getRandomSuffixScaled(player->getAreaZoneLevel(), false, true); // because of buffer
         }

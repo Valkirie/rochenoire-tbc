@@ -31,7 +31,7 @@ static eConfigFloatValues const qualityToUpgrade[MAX_ITEM_QUALITY] =
 {
     CONFIG_FLOAT_RATE_DROP_ITEM_POOR,                       // PLACEHOLDER: ITEM_QUALITY_POOR
     CONFIG_FLOAT_RATE_DROP_ITEM_NORMAL,                     // PLACEHOLDER: ITEM_QUALITY_NORMAL
-    CONFIG_FLOAT_RATE_DROP_ITEM_UNCOMMON,                   // PLACEHOLDER: ITEM_QUALITY_UNCOMMON
+    CONFIG_FLOAT_RATE_UPGRADE_ITEM_UNCOMMON,                // ITEM_QUALITY_UNCOMMON
     CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE,                    // ITEM_QUALITY_RARE
     CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC,                    // ITEM_QUALITY_EPIC
     CONFIG_FLOAT_RATE_DROP_ITEM_LEGENDARY,                  // PLACEHOLDER: ITEM_QUALITY_LEGENDARY
@@ -788,7 +788,7 @@ uint32 Item::LoadScaledParent(uint32 ItemId)
 	return ItemId;
 }
 
-uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
+uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade, uint32 _BonusQuality)
 {
 	if (ItemId && pPlayer)
 	{
@@ -851,7 +851,7 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, Player *pPlayer, bool upgrade)
 			}
 		}
 
-		return LoadScaledLoot(ItemId, pLevel, upgrade, pPlayer);
+		return LoadScaledLoot(ItemId, pLevel, upgrade, pPlayer, _BonusQuality);
 	}
 	return ItemId;
 }
@@ -895,48 +895,17 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 	}
 	else if (pProto->Class == ITEM_CLASS_WEAPON || pProto->Class == ITEM_CLASS_ARMOR)
 	{
-        uint32 BonusQuality = _BonusQuality;
-
         // roll dice to see if item should be upgraded
         if (upgrade)
-        {
-            if (pProto->Quality >= ITEM_QUALITY_EPIC)
-                BonusQuality = 0; // Do not create Legendary, Artifacts
-            else if (pProto->Quality <= ITEM_QUALITY_NORMAL)
-                BonusQuality = 0; // Do not upgrade Poor, Common
-            else
-            {
-                bool UpgradeToEpic = false;
-                bool UpgradeToRare = false;
-
-                switch (pProto->Quality)
-                {
-                case ITEM_QUALITY_UNCOMMON:
-                    UpgradeToRare = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_RARE]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_RARE) : 1.0f));
-                case ITEM_QUALITY_RARE:
-                    UpgradeToEpic = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_EPIC]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_EPIC) : 1.0f));
-                    break;
-                }
-
-                switch (pProto->Quality)
-                {
-                case ITEM_QUALITY_UNCOMMON:
-                    BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
-                    break;
-                case ITEM_QUALITY_RARE:
-                    BonusQuality = UpgradeToEpic ? 1 : 0;
-                    break;
-                }
-            }
-        }
+            _BonusQuality = ComputeBonusUpgrade(pProto->Quality, pPlayer);
 
 		uint32 ScaleId = (MIN_ENTRY_SCALE + ItemId * MAX_QUALITY_SCALE * MAX_ILEVEL_SCALE + pLevel);
         
         if (ItemPrototype const* pProtoScale = sItemStorage.LookupEntry<ItemPrototype>(ScaleId))
         {
-            if (BonusQuality)
+            if (_BonusQuality)
             {
-                uint32 UpgradeId = ScaleId + BonusQuality * MAX_ILEVEL_SCALE;
+                uint32 UpgradeId = ScaleId + _BonusQuality * MAX_ILEVEL_SCALE;
                 if (sItemStorage.LookupEntry<ItemPrototype>(UpgradeId))
                     return UpgradeId;
             }
@@ -946,6 +915,41 @@ uint32 Item::LoadScaledLoot(uint32 ItemId, uint32 pLevel, bool upgrade, Player* 
 	}
 
 	return ItemId;
+}
+
+
+uint32 Item::ComputeBonusUpgrade(uint32 quality, Player* pPlayer)
+{
+    uint32 BonusQuality = 0;
+    bool UpgradeToEpic = false;
+    bool UpgradeToRare = false;
+    bool UpgradeToUncommon = false;
+
+    switch (quality)
+    {
+    case ITEM_QUALITY_UNCOMMON:
+        UpgradeToRare = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_RARE]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_RARE) : 1.0f));
+    case ITEM_QUALITY_RARE:
+        UpgradeToEpic = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_EPIC]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_EPIC) : 1.0f));
+        break;
+    case ITEM_QUALITY_NORMAL:
+        UpgradeToUncommon = roll_chance_f(sWorld.getConfig(qualityToUpgrade[ITEM_QUALITY_UNCOMMON]) * (pPlayer ? pPlayer->getItemLevelCoeff(ITEM_QUALITY_UNCOMMON) : 1.0f));
+        break;
+    }
+
+    switch (quality)
+    {
+    case ITEM_QUALITY_NORMAL:
+        BonusQuality = UpgradeToUncommon ? 1 : 0;
+        break;
+    case ITEM_QUALITY_UNCOMMON:
+        BonusQuality = UpgradeToEpic ? 2 : UpgradeToRare ? 1 : 0;
+    case ITEM_QUALITY_RARE:
+        BonusQuality = UpgradeToEpic ? 1 : 0;
+        break;
+    }
+
+    return BonusQuality;
 }
 
 void Item::SetItemRandomProperties(int32 randomPropId)
