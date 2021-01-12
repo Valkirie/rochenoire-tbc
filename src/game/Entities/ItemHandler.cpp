@@ -808,7 +808,7 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid) const
                     }
                 }
 
-                if (!_player->isGameMaster())
+                if (!_player->IsGameMaster())
                 {
                     // class wrong item skip only for bindable case
                     if ((pProto->AllowableClass & _player->getClassMask()) == 0 && pProto->Bonding == BIND_WHEN_PICKED_UP)

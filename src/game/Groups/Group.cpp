@@ -1403,7 +1403,7 @@ void Group::UnbindInstance(uint32 mapid, uint8 difficulty, bool unload)
 
 void Group::_homebindIfInstance(Player* player) const
 {
-    if (player && !player->isGameMaster())
+    if (player && !player->IsGameMaster())
     {
         Map* map = player->GetMap();
         if (map->IsDungeon())
