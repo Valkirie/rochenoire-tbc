@@ -643,6 +643,15 @@ class Creature : public Unit
         bool IsTemporarySummon() const { return m_subtype == CREATURE_SUBTYPE_TEMPORARY_SUMMON; }
         bool IsCritter() const { return m_creatureInfo->CreatureType == CREATURE_TYPE_CRITTER; }
 
+        //Rare Challenge
+        uint8 m_RareChallengeLevel;
+        bool isRC;
+        uint8 getRareChallengeLevel() { return m_RareChallengeLevel ; }
+        void setRareChallengeLevel(uint8 lvl) { m_RareChallengeLevel = lvl; }
+        bool isRareChallenge() { return isRC; }
+        void setRareChallenge(bool b_isRC) { isRC = b_isRC; }
+
+
 #ifdef BUILD_PLAYERBOT
         // Adds functionality to load/unload bots from NPC, also need to apply SQL scripts
         void LoadBotMenu(Player* pPlayer);
@@ -910,6 +919,10 @@ class Creature : public Unit
         void ResetSpellHitCounter();
 
         uint32 GetDbGuid() const { return m_dbGuid; }
+
+
+
+
     protected:
         bool MeetsSelectAttackingRequirement(Unit* pTarget, SpellEntry const* pSpellInfo, uint32 selectFlags, SelectAttackingTargetParams params) const;
 
@@ -973,6 +986,9 @@ class Creature : public Unit
 
         // spell scripting persistency
         std::set<uint32> m_hitBySpells;
+
+        
+
 
     private:
         GridReference<Creature> m_gridRef;

@@ -87,6 +87,29 @@ struct WorldTemplate
     uint32 script_id;
 };
 
+//Rochenoire Rare Challenge
+typedef std::map <uint32, Player*> PlayerMap;
+
+struct RareProximity
+{
+    //uint32 RareEntry;
+    uint8 RareFlag; // none, ffa or pvp zone
+    float x;
+    float y;
+    float radius;
+    PlayerMap PlayersWithinRadius;
+    const char* Name;
+    //char Name = "None";
+};
+enum RareFlag
+{
+    RARE_FLAG_NONE = 0,
+    RARE_FLAG_PVP = 1,
+    RARE_FLAG_FFA = 2
+
+};
+//Rochenoire end
+
 enum LevelRequirementVsMode
 {
     LEVELREQUIREMENT_HEROIC = 70
@@ -111,6 +134,13 @@ class Map : public GridRefManager<NGridType>
 
     public:
         virtual ~Map();
+
+        //Rochenoire Rare Challenge
+        typedef std::map <uint32, RareProximity> RareChallengeMap;
+        RareChallengeMap m_RareChallengeStore;//Rochenoire Rare Challenge
+
+        void UpdateRareChallenge(const uint32 diff, Player* plr);
+        //Rochenoire end
 
         // currently unused for normal maps
         bool CanUnload(uint32 diff)

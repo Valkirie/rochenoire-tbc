@@ -88,4 +88,20 @@ enum BFTDP_Events
     EVENT_REINFORCEMENTS_LEADER_SPEAK = 7,
 };
 
+
+
+enum
+{
+    CODE_NULL = 0,
+    CODE_RARE = 1,
+    CODE_RARECHALLENGE = 2
+
+};
+
+
+enum {
+    START_ID_RC = 41000, //New creature will get an entry = old_entry + START_ID_RC
+    NB_MAX_RC = 3
+};
+
 #endif

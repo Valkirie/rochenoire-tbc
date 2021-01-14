@@ -252,19 +252,37 @@ bool IsValidTargetType(EventAI_Type eventType, EventAI_ActionType actionType, ui
 }
 
 // -------------------
-void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
+void CreatureEventAIMgr::LoadCreatureEventAI_Scripts(uint32 uiCreatureID, uint32 uiIdForScript)
 {
-    // Drop Existing EventAI List
-    m_CreatureEventAI_Event_Map.clear();
-    std::set<int32> usedTextIds;
 
-    // Gather event data
-    QueryResult* result = WorldDatabase.Query("SELECT id, creature_id, event_type, event_inverse_phase_mask, event_chance, event_flags, "
-                          "event_param1, event_param2, event_param3, event_param4, event_param5, event_param6, "
-                          "action1_type, action1_param1, action1_param2, action1_param3, "
-                          "action2_type, action2_param1, action2_param2, action2_param3, "
-                          "action3_type, action3_param1, action3_param2, action3_param3 "
-                          "FROM creature_ai_scripts ORDER BY id");
+    std::set<int32> usedTextIds;
+    QueryResult* result;
+
+    // Drop Existing EventAI List
+    if (uiCreatureID == 0)
+    {
+        m_CreatureEventAI_Event_Map.clear();
+        // Gather event data
+        result = WorldDatabase.Query("SELECT id, creature_id, event_type, event_inverse_phase_mask, event_chance, event_flags, "
+            "event_param1, event_param2, event_param3, event_param4, event_param5, event_param6, "
+            "action1_type, action1_param1, action1_param2, action1_param3, "
+            "action2_type, action2_param1, action2_param2, action2_param3, "
+            "action3_type, action3_param1, action3_param2, action3_param3 "
+            "FROM creature_ai_scripts ORDER BY id");
+    }
+    else
+    {
+        m_CreatureEventAI_Event_Map.erase(uiCreatureID);
+        result = WorldDatabase.PQuery("SELECT id, creature_id, event_type, event_inverse_phase_mask, event_chance, event_flags, "
+            "event_param1, event_param2, event_param3, event_param4, event_param5, event_param6, "
+            "action1_type, action1_param1, action1_param2, action1_param3, "
+            "action2_type, action2_param1, action2_param2, action2_param3, "
+            "action3_type, action3_param1, action3_param2, action3_param3 "
+            "FROM creature_ai_scripts where creature_id= '%u';", uiIdForScript);
+    }
+    
+
+
     if (result)
     {
         BarGoLink bar(result->GetRowCount());
@@ -279,7 +297,15 @@ void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
             temp.event_id = EventAI_Type(fields[0].GetUInt32());
             uint32 i = temp.event_id;
 
-            temp.creature_id = fields[1].GetUInt32();
+            if (uiCreatureID == 0)
+            {
+                temp.creature_id = fields[1].GetUInt32();
+            }
+            else
+            {
+                temp.creature_id = uiCreatureID;
+            }
+            
             uint32 creature_id = temp.creature_id;
 
             uint32 e_type = fields[2].GetUInt32();
