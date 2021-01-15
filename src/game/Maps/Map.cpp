@@ -648,6 +648,68 @@ void Map::VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<MaNGOS::Obje
     }
 }
 
+//Rochenoire Rare Challenge
+
+void Map::UpdateRareChallenge(const uint32 diff, Player* plr)
+{
+    float XPlayer = plr->GetPositionX();
+    float YPlayer = plr->GetPositionY();
+
+
+
+    for (RareChallengeMap::iterator RareMap = m_RareChallengeStore.begin(); RareMap != m_RareChallengeStore.end(); ++RareMap)
+    {
+        uint32 RareEntry = RareMap->first;
+        RareProximity Rare = RareMap->second;
+
+        uint32 ddRarePlayer = (Rare.x - XPlayer) * (Rare.x - XPlayer) + (Rare.y - YPlayer) * (Rare.y - YPlayer); //Distance joueur/Rare au carré.
+
+        if (ddRarePlayer < (Rare.radius * Rare.radius))
+        {
+            if (Rare.RareFlag == RARE_FLAG_FFA)
+                plr->SetPvPFreeForAll(true);
+
+            if (Rare.RareFlag == RARE_FLAG_PVP)
+                plr->SetPvP(true);
+
+
+        }
+
+        if (ddRarePlayer < 10 * (Rare.radius * Rare.radius))
+        {
+            if (!Rare.PlayersWithinRadius[plr->GetGUIDLow()])
+            {
+                plr->PlayerTalkClass->SendPointOfInterest(Rare.x, Rare.y, ICON_POI_REDFLAG, 99, 0, Rare.Name);
+                m_RareChallengeStore[RareEntry].PlayersWithinRadius[plr->GetGUIDLow()] = plr;
+                plr->GetSession()->SendAreaTriggerMessage(Rare.Name);
+                plr->GetSession()->SendAreaTriggerMessage("A creature become stronger in the vicinity, his name is ...");
+                plr->PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, plr));
+                
+            }
+
+
+        }
+
+        if (Rare.PlayersWithinRadius[plr->GetGUIDLow()])
+        {
+            if (ddRarePlayer > 20 * (Rare.radius * Rare.radius))
+            {
+                m_RareChallengeStore[RareEntry].PlayersWithinRadius.erase(plr->GetGUIDLow());
+
+
+            }
+
+        }
+
+
+    }
+
+
+}
+
+//Rochenoire end
+
+
 void Map::Update(const uint32& t_diff)
 {
     metric::duration<std::chrono::milliseconds> meas("map.update", {
@@ -707,8 +769,11 @@ void Map::Update(const uint32& t_diff)
 		for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
 		{
 			Player* plr = m_mapRefIter->getSource();
-			if (plr && plr->IsInWorld())
-				plr->Update(t_diff);
+            if (plr && plr->IsInWorld())
+            {
+                plr->Update(t_diff);
+                UpdateRareChallenge(t_diff, plr);
+            }
 		}
 
     for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)

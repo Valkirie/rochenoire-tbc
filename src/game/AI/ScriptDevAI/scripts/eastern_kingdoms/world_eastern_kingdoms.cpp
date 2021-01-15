@@ -21,6 +21,9 @@
 #include "World/WorldState.h"
 #include "World/WorldStateDefines.h"
 
+#include "AI/EventAI/CreatureEventAIMgr.h" //Roche
+#include "Globals/ObjectMgr.h"
+
 /* *********************************************************
  *                  EASTERN KINGDOMS
  */
@@ -149,9 +152,53 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
     // Shade of the Horseman village attack event
     ShadeOfTheHorsemanData m_shadeData;
 
+
+    // A récupérer depuis une base de données :
+    static const uint16 NBRareChallenge = 6;
+    std::array<uint32, NBRareChallenge> RC_ENTRYList =
+    {
+       99, 471, 79, 61, 472, 100 //Elwin forest
+    };
+
+    
+    // A récupérer depuis une base de donnée : 
+    static const uint16 NBRC_Script_HUMANOID_Warrior = 1;
+    uint32 RC_ScriptID_HUMANOID_Warrior[NBRC_Script_HUMANOID_Warrior] =
+    {
+       99,
+    };
+
+    static const uint16 NBRC_Script_HUMANOID_Mage = 1;
+    uint32 RC_ScriptID_HUMANOID_Mage[NBRC_Script_HUMANOID_Mage] =
+    {
+       99,
+    };
+
+
+    static const uint16 NBRC_Script_BEAST = 1;
+    uint32 RC_ScriptID_BEAST[NBRC_Script_BEAST] =
+    {
+       99,
+    };
+
+    std::list <uint32> RC_ChooseList;
+    uint32 RC_Count = 0;
+    uint32 RC_Despawn = 0;
+    uint32 m_uiRCTimer;
+    const uint32 m_uiRCTimerCheck = 10 * IN_MILLISECONDS;  // Timer to check Rare Challenge
+
+    uint32 m_uiRCTimerReset;
+    const uint32 m_uiRCTimerResetCheck = 3 * HOUR * IN_MILLISECONDS;  //Should be between 1 hour and 12 hours. // Timer to reset Rare challenge and shuffle a new set of rare
+
+
     void Initialize() override
     {
         m_shadeData.Reset();
+
+        RC_Count = 0; //RareChallenge
+        RC_Despawn = 0;
+        m_uiRCTimer = 6 * IN_MILLISECONDS;  //Timer after loading ? need to be shorter ?
+        m_uiRCTimerReset = 2 * IN_MILLISECONDS; //Timer after loading ? need to be shorter ?
     }
 
     bool CheckConditionCriteriaMeet(Player const* player, uint32 instanceConditionId, WorldObject const* conditionSource, uint32 conditionSourceType) const override
@@ -226,7 +273,38 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
                 m_npcEntryGuidCollection[pCreature->GetEntry()].push_back(pCreature->GetObjectGuid());
                 break;
         }
+
+        switch (IsInRC_ENTRY(pCreature->GetEntry())) //RareChallenge
+        {
+        case CODE_RARE:
+            m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case CODE_RARECHALLENGE:
+            m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            pCreature->ForcedDespawn();
+            pCreature->setRareChallenge(true);
+            break;
+        }
+
+
     }
+
+    uint8 IsInRC_ENTRY(uint32 Entry)
+    {
+        //for (std::vector<uint32>::iterator RcEntry = RC_ENTRYList.begin(); RcEntry != RC_ENTRYList.end(); RcEntry++)
+        for (auto& RcEntry : RC_ENTRYList)
+        {
+            if (Entry == RcEntry)
+                return CODE_RARE;
+
+            if (Entry == RcEntry + START_ID_RC)
+                return CODE_RARECHALLENGE;
+
+        }
+        return CODE_NULL;
+
+    }
+
 
     void OnCreatureDeath(Creature* pCreature) override
     {
@@ -250,6 +328,27 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
             default:
                 _spawn.erase(pCreature->GetObjectGuid());
                 break;
+        }
+
+        switch (IsInRC_ENTRY(pCreature->GetEntry())) //RareChallenge
+        {
+        case CODE_RARECHALLENGE:
+            RC_ChooseList.remove(pCreature->GetEntry());
+            pCreature->GetMap()->m_RareChallengeStore.erase(pCreature->GetEntry());
+            //m_RareChallengeStore[pCreature->GetEntry()].PlayersWithinRadius.clear();
+            break;
+        }
+
+
+
+    }
+
+    void OnCreatureRespawn(Creature* pCreature) override
+    {
+
+        if ((std::find(RC_ChooseList.begin(), RC_ChooseList.end(), pCreature->GetEntry()) != RC_ChooseList.end()))
+        {
+            SetRareChalengeCreature(pCreature->GetEntry());
         }
     }
 
@@ -363,6 +462,92 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
                 if (Creature* matron = instance->GetCreature(guid))
                     matron->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, matron, matron);
         }
+
+
+        UpdateRareChallenge(diff);
+
+    }
+
+    void UpdateRareChallenge(uint32 diff)
+    {
+        if (m_uiRCTimer > m_uiRCTimerCheck)
+            m_uiRCTimer = m_uiRCTimerCheck;
+
+        if (m_uiRCTimerReset > m_uiRCTimerResetCheck)
+            m_uiRCTimerReset = m_uiRCTimerResetCheck;
+
+
+        if (m_uiRCTimer < diff)
+        {
+            m_uiRCTimer = m_uiRCTimerCheck;
+            while (RC_Count < NB_MAX_RC)
+            {
+                uint32 RandEntry = rand() % NBRareChallenge;
+                uint32 EntryChoosen = RC_ENTRYList[RandEntry];
+                if (!(std::find(RC_ChooseList.begin(), RC_ChooseList.end(), EntryChoosen) != RC_ChooseList.end()))
+                {
+                    RC_ChooseList.push_back(EntryChoosen);
+                    SetRareChalengeCreature(EntryChoosen);
+                    RC_Count++;
+                }
+            }
+        }
+        else
+        {
+            m_uiRCTimer -= diff;
+        }
+
+
+
+
+        if (m_uiRCTimerReset < diff)
+        {
+            std::list <uint32> RC_ChooseListTemp = RC_ChooseList;
+
+            for (uint32 RCChoosenEntry : RC_ChooseListTemp)
+            {
+                if (Creature* pCreature = GetSingleCreatureFromStorage(GetNewRCEntry(RCChoosenEntry)))
+                {
+                    if (!(pCreature->IsInCombat() || pCreature->IsNoLoot()))
+                    {
+                        if (pCreature->IsAlive())
+                        {
+                            if (Creature* pCreatureOri = GetSingleCreatureFromStorage(RCChoosenEntry))
+                            {
+                                pCreatureOri->Respawn();
+                            }
+                        }
+
+                        pCreature->ForcedDespawn();
+                        RC_Despawn++;
+                        RC_ChooseList.remove(RCChoosenEntry);
+
+                    }
+                }
+                else
+                {
+                    RC_Despawn++;
+                    RC_ChooseList.remove(RCChoosenEntry);
+                }
+            }
+
+            if (RC_Despawn >= NB_MAX_RC)  //Work done
+            {
+                m_uiRCTimerReset = m_uiRCTimerResetCheck;
+                RC_ChooseList.clear();
+                RC_Despawn = 0;
+                RC_Count = 0;
+            }
+            else
+            {
+                m_uiRCTimerReset = m_uiRCTimerCheck;  //If work not done, we add a short timer.
+            }
+        }
+        else
+        {
+            m_uiRCTimerReset -= diff;
+        }
+
     }
 
     uint32 GetData(uint32 type) const override
@@ -377,6 +562,105 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
         if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
             return m_shadeData.HandleSetData(type, data);
     }
+
+
+
+    uint32 GetNewRCEntry(uint32 Entry)
+    {
+        return Entry + START_ID_RC;
+    }
+
+    uint32 GetScriptID(Creature* Crea)
+    {
+        uint32 Class = Crea->GetCreatureInfo()->UnitClass;
+        uint32 Type = Crea->GetCreatureInfo()->CreatureType;
+
+        uint32 RandEntry = 0; // rand() % NBRC_Script;
+        uint32 EntryChoosen = 0; // RC_ScriptID[RandEntry];
+
+        if (Type == 7) //Humanoïd
+        {
+            if (Class == 1) //Warrior
+            {
+                RandEntry = rand() % NBRC_Script_HUMANOID_Warrior;
+                return RC_ScriptID_HUMANOID_Warrior[RandEntry];
+            }
+            else
+            {
+                RandEntry = rand() % NBRC_Script_HUMANOID_Mage;
+                return RC_ScriptID_HUMANOID_Mage[RandEntry];
+
+            }
+
+        }
+        else
+        {
+            RandEntry = rand() % NBRC_Script_BEAST;
+            return RC_ScriptID_BEAST[RandEntry];
+        }
+        
+        return 0;
+    }
+
+    Creature* SetRareChalengeCreature(uint32 uiCreatureEntry)
+    {
+        uint32 uiRC_Entry = GetNewRCEntry(uiCreatureEntry);
+        if (Creature* pRCCreature = GetSingleCreatureFromStorage(uiRC_Entry))
+        {
+            if (pRCCreature->IsDespawned())
+            {
+                if (Creature* pCreature = GetSingleCreatureFromStorage(uiCreatureEntry))
+                {
+                    if (!(pCreature->IsDespawned() || pCreature->IsInCombat() || pCreature->IsNoLoot()))
+                    {
+
+                        pCreature->ForcedDespawn();
+                        pRCCreature->ForcedDespawn();
+                        uint32 ui_ScriptID = GetScriptID(pRCCreature);
+                        sEventAIMgr.LoadCreatureEventAI_Scripts(uiRC_Entry, ui_ScriptID);
+                        pRCCreature->AIM_Initialize();
+
+                        pRCCreature->setRareChallenge(true);
+
+                        RareProximity ThisRare;
+                        ThisRare.x = pRCCreature->GetPositionX();
+                        ThisRare.y = pRCCreature->GetPositionY();
+                        ThisRare.Name = pRCCreature->GetName();
+
+                        if (rand() % 3)
+                        {
+                            // Free for all (pvp global) with +1 level rare
+                            pRCCreature->setRareChallengeLevel(1);  
+                            ThisRare.RareFlag = RARE_FLAG_FFA;
+
+                        }
+                        else
+                        {
+                            // standard pvp zone with +3 level
+                            pRCCreature->setRareChallengeLevel(3);
+                            ThisRare.RareFlag = RARE_FLAG_PVP;
+
+                        }
+
+                        //CreatureEventAI::CreatureEventAI(pRCCreature, uiCreatureEntry);
+                       
+                        pRCCreature->GetMap()->m_RareChallengeStore[uiRC_Entry] = ThisRare;
+                        pRCCreature->Respawn();
+
+                        return pRCCreature;
+
+
+                    }
+                }
+            }
+        }
+
+        return nullptr;
+
+    }
+
+
+
 };
 
 struct go_infernaling_summoner_portal_hound : public GameObjectAI

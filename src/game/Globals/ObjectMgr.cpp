@@ -1295,13 +1295,21 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
         uint32 arealevel = player->getAreaZoneLevel(AreaID);
         level = arealevel;
 
-        // worldboss level should be able to go up to level 70 no matter the area
+        // worldboss level should be able to go up to level 70 no matter the area or Rare Challenge Creature
         if (creature->IsWorldBoss())
         {
             if (arealevel < player->getLevel())
                 level = player->getLevel();
 
             level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
+        }
+        else if (creature->isRareChallenge())
+        {
+            if (arealevel < player->getLevel())
+                level = player->getLevel();
+
+            level += creature->getRareChallengeLevel();
+
         }
         else
         {
