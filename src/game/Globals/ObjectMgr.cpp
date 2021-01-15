@@ -1047,7 +1047,7 @@ bool ObjectMgr::IsScalable(Unit *owner, Unit *target) const
 	else
 		return false;
 
-	if (!player->IsGameMaster() && creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
+	if (!player->isGameMaster() && creature->GetReactionTo(player) >= REP_NEUTRAL && !player->CanAttack(creature))
 		return false;
 
 	// Check creatures flags_extra for disable block
@@ -1295,21 +1295,13 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
         uint32 arealevel = player->getAreaZoneLevel(AreaID);
         level = arealevel;
 
-        // worldboss level should be able to go up to level 70 no matter the area or Rare Challenge Creature
+        // worldboss level should be able to go up to level 70 no matter the area
         if (creature->IsWorldBoss())
         {
             if (arealevel < player->getLevel())
                 level = player->getLevel();
 
             level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
-        }
-        else if (creature->isRareChallenge())
-        {
-            if (arealevel < player->getLevel())
-                level = player->getLevel();
-
-            level += creature->getRareChallengeLevel();
-
         }
         else
         {
