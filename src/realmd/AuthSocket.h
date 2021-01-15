@@ -51,14 +51,17 @@ typedef struct PATCH_INFO
 class PatcherRunnable : public MaNGOS::Runnable
 {
 public:
-	PatcherRunnable(class AuthSocket*, uint64 start, uint64 size);
-	void run();
-	void stop();
+	PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size);
+	~PatcherRunnable();
+
+	void stop() { stopped = true; }
+	void run() override;
 private:
-	AuthSocket* mySocket;
+	MaNGOS::Socket* sock;
+	FILE* file;
 	uint64 pos;
 	uint64 size;
-	bool stopped;
+	volatile bool stopped;
 };
 
 class AuthSocket : public MaNGOS::Socket
@@ -67,6 +70,7 @@ public:
 	const static int s_BYTE_SIZE = 32;
 
 	AuthSocket(boost::asio::io_service& service, std::function<void(Socket*)> closeHandler);
+	~AuthSocket();
 
 	void SendProof(Sha1Hash sha);
 	void LoadRealmlist(ByteBuffer& pkt, uint32 acctid);
@@ -78,18 +82,14 @@ public:
 	bool _HandleReconnectChallenge();
 	bool _HandleReconnectProof();
 	bool _HandleRealmList();
-	// data transfer handle for patch
 
-	bool _HandleXferResume();
-	bool _HandleXferCancel();
+	// patch data transfer handlers
 	bool _HandleXferAccept();
+	bool _HandleXferResume();
+	bool _HandleXferCancel();	
+	void _StopPatching();
 
 	void _SetVSFields(const std::string& rI);
-
-	FILE* pPatch;
-	PatcherRunnable* _patcher;
-	std::mutex patcherLock;
-
 private:
 	enum eStatus
 	{
@@ -120,6 +120,10 @@ private:
 	uint16 _build;
 	AccountTypes _accountSecurityLevel;
 
+	FILE* _patchFile;
+	PatcherRunnable* _patcherRun;
+	MaNGOS::Thread* _patcherThread;
+
 	virtual bool ProcessIncomingData() override;
 };
 
@@ -129,17 +133,11 @@ class Patcher
 
 public:
 	void Initialize();
-
-	void LoadPatchMD5(const char*, char*);
 	bool GetHash(char* pat, uint8 myMD5[16]);
-
-	bool InitPatching(uint16 _build, std::string _locale, AuthSocket* _AuthSocket);
-	bool PossiblePatching(uint16 _build, std::string _locale);
-
+	PATCH_INFO* GetPatchInfo(uint16 _build, std::string _locale);
 private:
-	PATCH_INFO* getPatchInfo(uint16 _build, std::string _locale);
-
 	void LoadPatchesInfo();
+	void LoadPatchMD5(const char* szPath, char* szFilename);
 	Patches _patches;
 };
 #endif

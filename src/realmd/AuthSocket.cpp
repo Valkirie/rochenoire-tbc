@@ -154,14 +154,20 @@ typedef struct AUTH_RECONNECT_PROOF_C
     uint8   number_of_keys;
 } sAuthReconnectProof_C;
 
-typedef struct XFER_INIT
+struct XFER_INIT
 {
     uint8 cmd;                                              // XFER_INITIATE
     uint8 fileNameLen;                                      // strlen(fileName);
     uint8 fileName[5];                                      // fileName[fileNameLen]
     uint64 file_size;                                       // file size (bytes)
     uint8 md5[MD5_DIGEST_LENGTH];                           // MD5
-} XFER_INIT;
+};
+
+struct XFER_CHUNK
+{
+    uint8 cmd;
+    uint16 chunk_size;
+};
 
 typedef struct AuthHandler
 {
@@ -177,21 +183,19 @@ typedef struct AuthHandler
 #pragma pack(pop)
 #endif
 
-struct TransferDataPacket
-{
-    uint8 cmd;
-    uint16 chunk_size;
-    uint8 data[4096]; // 4096 - page size on most arch
-};
-
 std::array<uint8, 16> VersionChallenge = { { 0xBA, 0xA3, 0x1E, 0x99, 0xA0, 0x0B, 0x21, 0x57, 0xFC, 0x37, 0x3F, 0xB3, 0x69, 0xCD, 0xD2, 0xF1 } };
 
 /// Constructor - set the N and g values for SRP6
 AuthSocket::AuthSocket(boost::asio::io_service& service, std::function<void(Socket*)> closeHandler)
-    : pPatch(NULL), _patcher(NULL), Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER)
+    : Socket(service,std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER), _patchFile(NULL), _patcherRun(NULL), _patcherThread(NULL)
 {
     N.SetHexStr("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
     g.SetDword(7);
+}
+
+AuthSocket::~AuthSocket()
+{
+    _StopPatching();
 }
 
 /// Read the packet from the client
@@ -482,7 +486,7 @@ bool AuthSocket::_HandleLogonChallenge()
                     MANGOS_ASSERT(gmod.GetNumBytes() <= 32);
 
                     ///- Fill the response packet with the result
-                    if (!FindBuildInfo(_build) && !patcher.PossiblePatching(_build, m_locale))
+                    if (!FindBuildInfo(_build) && patcher.GetPatchInfo(_build,m_locale) == NULL)
                         pkt << uint8(WOW_FAIL_VERSION_INVALID);
                     else
                         pkt << uint8(WOW_SUCCESS);
@@ -554,13 +558,45 @@ bool AuthSocket::_HandleLogonProof()
     /// <ul><li> If the client has no valid version
     if (!FindBuildInfo(_build))
     {
-        if (!patcher.InitPatching(_build, m_locale, this))
+        PATCH_INFO* patchInfo = patcher.GetPatchInfo(_build,m_locale);
+        if (patchInfo != NULL)
+        {
+            char patchPath[256];
+            sprintf(patchPath,"%s%u%s.mpq",PATCH_PATH,uint32(_build),m_locale.c_str());
+            MANGOS_ASSERT(_patchFile == NULL);
+            _patchFile = fopen(patchPath,"rb");
+            if (_patchFile == NULL)
+                sLog.outError("Failed to open patch file %s!",patchPath);
+            else
+            {
+                DEBUG_LOG("Opened patch file: %s for client version %u and locale %s",patchPath,_build,m_locale.c_str());
+
+                // fail the login in a good way
+                static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE};
+                Write((const char*)LOGON_PROOF_NEEDS_PATCH,sizeof(LOGON_PROOF_NEEDS_PATCH));
+
+                XFER_INIT packet;
+                packet.cmd = CMD_XFER_INITIATE;
+                packet.fileNameLen = strlen("Patch");
+                memcpy(packet.fileName,"Patch",packet.fileNameLen);
+                packet.file_size = patchInfo->filesize;
+                memcpy(packet.md5,patchInfo->md5,sizeof(packet.md5));
+
+                Write((const char*)&packet,sizeof(packet));
+                _status = STATUS_PATCH; // since all client can do now is request patch data
+                return true; //normal authentication is bypassed
+            }
+        }
+        else
+            sLog.outError("Could not find patch info for version %u and locale %s",_build,m_locale.c_str());
+
+        if (_patchFile == NULL)
+        {
+            // fail the logon in a bad way
+            static const uint8 CHALLENGE_FAIL_VERSION[3] = {CMD_AUTH_LOGON_CHALLENGE, 0, WOW_FAIL_VERSION_UPDATE};
+            Write((const char*)CHALLENGE_FAIL_VERSION,sizeof(CHALLENGE_FAIL_VERSION));
             return false;
-
-        // Set right status
-        _status = STATUS_PATCH;
-
-        return true;
+        }
     }
     /// </ul>
 
@@ -1049,34 +1085,129 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
     }
 }
 
+// Accept patch transfer
+bool AuthSocket::_HandleXferAccept()
+{
+    DEBUG_LOG("Entering _HandleXferAccept");
+    
+    if (ReadLengthRemaining() < 1)
+        return false;
+    else
+        ReadSkip(1);
+
+    if (_patcherRun != NULL)
+    {
+        DEBUG_LOG("Error while accepting patch transfer (patcher already running)");
+        return false;
+    }
+    if (_patchFile == NULL)
+    {
+        DEBUG_LOG("Error while accepting patch transfer (no patch file opened)");
+        return false;
+    }
+
+    fseek(_patchFile,0,SEEK_END);
+    const size_t size = ftell(_patchFile);
+    fseek(_patchFile,0,SEEK_SET);
+
+    MANGOS_ASSERT(_patcherRun == NULL);
+    MANGOS_ASSERT(_patcherThread == NULL);
+    _patcherRun = new PatcherRunnable(this,_patchFile,0,size);
+    _patcherRun->incReference();
+    _patcherThread = new MaNGOS::Thread(_patcherRun);
+    return true;
+}
+
 /// Resume patch transfer
 bool AuthSocket::_HandleXferResume()
 {
     DEBUG_LOG("Entering _HandleXferResume");
 
-    if (ReadLengthRemaining() < 9 || !pPatch)
+    uint64 startOffs;
+    if (ReadLengthRemaining() < 1+sizeof(startOffs))
         return false;
-
-    ReadSkip(1);
-
-    uint64 start;
-    Read((char*)&start, 8);
-
-    fseek(pPatch, 0, SEEK_END);
-    size_t size = ftell(pPatch);
-
-    fseek(pPatch, long(start), 0);
-
-    if (_patcher)
+    else
     {
-        _patcher->stop();
-        delete _patcher;
+        ReadSkip(1);
+        Read((char*)&startOffs,sizeof(startOffs));
     }
-    _patcher = new PatcherRunnable(this, start, size);
-    _patcher->run();
-    //MaNGOS::Thread u(_patcher);
 
+    if (_patcherRun != NULL)
+    {
+        DEBUG_LOG("Error while resuming patch transfer (patcher already running)");
+        return false;
+    }
+    if (_patchFile == NULL)
+    {
+        DEBUG_LOG("Error while resuming patch transfer (no patch file opened)");
+        return false;
+    }
+
+    fseek(_patchFile,0,SEEK_END);
+    const size_t size = ftell(_patchFile);
+    if (startOffs >= size)
+    {
+        fseek(_patchFile,0,SEEK_SET);
+        DEBUG_LOG("Error while resuming patch transfer (offset specified too large)");
+        return false;
+    }
+    fseek(_patchFile,long(startOffs),SEEK_SET);
+
+    MANGOS_ASSERT(_patcherRun == NULL);
+    MANGOS_ASSERT(_patcherThread == NULL);
+    _patcherRun = new PatcherRunnable(this,_patchFile,startOffs,size);
+    _patcherRun->incReference();
+    _patcherThread = new MaNGOS::Thread(_patcherRun);
     return true;
+}
+
+PatcherRunnable::PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size) 
+    : sock(sock), file(file), pos(pos), size(size), stopped(false)
+{
+    DEBUG_LOG("PatcherRunnable created for sock %p file %p pos %llu size %llu",sock,file,pos,size);
+}
+
+PatcherRunnable::~PatcherRunnable()
+{
+    DEBUG_LOG("PatcherRunnable destroyed for sock %p file %p pos %llu size %llu stopped: %u",sock,file,pos,size,uint32(stopped));
+}
+
+// Send content of patch file to the client
+void PatcherRunnable::run()
+{
+    DEBUG_LOG("PatchRunnable::run() : %llu -> %llu",pos,size);
+
+    uint64 bytesSent = 0;
+    uint64 remaining = size-pos;
+    while (!stopped && remaining > 0)
+    {
+        uint8 chunkData[4096];
+        uint64 numBytesToRead = remaining;
+        if (numBytesToRead > sizeof(chunkData))
+            numBytesToRead = sizeof(chunkData);
+
+        const uint64 readBytes = fread(chunkData,1,size_t(numBytesToRead),file);
+        MANGOS_ASSERT(readBytes <= UINT16_MAX);
+        if (readBytes > 0)
+        {
+            XFER_CHUNK pckt;
+            pckt.cmd = CMD_XFER_DATA;
+            pckt.chunk_size = uint16(readBytes);
+            sock->Write((const char*)&pckt,sizeof(pckt),(const char*)chunkData,pckt.chunk_size);
+        }
+        bytesSent += readBytes;
+        remaining -= readBytes;
+        if (readBytes < numBytesToRead) //reached eof
+            break;
+    }
+
+    const char* patcherState = "done";
+    if (remaining != 0)
+        patcherState = "ERROR";
+    else if (stopped)
+        patcherState = "STOPPED";
+
+    DEBUG_LOG("Patcher %s (sent %llu bytes from start pos %llu of file size %llu, remaining %llu).",patcherState,bytesSent,pos,size,remaining);
 }
 
 /// Cancel patch transfer
@@ -1084,10 +1215,39 @@ bool AuthSocket::_HandleXferCancel()
 {
     DEBUG_LOG("Entering _HandleXferCancel");
 
-    ReadSkip(1);
-    Close();
+    if (ReadLengthRemaining() < 1)
+        return false;
+    else
+        ReadSkip(1);
 
+    _StopPatching();
+    _status = STATUS_CLOSED;
+
+    Close();
     return true;
+}
+
+void AuthSocket::_StopPatching()
+{
+    if (_patcherRun != NULL)
+    {
+        _patcherRun->stop(); //signal thread to stop
+        _patcherRun->decReference();
+        _patcherRun = NULL;
+    }
+
+    if (_patcherThread != NULL)
+    {
+        _patcherThread->destroy(); //waits for thread to stop
+        delete _patcherThread;
+        _patcherThread = NULL;
+    }
+
+    if (_patchFile != NULL)
+    {
+        fclose(_patchFile);
+        _patchFile = NULL;
+    }
 }
 
 int32 AuthSocket::generateToken(char const* b32key)
@@ -1150,76 +1310,8 @@ bool AuthSocket::VerifyVersion(uint8 const* a, int32 aLength, uint8 const* versi
     return memcmp(versionProof, version.GetDigest(), version.GetLength()) == 0;
 }
 
-// Accept patch transfer
-bool AuthSocket::_HandleXferAccept()
-{
-    DEBUG_LOG("Entering _HandleXferAccept");
 
-    if (!pPatch)
-    {
-        DEBUG_LOG("Error while accepting patch transfer (wrong packet)");
-        return false;
-    }
-
-    ReadSkip(1);
-    fseek(pPatch, 0, SEEK_END);
-    size_t size = ftell(pPatch);
-    fseek(pPatch, 0, 0);
-
-    if (_patcher)
-    {
-        _patcher->stop();
-        delete _patcher;
-    }
-    _patcher = new PatcherRunnable(this, 0, size);
-    _patcher->run();
-    //MaNGOS::Thread u(_patcher);
-    return true;
-}
-
-
-PatcherRunnable::PatcherRunnable(class AuthSocket* as, uint64 _pos, uint64 _size)
-{
-    mySocket = as;
-    pos = _pos;
-    size = _size;
-    stopped = false;
-}
-
-void PatcherRunnable::stop()
-{
-    stopped = true;
-}
-
-// Send content of patch file to the client
-void PatcherRunnable::run()
-{
-    DEBUG_LOG("PatchRunnable::run() : %llu -> %llu", pos, size);
-    Sleep(1);
-
-    TransferDataPacket pckt;
-    pckt.cmd = CMD_XFER_DATA;
-
-    size_t r;
-
-    while ((r = fread(pckt.data, 1, sizeof(pckt.data), mySocket->pPatch)) > 0)
-    {
-        pckt.chunk_size = (uint16)r;
-        mySocket->Write((const char*)&pckt, ((size_t)r) + sizeof(pckt) - sizeof(pckt.data));
-    }
-
-    if (!stopped)
-    {
-        fclose(mySocket->pPatch);
-        mySocket->pPatch = NULL;
-        mySocket->_patcher = NULL;
-    }
-
-    DEBUG_LOG("Patcher done.");
-
-}
-
-PATCH_INFO* Patcher::getPatchInfo(uint16 _build, std::string _locale)
+PATCH_INFO* Patcher::GetPatchInfo(uint16 _build, std::string _locale)
 {
     PATCH_INFO* patch = NULL;
     int locale = *((int*)(_locale.c_str()));
@@ -1231,52 +1323,6 @@ PATCH_INFO* Patcher::getPatchInfo(uint16 _build, std::string _locale)
             patch = &(*it);
 
     return patch;
-}
-
-bool Patcher::PossiblePatching(uint16 _build, std::string _locale)
-{
-    return getPatchInfo(_build, _locale) != NULL;
-}
-
-bool Patcher::InitPatching(uint16 _build, std::string _locale, AuthSocket* _AuthSocket)
-{
-    PATCH_INFO* p_Patch = getPatchInfo(_build, _locale);
-
-    if (p_Patch)
-    {
-        uint8 data[2] = { CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE };
-        _AuthSocket->Write((const char*)data, sizeof(data));
-
-        std::stringstream path;
-        path << PATCH_PATH << _build << _locale << ".mpq";
-
-        _AuthSocket->pPatch = fopen(path.str().c_str(), "rb");
-        DEBUG_LOG("Patch: %s", path.str().c_str());
-        XFER_INIT packet;
-
-        packet.cmd = CMD_XFER_INITIATE;
-
-        packet.fileNameLen = 5;
-
-        packet.fileName[0] = 'P';
-        packet.fileName[1] = 'a';
-        packet.fileName[2] = 't';
-        packet.fileName[3] = 'c';
-        packet.fileName[4] = 'h';
-
-        packet.file_size = p_Patch->filesize;
-
-        memcpy(packet.md5, p_Patch->md5, MD5_DIGEST_LENGTH);
-
-        _AuthSocket->Write((char*)&packet, sizeof(packet));
-
-        return true;
-    }
-    else
-    {
-        DEBUG_LOG("Client with version %u and locale %s did not get a patch.", _build, _locale.c_str());
-        return false;
-    }
 }
 
 void Patcher::LoadPatchesInfo()
