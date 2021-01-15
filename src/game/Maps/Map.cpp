@@ -801,13 +801,13 @@ void Map::Update(const uint32& t_diff)
     m_weatherSystem->UpdateWeathers(t_diff);
 }
 
-void DungeonMap::UpdateCreature(uint32 guid, Creature* cr, bool erased)
+void DungeonMap::UpdateCreature(uint32 guid, Creature* pCreature, bool erased)
 {
     uint32 mapId = GetId() * 1000;
-    if (cr->IsTemporarySummon()) guid += mapId;
+    if (pCreature->IsTemporarySummon()) guid += mapId;
     uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-    std::pair<uint32, uint32> key = std::make_pair(cr->GetEntry(), packId);
+    std::pair<uint32, uint32> key = std::make_pair(pCreature->GetEntry(), packId);
     CreatureRatio& cdata = m_creaturesRatio[key];
 
     if (erased)
@@ -815,20 +815,22 @@ void DungeonMap::UpdateCreature(uint32 guid, Creature* cr, bool erased)
     else
         cdata.added = true;
 
-    m_creaturesStore_buffer.insert(std::make_pair(cr->GetEntry(), cr));
+    m_creaturesStore_buffer.insert(std::make_pair(pCreature->GetEntry(), pCreature));
 }
 
-void DungeonMap::InsertCreature(uint32 guid, Creature* cr)
+void DungeonMap::InsertCreature(uint32 guid, Creature* pCreature)
 {
-    UpdateCreature(guid, cr, false);
+    if (pCreature)
+        UpdateCreature(guid, pCreature, false);
 
     if (m_creaturesStore.find(guid) == m_creaturesStore.end())
-        m_creaturesStore.insert(std::make_pair(guid, cr));
+        m_creaturesStore.insert(std::make_pair(guid, pCreature));
 }
 
-void DungeonMap::EraseCreature(uint32 guid, Creature* cr)
+void DungeonMap::EraseCreature(uint32 guid, Creature* pCreature)
 {
-    UpdateCreature(guid, cr, true);
+    if (pCreature)
+        UpdateCreature(guid, pCreature, true);
 
     if (m_creaturesStore.find(guid) != m_creaturesStore.end())
         m_creaturesStore.erase(guid);
@@ -844,19 +846,19 @@ uint32 DungeonMap::GetCreaturesCount(uint32 entry, bool IsScaled) const
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
 	{
-        if (Creature* creature = ((Creature*)it->second))
+        if (Creature* pCreature = ((Creature*)it->second))
         {
-            uint32 guid = creature->GetGUIDLow();
-            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+            uint32 guid = pCreature->GetGUIDLow();
+            if (pCreature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
             if (packId != 0)
                 continue; // skip if in a pack
 
-            if (creature->IsTemporarySummon())
+            if (pCreature->IsTemporarySummon())
                 continue; // skip if is summoned
 
-            if (creature->GetEntry() == entry && ((IsScaled && creature->isScaled()) || !IsScaled))
+            if (pCreature->GetEntry() == entry && ((IsScaled && pCreature->isScaled()) || !IsScaled))
                 output++;
         }
 	}
@@ -868,13 +870,13 @@ uint32 DungeonMap::GetCreaturesPackSize(uint32 pack, bool IsScaled) const
 	uint32 output = 0;
     for (auto it = m_creaturesStore.begin(); it != m_creaturesStore.end(); ++it)
     {
-        if (Creature* creature = ((Creature*)it->second))
+        if (Creature* pCreature = ((Creature*)it->second))
         {
-            uint32 guid = creature->GetGUIDLow();
-            if (creature->IsTemporarySummon()) guid += (GetId() * 1000);
+            uint32 guid = pCreature->GetGUIDLow();
+            if (pCreature->IsTemporarySummon()) guid += (GetId() * 1000);
             uint32 packId = sObjectMgr.GetCreaturePool(guid);
 
-            if (packId == pack && ((IsScaled && creature->isScaled()) || !IsScaled))
+            if (packId == pack && ((IsScaled && pCreature->isScaled()) || !IsScaled))
                 output++;
         }
 	}

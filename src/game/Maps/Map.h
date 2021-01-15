@@ -508,9 +508,9 @@ class DungeonMap : public Map
         uint32 GetCurPlayers() const;
         void SetCurPlayers(uint32 nbr) { u_nbr_players = nbr; };
 
-        void UpdateCreature(uint32 guid, Creature* cr, bool erased = false);
-        void InsertCreature(uint32 guid, Creature* cr);
-        void EraseCreature(uint32 guid, Creature* cr);
+        void UpdateCreature(uint32 guid, Creature* pCreature, bool erased = false);
+        void InsertCreature(uint32 guid, Creature* pCreature);
+        void EraseCreature(uint32 guid, Creature* pCreature);
     private:
         bool m_resetAfterUnload;
         bool m_unloadWhenEmpty;
