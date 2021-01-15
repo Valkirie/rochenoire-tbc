@@ -181,6 +181,7 @@ struct TransferDataPacket
 {
     uint8 cmd;
     uint16 chunk_size;
+    uint8 data[4096]; // 4096 - page size on most arch
 };
 
 std::array<uint8, 16> VersionChallenge = { { 0xBA, 0xA3, 0x1E, 0x99, 0xA0, 0x0B, 0x21, 0x57, 0xFC, 0x37, 0x3F, 0xB3, 0x69, 0xCD, 0xD2, 0xF1 } };
@@ -1056,9 +1057,10 @@ bool AuthSocket::_HandleXferResume()
     if (ReadLengthRemaining() < 9 || !pPatch)
         return false;
 
-    uint64 start;
     ReadSkip(1);
-    Read((char*)&start, sizeof(start));
+
+    uint64 start;
+    Read((char*)&start, 8);
 
     fseek(pPatch, 0, SEEK_END);
     size_t size = ftell(pPatch);
@@ -1071,7 +1073,8 @@ bool AuthSocket::_HandleXferResume()
         delete _patcher;
     }
     _patcher = new PatcherRunnable(this, start, size);
-    MaNGOS::Thread u(_patcher);
+    _patcher->run();
+    //MaNGOS::Thread u(_patcher);
 
     return true;
 }
@@ -1169,7 +1172,8 @@ bool AuthSocket::_HandleXferAccept()
         delete _patcher;
     }
     _patcher = new PatcherRunnable(this, 0, size);
-    MaNGOS::Thread u(_patcher);
+    _patcher->run();
+    //MaNGOS::Thread u(_patcher);
     return true;
 }
 
@@ -1191,26 +1195,17 @@ void PatcherRunnable::stop()
 void PatcherRunnable::run()
 {
     DEBUG_LOG("PatchRunnable::run() : %llu -> %llu", pos, size);
+    Sleep(1);
 
-    while (pos < size && !stopped)
+    TransferDataPacket pckt;
+    pckt.cmd = CMD_XFER_DATA;
+
+    size_t r;
+
+    while ((r = fread(pckt.data, 1, sizeof(pckt.data), mySocket->pPatch)) > 0)
     {
-        uint64 left = size - pos;
-        uint16 send_size = (left > 4096) ? 4096 : left;
-
-        char* to_send = new char[sizeof(TransferDataPacket) + send_size];
-        TransferDataPacket* pckt = (TransferDataPacket*)(to_send);
-
-        pckt->cmd = 0x31;
-        pckt->chunk_size = send_size;
-
-        fread(to_send + sizeof(TransferDataPacket), 1, send_size, mySocket->pPatch);
-
-        mySocket->Write(to_send, sizeof(TransferDataPacket) + send_size);
-
-        delete[] to_send;
-
-        pos += send_size;
-        Sleep(1000);
+        pckt.chunk_size = (uint16)r;
+        mySocket->Write((const char*)&pckt, ((size_t)r) + sizeof(pckt) - sizeof(pckt.data));
     }
 
     if (!stopped)
@@ -1224,7 +1219,7 @@ void PatcherRunnable::run()
 
 }
 
-PATCH_INFO* Patcher::getPatchInfo(uint16 _build, std::string _locale, bool* fallback)
+PATCH_INFO* Patcher::getPatchInfo(uint16 _build, std::string _locale)
 {
     PATCH_INFO* patch = NULL;
     int locale = *((int*)(_locale.c_str()));
@@ -1232,32 +1227,20 @@ PATCH_INFO* Patcher::getPatchInfo(uint16 _build, std::string _locale, bool* fall
     DEBUG_LOG("Client with version %i and locale %s (%x) looking for patch.", _build, _locale.c_str(), locale);
 
     for (Patches::iterator it = _patches.begin(); it != _patches.end(); ++it)
-    {
-        if (it->build == _build && it->locale == 'BGne')
-        {
+        if (it->build == _build && it->locale == locale)
             patch = &(*it);
-            *fallback = true;
-        }
-        else if (it->build == _build && it->locale == locale)
-        {
-            patch = &(*it);
-            *fallback = false;
-        }
-    }
 
     return patch;
 }
 
 bool Patcher::PossiblePatching(uint16 _build, std::string _locale)
 {
-    bool temp;
-    return getPatchInfo(_build, _locale, &temp) != NULL;
+    return getPatchInfo(_build, _locale) != NULL;
 }
 
 bool Patcher::InitPatching(uint16 _build, std::string _locale, AuthSocket* _AuthSocket)
 {
-    bool fallback;
-    PATCH_INFO* p_Patch = getPatchInfo(_build, _locale, &fallback);
+    PATCH_INFO* p_Patch = getPatchInfo(_build, _locale);
 
     if (p_Patch)
     {
@@ -1265,15 +1248,7 @@ bool Patcher::InitPatching(uint16 _build, std::string _locale, AuthSocket* _Auth
         _AuthSocket->Write((const char*)data, sizeof(data));
 
         std::stringstream path;
-
-        if (fallback)
-        {
-            path << PATCH_PATH << _build << "-enGB.mpq";
-        }
-        else
-        {
-            path << PATCH_PATH << _build << _locale << ".mpq";
-        }
+        path << PATCH_PATH << _build << _locale << ".mpq";
 
         _AuthSocket->pPatch = fopen(path.str().c_str(), "rb");
         DEBUG_LOG("Patch: %s", path.str().c_str());
@@ -1343,7 +1318,7 @@ void Patcher::LoadPatchMD5(const char* szPath, char* szFilename)
 
     MD5_CTX ctx;
     MD5_Init(&ctx);
-    const size_t check_chunk_size = 4 * 1024;
+    const size_t check_chunk_size = 512 * 1024;
     uint8* buf = new uint8[check_chunk_size];
 
     while (!feof(pPatch))

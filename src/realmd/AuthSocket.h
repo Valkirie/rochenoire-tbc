@@ -137,7 +137,7 @@ public:
 	bool PossiblePatching(uint16 _build, std::string _locale);
 
 private:
-	PATCH_INFO* getPatchInfo(uint16 _build, std::string _locale, bool* fallback);
+	PATCH_INFO* getPatchInfo(uint16 _build, std::string _locale);
 
 	void LoadPatchesInfo();
 	Patches _patches;
