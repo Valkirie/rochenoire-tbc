@@ -68,6 +68,8 @@ bool stopEvent = false;                                     ///< Setting it to t
 
 DatabaseType LoginDatabase;                                 ///< Accessor to the realm server database
 
+extern Patcher patcher;
+
 /// Print out the usage string for this program on the console.
 void usage(const char* prog)
 {
@@ -198,6 +200,8 @@ int main(int argc, char* argv[])
 
     sLog.outString();
     sLog.outString("<Ctrl-C> to stop.");
+
+    patcher.Initialize();
 
     /// realmd PID file creation
     std::string pidfile = sConfig.GetStringDefault("PidFile");

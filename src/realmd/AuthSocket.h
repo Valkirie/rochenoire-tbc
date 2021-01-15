@@ -30,11 +30,36 @@
 
 #include "Network/Socket.hpp"
 
+#include <openssl/md5.h>
+
 #include <boost/asio.hpp>
 
 #include <functional>
 
 #define HMAC_RES_SIZE 20
+
+// Client Patching
+typedef struct PATCH_INFO
+{
+	uint16 build;
+	int locale;
+	std::string filename;
+	uint64 filesize;
+	uint8 md5[MD5_DIGEST_LENGTH];
+} PATCH_INFO;
+
+class PatcherRunnable : public MaNGOS::Runnable
+{
+public:
+	PatcherRunnable(class AuthSocket*, uint64 start, uint64 size);
+	void run();
+	void stop();
+private:
+	AuthSocket* mySocket;
+	uint64 pos;
+	uint64 size;
+	bool stopped;
+};
 
 class AuthSocket : public MaNGOS::Socket
 {
@@ -60,6 +85,10 @@ public:
 	bool _HandleXferAccept();
 
 	void _SetVSFields(const std::string& rI);
+
+	FILE* pPatch;
+	PatcherRunnable* _patcher;
+	std::mutex patcherLock;
 
 private:
 	enum eStatus
@@ -92,6 +121,26 @@ private:
 	AccountTypes _accountSecurityLevel;
 
 	virtual bool ProcessIncomingData() override;
+};
+
+class Patcher
+{
+	typedef std::vector<PATCH_INFO> Patches;
+
+public:
+	void Initialize();
+
+	void LoadPatchMD5(const char*, char*);
+	bool GetHash(char* pat, uint8 myMD5[16]);
+
+	bool InitPatching(uint16 _build, std::string _locale, AuthSocket* _AuthSocket);
+	bool PossiblePatching(uint16 _build, std::string _locale);
+
+private:
+	PATCH_INFO* getPatchInfo(uint16 _build, std::string _locale, bool* fallback);
+
+	void LoadPatchesInfo();
+	Patches _patches;
 };
 #endif
 /// @}
