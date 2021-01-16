@@ -49,6 +49,7 @@ public:
 	~AuthSocket();
 
 	void SendProof(Sha1Hash sha);
+	void InitiateXfer(const char* dataName, uint64 fileSize, const uint8* fileHash);
 	void LoadRealmlist(ByteBuffer& pkt, uint32 acctid);
 	int32 generateToken(char const* b32key);
 

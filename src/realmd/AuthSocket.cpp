@@ -157,11 +157,14 @@ typedef struct AUTH_RECONNECT_PROOF_C
     uint8   number_of_keys;
 } sAuthReconnectProof_C;
 
-struct XFER_INIT
+struct XFER_INIT_HEADER
 {
     uint8 cmd;                                              // XFER_INITIATE
     uint8 fileNameLen;                                      // strlen(fileName);
-    uint8 fileName[5];                                      // fileName[fileNameLen]
+};
+// filename contents in between
+struct XFER_INIT_FOOTER
+{
     uint64 file_size;                                       // file size (bytes)
     uint8 md5[MD5_DIGEST_LENGTH];                           // MD5
 };
@@ -319,6 +322,28 @@ void AuthSocket::SendProof(Sha1Hash sha)
 
         Write((const char*)&proof, sizeof(proof));
     }
+}
+
+void AuthSocket::InitiateXfer(const char* dataName, uint64 fileSize, const uint8* fileHash)
+{
+    const size_t nameLen = strlen(dataName);
+    MANGOS_ASSERT(nameLen <= UINT8_MAX);
+
+    ByteBuffer pkt;
+    {
+        XFER_INIT_HEADER hdr;
+        hdr.cmd = CMD_XFER_INITIATE;
+        hdr.fileNameLen = uint8(nameLen);
+        pkt.append((const uint8*)&hdr,sizeof(hdr));
+    }
+    pkt.append(dataName,nameLen);
+    {
+        XFER_INIT_FOOTER fut;
+        fut.file_size = fileSize;
+        memcpy(fut.md5,fileHash,sizeof(fut.md5));
+        pkt.append((const uint8*)&fut,sizeof(fut));
+    }
+    Write((const char*)pkt.contents(),pkt.size());
 }
 
 /// Logon Challenge command handler
@@ -578,14 +603,7 @@ bool AuthSocket::_HandleLogonProof()
                 static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE};
                 Write((const char*)LOGON_PROOF_NEEDS_PATCH,sizeof(LOGON_PROOF_NEEDS_PATCH));
 
-                XFER_INIT packet;
-                packet.cmd = CMD_XFER_INITIATE;
-                packet.fileNameLen = strlen("Patch");
-                memcpy(packet.fileName,"Patch",packet.fileNameLen);
-                packet.file_size = patchInfo.filesize;
-                memcpy(packet.md5,patchInfo.md5,sizeof(packet.md5));
-
-                Write((const char*)&packet,sizeof(packet));
+                InitiateXfer("Patch",patchInfo.filesize,patchInfo.md5); //tell client to request patch
                 _status = STATUS_PATCH; // since all client can do now is request patch data
                 return true; //normal authentication is bypassed
             }
