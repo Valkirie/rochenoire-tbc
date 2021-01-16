@@ -107,15 +107,20 @@ typedef struct
 } sAuthLogonChallenge_S;
 */
 
-typedef struct AUTH_LOGON_PROOF_C
+typedef struct AUTH_LOGON_PROOF_C_BASE
 {
     uint8   cmd;
     uint8   A[32];
     uint8   M1[20];
     uint8   crc_hash[20];
     uint8   number_of_keys;
+} sAuthLogonProof_C_Base;
+
+struct sAuthLogonProof_C_1_11 : public sAuthLogonProof_C_Base
+{
     uint8   securityFlags;                                  // 0x00-0x04
-} sAuthLogonProof_C;
+};
+
 /*
 typedef struct
 {
@@ -294,11 +299,7 @@ void AuthSocket::_SetVSFields(const std::string& rI)
 
 void AuthSocket::SendProof(Sha1Hash sha)
 {
-    switch (_build)
-    {
-    case 5875:                                          // 1.12.1
-    case 6005:                                          // 1.12.2
-    case 6141:                                          // 1.12.3
+    if (_build < 6080) // before version 2.0.0 (exclusive)
     {
         sAuthLogonProof_S_BUILD_6005 proof{};
         memcpy(proof.M2, sha.GetDigest(), 20);
@@ -307,15 +308,8 @@ void AuthSocket::SendProof(Sha1Hash sha)
         proof.LoginFlags = 0x00;
 
         Write((const char*)&proof, sizeof(proof));
-        break;
     }
-    case 8606:                                          // 2.4.3
-    case 10505:                                         // 3.2.2a
-    case 11159:                                         // 3.3.0a
-    case 11403:                                         // 3.3.2
-    case 11723:                                         // 3.3.3a
-    case 12340:                                         // 3.3.5a
-    default:                                            // or later
+    else
     {
         sAuthLogonProof_S proof{};
         memcpy(proof.M2, sha.GetDigest(), 20);
@@ -326,8 +320,6 @@ void AuthSocket::SendProof(Sha1Hash sha)
         proof.unkFlags = 0x0000;
 
         Write((const char*)&proof, sizeof(proof));
-        break;
-    }
     }
 }
 
@@ -505,26 +497,31 @@ bool AuthSocket::_HandleLogonChallenge()
                     if (!_token.empty() && _build >= 8606) // authenticator was added in 2.4.3
                         securityFlags = SECURITY_FLAG_AUTHENTICATOR;
 
-                    pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
-
-                    if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
+                    if (securityFlags != 0)
                     {
-                        pkt << uint32(0);
-                        pkt << uint64(0);
-                        pkt << uint64(0);
-                    }
+                        pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
 
-                    if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
-                    {
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint64(0);
-                    }
+                        if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
+                        {
+                            pkt << uint32(0);
+                            pkt << uint64(0);
+                            pkt << uint64(0);
+                        }
 
-                    if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
-                        pkt << uint8(1);
+                        if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
+                        {
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint64(0);
+                        }
+
+                        if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
+                            pkt << uint8(1);
+                    }
+                    else if (_build >= 5428) // only version 1.11.0 or later has securityFlags and further bytes
+                        pkt << uint8(0);
 
                     uint8 secLevel = fields[4].GetUInt8();
                     _accountSecurityLevel = secLevel <= SEC_ADMINISTRATOR ? AccountTypes(secLevel) : SEC_ADMINISTRATOR;
@@ -548,9 +545,18 @@ bool AuthSocket::_HandleLogonProof()
 {
     DEBUG_LOG("Entering _HandleLogonProof");
     ///- Read the packet
-    sAuthLogonProof_C lp{};
-    if (!Read((char*)&lp, sizeof(sAuthLogonProof_C)))
-        return false;
+    sAuthLogonProof_C_1_11 lp{};
+    if (_build < 5428) // before version 1.11.0 (exclusive)
+    {
+        if (!Read((char*)&lp,sizeof(sAuthLogonProof_C_Base)))
+            return false;
+        lp.securityFlags = 0;
+    }
+    else
+    {
+        if (!Read((char*)&lp,sizeof(sAuthLogonProof_C_1_11)))
+            return false;
+    }
 
     ///- Session is closed unless overriden
     _status = STATUS_CLOSED;
@@ -958,11 +964,7 @@ bool AuthSocket::_HandleRealmList()
 
 void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
 {
-    switch (_build)
-    {
-    case 5875:                                          // 1.12.1
-    case 6005:                                          // 1.12.2
-    case 6141:                                          // 1.12.3
+    if (_build < 6080)        // before version 2.0.0 (exclusive)
     {
         pkt << uint32(0);                               // unused value
         pkt << uint8(sRealmList.size());
@@ -1014,16 +1016,8 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
         }
 
         pkt << uint16(0x0002);                          // unused value (why 2?)
-        break;
     }
-
-    case 8606:                                          // 2.4.3
-    case 10505:                                         // 3.2.2a
-    case 11159:                                         // 3.3.0a
-    case 11403:                                         // 3.3.2
-    case 11723:                                         // 3.3.3a
-    case 12340:                                         // 3.3.5a
-    default:                                            // and later
+    else
     {
         pkt << uint32(0);                               // unused value
         pkt << uint16(sRealmList.size());
@@ -1080,8 +1074,6 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
         }
 
         pkt << uint16(0x0010);                          // unused value (why 10?)
-        break;
-    }
     }
 }
 
