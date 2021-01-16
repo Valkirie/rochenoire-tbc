@@ -27,6 +27,7 @@
 #include "Config/Config.h"
 #include "Log.h"
 #include "AuthSocket.h"
+#include "PatchCache.h"
 #include "SystemConfig.h"
 #include "revision.h"
 #include "revision_sql.h"
@@ -67,8 +68,6 @@ void HookSignals();
 bool stopEvent = false;                                     ///< Setting it to true stops the server
 
 DatabaseType LoginDatabase;                                 ///< Accessor to the realm server database
-
-extern Patcher patcher;
 
 /// Print out the usage string for this program on the console.
 void usage(const char* prog)
@@ -197,11 +196,10 @@ int main(int argc, char* argv[])
         DETAIL_LOG("WARNING: Outdated version of OpenSSL lib. Logins to server may not work!");
         DETAIL_LOG("WARNING: Minimal required version [OpenSSL 0.9.8k]");
     }
+    sPatchCache.Initialize();
 
     sLog.outString();
     sLog.outString("<Ctrl-C> to stop.");
-
-    patcher.Initialize();
 
     /// realmd PID file creation
     std::string pidfile = sConfig.GetStringDefault("PidFile");

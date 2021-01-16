@@ -38,31 +38,7 @@
 
 #define HMAC_RES_SIZE 20
 
-// Client Patching
-typedef struct PATCH_INFO
-{
-	uint16 build;
-	int locale;
-	std::string filename;
-	uint64 filesize;
-	uint8 md5[MD5_DIGEST_LENGTH];
-} PATCH_INFO;
 
-class PatcherRunnable : public MaNGOS::Runnable
-{
-public:
-	PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size);
-	~PatcherRunnable();
-
-	void stop() { stopped = true; }
-	void run() override;
-private:
-	MaNGOS::Socket* sock;
-	FILE* file;
-	uint64 pos;
-	uint64 size;
-	volatile bool stopped;
-};
 
 class AuthSocket : public MaNGOS::Socket
 {
@@ -121,24 +97,11 @@ private:
 	AccountTypes _accountSecurityLevel;
 
 	FILE* _patchFile;
-	PatcherRunnable* _patcherRun;
+	class PatcherRunnable* _patcherRun;
 	MaNGOS::Thread* _patcherThread;
 
 	virtual bool ProcessIncomingData() override;
 };
 
-class Patcher
-{
-	typedef std::vector<PATCH_INFO> Patches;
-
-public:
-	void Initialize();
-	bool GetHash(char* pat, uint8 myMD5[16]);
-	PATCH_INFO* GetPatchInfo(uint16 _build, std::string _locale);
-private:
-	void LoadPatchesInfo();
-	void LoadPatchMD5(const char* szPath, char* szFilename);
-	Patches _patches;
-};
 #endif
 /// @}

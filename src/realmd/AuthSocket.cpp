@@ -27,6 +27,7 @@
 #include "Config/Config.h"
 #include "Log.h"
 #include "RealmList.h"
+#include "PatchCache.h"
 #include "AuthSocket.h"
 #include "AuthCodes.h"
  // #include "SRP6/SRP6.h"
@@ -61,9 +62,6 @@ enum SecurityFlags
 #else
 #pragma pack(push,1)
 #endif
-
-#define PATCH_PATH "./patches/"
-Patcher patcher;
 
 typedef struct AUTH_LOGON_CHALLENGE_C
 {
@@ -478,7 +476,7 @@ bool AuthSocket::_HandleLogonChallenge()
                     MANGOS_ASSERT(gmod.GetNumBytes() <= 32);
 
                     ///- Fill the response packet with the result
-                    if (!FindBuildInfo(_build) && patcher.GetPatchInfo(_build,m_locale) == NULL)
+                    if (!FindBuildInfo(_build) && sPatchCache.GetPatchInfo(_build,m_locale).build == 0) //this check is kinda bad and will just leave client with "Disconnected" message
                         pkt << uint8(WOW_FAIL_VERSION_INVALID);
                     else
                         pkt << uint8(WOW_SUCCESS);
@@ -564,18 +562,17 @@ bool AuthSocket::_HandleLogonProof()
     /// <ul><li> If the client has no valid version
     if (!FindBuildInfo(_build))
     {
-        PATCH_INFO* patchInfo = patcher.GetPatchInfo(_build,m_locale);
-        if (patchInfo != NULL)
+        PatchCache::Patch patchInfo = sPatchCache.GetPatchInfo(_build,m_locale);
+        if (patchInfo.build != 0)
         {
-            char patchPath[256];
-            sprintf(patchPath,"%s%u%s.mpq",PATCH_PATH,uint32(_build),m_locale.c_str());
             MANGOS_ASSERT(_patchFile == NULL);
+            const char* patchPath = patchInfo.filename.c_str();
             _patchFile = fopen(patchPath,"rb");
             if (_patchFile == NULL)
-                sLog.outError("Failed to open patch file %s!",patchPath);
+                sLog.outError("Failed to open patch file '%s'!",patchPath);
             else
             {
-                DEBUG_LOG("Opened patch file: %s for client version %u and locale %s",patchPath,_build,m_locale.c_str());
+                DEBUG_LOG("Opened patch file '%s' for client version %u and locale %s",patchPath,_build,m_locale.c_str());
 
                 // fail the login in a good way
                 static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE};
@@ -585,8 +582,8 @@ bool AuthSocket::_HandleLogonProof()
                 packet.cmd = CMD_XFER_INITIATE;
                 packet.fileNameLen = strlen("Patch");
                 memcpy(packet.fileName,"Patch",packet.fileNameLen);
-                packet.file_size = patchInfo->filesize;
-                memcpy(packet.md5,patchInfo->md5,sizeof(packet.md5));
+                packet.file_size = patchInfo.filesize;
+                memcpy(packet.md5,patchInfo.md5,sizeof(packet.md5));
 
                 Write((const char*)&packet,sizeof(packet));
                 _status = STATUS_PATCH; // since all client can do now is request patch data
@@ -1077,6 +1074,22 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
     }
 }
 
+class PatcherRunnable : public MaNGOS::Runnable
+{
+public:
+    PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size);
+    ~PatcherRunnable();
+
+    void stop() { stopped = true; }
+    void run() override;
+private:
+    MaNGOS::Socket* sock;
+    FILE* file;
+    uint64 pos;
+    uint64 size;
+    volatile bool stopped;
+};
+
 // Accept patch transfer
 bool AuthSocket::_HandleXferAccept()
 {
@@ -1300,104 +1313,4 @@ bool AuthSocket::VerifyVersion(uint8 const* a, int32 aLength, uint8 const* versi
     version.Finalize();
 
     return memcmp(versionProof, version.GetDigest(), version.GetLength()) == 0;
-}
-
-
-PATCH_INFO* Patcher::GetPatchInfo(uint16 _build, std::string _locale)
-{
-    PATCH_INFO* patch = NULL;
-    int locale = *((int*)(_locale.c_str()));
-
-    DEBUG_LOG("Client with version %i and locale %s (%x) looking for patch.", _build, _locale.c_str(), locale);
-
-    for (Patches::iterator it = _patches.begin(); it != _patches.end(); ++it)
-        if (it->build == _build && it->locale == locale)
-            patch = &(*it);
-
-    return patch;
-}
-
-void Patcher::LoadPatchesInfo()
-{
-    WIN32_FIND_DATA fil;
-    HANDLE hFil = FindFirstFile("./patches/*.mpq", &fil);
-    if (hFil == INVALID_HANDLE_VALUE)
-        return;                                             // no patches were found
-
-    do
-        LoadPatchMD5(PATCH_PATH, fil.cFileName);
-    while (FindNextFile(hFil, &fil));
-}
-
-void Patcher::LoadPatchMD5(const char* szPath, char* szFilename)
-{
-    uint16 build;
-    union
-    {
-        int i;
-        char c[4];
-    } locale;
-
-    if (sscanf(szFilename, "%hu%c%c%c%c.mpq", &build, &locale.c[0], &locale.c[1], &locale.c[2], &locale.c[3]) != 5)
-    {
-        DEBUG_LOG("Patch %s filename unrecognized !", szFilename);
-        return;
-    }
-
-    std::string path = szPath;
-    path += szFilename;
-    FILE* pPatch = fopen(path.c_str(), "rb");
-
-    if (!pPatch)
-    {
-        DEBUG_LOG("Error loading patch %s\n", path.c_str());
-        return;
-    }
-
-    MD5_CTX ctx;
-    MD5_Init(&ctx);
-    const size_t check_chunk_size = 512 * 1024;
-    uint8* buf = new uint8[check_chunk_size];
-
-    while (!feof(pPatch))
-    {
-        size_t read = fread(buf, 1, check_chunk_size, pPatch);
-        MD5_Update(&ctx, buf, read);
-    }
-
-    delete[] buf;
-    fseek(pPatch, 0, SEEK_END);
-    size_t size = ftell(pPatch);
-    fclose(pPatch);
-
-    PATCH_INFO pi;
-    pi.build = build;
-    pi.locale = locale.i;
-    pi.filesize = uint64(size);
-    pi.filename = szFilename;
-    MD5_Final((uint8*)&pi.md5, &ctx);
-    _patches.push_back(pi);
-}
-
-bool Patcher::GetHash(char* pat, uint8 myMD5[16])
-{
-    for (Patches::iterator it = _patches.begin(); it != _patches.end(); ++it)
-    {
-        if (!stricmp(pat, it->filename.c_str()))
-        {
-            memcpy(myMD5, it->md5, 16);
-            return true;
-        }
-    }
-    return false;
-}
-
-void Patcher::Initialize()
-{
-    DEBUG_LOG("Searching for available patches.");
-    LoadPatchesInfo();
-    if (_patches.empty())
-        DEBUG_LOG("No patches found.");
-    else
-        DEBUG_LOG("Patch(es) found, ready to deliver to client.");
 }
