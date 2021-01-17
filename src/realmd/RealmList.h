@@ -35,6 +35,7 @@ struct RealmBuildInfo
     int hotfix_version;
     std::array<uint8, 20> WindowsHash;
     std::array<uint8, 20> MacHash;
+    bool patchme;
 };
 
 RealmBuildInfo const* FindBuildInfo(uint16 _build);

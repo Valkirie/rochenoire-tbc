@@ -422,6 +422,16 @@ bool AuthSocket::_HandleLogonChallenge()
     std::unique_ptr<QueryResult> ip_banned_result(LoginDatabase.PQuery("SELECT expires_at FROM ip_banned "
         "WHERE (expires_at = banned_at OR expires_at > UNIX_TIMESTAMP()) AND ip = '%s'", m_address.c_str()));
 
+    RealmBuildInfo const* buildInfo = FindBuildInfo(_build);
+    PatchCache::Patch patchInfo = sPatchCache.GetPatchInfo(_build, m_locale);
+
+    if (!buildInfo || buildInfo->patchme && patchInfo.build == 0)
+    {
+        pkt << uint8(WOW_FAIL_VERSION_INVALID);
+        Write((const char*)pkt.contents(), pkt.size());
+        return true;
+    }
+
     if (ip_banned_result)
     {
         pkt << (uint8)WOW_FAIL_FAIL_NOACCESS;
@@ -501,10 +511,7 @@ bool AuthSocket::_HandleLogonChallenge()
                     MANGOS_ASSERT(gmod.GetNumBytes() <= 32);
 
                     ///- Fill the response packet with the result
-                    if (!FindBuildInfo(_build) && sPatchCache.GetPatchInfo(_build,m_locale).build == 0) //this check is kinda bad and will just leave client with "Disconnected" message
-                        pkt << uint8(WOW_FAIL_VERSION_INVALID);
-                    else
-                        pkt << uint8(WOW_SUCCESS);
+                    pkt << uint8(WOW_SUCCESS);
 
                     // B may be calculated < 32B so we force minimal length to 32B
                     pkt.append(B.AsByteArray(32), 32);      // 32 bytes
@@ -585,7 +592,8 @@ bool AuthSocket::_HandleLogonProof()
     _status = STATUS_CLOSED;
 
     /// <ul><li> If the client has no valid version
-    if (!FindBuildInfo(_build))
+    RealmBuildInfo const* buildInfo = FindBuildInfo(_build);
+    if (!buildInfo || buildInfo->patchme)
     {
         PatchCache::Patch patchInfo = sPatchCache.GetPatchInfo(_build,m_locale);
         if (patchInfo.build != 0)
