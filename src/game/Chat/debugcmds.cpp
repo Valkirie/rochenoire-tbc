@@ -1177,6 +1177,19 @@ bool ChatHandler::HandleDebugSpellModsCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleDebugTaxiGoCommand(char* args)
+{
+    Player* pPlayer = m_session->GetPlayer();
+
+    uint32 path_id;
+    if (!ExtractUInt32(&args, path_id))
+        return false;
+
+    pPlayer->ActivateTaxiPathTo(path_id);
+
+    return true;
+}
+
 bool ChatHandler::HandleDebugTaxiCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
