@@ -5383,6 +5383,15 @@ SpellCastResult Spell::CheckCast(bool strict)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
                     if (!sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
                     {
+                        uint32 levelMin = instance->levelMin;
+                        uint32 levelMax = instance->levelMax;
+
+                        if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(area))
+                        {
+                            levelMin = thisZone->LevelRangeMin;
+                            levelMax = thisZone->LevelRangeMax;
+                        }
+
                         if (instance->levelMin > target->getLevel())
                             return SPELL_FAILED_LOWLEVEL;
                         if (instance->levelMax && instance->levelMax < target->GetLevelForTarget(m_caster))

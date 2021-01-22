@@ -22223,15 +22223,22 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
     if (IsGameMaster())
         return AREA_LOCKSTATUS_OK;
 
+    // zone check
+    uint32 requiredLevel = !isRegularTargetMap ? uint32(maxLevelForExpansion[mapEntry->Expansion()]) : at->requiredLevel;
+    uint32 area = sTerrainMgr.GetAreaId(at->target_mapId, at->target_X, at->target_Y, at->target_Z);
+
+    if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(area))
+        requiredLevel = thisZone->LevelRangeMin;
+
     // Level Requirements
-    if (getLevel() < at->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
+    if (getLevel() < requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
     {
-        miscRequirement = at->requiredLevel;
+        miscRequirement = requiredLevel;
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;
     }
-    if (!isRegularTargetMap && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL) && getLevel() < uint32(maxLevelForExpansion[mapEntry->Expansion()]))
+    if (!isRegularTargetMap && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL) && getLevel() < requiredLevel)
     {
-        miscRequirement = maxLevelForExpansion[mapEntry->Expansion()];
+        miscRequirement = requiredLevel;
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;
     }
 

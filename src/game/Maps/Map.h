@@ -71,8 +71,8 @@ struct InstanceTemplate
     uint32 map;                                             // instance map
     uint32 parent;                                          // non-continent parent instance (for instance with entrance in another instances)
     // or 0 (not related to continent 0 map id)
-    uint32 levelMin;
-    uint32 levelMax;
+    uint32 levelMin;                                        // obsolete
+    uint32 levelMax;                                        // obsolete
     uint32 minPlayers;
     uint32 maxPlayers;
     uint32 nbrTank;
