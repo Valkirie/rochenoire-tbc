@@ -27,6 +27,7 @@
 #include "Config/Config.h"
 #include "Log.h"
 #include "RealmList.h"
+#include "PatchCache.h"
 #include "AuthSocket.h"
 #include "AuthCodes.h"
  // #include "SRP6/SRP6.h"
@@ -104,15 +105,20 @@ typedef struct
 } sAuthLogonChallenge_S;
 */
 
-typedef struct AUTH_LOGON_PROOF_C
+typedef struct AUTH_LOGON_PROOF_C_BASE
 {
     uint8   cmd;
     uint8   A[32];
     uint8   M1[20];
     uint8   crc_hash[20];
     uint8   number_of_keys;
+} sAuthLogonProof_C_Base;
+
+struct sAuthLogonProof_C_1_11 : public sAuthLogonProof_C_Base
+{
     uint8   securityFlags;                                  // 0x00-0x04
-} sAuthLogonProof_C;
+};
+
 /*
 typedef struct
 {
@@ -151,14 +157,23 @@ typedef struct AUTH_RECONNECT_PROOF_C
     uint8   number_of_keys;
 } sAuthReconnectProof_C;
 
-typedef struct XFER_INIT
+struct XFER_INIT_HEADER
 {
     uint8 cmd;                                              // XFER_INITIATE
     uint8 fileNameLen;                                      // strlen(fileName);
-    uint8 fileName[5];                                      // fileName[fileNameLen]
+};
+// filename contents in between
+struct XFER_INIT_FOOTER
+{
     uint64 file_size;                                       // file size (bytes)
     uint8 md5[MD5_DIGEST_LENGTH];                           // MD5
-} XFER_INIT;
+};
+
+struct XFER_CHUNK
+{
+    uint8 cmd;
+    uint16 chunk_size;
+};
 
 typedef struct AuthHandler
 {
@@ -178,10 +193,15 @@ std::array<uint8, 16> VersionChallenge = { { 0xBA, 0xA3, 0x1E, 0x99, 0xA0, 0x0B,
 
 /// Constructor - set the N and g values for SRP6
 AuthSocket::AuthSocket(boost::asio::io_service& service, std::function<void(Socket*)> closeHandler)
-    : Socket(service, std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER)
+    : Socket(service,std::move(closeHandler)), _status(STATUS_CHALLENGE), _build(0), _accountSecurityLevel(SEC_PLAYER), _patchFile(NULL), _patcherRun(NULL), _patcherThread(NULL)
 {
     N.SetHexStr("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
     g.SetDword(7);
+}
+
+AuthSocket::~AuthSocket()
+{
+    _StopPatching();
 }
 
 /// Read the packet from the client
@@ -280,11 +300,7 @@ void AuthSocket::_SetVSFields(const std::string& rI)
 
 void AuthSocket::SendProof(Sha1Hash sha)
 {
-    switch (_build)
-    {
-    case 5875:                                          // 1.12.1
-    case 6005:                                          // 1.12.2
-    case 6141:                                          // 1.12.3
+    if (_build < 6080) // before version 2.0.0 (exclusive)
     {
         sAuthLogonProof_S_BUILD_6005 proof{};
         memcpy(proof.M2, sha.GetDigest(), 20);
@@ -293,15 +309,8 @@ void AuthSocket::SendProof(Sha1Hash sha)
         proof.LoginFlags = 0x00;
 
         Write((const char*)&proof, sizeof(proof));
-        break;
     }
-    case 8606:                                          // 2.4.3
-    case 10505:                                         // 3.2.2a
-    case 11159:                                         // 3.3.0a
-    case 11403:                                         // 3.3.2
-    case 11723:                                         // 3.3.3a
-    case 12340:                                         // 3.3.5a
-    default:                                            // or later
+    else
     {
         sAuthLogonProof_S proof{};
         memcpy(proof.M2, sha.GetDigest(), 20);
@@ -312,9 +321,29 @@ void AuthSocket::SendProof(Sha1Hash sha)
         proof.unkFlags = 0x0000;
 
         Write((const char*)&proof, sizeof(proof));
-        break;
     }
+}
+
+void AuthSocket::InitiateXfer(const char* dataName, uint64 fileSize, const uint8* fileHash)
+{
+    const size_t nameLen = strlen(dataName);
+    MANGOS_ASSERT(nameLen <= UINT8_MAX);
+
+    ByteBuffer pkt;
+    {
+        XFER_INIT_HEADER hdr;
+        hdr.cmd = CMD_XFER_INITIATE;
+        hdr.fileNameLen = uint8(nameLen);
+        pkt.append((const uint8*)&hdr,sizeof(hdr));
     }
+    pkt.append(dataName,nameLen);
+    {
+        XFER_INIT_FOOTER fut;
+        fut.file_size = fileSize;
+        memcpy(fut.md5,fileHash,sizeof(fut.md5));
+        pkt.append((const uint8*)&fut,sizeof(fut));
+    }
+    Write((const char*)pkt.contents(),pkt.size());
 }
 
 /// Logon Challenge command handler
@@ -392,6 +421,16 @@ bool AuthSocket::_HandleLogonChallenge()
     // No SQL injection possible (paste the IP address as passed by the socket)
     std::unique_ptr<QueryResult> ip_banned_result(LoginDatabase.PQuery("SELECT expires_at FROM ip_banned "
         "WHERE (expires_at = banned_at OR expires_at > UNIX_TIMESTAMP()) AND ip = '%s'", m_address.c_str()));
+
+    RealmBuildInfo const* buildInfo = FindBuildInfo(_build);
+    PatchCache::Patch patchInfo = sPatchCache.GetPatchInfo(_build, m_locale);
+
+    if (!buildInfo || buildInfo->patchme && patchInfo.build == 0)
+    {
+        pkt << uint8(WOW_FAIL_VERSION_INVALID);
+        Write((const char*)pkt.contents(), pkt.size());
+        return true;
+    }
 
     if (ip_banned_result)
     {
@@ -488,26 +527,31 @@ bool AuthSocket::_HandleLogonChallenge()
                     if (!_token.empty() && _build >= 8606) // authenticator was added in 2.4.3
                         securityFlags = SECURITY_FLAG_AUTHENTICATOR;
 
-                    pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
-
-                    if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
+                    if (securityFlags != 0)
                     {
-                        pkt << uint32(0);
-                        pkt << uint64(0);
-                        pkt << uint64(0);
-                    }
+                        pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
 
-                    if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
-                    {
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint64(0);
-                    }
+                        if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
+                        {
+                            pkt << uint32(0);
+                            pkt << uint64(0);
+                            pkt << uint64(0);
+                        }
 
-                    if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
-                        pkt << uint8(1);
+                        if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
+                        {
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint8(0);
+                            pkt << uint64(0);
+                        }
+
+                        if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
+                            pkt << uint8(1);
+                    }
+                    else if (_build >= 5428) // only version 1.11.0 or later has securityFlags and further bytes
+                        pkt << uint8(0);
 
                     uint8 secLevel = fields[4].GetUInt8();
                     _accountSecurityLevel = secLevel <= SEC_ADMINISTRATOR ? AccountTypes(secLevel) : SEC_ADMINISTRATOR;
@@ -531,24 +575,57 @@ bool AuthSocket::_HandleLogonProof()
 {
     DEBUG_LOG("Entering _HandleLogonProof");
     ///- Read the packet
-    sAuthLogonProof_C lp{};
-    if (!Read((char*)&lp, sizeof(sAuthLogonProof_C)))
-        return false;
+    sAuthLogonProof_C_1_11 lp{};
+    if (_build < 5428) // before version 1.11.0 (exclusive)
+    {
+        if (!Read((char*)&lp,sizeof(sAuthLogonProof_C_Base)))
+            return false;
+        lp.securityFlags = 0;
+    }
+    else
+    {
+        if (!Read((char*)&lp,sizeof(sAuthLogonProof_C_1_11)))
+            return false;
+    }
 
     ///- Session is closed unless overriden
     _status = STATUS_CLOSED;
 
     /// <ul><li> If the client has no valid version
-    if (!FindBuildInfo(_build))
+    RealmBuildInfo const* buildInfo = FindBuildInfo(_build);
+    if (!buildInfo || buildInfo->patchme)
     {
-        // no patch found
-        ByteBuffer pkt;
-        pkt << (uint8)CMD_AUTH_LOGON_CHALLENGE;
-        pkt << (uint8)0x00;
-        pkt << (uint8)WOW_FAIL_VERSION_INVALID;
-        DEBUG_LOG("[AuthChallenge] %u is not a valid client version!", _build);
-        Write((const char*)pkt.contents(), pkt.size());
-        return true;
+        PatchCache::Patch patchInfo = sPatchCache.GetPatchInfo(_build,m_locale);
+        if (patchInfo.build != 0)
+        {
+            MANGOS_ASSERT(_patchFile == NULL);
+            const char* patchPath = patchInfo.filename.c_str();
+            _patchFile = fopen(patchPath,"rb");
+            if (_patchFile == NULL)
+                sLog.outError("Failed to open patch file '%s'!",patchPath);
+            else
+            {
+                DEBUG_LOG("Opened patch file '%s' for client version %u and locale %s",patchPath,_build,m_locale.c_str());
+
+                // fail the login in a good way
+                static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE};
+                Write((const char*)LOGON_PROOF_NEEDS_PATCH,sizeof(LOGON_PROOF_NEEDS_PATCH));
+
+                InitiateXfer("Patch",patchInfo.filesize,patchInfo.md5); //tell client to request patch
+                _status = STATUS_PATCH; // since all client can do now is request patch data
+                return true; //normal authentication is bypassed
+            }
+        }
+        else
+            sLog.outError("Could not find patch info for version %u and locale %s",_build,m_locale.c_str());
+
+        if (_patchFile == NULL)
+        {
+            // fail the logon in a bad way
+            static const uint8 CHALLENGE_FAIL_VERSION[3] = {CMD_AUTH_LOGON_CHALLENGE, 0, WOW_FAIL_VERSION_UPDATE};
+            Write((const char*)CHALLENGE_FAIL_VERSION,sizeof(CHALLENGE_FAIL_VERSION));
+            return false;
+        }
     }
     /// </ul>
 
@@ -910,11 +987,7 @@ bool AuthSocket::_HandleRealmList()
 
 void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
 {
-    switch (_build)
-    {
-    case 5875:                                          // 1.12.1
-    case 6005:                                          // 1.12.2
-    case 6141:                                          // 1.12.3
+    if (_build < 6080)        // before version 2.0.0 (exclusive)
     {
         pkt << uint32(0);                               // unused value
         pkt << uint8(sRealmList.size());
@@ -966,16 +1039,8 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
         }
 
         pkt << uint16(0x0002);                          // unused value (why 2?)
-        break;
     }
-
-    case 8606:                                          // 2.4.3
-    case 10505:                                         // 3.2.2a
-    case 11159:                                         // 3.3.0a
-    case 11403:                                         // 3.3.2
-    case 11723:                                         // 3.3.3a
-    case 12340:                                         // 3.3.5a
-    default:                                            // and later
+    else
     {
         pkt << uint32(0);                               // unused value
         pkt << uint16(sRealmList.size());
@@ -1032,9 +1097,56 @@ void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
         }
 
         pkt << uint16(0x0010);                          // unused value (why 10?)
-        break;
     }
+}
+
+class PatcherRunnable : public MaNGOS::Runnable
+{
+public:
+    PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size);
+    ~PatcherRunnable();
+
+    void stop() { stopped = true; }
+    void run() override;
+private:
+    MaNGOS::Socket* sock;
+    FILE* file;
+    uint64 pos;
+    uint64 size;
+    volatile bool stopped;
+};
+
+// Accept patch transfer
+bool AuthSocket::_HandleXferAccept()
+{
+    DEBUG_LOG("Entering _HandleXferAccept");
+    
+    if (ReadLengthRemaining() < 1)
+        return false;
+    else
+        ReadSkip(1);
+
+    if (_patcherRun != NULL)
+    {
+        DEBUG_LOG("Error while accepting patch transfer (patcher already running)");
+        return false;
     }
+    if (_patchFile == NULL)
+    {
+        DEBUG_LOG("Error while accepting patch transfer (no patch file opened)");
+        return false;
+    }
+
+    fseek(_patchFile,0,SEEK_END);
+    const size_t size = ftell(_patchFile);
+    fseek(_patchFile,0,SEEK_SET);
+
+    MANGOS_ASSERT(_patcherRun == NULL);
+    MANGOS_ASSERT(_patcherThread == NULL);
+    _patcherRun = new PatcherRunnable(this,_patchFile,0,size);
+    _patcherRun->incReference();
+    _patcherThread = new MaNGOS::Thread(_patcherRun);
+    return true;
 }
 
 /// Resume patch transfer
@@ -1042,12 +1154,91 @@ bool AuthSocket::_HandleXferResume()
 {
     DEBUG_LOG("Entering _HandleXferResume");
 
-    if (ReadLengthRemaining() < 9)
+    uint64 startOffs;
+    if (ReadLengthRemaining() < 1+sizeof(startOffs))
         return false;
+    else
+    {
+        ReadSkip(1);
+        Read((char*)&startOffs,sizeof(startOffs));
+    }
 
-    ReadSkip(9);
+    if (_patcherRun != NULL)
+    {
+        DEBUG_LOG("Error while resuming patch transfer (patcher already running)");
+        return false;
+    }
+    if (_patchFile == NULL)
+    {
+        DEBUG_LOG("Error while resuming patch transfer (no patch file opened)");
+        return false;
+    }
 
+    fseek(_patchFile,0,SEEK_END);
+    const size_t size = ftell(_patchFile);
+    if (startOffs >= size)
+    {
+        fseek(_patchFile,0,SEEK_SET);
+        DEBUG_LOG("Error while resuming patch transfer (offset specified too large)");
+        return false;
+    }
+    fseek(_patchFile,long(startOffs),SEEK_SET);
+
+    MANGOS_ASSERT(_patcherRun == NULL);
+    MANGOS_ASSERT(_patcherThread == NULL);
+    _patcherRun = new PatcherRunnable(this,_patchFile,startOffs,size);
+    _patcherRun->incReference();
+    _patcherThread = new MaNGOS::Thread(_patcherRun);
     return true;
+}
+
+PatcherRunnable::PatcherRunnable(MaNGOS::Socket* sock, FILE* file, uint64 pos, uint64 size) 
+    : sock(sock), file(file), pos(pos), size(size), stopped(false)
+{
+    DEBUG_LOG("PatcherRunnable created for sock %p file %p pos %llu size %llu",sock,file,pos,size);
+}
+
+PatcherRunnable::~PatcherRunnable()
+{
+    DEBUG_LOG("PatcherRunnable destroyed for sock %p file %p pos %llu size %llu stopped: %u",sock,file,pos,size,uint32(stopped));
+}
+
+// Send content of patch file to the client
+void PatcherRunnable::run()
+{
+    DEBUG_LOG("PatchRunnable::run() : %llu -> %llu",pos,size);
+
+    uint64 bytesSent = 0;
+    uint64 remaining = size-pos;
+    while (!stopped && remaining > 0)
+    {
+        uint8 chunkData[4096];
+        uint64 numBytesToRead = remaining;
+        if (numBytesToRead > sizeof(chunkData))
+            numBytesToRead = sizeof(chunkData);
+
+        const uint64 readBytes = fread(chunkData,1,size_t(numBytesToRead),file);
+        MANGOS_ASSERT(readBytes <= UINT16_MAX);
+        if (readBytes > 0)
+        {
+            XFER_CHUNK pckt;
+            pckt.cmd = CMD_XFER_DATA;
+            pckt.chunk_size = uint16(readBytes);
+            sock->Write((const char*)&pckt,sizeof(pckt),(const char*)chunkData,pckt.chunk_size);
+        }
+        bytesSent += readBytes;
+        remaining -= readBytes;
+        if (readBytes < numBytesToRead) //reached eof
+            break;
+    }
+
+    const char* patcherState = "done";
+    if (remaining != 0)
+        patcherState = "ERROR";
+    else if (stopped)
+        patcherState = "STOPPED";
+
+    DEBUG_LOG("Patcher %s (sent %llu bytes from start pos %llu of file size %llu, remaining %llu).",patcherState,bytesSent,pos,size,remaining);
 }
 
 /// Cancel patch transfer
@@ -1055,20 +1246,39 @@ bool AuthSocket::_HandleXferCancel()
 {
     DEBUG_LOG("Entering _HandleXferCancel");
 
-    ReadSkip(1);
-    Close();
+    if (ReadLengthRemaining() < 1)
+        return false;
+    else
+        ReadSkip(1);
 
+    _StopPatching();
+    _status = STATUS_CLOSED;
+
+    Close();
     return true;
 }
 
-/// Accept patch transfer
-bool AuthSocket::_HandleXferAccept()
+void AuthSocket::_StopPatching()
 {
-    DEBUG_LOG("Entering _HandleXferAccept");
+    if (_patcherRun != NULL)
+    {
+        _patcherRun->stop(); //signal thread to stop
+        _patcherRun->decReference();
+        _patcherRun = NULL;
+    }
 
-    ReadSkip(1);
+    if (_patcherThread != NULL)
+    {
+        _patcherThread->destroy(); //waits for thread to stop
+        delete _patcherThread;
+        _patcherThread = NULL;
+    }
 
-    return true;
+    if (_patchFile != NULL)
+    {
+        fclose(_patchFile);
+        _patchFile = NULL;
+    }
 }
 
 int32 AuthSocket::generateToken(char const* b32key)

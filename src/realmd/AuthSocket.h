@@ -30,11 +30,15 @@
 
 #include "Network/Socket.hpp"
 
+#include <openssl/md5.h>
+
 #include <boost/asio.hpp>
 
 #include <functional>
 
 #define HMAC_RES_SIZE 20
+
+
 
 class AuthSocket : public MaNGOS::Socket
 {
@@ -42,8 +46,10 @@ public:
 	const static int s_BYTE_SIZE = 32;
 
 	AuthSocket(boost::asio::io_service& service, std::function<void(Socket*)> closeHandler);
+	~AuthSocket();
 
 	void SendProof(Sha1Hash sha);
+	void InitiateXfer(const char* dataName, uint64 fileSize, const uint8* fileHash);
 	void LoadRealmlist(ByteBuffer& pkt, uint32 acctid);
 	int32 generateToken(char const* b32key);
 
@@ -53,14 +59,14 @@ public:
 	bool _HandleReconnectChallenge();
 	bool _HandleReconnectProof();
 	bool _HandleRealmList();
-	// data transfer handle for patch
 
-	bool _HandleXferResume();
-	bool _HandleXferCancel();
+	// patch data transfer handlers
 	bool _HandleXferAccept();
+	bool _HandleXferResume();
+	bool _HandleXferCancel();	
+	void _StopPatching();
 
 	void _SetVSFields(const std::string& rI);
-
 private:
 	enum eStatus
 	{
@@ -91,7 +97,12 @@ private:
 	uint16 _build;
 	AccountTypes _accountSecurityLevel;
 
+	FILE* _patchFile;
+	class PatcherRunnable* _patcherRun;
+	MaNGOS::Thread* _patcherThread;
+
 	virtual bool ProcessIncomingData() override;
 };
+
 #endif
 /// @}

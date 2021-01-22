@@ -27,6 +27,7 @@
 #include "Config/Config.h"
 #include "Log.h"
 #include "AuthSocket.h"
+#include "PatchCache.h"
 #include "SystemConfig.h"
 #include "revision.h"
 #include "revision_sql.h"
@@ -195,6 +196,7 @@ int main(int argc, char* argv[])
         DETAIL_LOG("WARNING: Outdated version of OpenSSL lib. Logins to server may not work!");
         DETAIL_LOG("WARNING: Minimal required version [OpenSSL 0.9.8k]");
     }
+    sPatchCache.Initialize();
 
     sLog.outString();
     sLog.outString("<Ctrl-C> to stop.");

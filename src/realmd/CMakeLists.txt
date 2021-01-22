@@ -22,6 +22,8 @@ set(EXECUTABLE_SRCS
     AuthCodes.h
     AuthSocket.cpp
     AuthSocket.h
+    PatchCache.h
+    PatchCache.cpp
     Main.cpp
     RealmList.cpp
     RealmList.h
