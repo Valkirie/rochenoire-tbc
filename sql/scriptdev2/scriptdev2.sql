@@ -1087,7 +1087,6 @@ INSERT INTO scripted_event_id VALUES
 (3098,'event_antalarion_statue_activation'),
 (3099,'event_antalarion_statue_activation'),
 (3100,'event_antalarion_statue_activation');
-UPDATE creature_template SET ScriptName='npc_shade_of_hakkar' WHERE entry=8440;
 UPDATE gameobject_template SET ScriptName='go_eternal_flame' WHERE entry IN (148418,148419,148420,148421);
 INSERT INTO scripted_event_id VALUES
 (8502,'event_avatar_of_hakkar');
@@ -2852,7 +2851,11 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,broadc
 ('-1109007','I TASTE THE BLOOD OF LIFE!','5868','1','0','0','6252','avatar SAY_AVATAR_BRAZIER_2'),
 ('-1109008','I DRAW CLOSER TO THIS WORLD!','5867','1','0','0','4543','avatar SAY_AVATAR_BRAZIER_3'),
 ('-1109009','I AM NEAR!','5869','1','0','0','6253','avatar SAY_AVATAR_BRAZIER_4'),
-('-1109010','I AM HERE!','0','1','0','0','4545','avatar SAY_AVATAR_SPAWN');
+('-1109010','I AM HERE!','0','1','0','0','4545','avatar SAY_AVATAR_SPAWN'),
+('-1109011','You must not summon our god!','0','1','0','0','4530','Nightmare Suppressor SAY_SPAWN_1'),
+('-1109012','Stop!  Infidels!','0','1','0','0','4532','Nightmare Suppressor SAY_SPAWN_2'),
+('-1109013','No!  We cannot allow you to summon Hakkar!','0','1','0','0','4529','Nightmare Suppressor SAY_SPAWN_3'),
+('-1109014','You must not summon our god!','0','1','0','0','4531','Nightmare Suppressor SAY_SPAWN_4');
 
 -- -1 129 000 RAZORFEN DOWNS
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,broadcast_text_id,comment) VALUES
