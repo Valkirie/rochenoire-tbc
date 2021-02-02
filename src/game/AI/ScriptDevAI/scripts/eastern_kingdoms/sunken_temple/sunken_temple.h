@@ -71,8 +71,7 @@ enum
 
     SPELL_SUPPRESSION     = 12623,
     SPELL_SUMMON_AVATAR   = 12639,                          // Cast by the shade of hakkar, updates entry to avatar
-    SPELL_AVATAR_SUMMONED = 12948,
-    
+
     SPELL_SPIRIT_SPAWN_IN = 17321,
 
     SAY_JAMMALAN_INTRO    = -1109005,
@@ -85,6 +84,7 @@ enum
     SAY_SUPPRESSOR_2      = -1109012,
     SAY_SUPPRESSOR_3      = -1109013,
     SAY_SUPPRESSOR_4      = -1109014,
+    SAY_AVATAR_DESPAWN    = -1109015,
 };
 
 // This is also the needed order for activation: S, N, SW, SE, NW, NE

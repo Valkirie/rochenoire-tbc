@@ -88,7 +88,12 @@ void instance_sunken_temple::OnCreatureCreate(Creature* pCreature)
             break;
         case NPC_JAMMALAN:
         case NPC_ATALARION:
+            m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
         case NPC_SHADE_OF_ERANIKUS:
+            // Make Shade of Eranikus attackable by players if Jammal'an is defeated
+            if (GetData(TYPE_JAMMALAN) == DONE)
+                pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
             m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
             break;
     }
@@ -383,7 +388,10 @@ void instance_sunken_temple::Update(uint32 uiDiff)
             if (Creature* shadeOfHakkar = GetSingleCreatureFromStorage(NPC_SHADE_OF_HAKKAR))
             {
                 if (shadeOfHakkar->HasAura(SPELL_SUPPRESSION))
+                {
+                    DoScriptText(SAY_AVATAR_DESPAWN, shadeOfHakkar, nullptr);
                     SetData(TYPE_AVATAR, FAIL);
+                }
             }
             m_suppressionTimer = 0;
         }
