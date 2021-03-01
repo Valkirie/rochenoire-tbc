@@ -235,6 +235,9 @@ int32 Quest::GetRewOrReqMoney(Player *pPlayer) const
 
 uint32 Quest::GetRewMoneyMaxLevel(Player *pPlayer) const
 {
+    if (HasQuestFlag(QUEST_FLAGS_NO_MONEY_FROM_XP))
+        return 0;
+		
     if (pPlayer && GetQuestRelativeLevel())
 	{
         uint32 pQuest_slevel = pPlayer->GetQuestLevelForPlayer(this);
