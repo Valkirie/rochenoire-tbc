@@ -1594,6 +1594,7 @@ void instance_mount_hyjal::DespawnBase(BaseArea index)
             if (Creature* creature = GetSingleCreatureFromStorage(NPC_THRALL))
                 creature->ForcedDespawn();
             break;
+        default: break;
     }
 }
 
@@ -1615,6 +1616,7 @@ void instance_mount_hyjal::SpawnBase(BaseArea index, bool spawnLeader = true)
                 if (Creature* creature = GetSingleCreatureFromStorage(NPC_THRALL))
                     creature->Respawn();
                 break;
+            default: break;
         }
     }
 }
@@ -1647,7 +1649,7 @@ void instance_mount_hyjal::RetreatBase(BaseArea index)
             }
             break;
         }
-
+        default: break;
     }
 
     SetData(TYPE_WIN, SPECIAL);
@@ -1675,6 +1677,7 @@ void instance_mount_hyjal::OverrunBase(BaseArea index)
             m_invasionWaves = 14;
             SpawnInvasionWave(14, true);
             break;
+        default: break;
     }
 }
 
