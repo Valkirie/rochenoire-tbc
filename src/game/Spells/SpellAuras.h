@@ -188,6 +188,7 @@ class SpellAuraHolder
         bool HasMechanicMask(uint32 mechanicMask) const;
 
         void UpdateAuraDuration();
+        void SendAuraDurationForTarget(uint32 slot = MAX_AURAS);
         void SendAuraDurationForCaster(Player* caster);
 
         void SetAura(uint32 slot, bool remove) { m_target->SetUInt32Value(UNIT_FIELD_AURA + slot, remove ? 0 : GetId()); }
@@ -195,6 +196,8 @@ class SpellAuraHolder
         void SetAuraLevel(uint32 slot, uint32 level);
 
         void SetCreationDelayFlag();
+
+        bool HasAuraType(AuraType type);
 
         // Scripting system
         AuraScript* GetAuraScript() const { return m_auraScript; }

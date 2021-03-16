@@ -1908,6 +1908,7 @@ class Player : public Unit
         void SendDirectMessage(WorldPacket const& data) const;
 
         void SendAuraDurationsForTarget(Unit* target);
+        void SendAuraDurationsOnLogin(bool visible); // uses different packets
 
         PlayerMenu* PlayerTalkClass;
         std::vector<ItemSetEffect*> ItemSetEff;
