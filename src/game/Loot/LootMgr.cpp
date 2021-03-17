@@ -568,7 +568,7 @@ LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const
                 if (!isUnderThreshold && lootItemType == LOOTITEM_TYPE_CONDITIONNAL && loot->m_lootMethod == MASTER_LOOT)
                     break;
 
-                if (loot->m_isChest)
+                if (loot->m_isChest || loot->m_lootType == LOOT_FISHINGHOLE)
                     return LOOT_SLOT_OWNER;
 
                 if (isBlocked)
@@ -590,7 +590,7 @@ LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const
         {
             if (!isBlocked)
             {
-                if (loot->m_isChest)
+                if (loot->m_isChest || loot->m_lootType == LOOT_FISHINGHOLE)
                     return LOOT_SLOT_NORMAL;
 
                 if (isReleased || currentLooterPass || player->GetObjectGuid() == loot->m_currentLooterGuid)
@@ -624,7 +624,7 @@ LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const
         }
         case ROUND_ROBIN:
         {
-            if (loot->m_isChest)
+            if (loot->m_isChest || loot->m_lootType == LOOT_FISHINGHOLE)
                 return LOOT_SLOT_NORMAL;
 
             if (isReleased || currentLooterPass || player->GetObjectGuid() == loot->m_currentLooterGuid)
@@ -1179,6 +1179,9 @@ bool Loot::CanLoot(Player const* player)
     if (m_lootMethod == NOT_GROUP_TYPE_LOOT || m_lootMethod == FREE_FOR_ALL)
         return true;
 
+    if (m_lootType == LOOT_FISHINGHOLE)
+        return true;
+
     if (m_haveItemOverThreshold)
     {
         // master loot have always loot right when the loot contain over threshold item
@@ -1650,6 +1653,9 @@ void Loot::SetGroupLootRight(Player* player)
         m_ownerSet.emplace(player->GetObjectGuid());
         return;
     }
+
+    if (m_lootType == LOOT_FISHINGHOLE)
+        sLog.outString("hihi");
 
     m_ownerSet.clear();
     Group* grp = player->GetGroup();

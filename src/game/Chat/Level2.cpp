@@ -3212,7 +3212,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
             return false;
         }
 
-        // player->PlayerTalkClass->SendPointOfInterest(x, y, 6, 6, 0, "First Waypoint");
+        // player->GetPlayerMenu()->SendPointOfInterest(x, y, 6, 6, 0, "First Waypoint");
         return true;
     }
 
@@ -3225,7 +3225,7 @@ bool ChatHandler::HandleWpShowCommand(char* args)
             return false;
         }
 
-        // player->PlayerTalkClass->SendPointOfInterest(x, y, 6, 6, 0, "Last Waypoint");
+        // player->GetPlayerMenu()->SendPointOfInterest(x, y, 6, 6, 0, "Last Waypoint");
         return true;
     }
 
