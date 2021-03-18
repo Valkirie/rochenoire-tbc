@@ -85,6 +85,7 @@ enum
     AREATRIGGER_STOMACH_3           = 4036,
 
     MAX_FLESH_TENTACLES             = 2,
+    MAX_EYE_TENTACLES               = 8,
 };
 
 static const float cthunLocations[4][4] =
@@ -524,7 +525,7 @@ struct npc_giant_claw_tentacleAI : public CombatAI
                 break;
             case GIANTCLAW_TRASH:
                 if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THRASH) == CAST_OK)
-                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10 * IN_MILLISECONDS, SPELL_TRASH));
+                    ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 10 * IN_MILLISECONDS, SPELL_THRASH));
                 break;
             case GIANTCLAW_CHECKTARGET:
                 // Check every second if we are tanked

@@ -427,7 +427,7 @@ bool AuthSocket::_HandleLogonChallenge()
 
     if (!buildInfo || buildInfo->patchme && patchInfo.build == 0)
     {
-        pkt << uint8(WOW_FAIL_VERSION_INVALID);
+        pkt << uint8(AUTH_LOGON_FAILED_VERSION_INVALID);
         Write((const char*)pkt.contents(), pkt.size());
         return true;
     }
@@ -464,18 +464,7 @@ bool AuthSocket::_HandleLogonChallenge()
             else
                 DEBUG_LOG("[AuthChallenge] Account '%s' is not locked to ip", _login.c_str());
 
-            std::string databaseV = fields[4].GetCppString();
-            std::string databaseS = fields[5].GetCppString();
-            bool broken = false;
-
-            if (!srp.SetVerifier(databaseV.c_str()) || !srp.SetSalt(databaseS.c_str()))
-            {
-                pkt << uint8(AUTH_LOGON_FAILED_FAIL_NOACCESS);
-                DEBUG_LOG("[AuthChallenge] Broken v/s values in database for account %s!", _login.c_str());
-                broken = true;
-            }
-
-            if (!locked && !broken)
+            if (!locked)
             {
                 ///- If the account is banned, reject the logon attempt
                 QueryResult* banresult = LoginDatabase.PQuery("SELECT banned_at,expires_at FROM account_banned WHERE "
@@ -619,7 +608,7 @@ bool AuthSocket::_HandleLogonProof()
                 DEBUG_LOG("Opened patch file '%s' for client version %u and locale %s",patchPath,_build,m_locale.c_str());
 
                 // fail the login in a good way
-                static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, WOW_FAIL_VERSION_UPDATE};
+                static const uint8 LOGON_PROOF_NEEDS_PATCH[2] = {CMD_AUTH_LOGON_PROOF, AUTH_LOGON_FAILED_VERSION_UPDATE };
                 Write((const char*)LOGON_PROOF_NEEDS_PATCH,sizeof(LOGON_PROOF_NEEDS_PATCH));
 
                 InitiateXfer("Patch",patchInfo.filesize,patchInfo.md5); //tell client to request patch
@@ -633,7 +622,7 @@ bool AuthSocket::_HandleLogonProof()
         if (_patchFile == NULL)
         {
             // fail the logon in a bad way
-            static const uint8 CHALLENGE_FAIL_VERSION[3] = {CMD_AUTH_LOGON_CHALLENGE, 0, WOW_FAIL_VERSION_UPDATE};
+            static const uint8 CHALLENGE_FAIL_VERSION[3] = {CMD_AUTH_LOGON_CHALLENGE, 0, AUTH_LOGON_FAILED_VERSION_UPDATE };
             Write((const char*)CHALLENGE_FAIL_VERSION,sizeof(CHALLENGE_FAIL_VERSION));
             return false;
         }

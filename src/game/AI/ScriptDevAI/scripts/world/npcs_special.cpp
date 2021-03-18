@@ -2751,7 +2751,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         else
             DoScriptText(BLACKMARKET_SAY3, pCreature, pPlayer);
 
-        pPlayer->PlayerTalkClass->CloseGossip();
+        pPlayer->GetPlayerMenu()->CloseGossip();
     }
 }
 
