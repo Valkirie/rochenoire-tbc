@@ -16,15 +16,14 @@
 
 /* ScriptData
 SDName: Shadowfang_Keep
-SD%Complete: 75
-SDComment: npc_shadowfang_prisoner using escortAI for movement to door.
+SD%Complete: 90
+SDComment: Scourge Invasion boss is missing, Archmage Arugal timers have to be checked
 SDCategory: Shadowfang Keep
 EndScriptData */
 
 /* ContentData
 npc_shadowfang_prisoner
 mob_arugal_voidwalker
-npc_arugal
 boss_arugal
 npc_deathstalker_vincent
 EndContentData */
@@ -54,7 +53,6 @@ enum
     EMOTE_UNLOCK_DOOR_AD    = -1033015,
 
     SPELL_UNLOCK            = 6421,
-    SPELL_FIRE              = 6422,
 
     GOSSIP_ITEM_DOOR        = -3033000
 };
@@ -358,11 +356,6 @@ enum
     SPELL_SHADOW_PORT_STAIRS        = 7136,
     SPELL_ARUGALS_CURSE             = 7621,
     SPELL_THUNDERSHOCK              = 7803,
-
-    YELL_AGGRO                      = -1033017,
-    YELL_KILLED_PLAYER              = -1033018,
-    YELL_COMBAT                     = -1033019,
-    YELL_FENRUS                     = -1033013
 };
 
 enum ArugalPosition
@@ -391,406 +384,185 @@ static const SpawnPoint VWSpawns[] =
 // Used to tell how he should behave
 const float HEIGHT_FENRUS_ROOM      = 140.0f;
 
-struct boss_arugalAI : public ScriptedAI
+enum ArugalActions
 {
-    boss_arugalAI(Creature* pCreature) : ScriptedAI(pCreature)
+    ARUGAL_TELEPORT,
+    ARUGAL_CURSE,
+    ARUGAL_VOID_BOLT,
+    ARUGAL_THUNDERSHOCK,
+    ARUGAL_ACTIONS_MAX,
+};
+
+struct boss_arugalAI : public RangedCombatAI
+{
+    boss_arugalAI(Creature* creature) : RangedCombatAI(creature, ARUGAL_ACTIONS_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        AddCombatAction(ARUGAL_TELEPORT, 22000, 26000);
+        AddCombatAction(ARUGAL_CURSE, 20000, 30000);
+        AddCombatAction(ARUGAL_VOID_BOLT, 1000u);
+        AddCombatAction(ARUGAL_THUNDERSHOCK, 1000u);
+        SetRangedMode(true, 50.f, TYPE_FULL_CASTER);
+        AddMainSpell(SPELL_VOID_BOLT);
+        AddMainSpell(SPELL_THUNDERSHOCK);
 
-        if (pCreature->GetPositionZ() < HEIGHT_FENRUS_ROOM)
+        // This is only for the instance of Arugal spawned in Fenrus room for little event
+        if (creature->GetPositionZ() < HEIGHT_FENRUS_ROOM)
         {
-            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            m_creature->SetImmuneToPlayer(true);
+            m_creature->SetImmuneToNPC(true);
             m_creature->SetVisibility(VISIBILITY_OFF);
-            m_bEventMode = true;
         }
-        else
-            m_bEventMode = false;
-
-        Reset();
     }
 
-    ScriptedInstance* m_pInstance;
-    ArugalPosition m_posPosition;
-    uint32 m_uiTeleportTimer, m_uiCurseTimer, m_uiVoidboltTimer, m_uiThundershockTimer, m_uiYellTimer, m_uiSpeechTimer;
-    uint8 m_uiSpeechStep;
-    bool m_bAttacking, m_bEventMode;
+    ScriptedInstance* m_instance;
+
+    ArugalPosition m_position;
+    bool m_attacking, m_eventMode;
 
     void Reset() override
     {
-        m_uiTeleportTimer = urand(22000, 26000);
-        m_uiCurseTimer = urand(20000, 30000);
-        m_uiVoidboltTimer = m_uiThundershockTimer = m_uiSpeechTimer = 0;
-        m_uiYellTimer = urand(32000, 46000);
-        m_bAttacking = true;
-        m_posPosition = POSITION_SPAWN_LEDGE;
-        m_uiSpeechStep = 1;
+        m_attacking = true;
+        m_position = POSITION_SPAWN_LEDGE;
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* who) override
     {
         DoScriptText(YELL_AGGRO, m_creature);
-        DoCastSpellIfCan(pWho, SPELL_VOID_BOLT);
+        DoCastSpellIfCan(who, SPELL_VOID_BOLT);
     }
 
-    void KilledUnit(Unit* pVictim) override
+    void KilledUnit(Unit* victim) override
     {
-        if (pVictim->GetTypeId() == TYPEID_PLAYER)
+        if (victim->GetTypeId() == TYPEID_PLAYER)
             DoScriptText(YELL_KILLED_PLAYER, m_creature);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* /*sender*/, Unit* invoker, uint32 /*miscValue*/) override
     {
-        if (m_bEventMode)
+        if (eventType == AI_EVENT_CUSTOM_A && invoker->GetTypeId() == TYPEID_UNIT)
         {
-            if (!m_uiSpeechStep)
+            if (invoker->GetEntry() != m_creature->GetEntry())
                 return;
 
-            if (m_uiSpeechTimer < uiDiff)
+            ObjectGuid leaderGuid;
+
+            for (uint8 i = 0; i < MAX_VOID_WALKERS; ++i)
             {
-                switch (m_uiSpeechStep)
+               // No suitable spell was found for this in DBC files, so summoning the hard way
+               if (Creature* voidwalker = m_creature->SummonCreature(NPC_VOIDWALKER, VWSpawns[i].fX, VWSpawns[i].fY, VWSpawns[i].fZ, VWSpawns[i].fO, TEMPSPAWN_DEAD_DESPAWN, 1))
+               {
+                   // Set Voidwalker's home to the middle of the room to avoid evade in an unreachable place
+                   voidwalker->SetRespawnCoord(voidwalkerHome.fX, voidwalkerHome.fY, voidwalkerHome.fZ, voidwalker->GetOrientation());
+
+                   if (!i)
+                   {
+                       leaderGuid = voidwalker->GetObjectGuid();
+                       if (auto* voidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(voidwalker->AI()))
+                           voidwalkerAI->SetLeader();
+                   }
+                   else
+                   {
+                       if (auto* voidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(voidwalker->AI()))
+                           voidwalkerAI->SetFollower(leaderGuid, i);
+                   }
+               }
+            }
+        }
+    }
+
+    void ExecuteAction(uint32 action) override
+    {
+        switch (action)
+        {
+            case ARUGAL_VOID_BOLT:
+            {
+                if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_VOID_BOLT) == CAST_OK)
+                    ResetCombatAction(action, urand(2900, 4800));
+                break;
+            }
+            case ARUGAL_THUNDERSHOCK:
+            {
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_IN_MELEE_RANGE))
                 {
-                    case 1:
-                        DoScriptText(YELL_FENRUS, m_creature);
-                        m_creature->SetVisibility(VISIBILITY_ON);
-                        m_uiSpeechTimer = 2000;
-                        break;
-                    case 2:
-                        DoCastSpellIfCan(m_creature, SPELL_FIRE);
-                        m_uiSpeechTimer = 5000;
-                        break;
-                    case 3:
-                        if (m_pInstance)
-                            if (GameObject* pLightning = m_pInstance->GetSingleGameObjectFromStorage(GO_ARUGAL_FOCUS))
-                                pLightning->Use(m_creature);
+                        if (DoCastSpellIfCan(nullptr, SPELL_THUNDERSHOCK) == CAST_OK)
+                            ResetCombatAction(action, urand(30, 38) * IN_MILLISECONDS);
+                }
+                break;
+            }
+            case ARUGAL_CURSE:
+            {
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
+                {
+                    DoScriptText(YELL_WORGEN_CURSE, m_creature);
+                    if (DoCastSpellIfCan(target, SPELL_ARUGALS_CURSE) == CAST_OK)
+                        ResetCombatAction(action, urand(20, 35) * IN_MILLISECONDS);
+                }
+                break;
+            }
+            case ARUGAL_TELEPORT:
+            {
+                uint8 newPosition = urand(0, 2);
 
-                        m_uiSpeechTimer = 5000;
-                        break;
-                    case 4:
-                        m_creature->SetVisibility(VISIBILITY_OFF);
-                        m_uiSpeechTimer = 500;
-                        break;
-                    case 5:
+                // Do nothing if we would teleport to our actual place, unless we are on the upper ledge (to prevent tank from breaking aggro if away for too long)
+                if (newPosition == m_position && m_position != POSITION_UPPER_LEDGE)
+                {
+                    ResetCombatAction(action, urand(10, 15) * IN_MILLISECONDS);
+                    break;
+                }
+
+                uint32 teleportSpellId;
+                switch (newPosition)
+                {
+                    case POSITION_SPAWN_LEDGE:
                     {
-                        ObjectGuid leaderGuid;
-
-                        for (uint8 i = 0; i < 4; ++i)
-                        {
-                            // No suitable spell was found for this in DBC files, so summoning the hard way
-                            if (Creature* voidwalker = m_creature->SummonCreature(NPC_VOIDWALKER, VWSpawns[i].fX, VWSpawns[i].fY, VWSpawns[i].fZ, VWSpawns[i].fO, TEMPSPAWN_DEAD_DESPAWN, 1))
-                            {
-                                // Set Voidwalker's home to the middle of the room to avoid evade in an unreachable place
-                                voidwalker->SetRespawnCoord(voidwalkerHome.fX, voidwalkerHome.fY, voidwalkerHome.fZ, voidwalker->GetOrientation());
-
-                                if (!i)
-                                {
-                                    leaderGuid = voidwalker->GetObjectGuid();
-                                    if (mob_arugal_voidwalkerAI* voidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(voidwalker->AI()))
-                                        voidwalkerAI->SetLeader();
-                                }
-                                else
-                                {
-                                    if (mob_arugal_voidwalkerAI* voidwalkerAI = dynamic_cast<mob_arugal_voidwalkerAI*>(voidwalker->AI()))
-                                        voidwalkerAI->SetFollower(leaderGuid, i);
-                                }
-                            }
-                        }
-                        m_uiSpeechStep = 0;
-                        return;
+                        teleportSpellId = SPELL_SHADOW_PORT_SPAWN_LEDGE;
+                        break;
+                    }
+                    case POSITION_UPPER_LEDGE:
+                    {
+                        teleportSpellId = SPELL_SHADOW_PORT_UPPER_LEDGE;
+                        break;
+                    }
+                    case POSITION_STAIRS:
+                    {
+                        teleportSpellId = SPELL_SHADOW_PORT_STAIRS;
+                        break;
                     }
                     default:
-                        m_uiSpeechStep = 0;
                         return;
                 }
-                ++m_uiSpeechStep;
-            }
-            else
-                m_uiSpeechTimer -= uiDiff;
 
-            return;
-        }
+                if (m_creature->IsNonMeleeSpellCasted(false))
+                    m_creature->InterruptNonMeleeSpells(false);
 
-        // Check if we have a current target
-        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
-            return;
+                CanCastResult castResult = DoCastSpellIfCan(m_creature, teleportSpellId);
+                // Force the cast to be triggered if we are OOM and on the upper ledge (else encounter is stuck)
+                if (castResult == CAST_FAIL_POWER && m_position == POSITION_UPPER_LEDGE)
+                    castResult = DoCastSpellIfCan(m_creature, teleportSpellId, CAST_TRIGGERED);
 
-        if (GetManaPercent() < 6.0f && !m_bAttacking)
-        {
-            if (m_posPosition != POSITION_UPPER_LEDGE)
-                StartAttacking();
-            else if (m_uiTeleportTimer > 2000)
-                m_uiTeleportTimer = 2000;
-
-            m_bAttacking = true;
-        }
-        else if (GetManaPercent() > 12.0f && m_bAttacking)
-        {
-            StopAttacking();
-            m_bAttacking = false;
-        }
-
-        if (m_uiYellTimer < uiDiff)
-        {
-            DoScriptText(YELL_COMBAT, m_creature);
-            m_uiYellTimer = urand(34000, 68000);
-        }
-        else
-            m_uiYellTimer -= uiDiff;
-
-        if (m_uiCurseTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                DoCastSpellIfCan(pTarget, SPELL_ARUGALS_CURSE);
-
-            m_uiCurseTimer = urand(20000, 35000);
-        }
-        else
-            m_uiCurseTimer -= uiDiff;
-
-        if (m_uiThundershockTimer < uiDiff)
-        {
-            if (GetVictimDistance() < 5.0f)
-            {
-                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THUNDERSHOCK);
-                m_uiThundershockTimer = urand(30200, 38500);
-            }
-        }
-        else
-            m_uiThundershockTimer -= uiDiff;
-
-        if (m_uiVoidboltTimer < uiDiff)
-        {
-            if (!m_bAttacking)
-            {
-                DoCastSpellIfCan(m_creature->GetVictim(), SPELL_VOID_BOLT);
-                m_uiVoidboltTimer = urand(2900, 4800);
-            }
-        }
-        else
-            m_uiVoidboltTimer -= uiDiff;
-
-        if (m_uiTeleportTimer < uiDiff)
-        {
-            ArugalPosition posNewPosition;
-
-            if (m_posPosition == POSITION_SPAWN_LEDGE)
-                posNewPosition = (ArugalPosition)urand(1, 2);
-            else
-            {
-                posNewPosition = (ArugalPosition)urand(0, 1);
-
-                if (m_posPosition == posNewPosition)
-                    posNewPosition = POSITION_STAIRS;
-            }
-
-            if (m_creature->IsNonMeleeSpellCasted(false))
-                m_creature->InterruptNonMeleeSpells(false);
-
-            switch (posNewPosition)
-            {
-                case POSITION_SPAWN_LEDGE:
-                    DoCastSpellIfCan(m_creature, SPELL_SHADOW_PORT_SPAWN_LEDGE, true);
-                    break;
-                case POSITION_UPPER_LEDGE:
-                    DoCastSpellIfCan(m_creature, SPELL_SHADOW_PORT_UPPER_LEDGE, true);
-                    break;
-                case POSITION_STAIRS:
-                    DoCastSpellIfCan(m_creature, SPELL_SHADOW_PORT_STAIRS, true);
-                    break;
-            }
-
-            if (GetManaPercent() < 6.0f)
-            {
-                if (posNewPosition == POSITION_UPPER_LEDGE)
+                if (castResult == CAST_OK)
                 {
-                    StopAttacking();
-                    m_uiTeleportTimer = urand(2000, 2200);
+                    if (newPosition == POSITION_UPPER_LEDGE)
+                    {
+                        // Prevent melee whatever and don't stay there for too long
+                        SetRangedMode(true, 100.0f, TYPE_NO_MELEE_MODE);
+                        ResetCombatAction(action, urand(2000, 2200));
+                    }
+                    else
+                    {
+                        SetRangedMode(true, 100.0f, TYPE_FULL_CASTER);
+                        ResetCombatAction(action, urand(48, 55) * IN_MILLISECONDS);
+                    }
+                    m_position = (ArugalPosition)newPosition;
                 }
-                else
-                {
-                    StartAttacking();
-                    m_uiTeleportTimer = urand(48000, 55000);
-                }
+
+                break;
             }
-            else
-                m_uiTeleportTimer = urand(48000, 55000);
-
-            m_posPosition = posNewPosition;
-        }
-        else
-            m_uiTeleportTimer -= uiDiff;
-
-        if (m_bAttacking)
-            DoMeleeAttackIfReady();
-    }
-
-    void AttackStart(Unit* pWho) override
-    {
-        if (!m_bEventMode)
-            ScriptedAI::AttackStart(pWho);
-    }
-
-    // Make the code nice and pleasing to the eye
-    inline float GetManaPercent() const
-    {
-        return (((float)m_creature->GetPower(POWER_MANA) / (float)m_creature->GetMaxPower(POWER_MANA)) * 100);
-    }
-
-    inline float GetVictimDistance() const
-    {
-        return (m_creature->GetVictim() ? m_creature->GetDistance(m_creature->GetVictim(), false) : 999.9f);
-    }
-
-    void StopAttacking()
-    {
-        if (Unit* victim = m_creature->GetVictim())
-            m_creature->SendMeleeAttackStop(victim);
-
-        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
-        {
-            m_creature->GetMotionMaster()->Clear(false);
-            m_creature->GetMotionMaster()->MoveIdle();
-            m_creature->StopMoving();
-        }
-    }
-
-    void StartAttacking()
-    {
-        if (Unit* victim = m_creature->GetVictim())
-            m_creature->SendMeleeAttackStart(victim);
-
-        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
-        {
-            m_creature->GetMotionMaster()->Clear(false);
-            m_creature->GetMotionMaster()->MoveChase(m_creature->GetVictim(), 0.0f, 0.0f);
+            default:
+                break;
         }
     }
 };
-
-UnitAI* GetAI_boss_arugal(Creature* pCreature)
-{
-    return new boss_arugalAI(pCreature);
-}
-
-/*######
-## npc_arugal
-######*/
-
-enum
-{
-    SAY_INTRO_1             = -1033009,
-    SAY_INTRO_2             = -1033010,
-    SAY_INTRO_3             = -1033011,
-    SAY_INTRO_4             = -1033012,
-
-    SPELL_SPAWN             = 7741,
-};
-
-struct npc_arugalAI : public ScriptedAI
-{
-    npc_arugalAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    uint32 m_uiSpeechTimer;
-    uint8 m_uiSpeechStep;
-    ScriptedInstance* m_pInstance;
-
-    void Reset() override
-    {
-        m_uiSpeechTimer = 0;
-        m_uiSpeechStep = 0;
-
-        m_creature->SetVisibility(VISIBILITY_OFF);
-
-        if (m_pInstance && m_pInstance->GetData(TYPE_INTRO) == NOT_STARTED)
-            m_uiSpeechStep = 1;
-    }
-
-    void UpdateAI(const uint32 uiDiff) override
-    {
-        if (!m_uiSpeechStep)
-            return;
-
-        if (m_uiSpeechTimer < uiDiff)
-        {
-            switch (m_uiSpeechStep)
-            {
-                case 1:
-                    m_creature->SetVisibility(VISIBILITY_ON);
-                    m_uiSpeechTimer = 500;
-                    break;
-                case 2:
-                    DoCastSpellIfCan(m_creature, SPELL_SPAWN);
-                    m_uiSpeechTimer = 2000;
-                    break;
-                case 3:
-                    // Make him die
-                    if (Creature* pVincent = GetClosestCreatureWithEntry(m_creature, NPC_VINCENT, 20.0f))
-                        pVincent->SetStandState(UNIT_STAND_STATE_DEAD);
-
-                    m_uiSpeechTimer = 10000;
-                    break;
-                case 4:
-                    DoScriptText(SAY_INTRO_1, m_creature);
-                    // m_creature->HandleEmote(EMOTE_ONESHOT_TALK);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 5:
-                    m_creature->HandleEmote(EMOTE_ONESHOT_POINT);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 6:
-                    DoScriptText(SAY_INTRO_2, m_creature);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 7:
-                    m_creature->HandleEmote(EMOTE_ONESHOT_EXCLAMATION);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 8:
-                    // m_creature->HandleEmote(EMOTE_ONESHOT_TALK);
-                    DoScriptText(SAY_INTRO_3, m_creature);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 9:
-                    m_creature->HandleEmote(EMOTE_ONESHOT_LAUGH);
-                    m_uiSpeechTimer = 1750;
-                    break;
-                case 10:
-                    DoScriptText(SAY_INTRO_4, m_creature);
-                    m_uiSpeechTimer = 2000;
-                    break;
-                case 11:
-                    DoCastSpellIfCan(m_creature, SPELL_SPAWN);
-                    m_uiSpeechTimer = 500;
-                    break;
-                case 12:
-                    if (m_pInstance)
-                        m_pInstance->SetData(TYPE_INTRO, DONE);
-
-                    m_creature->SetVisibility(VISIBILITY_OFF);
-                    m_uiSpeechStep = 0;
-                    m_creature->ForcedDespawn();
-                    return;
-                default:
-                    m_uiSpeechStep = 0;
-                    return;
-            }
-            ++m_uiSpeechStep;
-        }
-        else
-            m_uiSpeechTimer -= uiDiff;
-    }
-
-    void AttackStart(Unit* /*who*/) override { }
-};
-
-UnitAI* GetAI_npc_arugal(Creature* pCreature)
-{
-    return new npc_arugalAI(pCreature);
-}
 
 /*######
 ## npc_deathstalker_vincent
@@ -805,18 +577,22 @@ enum
 
 struct npc_deathstalker_vincentAI : public ScriptedAI
 {
-    npc_deathstalker_vincentAI(Creature* pCreature) : ScriptedAI(pCreature)
+    npc_deathstalker_vincentAI(Creature* creature) : ScriptedAI(creature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_instance = (ScriptedInstance*)creature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* m_instance;
 
     void Reset() override
     {
-        if (m_pInstance && m_pInstance->GetData(TYPE_INTRO) == DONE && !m_creature->GetByteValue(UNIT_FIELD_BYTES_1, 0))
+        // Set the proper stand state (standing or dead) depending on the intro event having been played or not
+        if (m_instance && m_instance->GetData(TYPE_INTRO) == DONE && !m_creature->GetByteValue(UNIT_FIELD_BYTES_1, 0))
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+
+        if (m_instance && (m_instance->GetData(TYPE_INTRO) == NOT_STARTED || m_instance->GetData(TYPE_INTRO) == IN_PROGRESS))
+            m_creature->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
     void DamageTaken(Unit* /*dealer*/, uint32& damage, DamageEffectType /*damagetype*/, SpellEntry const* /*spellInfo*/) override
@@ -833,19 +609,14 @@ struct npc_deathstalker_vincentAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 diff) override
     {
         if (m_creature->IsInCombat() && m_creature->getFaction() == FACTION_FRIENDLY)
             EnterEvadeMode();
 
-        ScriptedAI::UpdateAI(uiDiff);
+        ScriptedAI::UpdateAI(diff);
     }
 };
-
-UnitAI* GetAI_npc_deathstalker_vincent(Creature* pCreature)
-{
-    return new npc_deathstalker_vincentAI(pCreature);
-}
 
 struct ForsakenSkill : public AuraScript
 {
@@ -875,32 +646,27 @@ struct ForsakenSkill : public AuraScript
 
 void AddSC_shadowfang_keep()
 {
-    Script* pNewScript = new Script;
-    pNewScript->Name = "npc_shadowfang_prisoner";
-    pNewScript->pGossipHello =  &GossipHello_npc_shadowfang_prisoner;
-    pNewScript->pGossipSelect = &GossipSelect_npc_shadowfang_prisoner;
-    pNewScript->GetAI = &GetNewAIInstance<npc_shadowfang_prisonerAI>;
-    pNewScript->RegisterSelf();
+    Script* newScript = new Script;
+    newScript->Name = "npc_shadowfang_prisoner";
+    newScript->pGossipHello =  &GossipHello_npc_shadowfang_prisoner;
+    newScript->pGossipSelect = &GossipSelect_npc_shadowfang_prisoner;
+    newScript->GetAI = &GetNewAIInstance<npc_shadowfang_prisonerAI>;
+    newScript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "mob_arugal_voidwalker";
-    pNewScript->GetAI = &GetNewAIInstance<mob_arugal_voidwalkerAI>;
-    pNewScript->RegisterSelf();
+    newScript = new Script;
+    newScript->Name = "mob_arugal_voidwalker";
+    newScript->GetAI = &GetNewAIInstance<mob_arugal_voidwalkerAI>;
+    newScript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_arugal";
-    pNewScript->GetAI = &GetAI_npc_arugal;
-    pNewScript->RegisterSelf();
+    newScript = new Script;
+    newScript->Name = "boss_arugal";
+    newScript->GetAI = &GetNewAIInstance<boss_arugalAI>;
+    newScript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_arugal";
-    pNewScript->GetAI = &GetAI_boss_arugal;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_deathstalker_vincent";
-    pNewScript->GetAI = &GetAI_npc_deathstalker_vincent;
-    pNewScript->RegisterSelf();
+    newScript = new Script;
+    newScript->Name = "npc_deathstalker_vincent";
+    newScript->GetAI = &GetNewAIInstance<npc_deathstalker_vincentAI>;
+    newScript->RegisterSelf();
 
     RegisterAuraScript<ForsakenSkill>("spell_forsaken_skill");
 }
