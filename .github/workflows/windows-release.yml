@@ -1,9 +1,6 @@
 name: Windows release build
 
-on:
-  schedule:
-    # every day at 6am
-    - cron:  '0 6 * * *'
+on: [push]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -23,18 +20,6 @@ jobs:
        include:
           - OPTIONAL_DEFINES: ""
             TYPE: "default"
-
-          - OPTIONAL_DEFINES: "-DBUILD_EXTRACTORS=ON -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_RECASTDEMOMOD=ON -DBUILD_GIT_ID=ON"
-            TYPE: "with-all"
-
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON"
-            TYPE: "with-playerbot-ahbot"
-
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON"
-            TYPE: "with-playerbot"
-
-          - OPTIONAL_DEFINES: "-DBUILD_AHBOT=ON"
-            TYPE: "with-ahbot"
 
     steps:
       - name: Checkout
