@@ -2826,7 +2826,8 @@ bool Map::GetRandomPointUnderWater(float& x, float& y, float& z, float radius, G
         //max_z = std::min(max_z, liquidLevel);
         x = i_x;
         y = i_y;
-        //z = min_z + rand_norm_f() * (max_z - min_z);
+        if (min_z > z)
+            z = min_z;
         return true;
     }
     return false;
@@ -2852,7 +2853,8 @@ bool Map::GetRandomPointInTheAir(float& x, float& y, float& z, float radius, boo
         float max_z = std::max(z + 0.7f * radius, min_z);
         x = i_x;
         y = i_y;
-        z = min_z + rand_norm_f() * (max_z - min_z);
+        if (min_z > z)
+            z = min_z;
         return true;
     }
     return false;

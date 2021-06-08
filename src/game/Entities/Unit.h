@@ -2393,7 +2393,7 @@ class Unit : public WorldObject
         
         void OverrideMountDisplayId(uint32 newDisplayId);
 
-        void UpdateSplinePosition();
+        void UpdateSplinePosition(bool relocateOnly = false);
     protected:
 
         struct WeaponDamageInfo
