@@ -67,14 +67,14 @@ enum MuselekActions
     MUSELEK_ACTION_MAX,
 };
 
-struct boss_swamplord_muselekAI : public RangedCombatAI
+struct boss_swamplord_muselekAI : public CombatAI
 {
-    boss_swamplord_muselekAI(Creature* creature) : RangedCombatAI(creature, MUSELEK_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
+    boss_swamplord_muselekAI(Creature* creature) : CombatAI(creature, MUSELEK_ACTION_MAX), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())),
         m_isRegularMode(creature->GetMap()->IsRegularDifficulty())
     {
         AddTimerlessCombatAction(MUSELEK_TRAP_ONE, true);
         AddTimerlessCombatAction(MUSELEK_TRAP_TWO, true);
-        AddTimerlessCombatAction(MUSELEK_AIMED_SHOT, true);
+        AddTimerlessCombatAction(MUSELEK_AIMED_SHOT, false);
         AddCombatAction(MUSELEK_ACTION_KNOCK_AWAY, 25000, 30000);
         AddCombatAction(MUSELEK_ACTION_RAPTOR_STRIKE, 1500, 4000);
         AddCombatAction(MUSELEK_ACTION_BEAR_COMMAND, 8000, 12000);
@@ -185,7 +185,7 @@ struct boss_swamplord_muselekAI : public RangedCombatAI
                 if (!GetCurrentRangedMode())
                     return;
 
-                uint32 RangedSpell = urand(0, 2) ? SPELL_SHOOT : SPELL_MULTI_SHOT; // 66% shoot, 33% multishot
+                uint32 RangedSpell = urand(0, 4) ? SPELL_SHOOT : SPELL_MULTI_SHOT; // 66% shoot, 33% multishot
                 if (DoCastSpellIfCan(m_creature->GetVictim(), RangedSpell) == CAST_OK)
                     ResetCombatAction(action, GetSubsequentActionTimer(action));
                 return;
@@ -198,17 +198,12 @@ struct boss_swamplord_muselekAI : public RangedCombatAI
             }
         }
     }
-
-    void DistancingStarted()
-    {
-        SetCombatScriptStatus(true);
-    }
     
     void DistancingEnded() override
     {
-        RangedCombatAI::DistancingEnded();
+        CombatAI::DistancingEnded();
         ResetCombatAction(MUSELEK_ACTION_RANGED_ATTACK, GetSubsequentActionTimer(MUSELEK_ACTION_RANGED_ATTACK));
-        SetActionReadyStatus(MUSELEK_AIMED_SHOT, false);
+        SetActionReadyStatus(MUSELEK_AIMED_SHOT, false); // currently never used due to not being interrupted when the target is in his melee range (oneshotting everything)
     }
 
     void SpellHitTarget(Unit* target, const SpellEntry* spell) override 

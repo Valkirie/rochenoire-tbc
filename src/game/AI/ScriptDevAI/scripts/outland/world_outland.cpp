@@ -436,6 +436,13 @@ struct world_map_outland : public ScriptedMap, public TimerManager
                     }
                 }
                 break;
+            case TYPE_TEROKK:
+            {
+                GuidVector targets;
+                GetCreatureGuidVectorFromStorage(NPC_SKYGUARD_TARGET, targets);
+                DespawnGuids(targets);
+                break;
+            }
             default:
                 if (type >= TYPE_SHADE_OF_THE_HORSEMAN_ATTACK_PHASE && type <= TYPE_SHADE_OF_THE_HORSEMAN_MAX)
                     return m_shadeData.HandleSetData(type, data);
@@ -1046,7 +1053,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
             default: break;
         }
         if (entry)
-            return GetSingleCreatureFromStorage(entry);
+            return GetSingleCreatureFromStorage(entry, true);
         return nullptr;
     }
 
@@ -1540,7 +1547,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
             case NPC_MOARG_TORMENTER:
                 creature->GetCombatManager().SetLeashingDisable(true);
             case NPC_VIMGOL_VISUAL_BUNNY:
-            case PHASE_0_SHARTUUL_DISABLED:
+            case NPC_SKYGUARD_TARGET:
                 m_npcEntryGuidCollection[creature->GetEntry()].push_back(creature->GetObjectGuid());
                 break;
             case NPC_WYRM_FROM_BEYOND:
@@ -1566,6 +1573,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
             case NPC_DREADMAW:
             case NPC_LEGION_RING_SHIELD_ZAPPER_INVISMAN:
             case NPC_LEGION_RING_EVENT_INVISMAN_LG:
+            case NPC_YSIEL_WINDSINGER:
                 m_npcEntryGuidStore[creature->GetEntry()] = creature->GetObjectGuid();
                 break;
             case NPC_SKYGUARD_AETHER_TECH:
@@ -1743,6 +1751,10 @@ struct world_map_outland : public ScriptedMap, public TimerManager
                 if (creature->GetObjectGuid() == m_lastRingOfBlood)
                     if (Creature* gurthock = GetSingleCreatureFromStorage(NPC_GURTHOCK))
                         gurthock->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+                break;
+            case NPC_SKYGUARD_TARGET:
+                sLog.outCustomLog("Skyguard Target died.");
+                sLog.traceLog();
                 break;
         }
     }

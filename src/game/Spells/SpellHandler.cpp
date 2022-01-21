@@ -162,6 +162,8 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    _player->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ITEM_USE);
+
     // Note: If script stop casting it must send appropriate data to client to prevent stuck item in gray state.
     if (!sScriptDevAIMgr.OnItemUse(pUser, pItem, targets))
     {
@@ -274,6 +276,9 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
 
     // ignore for remote control state
     if (!_player->IsSelfMover())
+        return;
+
+    if (_player->IsBeingTeleported())
         return;
 
     GameObject* obj = _player->GetMap()->GetGameObject(guid);
@@ -391,6 +396,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     bool handled = false;
     Spell* spell = new Spell(mover, spellInfo, TRIGGERED_NONE);
     spell->m_cast_count = cast_count;                       // set count of casts
+    spell->m_clientCast = true;
     if (mover->HasGCD(spellInfo) || !mover->IsSpellReady(*spellInfo))
     {
         if (mover->HasGCDOrCooldownWithinMargin(*spellInfo))
@@ -426,10 +432,6 @@ void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
         return;
 
     if (!_player->IsClientControlled(_player))
-        return;
-
-    // FIXME: hack, ignore unexpected client cancel Deadly Throw cast
-    if (spellId == 26679)
         return;
 
     if (_player->IsNonMeleeSpellCasted(false))

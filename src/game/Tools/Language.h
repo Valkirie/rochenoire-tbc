@@ -90,6 +90,7 @@ enum MangosStrings
     LANG_GM_NO_WHISPER                  = 64,
     //                                    65, not used
     LANG_USING_SCRIPT_LIB_NONE          = 66,
+    LANG_GM_ANNOUNCE_COLOR              = 67,
     // Room for more level 0              67-99 not used
 
     // level 1 chat
@@ -1101,7 +1102,5 @@ enum MangosStrings
 	LANG_FLEXIBLE_CORE_FORCED           = 11038,
 
     // NOT RESERVED IDS                   12000-1999999999
-    // `dbscript_string` table index     2000000000-2000999999 (MIN_DB_SCRIPT_STRING_ID-MAX_DB_SCRIPT_STRING_ID)
-    // For other tables maybe             2001000000-2147483647 (max index)
 };
 #endif

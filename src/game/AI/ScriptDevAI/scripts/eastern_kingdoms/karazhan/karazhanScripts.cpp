@@ -149,7 +149,7 @@ struct npc_barnesAI : public npc_escortAI, private DialogueHelper
                         break;
                 }
                 SetEscortPaused(true);
-                m_creature->SummonCreature(NPC_SPOTLIGHT, 0, 0, 0, 0, TEMPSPAWN_DEAD_DESPAWN, 0);
+                m_creature->SummonCreature(NPC_SPOTLIGHT, -10895.27f, -1782.626f, 90.55984f, 3.769911f, TEMPSPAWN_DEAD_DESPAWN, 0);
                 break;
             case 9:
                 m_pInstance->DoUseDoorOrButton(GO_STAGE_DOOR_LEFT);
@@ -381,7 +381,7 @@ struct npc_image_of_medivhAI : public ScriptedAI, private DialogueHelper
             pSummoned->SetLevitate(true);
             pSummoned->SetWalk(false);
             pSummoned->GetMotionMaster()->MovePoint(POINT_ID_INTRO, afArcanagosMoveLoc[0], afArcanagosMoveLoc[1], afArcanagosMoveLoc[2]);
-            pSummoned->SetByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
+            pSummoned->SetByteFlag(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_MISC_FLAGS, UNIT_BYTE1_FLAG_FLY_ANIM);
         }
     }
 
@@ -465,12 +465,12 @@ struct npc_image_arcanagosAI : public ScriptedAI
         if (pSpell->Id == SPELL_FIREBALL && pCaster->GetEntry() == NPC_IMAGE_OF_MEDIVH)
         {
             // !!!Workaround Alert!!! - the spell should be cast on Medivh without changing the unit flags!
-            pCaster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            pCaster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
 
             DoCastSpellIfCan(pCaster, SPELL_FIREBALL_REFLECT, CAST_TRIGGERED);
             DoCastSpellIfCan(m_creature, SPELL_REFLECTION, CAST_TRIGGERED);
 
-            pCaster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            pCaster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
         }
     }
 
@@ -532,6 +532,46 @@ struct BlinkArcaneAnomaly : public SpellScript
     }
 };
 
+struct WrathOfTheTitansStacker : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Unit* caster = spell->GetCaster();
+        uint32 count = caster->GetAuraCount(30554);
+        for (uint32 i = count; i < 5; ++i)
+            caster->CastSpell(nullptr, 30554, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+struct WrathOfTheTitansProcAura : public AuraScript
+{
+    bool OnCheckProc(Aura* aura, ProcExecutionData& data) const override
+    {
+        std::set<uint32> spells = { 30605, 30606, 30607, 30609, 30608 };
+        if (spells.find(data.spellInfo->Id) != spells.end())
+            return false;
+        return true;
+    }
+
+    SpellAuraProcResult OnProc(Aura* aura, ProcExecutionData& procData) const override
+    {
+        SpellEntry const* spellInfo = aura->GetSpellProto();
+        switch (GetFirstSchoolInMask(GetSpellSchoolMask(spellInfo)))
+        {
+            case SPELL_SCHOOL_NORMAL: return SPELL_AURA_PROC_FAILED;  // ignore
+            case SPELL_SCHOOL_FIRE:   procData.triggeredSpellId = 30607; break; // Flame of Khaz'goroth
+            case SPELL_SCHOOL_NATURE: procData.triggeredSpellId = 30606; break; // Bolt of Eonar
+            case SPELL_SCHOOL_FROST:  procData.triggeredSpellId = 30609; break; // Chill of Norgannon
+            case SPELL_SCHOOL_SHADOW: procData.triggeredSpellId = 30608; break; // Spite of Sargeras
+            case SPELL_SCHOOL_ARCANE: procData.triggeredSpellId = 30605; break; // Blast of Amanthul
+            default: return SPELL_AURA_PROC_FAILED;
+        }
+        procData.attacker->RemoveAuraHolderFromStack(30554);
+        procData.triggerTarget = procData.victim;
+        return SPELL_AURA_PROC_OK;
+    }
+};
+
 void AddSC_karazhan()
 {
     Script* pNewScript = new Script;
@@ -557,4 +597,6 @@ void AddSC_karazhan()
     pNewScript->RegisterSelf();
 
     RegisterSpellScript<BlinkArcaneAnomaly>("spell_blink_arcane_anomaly");
+    RegisterSpellScript<WrathOfTheTitansStacker>("spell_wrath_of_the_titans_stacker");
+    RegisterAuraScript<WrathOfTheTitansProcAura>("spell_wrath_of_the_titans_proc_aura");
 }

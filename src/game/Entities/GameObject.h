@@ -24,8 +24,9 @@
 #include "Entities/Object.h"
 #include "Util.h"
 #include "AI/BaseAI/GameObjectAI.h"
-#include "Spells/SpellAuras.h"
 #include "Spells/SpellDefines.h"
+
+#include <array>
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -618,6 +619,40 @@ struct GameObjectData
     bool IsNotPartOfPoolOrEvent() const { return (!gameEvent && !GuidPoolId && !EntryPoolId); }
 };
 
+struct GameObjectTemplateAddon
+{
+    std::array<uint32, 4> artKits = {};
+};
+
+enum class GameObjectActions : uint32
+{
+    // Name from client executable    // Comments
+    NONE,                             // -NONE-
+    ANIMATE_CUSTOM_0,                 // Animate Custom0
+    ANIMATE_CUSTOM_1,                 // Animate Custom1
+    ANIMATE_CUSTOM_2,                 // Animate Custom2
+    ANIMATE_CUSTOM_3,                 // Animate Custom3
+    DISTURB,                          // Disturb                          // Triggers trap
+    UNLOCK,                           // Unlock                           // Resets GO_FLAG_LOCKED
+    LOCK,                             // Lock                             // Sets GO_FLAG_LOCKED
+    OPEN,                             // Open                             // Sets GO_STATE_ACTIVE
+    OPEN_AND_UNLOCK,                  // Open + Unlock                    // Sets GO_STATE_ACTIVE and resets GO_FLAG_LOCKED
+    CLOSE,                            // Close                            // Sets GO_STATE_READY
+    TOGGLE_OPEN,                      // Toggle Open
+    DESTROY,                          // Destroy                          // Sets GO_STATE_DESTROYED
+    REBUILD,                          // Rebuild                          // Resets from GO_STATE_DESTROYED
+    CREATION,                         // Creation
+    DESPAWN,                          // Despawn
+    MAKE_INERT,                       // Make Inert                       // Disables interactions
+    MAKE_ACTIVE,                      // Make Active                      // Enables interactions
+    CLOSE_AND_LOCK,                   // Close + Lock                     // Sets GO_STATE_READY and sets GO_FLAG_LOCKED
+    USE_ART_KIT_0,                    // Use ArtKit0                      // 46904: 121
+    USE_ART_KIT_1,                    // Use ArtKit1                      // 36639: 81, 46903: 122
+    USE_ART_KIT_2,                    // Use ArtKit2
+    USE_ART_KIT_3,                    // Use ArtKit3
+    SET_TAP_LIST,                     // Set Tap List
+};
+
 // For containers:  [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY        -> ...
 // For bobber:      GO_NOT_READY  ->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED-><deleted>
 // For door(closed):[GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY(close) -> ...
@@ -651,6 +686,7 @@ enum CapturePointSliderValue
 enum GameobjectExtraFlags
 {
     GAMEOBJECT_EXTRA_FLAG_CUSTOM_ANIM_ON_USE = 0x00000001,    // GO that plays custom animation on usage
+    GAMEOBJECT_EXTRA_FLAG_DYNGUID            = 0x00000002,    // Temporary - Uses new dynguid system
     GAMEOBJECT_EXTRA_FLAG_ACTIVE             = 0x00001000,    // Always active
 };
 
@@ -659,6 +695,7 @@ class GameObjectModel;
 struct GameObjectDisplayInfoEntry;
 struct TransportAnimation;
 class Item;
+class GameObjectGroup;
 
 struct QuaternionData
 {
@@ -691,7 +728,9 @@ class GameObject : public WorldObject
         virtual bool Create(uint32 guidlow, uint32 name_id, Map* map, float x, float y, float z, float ang,
                     float rotation0 = 0.0f, float rotation1 = 0.0f, float rotation2 = 0.0f, float rotation3 = 0.0f, uint32 animprogress = GO_ANIMPROGRESS_DEFAULT, GOState go_state = GO_STATE_READY);
         void Update(const uint32 diff) override;
+        void Heartbeat() override;
         GameObjectInfo const* GetGOInfo() const;
+        GameObjectTemplateAddon const* GetTemplateAddon() const;
 
         bool IsTransport() const;
         bool IsMoTransport() const;
@@ -707,13 +746,16 @@ class GameObject : public WorldObject
 
         void SaveToDB() const;
         void SaveToDB(uint32 mapid, uint8 spawnMask) const;
-        bool LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid);
+        bool LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forcedEntry);
         void DeleteFromDB() const;
 
         ObjectGuid const& GetOwnerGuid() const override { return GetGuidValue(OBJECT_FIELD_CREATED_BY); }
         void SetOwnerGuid(ObjectGuid guid) override;
+        ObjectGuid const GetSpawnerGuid() const { return m_spawnerGuid; }
+        void SetSpawnerGuid(ObjectGuid guid) { m_spawnerGuid = guid; }
 
         Unit* GetOwner() const;
+        WorldObject* GetSpawner() const;
 
         void SetSpellId(uint32 id)
         {
@@ -721,6 +763,8 @@ class GameObject : public WorldObject
             m_spellId = id;
         }
         uint32 GetSpellId() const { return m_spellId;}
+
+        void ForcedDespawn(uint32 timeMSToDespawn = 0);
 
         time_t GetRespawnTime() const { return m_respawnTime; }
         time_t GetRespawnTimeEx() const
@@ -764,7 +808,9 @@ class GameObject : public WorldObject
         void SetGoAnimProgress(uint32 animprogress) { SetUInt32Value(GAMEOBJECT_ANIMPROGRESS, animprogress); }
         uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
         void SetDisplayId(uint32 modelId);
-        uint32 GetLevel() const { return GetUInt32Value(GAMEOBJECT_LEVEL); }
+        uint32 GetFaction() const override { return GetUInt32Value(GAMEOBJECT_FACTION); }
+        void SetFaction(uint32 faction) { SetUInt32Value(GAMEOBJECT_FACTION, faction); }
+        uint32 GetLevel() const override { return GetUInt32Value(GAMEOBJECT_LEVEL); }
 
         void Use(Unit* user, SpellEntry const* spellInfo = nullptr);
 
@@ -810,6 +856,7 @@ class GameObject : public WorldObject
         void UseDoorOrButton(uint32 time_to_restore = 0, bool alternative = false);
         // 0 = use `gameobject`.`spawntimesecs`
         void ResetDoorOrButton();
+        void UseOpenableObject(bool open, uint32 withRestoreTime = 0, bool useAlternativeState = false);
 
         ReputationRank GetReactionTo(Unit const* unit) const override;
 
@@ -869,6 +916,17 @@ class GameObject : public WorldObject
 
         SpellCastResult CastSpell(Unit* temporaryCaster, Unit* Victim, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem = nullptr, Aura* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
 
+        void GenerateLootFor(Player* player); // used to tie chest loot to encounter at the moment of its end
+
+        uint32 GetDbGuid() const override { return m_dbGuid; }
+        HighGuid GetParentHigh() const override { return HIGHGUID_GAMEOBJECT; }
+
+        void SetCooldown(uint32 cooldown); // seconds
+
+        void SetGameObjectGroup(GameObjectGroup* group);
+        void ClearGameObjectGroup();
+        GameObjectGroup* GetGameObjectGroup() const { return m_goGroup; }
+
     protected:
         uint32      m_spellId;
         time_t      m_respawnTime;                          // (secs) time of next respawn (or despawn if GO have owner()),
@@ -923,6 +981,10 @@ class GameObject : public WorldObject
 
         uint32 m_dbGuid;
 
+        ObjectGuid m_spawnerGuid;
+
+        GameObjectGroup* m_goGroup;
+
     private:
         void SwitchDoorOrButton(bool activate, bool alternative = false);
         void TickCapturePoint();
@@ -931,5 +993,17 @@ class GameObject : public WorldObject
 
         GridReference<GameObject> m_gridRef;
 };
+
+class ForcedDespawnDelayGameObjectEvent : public BasicEvent
+{
+    public:
+        ForcedDespawnDelayGameObjectEvent(GameObject& owner) : BasicEvent(), m_owner(owner) { }
+        bool Execute(uint64 e_time, uint32 p_time) override;
+
+    private:
+        GameObject& m_owner;
+        bool m_onlyAlive;
+};
+
 
 #endif

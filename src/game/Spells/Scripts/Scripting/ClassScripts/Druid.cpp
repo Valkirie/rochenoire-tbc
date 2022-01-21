@@ -34,7 +34,70 @@ struct Regrowth : public AuraScript
     }
 };
 
+struct FormScalingAttackPowerAuras : public AuraScript
+{
+    int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
+    {
+        if (data.spellProto->EffectApplyAuraName[data.effIdx] == SPELL_AURA_MOD_ATTACK_POWER)
+        {
+            // Predatory Strikes
+            Aura* predatoryStrikes = nullptr;
+            if (Aura* aura = data.target->GetAura(16975, EFFECT_INDEX_0)) // rank 3
+                predatoryStrikes = aura;
+            else if (Aura* aura = data.target->GetAura(16974, EFFECT_INDEX_0)) // rank 2
+                predatoryStrikes = aura;
+            else if (Aura* aura = data.target->GetAura(16972, EFFECT_INDEX_0)) // rank 1
+                predatoryStrikes = aura;
+            if (predatoryStrikes)
+                value += data.target->GetLevel() * predatoryStrikes->GetAmount() / 100;
+        }
+        return value;
+    }
+};
+
+struct ForceOfNatureSummon : public SpellScript, public AuraScript
+{
+    void OnSummon(Spell* /*spell*/, Creature* summon) const override
+    {
+        summon->CastSpell(nullptr, 37846, TRIGGERED_NONE);
+    }
+
+    void OnHolderInit(SpellAuraHolder* holder, WorldObject* /*caster*/) const
+    {
+        holder->SetAuraDuration(2000);
+    }
+
+    void OnPeriodicDummy(Aura* aura) const override
+    {
+        Unit* target = aura->GetTarget();
+        target->CastSpell(nullptr, 41929, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+struct GuardianAggroSpell : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx != EFFECT_INDEX_0)
+            return;
+
+        Unit* target = spell->GetUnitTarget();
+        Unit* caster = spell->GetCaster();
+        if (target->GetEntry() == 1964) // Force of Nature treant
+        {
+            if (target->CanAttack(caster))
+            {
+                if (target->IsVisibleForOrDetect(caster, caster, true))
+                    target->AI()->AttackStart(caster);
+            }
+        }
+    }
+};
+
 void LoadDruidScripts()
 {
     RegisterAuraScript<Regrowth>("spell_regrowth");
+    RegisterAuraScript<FormScalingAttackPowerAuras>("spell_druid_form_scaling_ap_auras");
+    RegisterScript<ForceOfNatureSummon>("spell_force_of_nature_summon");
+    RegisterSpellScript<GuardianAggroSpell>("spell_guardian_aggro_spell");
 }

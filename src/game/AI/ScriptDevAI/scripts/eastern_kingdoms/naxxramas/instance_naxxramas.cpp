@@ -1027,14 +1027,13 @@ bool instance_naxxramas::DoHandleEvent(uint32 eventId)
                             zombie->AttackStop();
                             zombie->SetTarget(nullptr);
                             zombie->AI()->DoResetThreat();
-                            zombie->GetMotionMaster()->Clear();
-                            zombie->SetWalk(true);
-                            zombie->GetMotionMaster()->MoveFollow(gluth, ATTACK_DISTANCE, 0);
+                            zombie->GetMotionMaster()->MovePoint(0, gluth->GetPositionX(), gluth->GetPositionY(), gluth->GetPositionZ());
                         }
                     }
                 }
-                return true;
+                return false;
             }
+            return true;
         case EVENT_CLEAR_SHACKLES:
             m_shackledGuardians = 0;
             m_checkGuardiansTimer = 2 * IN_MILLISECONDS;    // Check every two seconds how many Guardians of Icecrown are shackled
@@ -1129,7 +1128,7 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
 
     void Aggro(Unit*) override
     {
-        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE))
+        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_SPAWNING))
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             m_creature->SetImmuneToPlayer(false);
@@ -1168,6 +1167,31 @@ struct npc_stoneskin_gargoyleAI : public ScriptedAI
 
         DoMeleeAttackIfReady();
     }
+};
+
+/*###################
+#   npc_living_poison
+###################*/
+
+struct npc_living_poisonAI : public ScriptedAI
+{
+    npc_living_poisonAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
+
+    void Reset() override
+    {
+        SetMeleeEnabled(false);
+    }
+
+    // Any time a player comes close to the Living Poison, it will explode and kill itself while doing heavy AoE damage to the player
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (m_creature->GetDistance2d(who->GetPositionX(), who->GetPositionY(), DIST_CALC_BOUNDING_RADIUS) > 4.0f)
+            return;
+
+        DoCastSpellIfCan(m_creature, SPELL_EXPLODE, CAST_TRIGGERED);
+    }
+
+    void AttackStart(Unit* /*who*/) override {}
 };
 
 bool instance_naxxramas::DoHandleAreaTrigger(AreaTriggerEntry const* areaTrigger)
@@ -1228,6 +1252,24 @@ bool ProcessEventId_naxxramas(uint32 eventId, Object* source, Object* /*target*/
     return false;
 }
 
+enum
+{
+    GOSSIP_ARCHMAGE_TARSIS_INITIAL  = 7229,
+    GOSSIP_ARCHMAGE_TARSIS_NEXT     = 7228,
+};
+
+bool GossipHello_npc_archmage_tarsis(Player* player, Creature* creature)
+{
+    uint32 gossipId = GOSSIP_ARCHMAGE_TARSIS_INITIAL;
+
+    if (creature->getStandState() == UNIT_STAND_STATE_SIT)
+        gossipId = GOSSIP_ARCHMAGE_TARSIS_NEXT;
+
+    player->PrepareGossipMenu(creature, gossipId);
+    player->SendPreparedGossip(creature);
+    return true;
+}
+
 void AddSC_instance_naxxramas()
 {
     Script* newScript = new Script;
@@ -1241,6 +1283,11 @@ void AddSC_instance_naxxramas()
     newScript->RegisterSelf();
 
     newScript = new Script;
+    newScript->Name = "npc_living_poison";
+    newScript->GetAI = &GetNewAIInstance<npc_living_poisonAI>;
+    newScript->RegisterSelf();
+
+    newScript = new Script;
     newScript->Name = "at_naxxramas";
     newScript->pAreaTrigger = &AreaTrigger_at_naxxramas;
     newScript->RegisterSelf();
@@ -1248,5 +1295,10 @@ void AddSC_instance_naxxramas()
     newScript = new Script;
     newScript->Name = "event_naxxramas";
     newScript->pProcessEventId = &ProcessEventId_naxxramas;
+    newScript->RegisterSelf();
+
+    newScript = new Script;
+    newScript->Name = "npc_archmage_tarsis";
+    newScript->pGossipHello = &GossipHello_npc_archmage_tarsis;
     newScript->RegisterSelf();
 }

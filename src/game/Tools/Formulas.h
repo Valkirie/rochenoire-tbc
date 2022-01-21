@@ -135,7 +135,7 @@ namespace MaNGOS
                 return 0;
 
             uint32 xp_gain = BaseGain(unit->getLevel(), target->GetLevelForTarget(unit), GetContentLevelsForMapAndZone(unit->GetMapId(), unit->GetZoneId()));
-            if (xp_gain == 0)
+            if (xp_gain == 0.0f)
                 return 0;
 
             if (target->IsElite())

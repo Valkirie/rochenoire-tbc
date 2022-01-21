@@ -90,6 +90,7 @@ struct boss_high_king_maulgarAI : public CombatAI
         AddCombatAction(MAULGAR_WHIRLWIND, 30000u);
         AddCombatAction(MAULGAR_CHARGE, true);
         AddCombatAction(MAULGAR_FEAR, true);
+        AddOnKillText(SAY_SLAY1, SAY_SLAY2, SAY_SLAY3);
     }
 
     ScriptedInstance* m_instance;
@@ -106,16 +107,6 @@ struct boss_high_king_maulgarAI : public CombatAI
     {
         if (m_instance)
             m_instance->SetData(TYPE_MAULGAR_EVENT, FAIL);
-    }
-
-    void KilledUnit(Unit* /*victim*/) override
-    {
-        switch (urand(0, 2))
-        {
-            case 0: DoScriptText(SAY_SLAY1, m_creature); break;
-            case 1: DoScriptText(SAY_SLAY2, m_creature); break;
-            case 2: DoScriptText(SAY_SLAY3, m_creature); break;
-        }
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -188,9 +179,9 @@ struct boss_high_king_maulgarAI : public CombatAI
 };
 
 // Base AI for every council member
-struct Council_Base_AI : public RangedCombatAI
+struct Council_Base_AI : public CombatAI
 {
-    Council_Base_AI(Creature* creature, uint32 actions) : RangedCombatAI(creature, actions), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())) { }
+    Council_Base_AI(Creature* creature, uint32 actions) : CombatAI(creature, actions), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData())) { }
 
     ScriptedInstance* m_instance;
 

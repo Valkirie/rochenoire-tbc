@@ -34,6 +34,7 @@ at_huldar_miran                 171
 at_area_52                      4422, 4466, 4471, 4472
 at_twilight_grove               4017
 at_hive_tower                   3146
+at_wondervolt                   4030,4032,4026,4029,4027,4028,4031
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
@@ -332,7 +333,7 @@ bool AreaTrigger_at_huldar_miran(Player* pPlayer, AreaTriggerEntry const* /*pAt*
     }
 
     // Check if any Dark Iron Ambusher are already spawned or dead, if so, do nothing
-    if (!GetClosestCreatureWithEntry(pPlayer, NPC_DARK_IRON_AMBUSHER, 60.0f, false, false))
+    if (m_saean && !GetClosestCreatureWithEntry(pPlayer, NPC_DARK_IRON_AMBUSHER, 60.0f, false, false))
     {
         m_saean->SummonCreature(NPC_DARK_IRON_AMBUSHER, m_miranAmbushSpawns[1].m_fX, m_miranAmbushSpawns[1].m_fY, m_miranAmbushSpawns[1].m_fZ, m_miranAmbushSpawns[1].m_fO, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 25000);
         m_saean->SummonCreature(NPC_DARK_IRON_AMBUSHER, m_miranAmbushSpawns[2].m_fX, m_miranAmbushSpawns[2].m_fY, m_miranAmbushSpawns[2].m_fZ, m_miranAmbushSpawns[2].m_fO, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 25000);
@@ -350,11 +351,16 @@ enum
     SPELL_A52_NEURALYZER = 34400
 };
 
-bool AreaTrigger_at_area_52(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
+bool AreaTrigger_at_area_52(Player* player, AreaTriggerEntry const* at)
 {
     // ToDo: research if there should be other actions happening here
-    if (!pPlayer->HasAura(SPELL_A52_NEURALYZER))
-        pPlayer->CastSpell(pPlayer, SPELL_A52_NEURALYZER, TRIGGERED_NONE);
+    if (!player->HasAura(SPELL_A52_NEURALYZER))
+    {
+        SpellCastTargets targets;
+        targets.setUnitTarget(player);
+        targets.setDestination(at->x, at->y, at->z);
+        player->CastSpell(targets, sSpellTemplate.LookupEntry<SpellEntry>(SPELL_A52_NEURALYZER), TRIGGERED_OLD_TRIGGERED); // mounted needs triggered
+    }
 
     return false;
 }
@@ -425,6 +431,39 @@ bool AreaTrigger_at_hive_tower(Player* player, AreaTriggerEntry const* /*pAt*/)
     return false;
 }
 
+/*######
+## at_wondervolt
+######*/
+
+enum
+{
+    GO_WONDERVOLT_TRAP = 180797
+};
+
+bool AreaTrigger_at_wondervolt(Player* player, AreaTriggerEntry const* /*at*/)
+{
+    if (player->IsGameMaster())
+        return false;
+
+    uint32 transformSpells[4] = {26272, 26157, 26273, 26274};
+
+    // Check if player is already transformed
+    for (auto transformSpell : transformSpells)
+    {
+        if (player->HasAura(transformSpell, EFFECT_INDEX_0))
+            return false;
+    }
+
+    // Trigger the PX-238 Winter Wondervolt trap for player
+    if (GameObject* wondervolt = GetClosestGameObjectWithEntry(player, GO_WONDERVOLT_TRAP, 20.0f))
+    {
+        wondervolt->Use(player);
+        return true;
+    }
+
+    return false;
+}
+
 void AddSC_areatrigger_scripts()
 {
     Script* pNewScript = new Script;
@@ -485,5 +524,10 @@ void AddSC_areatrigger_scripts()
     pNewScript = new Script;
     pNewScript->Name = "at_hive_tower";
     pNewScript->pAreaTrigger = &AreaTrigger_at_hive_tower;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "at_wondervolt";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_wondervolt;
     pNewScript->RegisterSelf();
 }

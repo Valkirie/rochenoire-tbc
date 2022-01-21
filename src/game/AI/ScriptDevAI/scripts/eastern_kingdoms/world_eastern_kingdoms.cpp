@@ -20,13 +20,16 @@
 #include "AI/ScriptDevAI/base/TimerAI.h"
 #include "World/WorldState.h"
 #include "World/WorldStateDefines.h"
+#include "GameEvents/GameEventMgr.h"
+#include "AI/ScriptDevAI/scripts/world/brewfest.h"
+#include "AI/ScriptDevAI/scripts/world/scourge_invasion.h"
 
 /* *********************************************************
  *                  EASTERN KINGDOMS
  */
 struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
 {
-    world_map_eastern_kingdoms(Map* pMap) : ScriptedMap(pMap), m_shadeData({ AREAID_GOLDSHIRE, AREAID_KHARANOS, AREAID_BRILL })
+    world_map_eastern_kingdoms(Map* pMap) : ScriptedMap(pMap), m_brewfestEvent(this), m_shadeData({ AREAID_GOLDSHIRE, AREAID_KHARANOS, AREAID_BRILL })
     {
         AddCustomAction(EVENT_SPAWN, true, [&]
         {
@@ -148,6 +151,8 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
 
     // Shade of the Horseman village attack event
     ShadeOfTheHorsemanData m_shadeData;
+    // Brewfest events
+    BrewfestEvent m_brewfestEvent;
 
     void Initialize() override
     {
@@ -195,6 +200,14 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
             case NPC_HIGHLORD_KRUUL:
             case NPC_AGENT_PROUDWELL:
             case NPC_FALSTAD_WILDHAMMER:
+            case NPC_SHORT_JOHN_MITHRIL:
+            case NPC_BELBI_QUIKSWITCH:
+            case NPC_ITA_THUNDERBREW:
+            case NPC_MAEVE_BARLEYBREW:
+            case NPC_GORDOK_BREW_BARKER:
+            case NPC_IPFELKOFER_IRONKEG:
+            case NPC_MEKKATORQUE:
+            case NPC_DARK_IRON_HERALD:
                 m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
                 break;
             case NPC_DREADKNIGHT:
@@ -223,6 +236,7 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
                 m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
                 break;
             case NPC_COSTUMED_ORPHAN_MATRON:
+            case NPC_NECROPOLIS_HEALTH:
                 m_npcEntryGuidCollection[pCreature->GetEntry()].push_back(pCreature->GetObjectGuid());
                 break;
         }
@@ -247,8 +261,21 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
             case NPC_ARGENT_PROTECTOR:
                 _spawnProtector.erase(pCreature->GetObjectGuid());
                 break;
+            case NPC_NECROPOLIS_HEALTH:
+                m_npcEntryGuidCollection.erase(pCreature->GetObjectGuid());
+                break;
             default:
                 _spawn.erase(pCreature->GetObjectGuid());
+                break;
+        }
+    }
+
+    void OnObjectCreate(GameObject* pGo) override
+    {
+        switch (pGo->GetEntry())
+        {
+            case GO_SUMMON_CIRCLE:
+                m_goEntryGuidCollection[pGo->GetEntry()].push_back(pGo->GetObjectGuid());
                 break;
         }
     }
@@ -332,21 +359,30 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
 
     void OnEventHappened(uint16 event_id, bool activate, bool resume) override
     {
-        if (event_id != GAME_EVENT_BEFORE_THE_STORM)
-            return;
-
-        DespawnAdds();
-
-        if (activate && !resume)
+        if (event_id == GAME_EVENT_BEFORE_THE_STORM)
         {
-            ResetTimer(EVENT_SPAWN, 1000);
-            ResetTimer(EVENT_SPAWN_BOSS, 30000);
-            ResetTimer(EVENT_REINFORCEMENTS_NEEDED, 30000);
+            DespawnAdds();
+
+            if (activate && !resume)
+            {
+                ResetTimer(EVENT_SPAWN, 1000);
+                ResetTimer(EVENT_SPAWN_BOSS, 30000);
+                ResetTimer(EVENT_REINFORCEMENTS_NEEDED, 30000);
+            }
+            else
+            {
+                ResetAllTimers();
+            }
         }
-        else
+        else if (event_id == GAME_EVENT_GURUBASHI_ARENA && activate)
         {
-            ResetAllTimers();
+            if (Creature* creature = GetSingleCreatureFromStorage(NPC_SHORT_JOHN_MITHRIL))
+                creature->GetMotionMaster()->MoveWaypoint();
         }
+        else if (event_id == GAME_EVENT_BREWFEST_DARK_IRON_ATTACK && activate)
+            m_brewfestEvent.StartDarkIronAttackEvent();
+        else if (event_id == GAME_EVENT_BREWFEST_KEG_TAPPING && activate)
+            m_brewfestEvent.StartKegTappingEvent();
     }
 
     void Update(uint32 diff) override
@@ -363,6 +399,9 @@ struct world_map_eastern_kingdoms : public ScriptedMap, public TimerManager
                 if (Creature* matron = instance->GetCreature(guid))
                     matron->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, matron, matron);
         }
+
+        if (sGameEventMgr.IsActiveHoliday(HOLIDAY_BREWFEST))
+            m_brewfestEvent.Update(diff);
     }
 
     uint32 GetData(uint32 type) const override

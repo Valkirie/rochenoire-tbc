@@ -184,7 +184,7 @@ void Object::BuildCreateUpdateBlockForPlayer(UpdateData* data, Player* target) c
 
     UpdateMask updateMask;
     updateMask.SetCount(m_valuesCount);
-    _SetCreateBits(&updateMask, target);
+    _SetCreateBits(updateMask, target);
     BuildValuesUpdate(updatetype, &buf, &updateMask, target);
     data->AddUpdateBlock(buf);
 }
@@ -202,20 +202,34 @@ void Object::SendCreateUpdateToPlayer(Player* player) const
     }
 }
 
-void Object::BuildValuesUpdateBlockForPlayer(UpdateData* data, Player* target) const
+void Object::BuildValuesUpdateBlockForPlayer(UpdateData& data, Player* target) const
+{
+    UpdateMask updateMask;
+    updateMask.SetCount(m_valuesCount);
+
+    _SetUpdateBits(updateMask, target);
+    if (updateMask.HasData())
+        BuildValuesUpdateBlockForPlayer(data, updateMask, target);
+}
+
+void Object::BuildValuesUpdateBlockForPlayerWithFlags(UpdateData& data, Player* target, UpdateFieldFlags flags) const
+{
+    UpdateMask updateMask;
+    updateMask.SetCount(GetValuesCount());
+    MarkUpdateFieldsWithFlagForUpdate(updateMask, (uint16)flags);
+    if (updateMask.HasData())
+        BuildValuesUpdateBlockForPlayer(data, updateMask, target);
+}
+
+void Object::BuildValuesUpdateBlockForPlayer(UpdateData& data, UpdateMask& updateMask, Player* target) const
 {
     ByteBuffer buf(500);
 
     buf << uint8(UPDATETYPE_VALUES);
     buf << GetPackGUID();
 
-    UpdateMask updateMask;
-    updateMask.SetCount(m_valuesCount);
-
-    _SetUpdateBits(&updateMask, target);
     BuildValuesUpdate(UPDATETYPE_VALUES, &buf, &updateMask, target);
-
-    data->AddUpdateBlock(buf);
+    data.AddUpdateBlock(buf);
 }
 
 void Object::BuildForcedValuesUpdateBlockForPlayer(UpdateData* data, Player* target) const
@@ -228,7 +242,7 @@ void Object::BuildForcedValuesUpdateBlockForPlayer(UpdateData* data, Player* tar
     UpdateMask updateMask;
     updateMask.SetCount(m_valuesCount);
 
-    _SetCreateBits(&updateMask, target);
+    _SetCreateBits(updateMask, target);
     BuildValuesUpdate(UPDATETYPE_VALUES, &buf, &updateMask, target);
 
     data->AddUpdateBlock(buf);
@@ -511,7 +525,8 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                     uint32 value = m_uint32Values[index];
 
                     // Fog of War: replace absolute health values with percentages for non-allied units according to settings
-                    if (!static_cast<const Unit*>(this)->IsFogOfWarVisibleHealth(target))
+                    if (!static_cast<const Unit*>(this)->IsFogOfWarVisibleHealth(target) &&
+                        !target->CanSeeSpecialInfoOf(static_cast<const Unit*>(this)))
                     {
                         switch (index)
                         {
@@ -521,20 +536,6 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                     }
 
                     *data << value;
-                }
-                // Fog of War: hide stat values for non-allied units according to settings
-                else if ((index == UNIT_FIELD_RANGEDATTACKTIME ||
-                          index == UNIT_FIELD_MINDAMAGE || index == UNIT_FIELD_MAXDAMAGE ||
-                          index == UNIT_FIELD_MINOFFHANDDAMAGE || index == UNIT_FIELD_MAXOFFHANDDAMAGE ||
-                          (index >= UNIT_FIELD_STAT0 && index < UNIT_FIELD_BASE_MANA) ||
-                          index == UNIT_FIELD_BASE_HEALTH || index == UNIT_FIELD_ATTACK_POWER ||
-                          index == UNIT_FIELD_ATTACK_POWER_MODS || index == UNIT_FIELD_ATTACK_POWER_MULTIPLIER ||
-                          index == UNIT_FIELD_RANGED_ATTACK_POWER || index == UNIT_FIELD_RANGED_ATTACK_POWER_MODS ||
-                          index == UNIT_FIELD_RANGED_ATTACK_POWER_MULTIPLIER || index == UNIT_FIELD_MINRANGEDDAMAGE ||
-                          index == UNIT_FIELD_MAXRANGEDDAMAGE || (index >= UNIT_FIELD_POWER_COST_MODIFIER && index <= UNIT_FIELD_MAXHEALTHMODIFIER)) &&
-                          !static_cast<const Unit*>(this)->IsFogOfWarVisibleStats(target))
-                {
-                    *data << uint32(0);
                 }
                 else if (index == UNIT_FIELD_FLAGS)
                 {
@@ -890,6 +891,54 @@ void Object::ClearUpdateMask(bool remove)
     }
 }
 
+uint16 Object::GetUpdateFieldFlagsForTarget(Player const* target, uint16 const*& flags) const
+{
+    flags = UpdateFields::GetUpdateFieldFlagsArray(GetTypeId());
+    uint16 visibleFlag = UF_FLAG_PUBLIC | UF_FLAG_DYNAMIC;
+
+    if (target == this)
+        visibleFlag |= UF_FLAG_PRIVATE;
+
+    switch (GetTypeId())
+    {
+        case TYPEID_ITEM:
+        case TYPEID_CONTAINER:
+            if (static_cast<Item const*>(this)->GetOwnerGuid() == target->GetObjectGuid())
+                visibleFlag |= UF_FLAG_OWNER_ONLY | UF_FLAG_UNK2;
+            break;
+        case TYPEID_UNIT:
+        case TYPEID_PLAYER:
+        {
+            if (static_cast<Unit const*>(this)->GetMasterGuid() == target->GetObjectGuid())
+                visibleFlag |= UF_FLAG_OWNER_ONLY;
+
+            if (HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_SPECIALINFO))
+                if (target->CanSeeSpecialInfoOf(static_cast<Unit const*>(this)))
+                    visibleFlag |= UF_FLAG_SPECIAL_INFO;
+
+            if (static_cast<Unit const*>(this)->IsInGroup(target, false, false))
+                visibleFlag |= UF_FLAG_GROUP_ONLY;
+            break;
+        }
+        case TYPEID_GAMEOBJECT:
+            if (static_cast<GameObject const*>(this)->GetOwnerGuid() == target->GetObjectGuid())
+                visibleFlag |= UF_FLAG_OWNER_ONLY;
+            break;
+        case TYPEID_DYNAMICOBJECT:
+            if (static_cast<DynamicObject const*>(this)->GetCasterGuid() == target->GetObjectGuid())
+                visibleFlag |= UF_FLAG_OWNER_ONLY;
+            break;
+        case TYPEID_CORPSE:
+            if (static_cast<Corpse const*>(this)->GetOwnerGuid() == target->GetObjectGuid())
+                visibleFlag |= UF_FLAG_OWNER_ONLY;
+            break;
+        case TYPEID_OBJECT:
+            break;
+    }
+
+    return visibleFlag;
+}
+
 void Object::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 count)
 {
     if (!data)
@@ -908,18 +957,38 @@ void Object::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 cou
     }
 }
 
-void Object::_SetUpdateBits(UpdateMask* updateMask, Player* /*target*/) const
+void Object::MarkUpdateFieldsWithFlagForUpdate(UpdateMask& updateMask, uint16 flag) const
 {
+    uint16 const* flags = UpdateFields::GetUpdateFieldFlagsArray(GetTypeId());
+    MANGOS_ASSERT(flags);
+
     for (uint16 index = 0; index < m_valuesCount; ++index)
-        if (m_changedValues[index])
-            updateMask->SetBit(index);
+    {
+        if (GetUInt32Value(index) != 0 && (flags[index] & flag))
+            updateMask.SetBit(index);
+    }
 }
 
-void Object::_SetCreateBits(UpdateMask* updateMask, Player* /*target*/) const
+void Object::_SetUpdateBits(UpdateMask& updateMask, Player* target) const
 {
+    uint16 const* flags = nullptr;
+    uint16 visibleFlag = GetUpdateFieldFlagsForTarget(target, flags);
+    MANGOS_ASSERT(flags);
+
     for (uint16 index = 0; index < m_valuesCount; ++index)
-        if (GetUInt32Value(index) != 0)
-            updateMask->SetBit(index);
+        if (m_changedValues[index] && (flags[index] & visibleFlag))
+            updateMask.SetBit(index);
+}
+
+void Object::_SetCreateBits(UpdateMask& updateMask, Player* target) const
+{
+    uint16 const* flags = nullptr;
+    uint16 visibleFlag = GetUpdateFieldFlagsForTarget(target, flags);
+    MANGOS_ASSERT(flags);
+
+    for (uint16 index = 0; index < m_valuesCount; ++index)
+        if (GetUInt32Value(index) != 0 && (flags[index] & visibleFlag))
+            updateMask.SetBit(index);
 }
 
 void Object::SetInt32Value(uint16 index, int32 value)
@@ -1173,7 +1242,7 @@ void Object::BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_play
         iter = p.first;
     }
 
-    BuildValuesUpdateBlockForPlayer(&iter->second, iter->first);
+    BuildValuesUpdateBlockForPlayer(iter->second, iter->first);
 }
 
 void Object::AddToClientUpdateList()
@@ -1219,19 +1288,31 @@ void Object::ForceValuesUpdateAtIndex(uint32 index)
 WorldObject::WorldObject() :
     m_transportInfo(nullptr), m_isOnEventNotified(false),
     m_visibilityData(this), m_currMap(nullptr),
-    m_mapId(0), m_InstanceId(0),
-    m_isActiveObject(false), m_debugFlags(0), m_transport(nullptr)
+    m_mapId(0), m_InstanceId(0), m_phaseMask(1),
+    m_isActiveObject(false), m_debugFlags(0), m_transport(nullptr), m_castCounter(0)
 {
 }
 
 void WorldObject::CleanupsBeforeDelete()
 {
+    m_events.KillAllEvents(false);                      // non-delatable (currently casted spells) will not deleted now but it will deleted at call in Map::RemoveAllObjectsInRemoveList
     RemoveFromWorld();
 }
 
-void WorldObject::_Create(uint32 guidlow, HighGuid guidhigh)
+void WorldObject::Update(const uint32 diff)
+{
+    m_heartBeatTimer.Update(diff);
+    while (m_heartBeatTimer.Passed())
+    {
+        m_heartBeatTimer.Reset(m_heartBeatTimer.GetExpiry() + GetHeartbeatDuration());
+        Heartbeat();
+    }
+}
+
+void WorldObject::_Create(uint32 guidlow, HighGuid guidhigh, uint32 phaseMask)
 {
     Object::_Create(guidlow, 0, guidhigh);
+    m_phaseMask = phaseMask;
 }
 
 void WorldObject::Relocate(float x, float y, float z, float orientation)
@@ -1620,6 +1701,19 @@ bool WorldObject::isInBack(WorldObject const* target, float distance, float arc 
     return target->GetDistance(GetPositionX(), GetPositionY(), GetPositionZ(), DIST_CALC_COMBAT_REACH) <= distance && !HasInArc(target, 2 * M_PI_F - arc);
 }
 
+Position WorldObject::GetFirstRandomAngleCollisionPosition(float dist, float angle)
+{
+    Position pos;
+    for (uint32 i = 0; i < 10; ++i)
+    {
+        GetFirstCollisionPosition(pos, dist, angle);
+        if (GetPosition().GetDistance(pos) > dist * 0.8f) // if at least 80% distance, good enough
+            break;
+        angle += (M_PI_F / 5); // else try slightly different angle
+    }
+    return pos;
+}
+
 void WorldObject::GetRandomPoint(float x, float y, float z, float distance, float& rand_x, float& rand_y, float& rand_z, float minDist /*=0.0f*/, float const* ori /*=nullptr*/) const
 {
     if (distance == 0)
@@ -1681,7 +1775,15 @@ void WorldObject::MovePositionToFirstCollision(Position& pos, float dist, float 
     if (IsUnit())
     {
         PathFinder path(static_cast<Unit*>(this));
-        path.calculate(destX, destY, destZ + halfHeight, false, true);
+        Vector3 src(pos.x, pos.y, pos.z);
+        Vector3 dest(destX, destY, destZ + halfHeight);
+        if (transport) // need to use offsets for PF check
+        {
+            transport->CalculatePassengerOffset(src.x, src.y, src.z);
+            transport->CalculatePassengerOffset(dest.x, dest.y, dest.z);
+        }
+        UpdateAllowedPositionZ(dest.x, dest.y, dest.z);
+        path.calculate(src, dest, false, true);
         if (path.getPathType())
         {
             G3D::Vector3 result = path.getPath().back();
@@ -1768,10 +1870,10 @@ bool WorldObject::IsPositionValid() const
     return MaNGOS::IsValidMapCoord(m_position.x, m_position.y, m_position.z, m_position.o);
 }
 
-void WorldObject::MonsterSay(const char* text, uint32 /*language*/, Unit const* target) const
+void WorldObject::MonsterSay(char const* text, uint32 language, Unit const* target) const
 {
     WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_MONSTER_SAY, text, LANG_UNIVERSAL, CHAT_TAG_NONE, GetObjectGuid(), GetName(),
+    ChatHandler::BuildChatPacket(data, CHAT_MSG_MONSTER_SAY, text, Language(language), CHAT_TAG_NONE, GetObjectGuid(), GetName(),
                                  target ? target->GetObjectGuid() : ObjectGuid(), target ? target->GetName() : "");
     SendMessageToSetInRange(data, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_SAY), true);
 }
@@ -1808,20 +1910,15 @@ namespace MaNGOS
     class MonsterChatBuilder
     {
         public:
-            MonsterChatBuilder(WorldObject const& obj, ChatMsg msgtype, MangosStringLocale const* textData, Language language, Unit const* target)
-                : i_object(obj), i_msgtype(msgtype), i_textData(textData), i_language(language), i_target(target), m_gender(obj.IsUnit() ? Gender(static_cast<Unit const&>(obj).getGender()) : GENDER_MALE) {}
+            MonsterChatBuilder(WorldObject const& obj, ChatMsg msgtype, std::vector<std::string> content, Language language, Unit const* target)
+                : i_object(obj), i_msgtype(msgtype), i_content(content), i_language(language), i_target(target) {}
             void operator()(WorldPacket& data, int32 loc_idx)
             {
                 char const* text = nullptr;
-                if (BroadcastText const* bct = i_textData->broadcastText)
-                    text = bct->GetText(loc_idx, m_gender).data();
+                if ((int32)i_content.size() > loc_idx + 1 && !i_content[loc_idx + 1].empty())
+                    text = i_content[loc_idx + 1].c_str();
                 else
-                {
-                    if ((int32)i_textData->Content.size() > loc_idx + 1 && !i_textData->Content[loc_idx + 1].empty())
-                        text = i_textData->Content[loc_idx + 1].c_str();
-                    else
-                        text = i_textData->Content[0].c_str();
-                }
+                    text = i_content[0].c_str();
 
                 ChatHandler::BuildChatPacket(data, i_msgtype, text, i_language, CHAT_TAG_NONE, i_object.GetObjectGuid(), i_object.GetNameForLocaleIdx(loc_idx),
                                              i_target ? i_target->GetObjectGuid() : ObjectGuid(), i_target ? i_target->GetNameForLocaleIdx(loc_idx) : "");
@@ -1830,48 +1927,43 @@ namespace MaNGOS
         private:
             WorldObject const& i_object;
             ChatMsg i_msgtype;
-            MangosStringLocale const* i_textData;
+            std::vector<std::string> i_content;
             Language i_language;
             Unit const* i_target;
-            Gender m_gender;
     };
 }                                                           // namespace MaNGOS
 
 /// Helper function to create localized around a source
-void _DoLocalizedTextAround(WorldObject const* source, MangosStringLocale const* textData, ChatMsg msgtype, Language language, Unit const* target, float range)
+void _DoLocalizedTextAround(WorldObject const* source, std::vector<std::string> content, ChatMsg msgtype, Language language, Unit const* target, float range)
 {
-    MaNGOS::MonsterChatBuilder say_build(*source, msgtype, textData, language, target);
+    MaNGOS::MonsterChatBuilder say_build(*source, msgtype, content, language, target);
     MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
     MaNGOS::CameraDistWorker<MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> > say_worker(source, range, say_do);
     Cell::VisitWorldObjects(source, say_worker, range);
 }
 
-/// Function that sends a text associated to a MangosString
-void WorldObject::MonsterText(MangosStringLocale const* textData, Unit const* target) const
+/// Function that sends a text associated to a MangosString or BroadcastText
+void WorldObject::MonsterText(std::vector<std::string> content, uint32 type, Language lang, Unit const* target) const
 {
-    MANGOS_ASSERT(textData);
-
-    Language languageId = textData->broadcastText ? textData->broadcastText->languageId : textData->LanguageId;
-
-    switch (textData->Type)
+    switch (type)
     {
         case CHAT_TYPE_SAY:
-            _DoLocalizedTextAround(this, textData, CHAT_MSG_MONSTER_SAY, languageId, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_SAY));
+            _DoLocalizedTextAround(this, content, CHAT_MSG_MONSTER_SAY, lang, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_SAY));
             break;
         case CHAT_TYPE_YELL:
-            _DoLocalizedTextAround(this, textData, CHAT_MSG_MONSTER_YELL, languageId, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_YELL));
+            _DoLocalizedTextAround(this, content, CHAT_MSG_MONSTER_YELL, lang, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_YELL));
             break;
         case CHAT_TYPE_TEXT_EMOTE:
-            _DoLocalizedTextAround(this, textData, CHAT_MSG_MONSTER_EMOTE, LANG_UNIVERSAL, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_TEXTEMOTE));
+            _DoLocalizedTextAround(this, content, CHAT_MSG_MONSTER_EMOTE, LANG_UNIVERSAL, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_TEXTEMOTE));
             break;
         case CHAT_TYPE_BOSS_EMOTE:
-            _DoLocalizedTextAround(this, textData, CHAT_MSG_RAID_BOSS_EMOTE, LANG_UNIVERSAL, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_YELL));
+            _DoLocalizedTextAround(this, content, CHAT_MSG_RAID_BOSS_EMOTE, LANG_UNIVERSAL, target, sWorld.getConfig(CONFIG_FLOAT_LISTEN_RANGE_YELL));
             break;
         case CHAT_TYPE_WHISPER:
         {
             if (!target || target->GetTypeId() != TYPEID_PLAYER)
                 return;
-            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_WHISPER, textData, LANG_UNIVERSAL, target);
+            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_WHISPER, content, LANG_UNIVERSAL, target);
             MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
             say_do((Player*)target);
             break;
@@ -1880,14 +1972,14 @@ void WorldObject::MonsterText(MangosStringLocale const* textData, Unit const* ta
         {
             if (!target || target->GetTypeId() != TYPEID_PLAYER)
                 return;
-            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_RAID_BOSS_WHISPER, textData, LANG_UNIVERSAL, target);
+            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_RAID_BOSS_WHISPER, content, LANG_UNIVERSAL, target);
             MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
             say_do((Player*)target);
             break;
         }
         case CHAT_TYPE_ZONE_YELL:
         {
-            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_YELL, textData, languageId, target);
+            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_YELL, content, lang, target);
             MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
             uint32 zoneId = GetZoneId();
             GetMap()->ExecuteMapWorkerZone(zoneId, std::bind(&MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder>::operator(), &say_do, std::placeholders::_1));
@@ -1895,10 +1987,31 @@ void WorldObject::MonsterText(MangosStringLocale const* textData, Unit const* ta
         }
         case CHAT_TYPE_ZONE_EMOTE:
         {
-            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_EMOTE, textData, languageId, target);
+            MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_EMOTE, content, lang, target);
             MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
             uint32 zoneId = GetZoneId();
             GetMap()->ExecuteMapWorkerZone(zoneId, std::bind(&MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder>::operator(), &say_do, std::placeholders::_1));
+            break;
+        }
+        case CHAT_TYPE_PARTY:
+        {
+            if (!target || target->GetTypeId() != TYPEID_PLAYER)
+                return;
+
+            if (Group* group = ((Player*)target)->GetGroup())
+            {
+                for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                {
+                    Player* groupMember = itr->getSource();
+
+                    if (!groupMember)
+                        continue;
+
+                    MaNGOS::MonsterChatBuilder say_build(*this, CHAT_MSG_MONSTER_PARTY, content, LANG_UNIVERSAL, groupMember);
+                    MaNGOS::LocalizedPacketDo<MaNGOS::MonsterChatBuilder> say_do(say_build);
+                    say_do(groupMember);
+                }
+            }
             break;
         }
     }
@@ -1926,6 +2039,14 @@ void WorldObject::SendMessageToSetExcept(WorldPacket const& data, Player const* 
         MaNGOS::MessageDelivererExcept notifier(data, skipped_receiver);
         Cell::VisitWorldObjects(this, notifier, GetMap()->GetVisibilityDistance());
     }
+}
+
+void WorldObject::SendMessageToAllWhoSeeMe(WorldPacket const& data, bool /*self*/) const
+{
+    if (IsInWorld())
+        for (ObjectGuid guid : m_clientGUIDsIAmAt)
+            if (Player* player = GetMap()->GetPlayer(guid))
+                player->GetSession()->SendPacket(data);
 }
 
 void WorldObject::SendObjectDeSpawnAnim(ObjectGuid guid) const
@@ -2068,6 +2189,7 @@ Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map)
         }
     }
 
+    uint32 relayId = 0;
     if (settings.spawnDataEntry)
     {
         if (CreatureSpawnTemplate const* templateData = sObjectMgr.GetCreatureSpawnTemplate(settings.spawnDataEntry))
@@ -2088,18 +2210,27 @@ Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map)
                 creature->SetWalk(false);
             if (templateData->IsHovering())
                 creature->SetHover(true);
+            relayId = templateData->relayId;
         }
     }
-
-    creature->Summon(settings.spawnType, settings.despawnTime);                  // Also initializes the AI and MMGen
-    if (settings.corpseDespawnTime)
-        creature->SetCorpseDelay(settings.corpseDespawnTime);
 
     if (settings.spellId)
         creature->SetUInt32Value(UNIT_CREATED_BY_SPELL, settings.spellId);
 
     if (settings.ownerGuid)
         creature->SetOwnerGuid(settings.ownerGuid);
+
+    // intended only for visual way point debug feature
+    if (settings.waypointId)
+        creature->SetLevel(settings.waypointId);
+
+    creature->Summon(settings.spawnType, settings.despawnTime);                  // Also initializes the AI and MMGen
+
+    if (relayId)
+        map->ScriptsStart(sRelayScripts, relayId, creature, settings.dbscriptTarget);
+
+    if (settings.corpseDespawnTime)
+        creature->SetCorpseDelay(settings.corpseDespawnTime);
 
     if (settings.spawner && settings.spawner->GetTypeId() == TYPEID_UNIT)
         if (Creature* spawnerCreature = static_cast<Creature*>(settings.spawner))
@@ -2119,25 +2250,25 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     return WorldObject::SummonCreature(TempSpawnSettings(this, id, x, y, z, ang, spwtype, despwtime, asActiveObject, setRun, pathId, faction, modelId, spawnCounting, forcedOnTop), GetMap());
 }
 
-GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map)
+GameObject* WorldObject::SpawnGameObject(uint32 dbGuid, Map* map, uint32 forcedEntry)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(dbGuid);
-    MANGOS_ASSERT(data);
+    if (!data)
+        return nullptr;
 
     if (data->spawnMask && !map->CanSpawn(TYPEID_GAMEOBJECT, dbGuid))
         return nullptr;
 
-    GameObject* gameobject = GameObject::CreateGameObject(data->id);
-    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT)))
+    GameObject* gameobject = GameObject::CreateGameObject(forcedEntry ? forcedEntry : data->id);
+    if (!gameobject->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT), forcedEntry))
     {
         delete gameobject;
         return nullptr;
     }
-    map->Add(gameobject);
     return gameobject;
 }
 
-Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map, GenericTransport* transport)
+Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map, uint32 forcedEntry, GenericTransport* transport)
 {
     CreatureData const* data = sObjectMgr.GetCreatureData(dbGuid);
     if (!data)
@@ -2146,10 +2277,12 @@ Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map, GenericTransport* 
         return nullptr;
     }
 
-    CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(data->id);
+    uint32 entry = forcedEntry ? forcedEntry : data->id;
+
+    CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(entry);
     if (!cinfo)
     {
-        sLog.outErrorDb("Creature (Entry: %u) not found in table `creature_template`, can't load. ", data->id);
+        sLog.outErrorDb("Creature (Entry: %u) not found in table `creature_template`, can't load. ", entry);
         return nullptr;
     }
 
@@ -2158,7 +2291,7 @@ Creature* WorldObject::SpawnCreature(uint32 dbGuid, Map* map, GenericTransport* 
 
     Creature* creature = new Creature;
     // DEBUG_LOG("Spawning creature %u",*itr);
-    if (!creature->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(cinfo->GetHighGuid()), transport))
+    if (!creature->LoadFromDB(dbGuid, map, map->GenerateLocalLowGuid(cinfo->GetHighGuid()), forcedEntry, transport))
     {
         delete creature;
         return nullptr;
@@ -2367,6 +2500,11 @@ void WorldObject::GetNearPointAt(const float posX, const float posY, const float
         UpdateGroundPositionZ(x, y, z);
 }
 
+void WorldObject::SetPhaseMask(uint32 newPhaseMask)
+{
+    m_phaseMask = newPhaseMask;
+}
+
 void WorldObject::PlayDistanceSound(uint32 sound_id, PlayPacketParameters parameters /*= PlayPacketParameters(PLAY_SET)*/) const
 {
     WorldPacket data(SMSG_PLAY_OBJECT_SOUND, 4 + 8);
@@ -2465,7 +2603,7 @@ struct WorldObjectChangeAccumulator
         for (auto& iter : m)
         {
             Player* owner = iter.getSource()->GetOwner();
-            if (owner != &i_object && owner->HaveAtClient(&i_object))
+            if (owner != &i_object && owner->HasAtClient(&i_object))
                 i_object.BuildUpdateDataForPlayer(owner, i_updateDatas);
         }
     }
@@ -2895,7 +3033,7 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
     chat.PSendSysMessage("Found %u permanent cooldown%s.", permCDCount, (permCDCount > 1) ? "s" : "");
 }
 
-int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints, Spell* spell, bool maximum) const
+int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints, Spell* spell, bool maximum, bool finalUse) const
 {
     Unit const* unitCaster = dynamic_cast<Unit const*>(this);
     Player const* unitPlayer = (GetTypeId() == TYPEID_PLAYER) ? static_cast<Player const*>(this) : nullptr;
@@ -2905,7 +3043,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     int32 baseDice = int32(spellProto->EffectBaseDice[effect_index]);
     float basePointsPerLevel = spellProto->EffectRealPointsPerLevel[effect_index];
     float randomPointsPerLevel = spellProto->EffectDicePerLevel[effect_index];
-    int32 basePoints = effBasePoints
+    float basePoints = effBasePoints
         ? *effBasePoints - baseDice
         : spellProto->EffectBasePoints[effect_index];
 
@@ -2919,7 +3057,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         else if (level < (int32)spellProto->baseLevel)
             level = (int32)spellProto->baseLevel;
         level -= (int32)spellProto->spellLevel;
-        basePoints += int32(level * basePointsPerLevel);
+        basePoints += level * basePointsPerLevel;
         randomPoints += int32(level * randomPointsPerLevel);
     }
 
@@ -2944,7 +3082,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         }
     }
 
-    int32 value = basePoints;
+    float value = basePoints;
 
     // random damage
     if (comboDamage != 0.0f && unitPlayer && target && (target->GetObjectGuid() == unitPlayer->GetComboTargetGuid() || IsOnlySelfTargeting(spellProto)))
@@ -2954,18 +3092,18 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
     {
         if (Player * modOwner = unitCaster->GetSpellModOwner())
         {
-            modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_ALL_EFFECTS, value);
+            modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_ALL_EFFECTS, value, finalUse);
 
             switch (effect_index)
             {
                 case EFFECT_INDEX_0:
-                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT1, value);
+                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT1, value, finalUse);
                     break;
                 case EFFECT_INDEX_1:
-                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT2, value);
+                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT2, value, finalUse);
                     break;
                 case EFFECT_INDEX_2:
-                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT3, value);
+                    modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT3, value, finalUse);
                     break;
             }
         }
@@ -2982,9 +3120,11 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
             {
                 case SPELL_AURA_PERIODIC_DAMAGE:
                 case SPELL_AURA_PERIODIC_LEECH:
+                case SPELL_AURA_SCHOOL_ABSORB:
                     //   SPELL_AURA_PERIODIC_DAMAGE_PERCENT: excluded, abs values only
                 case SPELL_AURA_POWER_BURN_MANA:
                 case SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE:
+                case SPELL_AURA_PERIODIC_MANA_LEECH:
                     damage = true;
             }
         }
@@ -3011,7 +3151,7 @@ int32 WorldObject::CalculateSpellEffectValue(Unit const* target, SpellEntry cons
         if (damage && spellProto->HasAttribute(SPELL_ATTR_LEVEL_DAMAGE_CALCULATION))
         {
             GtNPCManaCostScalerEntry const* spellScaler = sGtNPCManaCostScalerStore.LookupEntry(spellProto->spellLevel - 1);
-            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->getLevel() - 1);
+            GtNPCManaCostScalerEntry const* casterScaler = sGtNPCManaCostScalerStore.LookupEntry(unitCaster->GetLevel() - 1);
             if (spellScaler && casterScaler)
                 value *= casterScaler->ratio / spellScaler->ratio;
         }
@@ -3070,7 +3210,38 @@ float Position::GetDistance(Position const& other) const
     return distsq;
 }
 
+std::string Position::to_string() const
+{
+    return "X: " + std::to_string(x) + " Y: " + std::to_string(y) + " Z: " + std::to_string(z) + " O: " + std::to_string(o);
+}
+
 bool operator!=(const Position& left, const Position& right)
 {
     return left.x != right.x || left.y != right.y || left.z != right.z || left.o != right.o;
+}
+
+bool WorldObject::IsUsingNewSpawningSystem() const
+{
+    return GetDbGuid() && GetDbGuid() != GetGUIDLow();
+}
+
+void WorldObject::AddClientIAmAt(Player const* player)
+{
+    m_clientGUIDsIAmAt.insert(player->GetObjectGuid());
+}
+
+void WorldObject::RemoveClientIAmAt(Player const* player)
+{
+    m_clientGUIDsIAmAt.erase(player->GetObjectGuid());
+}
+
+bool WorldObject::CheckAndIncreaseCastCounter()
+{
+    uint32 maxCasts = sWorld.getConfig(CONFIG_UINT32_MAX_SPELL_CASTS_IN_CHAIN);
+
+    if (maxCasts && m_castCounter >= maxCasts)
+        return false;
+
+    ++m_castCounter;
+    return true;
 }

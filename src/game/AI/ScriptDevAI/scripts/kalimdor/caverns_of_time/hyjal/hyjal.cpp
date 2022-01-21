@@ -1058,13 +1058,6 @@ void instance_mount_hyjal::OnCreatureEnterCombat(Creature* pCreature)
     switch (pCreature->GetEntry())
     {
         case NPC_ARCHIMONDE:  SetData(TYPE_ARCHIMONDE, IN_PROGRESS);  break;
-        case NPC_INFERNAL_RELAY:
-        case NPC_INFERNAL_TARGET:
-        {
-            sLog.outCustomLog("Hyjal Infernal entered combat:");
-            sLog.traceLog();
-            break;
-        }
     }
 }
 
@@ -1144,13 +1137,6 @@ void instance_mount_hyjal::OnCreatureDeath(Creature* creature)
         case NPC_THRALL:
             FailEvent();
             break;
-        case NPC_INFERNAL_RELAY:
-        case NPC_INFERNAL_TARGET:
-        {
-            sLog.outCustomLog("Hyjal Infernal died:");
-            sLog.traceLog();
-            break;
-        }
     }
 }
 
@@ -1627,6 +1613,15 @@ void instance_mount_hyjal::RetreatBase(BaseArea index)
     DoUpdateWorldState(WORLD_STATE_MOUNT_HYJAL_ENABLE, 0);
     DoUpdateWorldState(WORLD_STATE_MOUNT_HYJAL_ENEMYCOUNT, 0);
 
+    for (ObjectGuid& guid : m_baseSpawns[index])
+    {
+        if (Creature* spawn = instance->GetCreature(guid))
+        {
+            spawn->SetCanEnterCombat(false);
+            spawn->AI()->SetReactState(REACT_PASSIVE);
+        }
+    }
+
     switch (index)
     {
         case BASE_ALLY:
@@ -1928,10 +1923,14 @@ bool instance_mount_hyjal::CheckConditionCriteriaMeet(Player const* player, uint
     return false;
 }
 
-InstanceData* GetInstanceData_instance_mount_hyjal(Map* map)
+struct EternalSilence : public AuraScript
 {
-    return new instance_mount_hyjal(map);
-}
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (!apply) // residue of eternity
+            aura->GetTarget()->CastSpell(nullptr, 42205, TRIGGERED_OLD_TRIGGERED);
+    }
+};
 
 void AddSC_instance_mount_hyjal()
 {
@@ -1939,6 +1938,8 @@ void AddSC_instance_mount_hyjal()
 
     pNewScript = new Script;
     pNewScript->Name = "instance_hyjal";
-    pNewScript->GetInstanceData = &GetInstanceData_instance_mount_hyjal;
+    pNewScript->GetInstanceData = &GetNewInstanceScript<instance_mount_hyjal>;
     pNewScript->RegisterSelf();
+
+    RegisterAuraScript<EternalSilence>("spell_eternal_silence");
 }

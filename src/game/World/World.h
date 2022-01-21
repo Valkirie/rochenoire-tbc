@@ -29,6 +29,7 @@
 #include "Globals/SharedDefines.h"
 #include "Entities/Object.h"
 #include "Multithreading/Messager.h"
+#include "Globals/GraveyardManager.h"
 
 #include <atomic>
 #include <set>
@@ -228,6 +229,7 @@ enum eConfigUInt32Values
     CONFIG_UINT32_GUID_RESERVE_SIZE_CREATURE,
     CONFIG_UINT32_GUID_RESERVE_SIZE_GAMEOBJECT,
     CONFIG_UINT32_CREATURE_RESPAWN_AGGRO_DELAY,
+    CONFIG_UINT32_CREATURE_CHECK_FOR_HELP_AGGRO_DELAY,
     CONFIG_UINT32_MAX_WHOLIST_RETURNS,
     CONFIG_UINT32_FOGOFWAR_STEALTH,
     CONFIG_UINT32_FOGOFWAR_HEALTH,
@@ -253,6 +255,9 @@ enum eConfigUInt32Values
     CONFIG_UINT32_SCALE_VENDOR_KEY,
     CONFIG_UINT32_SCALE_VENDOR_PERMANENT,
     CONFIG_UINT32_SCALE_VENDOR_MISC,
+    CONFIG_UINT32_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL,
+    CONFIG_UINT32_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL_DIFFERENCE,
+    CONFIG_UINT32_SUNSREACH_COUNTER,
     CONFIG_UINT32_VALUE_COUNT
 };
 
@@ -343,6 +348,7 @@ enum eConfigFloatValues
     CONFIG_FLOAT_LISTEN_RANGE_TEXTEMOTE,
     CONFIG_FLOAT_CREATURE_FAMILY_FLEE_ASSISTANCE_RADIUS,
     CONFIG_FLOAT_CREATURE_FAMILY_ASSISTANCE_RADIUS,
+    CONFIG_FLOAT_CREATURE_CHECK_FOR_HELP_RADIUS,
     CONFIG_FLOAT_GROUP_XP_DISTANCE,
     CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD,
     CONFIG_FLOAT_GHOST_RUN_SPEED_BG,
@@ -351,6 +357,14 @@ enum eConfigFloatValues
     CONFIG_FLOAT_RATE_UPGRADE_ITEM_UNCOMMON,
     CONFIG_FLOAT_RATE_UPGRADE_ITEM_RARE,
     CONFIG_FLOAT_RATE_UPGRADE_ITEM_EPIC,
+    CONFIG_FLOAT_LEASH_RADIUS,
+    CONFIG_FLOAT_MOD_DISCOUNT_REPUTATION_FRIENDLY, // TODO
+    CONFIG_FLOAT_MOD_DISCOUNT_REPUTATION_HONORED,
+    CONFIG_FLOAT_MOD_DISCOUNT_REPUTATION_REVERED,
+    CONFIG_FLOAT_MOD_DISCOUNT_REPUTATION_EXALTED,
+    CONFIG_FLOAT_MOD_INCREASED_XP,
+    CONFIG_FLOAT_MOD_INCREASED_GOLD,
+    CONFIG_FLOAT_MAX_RECRUIT_A_FRIEND_DISTANCE,
     CONFIG_FLOAT_VALUE_COUNT
 };
 
@@ -746,6 +760,12 @@ class World
         Messager<World>& GetMessager() { return m_messager; }
 
         void IncrementOpcodeCounter(uint32 opcodeId); // thread safe due to atomics
+
+        void LoadWorldSafeLocs() const;
+        void LoadGraveyardZones();
+        GraveyardManager& GetGraveyardManager() { return m_graveyardManager; }
+
+        void SendGMTextFlags(uint32 accountFlag, int32 stringId, std::string type, const char* message);
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -763,6 +783,7 @@ class World
         void ResetMonthlyQuests();
 #ifdef BUILD_METRICS
         void GeneratePacketMetrics(); // thread safe due to atomics
+        uint32 GetAverageLatency() const;
 #endif
 
     private:
@@ -870,6 +891,8 @@ class World
         std::array<std::atomic<uint32>, 2> m_onlineTeams;
         std::array<std::atomic<uint32>, MAX_RACES> m_onlineRaces;
         std::array<std::atomic<uint32>, MAX_CLASSES> m_onlineClasses;
+
+        GraveyardManager m_graveyardManager;
 };
 
 extern uint32 realmID;

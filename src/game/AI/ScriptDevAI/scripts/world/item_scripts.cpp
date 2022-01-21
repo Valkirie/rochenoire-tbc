@@ -177,8 +177,8 @@ struct PowerCircleAura : public AuraScript
     void OnApply(Aura* aura, bool apply) const
     {
         Unit* target = aura->GetTarget();
-        if (apply)
-            target->CastSpell(target, SPELL_LIMITLESS_POWER, TRIGGERED_OLD_TRIGGERED);
+        if (apply && target->GetObjectGuid() == aura->GetCasterGuid())
+            target->CastSpell(nullptr, SPELL_LIMITLESS_POWER, TRIGGERED_OLD_TRIGGERED);
         else
             target->RemoveAurasDueToSpell(SPELL_LIMITLESS_POWER);
     }
@@ -201,7 +201,7 @@ struct GDRChannel : public SpellScript
 
 struct GDRPeriodicDamage : public AuraScript
 {
-    int32 OnAuraValueCalculate(Aura* /*aura*/, Unit* /*caster*/, int32 /*value*/) const override
+    int32 OnAuraValueCalculate(AuraCalcData& /*data*/, int32 /*value*/) const override
     {
         return urand(100, 500);
     }
@@ -227,6 +227,101 @@ struct OgrilaFlasks : public AuraScript
         for (uint32 i = EFFECT_INDEX_1; i < MAX_EFFECT_INDEX; ++i)
             if (uint32 triggerSpell = spellInfo->EffectTriggerSpell[i])
                 aura->GetTarget()->RemoveAurasDueToSpell(triggerSpell);
+    }
+};
+
+struct ReducedProcChancePast60 : public AuraScript
+{
+    void OnHolderInit(SpellAuraHolder* holder, WorldObject* /*caster*/) const override
+    {
+        holder->SetReducedProcChancePast60();
+    }
+};
+
+struct BanishExile : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        uint32 entry = 0;
+        switch (spell->m_spellInfo->Id)
+        {
+            case 4130: entry = 2760; break; // Burning Exile
+            case 4131: entry = 2761; break; // Cresting Exile
+            case 4132: entry = 2762; break; // Thundering Exile
+        }
+        if (ObjectGuid target = spell->m_targets.getUnitTargetGuid()) // can be cast only on this target
+            if (target.GetEntry() != entry)
+                return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Unit* target = spell->GetUnitTarget();
+        if (!target)
+            return;
+
+        DoScriptText(-1010004, target, spell->GetCaster());
+        target->CastSpell(nullptr, 3617, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+struct OrbOfDeception : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (apply)
+        {
+            uint32 orbModel = aura->GetTarget()->GetNativeDisplayId();
+            uint32 resultingModel = 0; // keeping this for future research
+            uint32 resultingTemplate = 0;
+            switch (orbModel)
+            {
+                // Troll Female
+                case 1479: resultingModel = 10134; break;
+                // Troll Male
+                case 1478: resultingModel = 10135; break;
+                // Tauren Male
+                case 59:   resultingModel = 10136; break;
+                // Human Male
+                case 49:   resultingModel = 10137; break;
+                // Human Female
+                case 50:   resultingModel = 10138; break;
+                // Orc Male
+                case 51:   resultingModel = 10139; break;
+                // Orc Female
+                case 52:   resultingModel = 10140; break;
+                // Dwarf Male
+                case 53:   resultingModel = 10141; break;
+                // Dwarf Female
+                case 54:   resultingModel = 10142; break;
+                // NightElf Male
+                case 55:   resultingModel = 10143; break;
+                // NightElf Female
+                case 56:   resultingModel = 10144; break;
+                // Undead Female
+                case 58:   resultingModel = 10145; break;
+                // Undead Male
+                case 57:   resultingModel = 10146; break;
+                // Tauren Female
+                case 60:   resultingModel = 10147; break;
+                // Gnome Male
+                case 1563: resultingModel = 10148; break;
+                // Gnome Female
+                case 1564: resultingModel = 10149;break;
+                // BloodElf Female
+                case 15475: resultingModel = 17830;break;
+                // BloodElf Male
+                case 15476: resultingModel = 17829;break;
+                // Dranei Female
+                case 16126: resultingModel = 17828;break;
+                // Dranei Male
+                case 16125: resultingModel = 17827;break;
+                default: break;
+            }
+            aura->GetModifier()->m_amount = resultingModel;
+        }
     }
 };
 
@@ -259,4 +354,7 @@ void AddSC_item_scripts()
     RegisterSpellScript<GDRChannel>("spell_gdr_channel");
     RegisterAuraScript<GDRPeriodicDamage>("spell_gdr_periodic");
     RegisterAuraScript<OgrilaFlasks>("spell_ogrila_flasks");
+    RegisterAuraScript<ReducedProcChancePast60>("spell_reduced_proc_chance_past60");
+    RegisterSpellScript<BanishExile>("spell_banish_exile");
+    RegisterAuraScript<OrbOfDeception>("spell_orb_of_deception");
 }

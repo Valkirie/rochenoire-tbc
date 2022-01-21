@@ -1476,7 +1476,7 @@ struct npc_zeppitAI : public ScriptedPetAI
             if (m_creature->IsWithinDistInMap(pVictim, 10.0f))
             {
                 DoScriptText(EMOTE_GATHER_BLOOD, m_creature);
-                m_creature->CastSpell(m_creature, SPELL_GATHER_WARP_BLOOD, TRIGGERED_NONE);
+                m_creature->CastSpell(nullptr, SPELL_GATHER_WARP_BLOOD, TRIGGERED_NONE);
             }
         }
     }
@@ -3956,7 +3956,7 @@ bool GossipHello_npc_adyen_the_lightwarden(Player* player, Creature* creature)
     uint32 gossipId = GOSSIP_NETHERSTORM;
 
     // custom code required because it utilizes two entries
-    if (creature->getFaction() == FACTION_SHATTRATH)
+    if (creature->GetFaction() == FACTION_SHATTRATH)
         gossipId = GOSSIP_SHATTRATH;
     else
     {
@@ -4027,6 +4027,16 @@ struct ThrowBoomsDoom : public SpellScript
         if (target->GetEntry() != NPC_BOOM && target->GetEntry() != NPC_BOOM_BOT)
             return false;
         return true;
+    }
+};
+
+struct RingOfFlame : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (!apply && aura->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+
+            aura->GetTarget()->CastSpell(nullptr, 35995, TRIGGERED_OLD_TRIGGERED); // Immolation
     }
 };
 
@@ -4151,6 +4161,7 @@ void AddSC_netherstorm()
     pNewScript->RegisterSelf();
 
     RegisterSpellScript<Soulbind>("spell_soulbind");
+    RegisterAuraScript<RingOfFlame>("spell_ring_of_flame");
     RegisterSpellScript<UltraDeconsolodationZapper>("spell_ultra_deconsolodation_zapper");
     RegisterSpellScript<ThrowBoomsDoom>("spell_throw_booms_doom");
     RegisterScript<ScrapReaverSpell>("spell_scrap_reaver_spell");

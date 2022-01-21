@@ -38,6 +38,8 @@ class Group;
 class Aura;
 struct SpellTargetEntry;
 struct SpellScript;
+struct AuraScript;
+struct SpellTargetingData;
 
 enum SpellCastFlags
 {
@@ -166,7 +168,7 @@ class SpellCastTargets
 
         bool IsEmpty() const { return !m_GOTargetGUID && !m_unitTargetGUID && !m_itemTarget && !m_CorpseTargetGUID; }
 
-        void Update(Unit* caster);
+        void Update(WorldObject* caster);
 
         Position m_srcPos;
         Position m_destPos;
@@ -273,6 +275,19 @@ class SpellLog
         size_t m_spellLogDataTargetsCounterPos;
         uint32 m_spellLogDataTargetsCounter;
         uint32 m_currentEffect;
+};
+
+class SpellModRAII
+{
+    public:
+        SpellModRAII(Spell* spell, Player* modOwner, bool success = false, bool onlySave = false);
+        void SetSuccess() { m_success = true; }
+        ~SpellModRAII();
+    private:
+        Spell* m_spell;
+        Player* m_modOwner;
+        bool m_success;
+        bool m_onlySave; // casting time
 };
 
 class Spell
@@ -383,17 +398,18 @@ class Spell
         void EffectPlaySound(SpellEffectIndex eff_idx);
         void EffectPlayMusic(SpellEffectIndex eff_idx);
         void EffectKnockBackFromPosition(SpellEffectIndex eff_idx);
+        void EffectSummonRafFriend(SpellEffectIndex eff_idx);
         void EffectCreateTamedPet(SpellEffectIndex eff_ifx);
 
-        Spell(Unit* caster, SpellEntry const* info, uint32 triggeredFlags, ObjectGuid originalCasterGUID = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
-        ~Spell();
+        Spell(WorldObject* caster, SpellEntry const* info, uint32 triggeredFlags, ObjectGuid originalCasterGUID = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
+        virtual ~Spell();
 
         SpellCastResult SpellStart(SpellCastTargets const* targets, Aura* triggeredByAura = nullptr);
 
         void cancel();
 
         void update(uint32 difftime);
-        void cast(bool skipCheck = false);
+        SpellCastResult cast(bool skipCheck = false);
         void finish(bool ok = true);
         void TakePower();
         void TakeAmmo() const;
@@ -417,9 +433,18 @@ class Spell
         SpellCastResult CheckItems();
         SpellCastResult CheckRange(bool strict);
         SpellCastResult CheckPower(bool strict);
-        SpellCastResult CheckCasterAuras() const;
+        SpellCastResult CheckCasterAuras(uint32& param1) const;
 
-        int32 CalculateSpellEffectValue(SpellEffectIndex i, Unit* target, bool maximum = false) { return m_caster->CalculateSpellEffectValue(target, m_spellInfo, i, &m_currentBasePoints[i], (Spell*)this, maximum); }
+        bool CheckSpellCancelsAuraEffect(AuraType auraType, uint32& param1) const;
+        bool CheckSpellCancelsCharm(uint32& param1) const;
+        bool CheckSpellCancelsStun(uint32& param1) const;
+        bool CheckSpellCancelsSilence(uint32& param1) const;
+        bool CheckSpellCancelsPacify(uint32& param1) const;
+        bool CheckSpellCancelsFear(uint32& param1) const;
+        bool CheckSpellCancelsConfuse(uint32& param1) const;
+		
+        int32 CalculateSpellEffectValue(SpellEffectIndex i, Unit* target, bool maximum = false, bool finalUse = true)
+		{ return m_caster->CalculateSpellEffectValue(target, m_spellInfo, i, &m_currentBasePoints[i], (Spell*)this, maximum, finalUse); }
 		int32 CalculateSpellEffectDamage(Unit* unitTarget, int32 damage);
         static uint32 CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell* spell = nullptr, Item* castItem = nullptr, bool finalUse = false);
 
@@ -435,16 +460,17 @@ class Spell
         {
             CreaturePosition() :
                 x(0.0f), y(0.0f), z(0.0f),
-                creature(nullptr)
+                creature(nullptr), processed(false)
             {}
 
             float x, y, z;
             Creature* creature;
+            bool processed;
         };
         typedef std::vector<CreaturePosition> CreatureSummonPositions;
 
         bool DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype, bool reportError = true);
-        bool DoSummonPet(SpellEffectIndex eff_idx);
+        bool DoSummonPet(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx);
         bool DoSummonTotem(CreatureSummonPositions& list, SpellEffectIndex eff_idx, uint8 slot_dbc = 0);
         bool DoSummonWild(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
         bool DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
@@ -462,7 +488,7 @@ class Spell
         bool CheckTarget(Unit* target, SpellEffectIndex eff, bool targetB, CheckException exception = EXCEPTION_NONE) const;
         bool CanAutoCast(Unit* target);
 
-        static void SendCastResult(Player const* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, bool isPetCastResult = false);
+        static void SendCastResult(Player const* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, bool isPetCastResult = false, uint32 param1 = 0, uint32 param2 = 0);
         void SendCastResult(SpellCastResult result) const;
         void SendSpellStart() const;
         void SendSpellGo();
@@ -479,12 +505,12 @@ class Spell
         void ProcessAOECaps();
         // void HandleAddAura(Unit* Target);
 
+        void SetCastItem(Item* item);
+        Item* GetCastItem() { return m_CastItem; }
+
         SpellEntry const* m_spellInfo;
         SpellEntry const* m_triggeredBySpellInfo;
         int32 m_currentBasePoints[MAX_EFFECT_INDEX];        // cache SpellEntry::CalculateSimpleValue and use for set custom base points
-
-        ObjectGuid m_CastItemGuid;
-        Item* m_CastItem;
         uint8 m_cast_count;
         SpellCastTargets m_targets;
 
@@ -503,6 +529,10 @@ class Spell
         bool m_ignoreCooldowns;
         bool m_ignoreConcurrentCasts;
         bool m_hideInCombatLog;
+        bool m_resetLeash;
+        bool m_channelOnly;
+        // Not a trigger flag but same type of information
+        bool m_clientCast;
 
         int32 GetCastTime() const { return m_casttime; }
         uint32 GetCastedTime() const { return m_timer; }
@@ -527,8 +557,8 @@ class Spell
             return false;
         }
         bool IsChannelActive() const { return m_caster->GetUInt32Value(UNIT_CHANNEL_SPELL) != 0; }
-        bool IsMeleeAttackResetSpell() const { return !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT);  }
-        bool IsRangedAttackResetSpell() const { return !m_IsTriggeredSpell && IsRangedSpell() && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT); }
+        bool IsMeleeAttackResetSpell() const { return !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_COMBAT);  }
+        bool IsRangedAttackResetSpell() const { return !m_IsTriggeredSpell && IsRangedSpell() && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_COMBAT); }
         bool IsEffectWithImplementedMultiplier(uint32 effectId) const;
 
 		bool IsReferencedFromCurrent() const { return m_referencedFromCurrentSpell; }
@@ -539,6 +569,8 @@ class Spell
         uint64 GetDelayStart() const { return m_delayStart; }
         void SetDelayStart(uint64 m_time) { m_delayStart = m_time; }
         uint64 GetDelayMoment() const { return m_delayMoment; }
+        void SetSpellStartTravelling(uint32 time) { m_travellingStart = time; }
+        uint32 GetSpellStartTravelling() const { return m_travellingStart; }
 
         bool IsNeedSendToClient() const;                    // use for hide spell cast for client in case when cast not have client side affect (animation or log entries)
         bool IsTriggeredSpellWithRedundantCastTime() const; // use for ignore some spell data for triggered spells like cast time, some triggered spells have redundent copy data from main spell for client use purpose
@@ -552,7 +584,7 @@ class Spell
         Unit* GetCaster() const { return m_caster; }
         // real source of cast affects, explicit caster, or DoT/HoT applier, or GO owner, or wild GO itself. Can be nullptr
         WorldObject* GetAffectiveCasterObject() const;
-        // limited version returning nullptr in cases wild gameobject caster object, need for Aura (auras currently not support non-Unit caster)
+        // limited version returning nullptr in cases wild gameobject caster object, need for Aura
         Unit* GetAffectiveCaster() const { return m_originalCasterGUID ? m_originalCaster : m_caster; }
         // m_originalCasterGUID can store GO guid, and in this case this is visual caster
         WorldObject* GetCastingObject() const;
@@ -573,6 +605,9 @@ class Spell
         void CleanupTargetList();
         void ClearCastItem();
 
+        // spell mods
+        std::set<SpellModifierPair> m_usedAuraCharges;
+
         static void SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpell, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial);
 
         bool CanBeInterrupted() const { return m_spellState <= SPELL_STATE_DELAYED || m_spellState == SPELL_STATE_CHANNELING; }
@@ -581,6 +616,8 @@ class Spell
         void SetScriptValue(uint64 value) { m_scriptValue = value; }
         void RegisterAuraProc(Aura* aura);
         bool IsAuraProcced(Aura* aura);
+        // setting 0 disables the trigger
+        void SetTriggerChance(int32 triggerChance, SpellEffectIndex effIdx) { m_triggerSpellChance[effIdx] = triggerChance; }
 
         // Spell Target Subsystem - public part
         // Targets store structures and data
@@ -601,7 +638,11 @@ class Spell
             bool   magnet : 1;
             bool   procReflect : 1; // Used to tell hit to proc reflect only and return reflect back
             bool   isCrit : 1;
+            bool   executionless : 1;
             uint32 heartbeatResistChance;
+            uint32 diminishDuration; // Store duration after diminishing returns are applied
+            DiminishingLevels diminishLevel;
+            DiminishingGroup diminishGroup;
         };
         uint8 m_needAliveTargetMask;                        // Mask req. alive targets
         void ProcReflectProcs(TargetInfo& targetInfo);
@@ -630,8 +671,8 @@ class Spell
         {
             uint32 effectMask;
             uint64 timeDelay;
-            bool processed;
-            DestTargetInfo() : effectMask(0), timeDelay(0), processed(false) {}
+            uint32 effectMaskProcessed;
+            DestTargetInfo() : effectMask(0), timeDelay(0), effectMaskProcessed(0) {}
         };
 
         typedef std::list<TargetInfo>     TargetList;
@@ -678,6 +719,7 @@ class Spell
         GameObject* GetGOTarget() { return gameObjTarget; }
         uint32 GetDamage() { return damage; }
         void SetDamage(uint32 newDamage) { damage = newDamage; }
+        SpellSchoolMask GetSchoolMask() { return m_spellSchoolMask; }
         // OnHit use only
         uint32 GetTotalTargetDamage() { return m_damage; }
         // script initialization hook only setters - use only if dynamic - else use appropriate helper
@@ -690,9 +732,16 @@ class Spell
         void SetPowerCost(uint32 powerCost) { m_powerCost = powerCost; }
         // access to targets
         TargetList& GetTargetList() { return m_UniqueTargetInfo; }
+        // enables customizing auras after creation - use only in OnEffectExecute and with aura effects
+        SpellAuraHolder* GetSpellAuraHolder() { return m_spellAuraHolder; }
 
         // GO casting preparations
-        void SetTrueCaster(WorldObject* caster) { m_trueCaster = caster; }
+        void SetFakeCaster(Unit* caster) { m_caster = caster; }
+        WorldObject* GetTrueCaster() const { return m_trueCaster; }
+        Unit* GetAffectiveCasterOrOwner() const;
+
+        // speed override
+        void SetOverridenSpeed(float newSpeed);
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
         bool IgnoreItemRequirements() const;                // some item use spells have unexpected reagent data
@@ -705,6 +754,8 @@ class Spell
         std::pair<float, float> GetMinMaxRange(bool strict);
 
         Unit* m_caster;
+        Item* m_CastItem;
+        bool m_itemCastSpell;
 
         ObjectGuid m_originalCasterGUID;                    // real source of cast (aura caster/etc), used for spell targets selection
         // e.g. damage around area spell trigered by victim aura and da,age emeies of aura caster
@@ -726,6 +777,7 @@ class Spell
         // Delayed spells system
         uint64 m_delayStart;                                // time of spell delay start, filled by event handler, zero = just started
         uint64 m_delayMoment;                               // moment of next delay call, used internally
+        uint32 m_travellingStart;                           // moment when spell travel starts - used in checks for aura interruption
 
         // These vars are used in both delayed spell system and modified immediate spell system
         bool m_referencedFromCurrentSpell;                  // mark as references to prevent deleted and access by dead pointers
@@ -741,10 +793,6 @@ class Spell
         Corpse* corpseTarget;
         SpellAuraHolder* m_spellAuraHolder;                 // spell aura holder for current target, created only if spell has aura applying effect
         int32 damage;
-
-        // this is set in Spell Hit, but used in Apply Aura handler
-        DiminishingLevels m_diminishLevel;
-        DiminishingGroup m_diminishGroup;
 
         // -------------------------------------------
         GameObject* focusObject;
@@ -769,6 +817,7 @@ class Spell
         //*****************************************
         void FillTargetMap();
         void SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targetB, TempTargetingData& targetingData);
+        bool FillUnitTargets(TempTargetingData& targetingData, SpellTargetingData& data, uint32 i);
         bool CheckAndAddMagnetTarget(Unit* unitTarget, SpellEffectIndex effIndex, bool targetB, TempTargetingData& data);
         static void CheckSpellScriptTargets(SQLMultiStorage::SQLMSIteratorBounds<SpellTargetEntry>& bounds, UnitList& tempTargetUnitMap, UnitList& targetUnitMap, SpellEffectIndex effIndex);
         void FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex effIndex, SpellTargetFilterScheme scheme, uint32 chainTargetCount);
@@ -791,6 +840,7 @@ class Spell
         uint32         m_targetlessMask;
         DestTargetInfo m_destTargetInfo;
         CorpseTargetList m_uniqueCorpseTargetInfo;
+        uint32 m_partialApplicationMask;
 
         void AddUnitTarget(Unit* target, uint8 effectMask, CheckException exception = EXCEPTION_NONE);
         void AddGOTarget(GameObject* target, uint8 effectMask);
@@ -813,6 +863,9 @@ class Spell
         bool CanExecuteTriggersOnHit(uint8 effMask, SpellEntry const* triggeredByAura) const;
         // -------------------------------------------
 
+        // Diminishing returns
+        bool CanSpellDiminish() const;
+
         // List For Triggered Spells
         typedef std::list<SpellEntry const*> SpellInfoList;
         SpellInfoList m_TriggerSpells;                      // casted by caster to same targets settings in m_targets at success finish of current spell
@@ -821,9 +874,13 @@ class Spell
         // Scripting System
         uint64 m_scriptValue; // persistent value for spell script state
         SpellScript* m_spellScript;
+        AuraScript* m_auraScript; // needed for some checks for value calculation
+        int32 m_triggerSpellChance[MAX_EFFECT_INDEX]; // used by trigger spell effects to roll
 
         uint32 m_spellState;
         uint32 m_timer;
+        uint32 m_creationTime;
+        bool m_updated;
 
         float m_castPositionX;
         float m_castPositionY;
@@ -852,6 +909,14 @@ class Spell
 
         // needed to store all log for this spell
         SpellLog m_spellLog;
+
+        // spell cast results
+        uint32 m_param1;
+        uint32 m_param2;
+
+        // speed override from parent spell
+        bool m_overrideSpeed;
+        float m_overridenSpeed;
 
         // GO casting preparations
         WorldObject* m_trueCaster;
@@ -961,7 +1026,7 @@ namespace MaNGOS
             }
         }
 
-        template<class T> inline void Visit(GridRefManager<T>&  m)
+        template<class T> inline void Visit(GridRefManager<T>& m)
         {
             if (!i_originalCaster || !i_castingObject)
                 return;
@@ -971,7 +1036,15 @@ namespace MaNGOS
                 // there are still more spells which can be casted on dead, but
                 // they are no AOE and don't have such a nice SPELL_ATTR flag
                 // mostly phase check
-                if (!itr->getSource()->IsInMap(i_originalCaster) || itr->getSource()->IsTaxiFlying())
+                if (i_spell.m_spellInfo->HasAttribute(SPELL_ATTR_EX6_IGNORE_PHASE_SHIFT))
+                {
+                    if (!itr->getSource()->IsInMapIgnorePhase(i_originalCaster))
+                        continue;
+                }
+                else if (!itr->getSource()->IsInMap(i_originalCaster))
+                    continue;
+
+                if (itr->getSource()->IsTaxiFlying())
                     continue;
 
                 switch (i_TargetType)
@@ -1001,25 +1074,36 @@ namespace MaNGOS
                 switch (i_push_type)
                 {
                     case PUSH_CONE:
+                    {
+                        float heightDifference = std::abs(itr->getSource()->GetPositionZ() - i_centerZ);
+                        float maxHeight = i_radius / 2;
+                        float distance = std::min(sqrtf(itr->getSource()->GetDistance2d(i_centerX, i_centerY, DIST_CALC_NONE)), i_radius);
+                        float ratio = distance / i_radius;
+                        float conalMaxHeight = maxHeight * ratio; // pvp combat uses true cone from roughly model
+                        if (!i_originalCaster->IsControlledByPlayer() && itr->getSource()->IsControlledByPlayer())
+                            conalMaxHeight = maxHeight; // npcs just do a conal max Z aoe
                         if (i_cone >= 0.f)
                         {
-                            if (i_castingObject->isInFront((Unit*)(itr->getSource()), i_radius, i_cone))
+                            if (i_castingObject->isInFront(itr->getSource(), i_radius, i_cone) &&
+                                std::abs(itr->getSource()->GetPositionZ() - i_centerZ) - itr->getSource()->GetCombatReach() <= conalMaxHeight)
                                 i_data.push_back(itr->getSource());
                         }
                         else
                         {
-                            if (i_castingObject->isInBack((Unit*)(itr->getSource()), i_radius, -i_cone))
+                            if (i_castingObject->isInBack(itr->getSource(), i_radius, -i_cone) &&
+                                std::abs(itr->getSource()->GetPositionZ() - i_centerZ) - itr->getSource()->GetCombatReach() <= conalMaxHeight)
                                 i_data.push_back(itr->getSource());
                         }
                         break;
+                    }
                     case PUSH_SELF_CENTER:
-                        if (itr->getSource()->GetDistance2d(i_centerX, i_centerY, DIST_CALC_COMBAT_REACH) <= i_radius)
-                            i_data.push_back(itr->getSource());
-                        break;
                     case PUSH_SRC_CENTER:
                     case PUSH_DEST_CENTER:
                     case PUSH_TARGET_CENTER:
-                        if (itr->getSource()->GetDistance(i_centerX, i_centerY, i_centerZ, DIST_CALC_COMBAT_REACH) <= i_radius)
+                        float radius = i_radius;
+                        if (i_originalCaster->IsControlledByPlayer() && !itr->getSource()->IsControlledByPlayer())
+                            radius += itr->getSource()->GetCombatReach();
+                        if (itr->getSource()->GetDistance(i_centerX, i_centerY, i_centerZ, DIST_CALC_NONE) <= radius * radius)
                             i_data.push_back(itr->getSource());
                         break;
                 }

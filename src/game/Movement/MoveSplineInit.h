@@ -19,10 +19,12 @@
 #ifndef MANGOSSERVER_MOVESPLINEINIT_H
 #define MANGOSSERVER_MOVESPLINEINIT_H
 
+#include "Entities/Object.h"
 #include "Movement/MoveSplineInitArgs.h"
 #include "MotionGenerators/PathFinder.h"
 
 class Unit;
+class WorldObject;
 
 namespace Movement
 {
@@ -48,7 +50,7 @@ namespace Movement
              */
             void SetFacing(float angle);
             void SetFacing(Vector3 const& spot);
-            void SetFacing(const Unit* target);
+            void SetFacing(const WorldObject* target);
 
             /* Initializes movement by path
              * @param path - array of points, shouldn't be empty
@@ -79,10 +81,10 @@ namespace Movement
              */
             void SetFall();
 
-            /* Sets the velocity (in case you want to have custom movement velocity)
+            /* Sets the zspeed (in case you want to have custom movement zspeed)
              * if no set, speed will be selected based on unit's speeds and current movement mode
              * Has no effect if falling mode enabled
-             * velocity shouldn't be negative
+             * zspeed shouldn't be negative
              */
             void SetVelocity(float vel);
 

@@ -413,6 +413,7 @@ bool AuthSocket::_HandleLogonChallenge()
     LoginDatabase.escape_string(_safelogin);
     _safelocale = m_locale;
     LoginDatabase.escape_string(_safelocale);
+    LoginDatabase.escape_string(m_os);
 
     pkt << uint8(CMD_AUTH_LOGON_CHALLENGE);
     pkt << uint8(0x00);
@@ -889,7 +890,7 @@ bool AuthSocket::_HandleReconnectChallenge()
     pkt << (uint8)CMD_AUTH_RECONNECT_CHALLENGE;
     pkt << (uint8)0x00;
     _reconnectProof.SetRand(16 * 8);
-    pkt.append(_reconnectProof.AsByteArray(16), 16);        // 16 bytes random
+    pkt.append(_reconnectProof.AsByteArray(16));        // 16 bytes random
     pkt.append(VersionChallenge.data(), VersionChallenge.size());
     Write((const char*)pkt.contents(), pkt.size());
     return true;
@@ -958,7 +959,7 @@ bool AuthSocket::_HandleRealmList()
     ///- Get the user id (else close the connection)
     // No SQL injection (escaped user name)
 
-    QueryResult* result = LoginDatabase.PQuery("SELECT id FROM account WHERE username = '%s'", _safelogin.c_str());
+    QueryResult* result = LoginDatabase.PQuery("SELECT id, gmlevel FROM account WHERE username = '%s'", _safelogin.c_str());
     if (!result)
     {
         sLog.outError("[ERROR] user %s tried to login and we cannot find him in the database.", _login.c_str());
@@ -967,6 +968,7 @@ bool AuthSocket::_HandleRealmList()
     }
 
     uint32 id = (*result)[0].GetUInt32();
+    uint8 accountSecurityLevel = (*result)[1].GetUInt8();
     delete result;
 
     ///- Update realm list if need
@@ -974,7 +976,7 @@ bool AuthSocket::_HandleRealmList()
 
     ///- Circle through realms in the RealmList and construct the return packet (including # of user characters in each realm)
     ByteBuffer pkt;
-    LoadRealmlist(pkt, id);
+    LoadRealmlist(pkt, id, accountSecurityLevel);
 
     ByteBuffer hdr;
     hdr << (uint8)CMD_REALM_LIST;
@@ -985,118 +987,140 @@ bool AuthSocket::_HandleRealmList()
     return true;
 }
 
-void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid)
+void AuthSocket::LoadRealmlist(ByteBuffer& pkt, uint32 acctid, uint8 securityLevel)
 {
-    if (_build < 6080)        // before version 2.0.0 (exclusive)
+    switch (_build)
     {
-        pkt << uint32(0);                               // unused value
-        pkt << uint8(sRealmList.size());
-
-        for (const auto& i : sRealmList)
+        case 5875:                                          // 1.12.1
+        case 6005:                                          // 1.12.2
+        case 6141:                                          // 1.12.3
         {
-            uint8 AmountOfCharacters;
+            pkt << uint32(0);                               // unused value
+            pkt << uint8(getEligibleRealmCount(securityLevel));
 
-            // No SQL injection. id of realm is controlled by the database.
-            QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
-            if (result)
+            for (const auto& i : sRealmList)
             {
-                Field* fields = result->Fetch();
-                AmountOfCharacters = fields[0].GetUInt8();
-                delete result;
+                uint8 AmountOfCharacters;
+
+                // No SQL injection. id of realm is controlled by the database.
+                QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
+                if (result)
+                {
+                    Field* fields = result->Fetch();
+                    AmountOfCharacters = fields[0].GetUInt8();
+                    delete result;
+                }
+                else
+                    AmountOfCharacters = 0;
+
+                bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
+
+                RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
+                if (!buildInfo)
+                    buildInfo = &i.second.realmBuildInfo;
+
+                RealmFlags realmflags = i.second.realmflags;
+
+                // Don't display higher security realms for players.
+                if (!securityLevel && i.second.allowedSecurityLevel > 0)
+                    continue;
+
+                // 1.x clients not support explicitly REALM_FLAG_SPECIFYBUILD, so manually form similar name as show in more recent clients
+                std::string name = i.first;
+                if (realmflags & REALM_FLAG_SPECIFYBUILD)
+                {
+                    char buf[20];
+                    snprintf(buf, 20, " (%u,%u,%u)", buildInfo->major_version, buildInfo->minor_version, buildInfo->bugfix_version);
+                    name += buf;
+                }
+
+                // Show offline state for unsupported client builds and locked realms (1.x clients not support locked state show)
+                if (!ok_build || (i.second.allowedSecurityLevel > _accountSecurityLevel))
+                    realmflags = RealmFlags(realmflags | REALM_FLAG_OFFLINE);
+
+                pkt << uint32(i.second.icon);              // realm type
+                pkt << uint8(realmflags);                   // realmflags
+                pkt << name;                                // name
+                pkt << i.second.address;                   // address
+                pkt << float(i.second.populationLevel);
+                pkt << uint8(AmountOfCharacters);
+                pkt << uint8(i.second.timezone);           // realm category
+                pkt << uint8(0x00);                         // unk, may be realm number/id?
             }
-            else
-                AmountOfCharacters = 0;
 
-            bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
-
-            RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
-            if (!buildInfo)
-                buildInfo = &i.second.realmBuildInfo;
-
-            RealmFlags realmflags = i.second.realmflags;
-
-            // 1.x clients not support explicitly REALM_FLAG_SPECIFYBUILD, so manually form similar name as show in more recent clients
-            std::string name = i.first;
-            if (realmflags & REALM_FLAG_SPECIFYBUILD)
-            {
-                char buf[20];
-                snprintf(buf, 20, " (%u,%u,%u)", buildInfo->major_version, buildInfo->minor_version, buildInfo->bugfix_version);
-                name += buf;
-            }
-
-            // Show offline state for unsupported client builds and locked realms (1.x clients not support locked state show)
-            if (!ok_build || (i.second.allowedSecurityLevel > _accountSecurityLevel))
-                realmflags = RealmFlags(realmflags | REALM_FLAG_OFFLINE);
-
-            pkt << uint32(i.second.icon);              // realm type
-            pkt << uint8(realmflags);                   // realmflags
-            pkt << name;                                // name
-            pkt << i.second.address;                   // address
-            pkt << float(i.second.populationLevel);
-            pkt << uint8(AmountOfCharacters);
-            pkt << uint8(i.second.timezone);           // realm category
-            pkt << uint8(0x00);                         // unk, may be realm number/id?
+            pkt << uint16(0x0002);                          // unused value (why 2?)
+            break;
         }
 
-        pkt << uint16(0x0002);                          // unused value (why 2?)
-    }
-    else
-    {
-        pkt << uint32(0);                               // unused value
-        pkt << uint16(sRealmList.size());
-
-        for (const auto& i : sRealmList)
+        case 8606:                                          // 2.4.3
+        case 10505:                                         // 3.2.2a
+        case 11159:                                         // 3.3.0a
+        case 11403:                                         // 3.3.2
+        case 11723:                                         // 3.3.3a
+        case 12340:                                         // 3.3.5a
+        default:                                            // and later
         {
-            uint8 AmountOfCharacters;
+            pkt << uint32(0);                               // unused value
+            pkt << uint16(getEligibleRealmCount(securityLevel));
 
-            // No SQL injection. id of realm is controlled by the database.
-            QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
-            if (result)
+            for (const auto& i : sRealmList)
             {
-                Field* fields = result->Fetch();
-                AmountOfCharacters = fields[0].GetUInt8();
-                delete result;
+                uint8 AmountOfCharacters;
+
+                // No SQL injection. id of realm is controlled by the database.
+                QueryResult* result = LoginDatabase.PQuery("SELECT numchars FROM realmcharacters WHERE realmid = '%d' AND acctid='%u'", i.second.m_ID, acctid);
+                if (result)
+                {
+                    Field* fields = result->Fetch();
+                    AmountOfCharacters = fields[0].GetUInt8();
+                    delete result;
+                }
+                else
+                    AmountOfCharacters = 0;
+
+                bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
+
+                RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
+                if (!buildInfo)
+                    buildInfo = &i.second.realmBuildInfo;
+
+                // Don't display higher security realms for players.
+                if (!securityLevel && i.second.allowedSecurityLevel > 0)
+                    continue;
+
+                uint8 lock = (i.second.allowedSecurityLevel > _accountSecurityLevel) ? 1 : 0;
+
+                RealmFlags realmFlags = i.second.realmflags;
+
+                // Show offline state for unsupported client builds
+                if (!ok_build)
+                    realmFlags = RealmFlags(realmFlags | REALM_FLAG_OFFLINE);
+
+                if (!buildInfo)
+                    realmFlags = RealmFlags(realmFlags & ~REALM_FLAG_SPECIFYBUILD);
+
+                pkt << uint8(i.second.icon);               // realm type (this is second column in Cfg_Configs.dbc)
+                pkt << uint8(lock);                         // flags, if 0x01, then realm locked
+                pkt << uint8(realmFlags);                   // see enum RealmFlags
+                pkt << i.first;                            // name
+                pkt << i.second.address;                   // address
+                pkt << float(i.second.populationLevel);
+                pkt << uint8(AmountOfCharacters);
+                pkt << uint8(i.second.timezone);           // realm category (Cfg_Categories.dbc)
+                pkt << uint8(0x2C);                         // unk, may be realm number/id?
+
+                if (realmFlags & REALM_FLAG_SPECIFYBUILD)
+                {
+                    pkt << uint8(buildInfo->major_version);
+                    pkt << uint8(buildInfo->minor_version);
+                    pkt << uint8(buildInfo->bugfix_version);
+                    pkt << uint16(_build);
+                }
             }
-            else
-                AmountOfCharacters = 0;
 
-            bool ok_build = std::find(i.second.realmbuilds.begin(), i.second.realmbuilds.end(), _build) != i.second.realmbuilds.end();
-
-            RealmBuildInfo const* buildInfo = ok_build ? FindBuildInfo(_build) : nullptr;
-            if (!buildInfo)
-                buildInfo = &i.second.realmBuildInfo;
-
-            uint8 lock = (i.second.allowedSecurityLevel > _accountSecurityLevel) ? 1 : 0;
-
-            RealmFlags realmFlags = i.second.realmflags;
-
-            // Show offline state for unsupported client builds
-            if (!ok_build)
-                realmFlags = RealmFlags(realmFlags | REALM_FLAG_OFFLINE);
-
-            //if (!buildInfo) // always false since updated 10 lines above if null. ToDo: fix
-            //    realmFlags = RealmFlags(realmFlags & ~REALM_FLAG_SPECIFYBUILD);
-
-            pkt << uint8(i.second.icon);               // realm type (this is second column in Cfg_Configs.dbc)
-            pkt << uint8(lock);                         // flags, if 0x01, then realm locked
-            pkt << uint8(realmFlags);                   // see enum RealmFlags
-            pkt << i.first;                            // name
-            pkt << i.second.address;                   // address
-            pkt << float(i.second.populationLevel);
-            pkt << uint8(AmountOfCharacters);
-            pkt << uint8(i.second.timezone);           // realm category (Cfg_Categories.dbc)
-            pkt << uint8(0x2C);                         // unk, may be realm number/id?
-
-            if (realmFlags & REALM_FLAG_SPECIFYBUILD)
-            {
-                pkt << uint8(buildInfo->major_version);
-                pkt << uint8(buildInfo->minor_version);
-                pkt << uint8(buildInfo->bugfix_version);
-                pkt << uint16(_build);
-            }
+            pkt << uint16(0x0010);                          // unused value (why 10?)
+            break;
         }
-
-        pkt << uint16(0x0010);                          // unused value (why 10?)
     }
 }
 
@@ -1147,6 +1171,16 @@ bool AuthSocket::_HandleXferAccept()
     _patcherRun->incReference();
     _patcherThread = new MaNGOS::Thread(_patcherRun);
     return true;
+}
+
+uint8 AuthSocket::getEligibleRealmCount(uint8 accountSecurityLevel)
+{
+    uint8 size = 0;
+    for (const auto& i : sRealmList)
+        if (i.second.allowedSecurityLevel <= accountSecurityLevel)
+            size++;
+
+    return size;
 }
 
 /// Resume patch transfer

@@ -24,6 +24,7 @@ EndScriptData */
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "black_temple.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
+#include "Spells/Scripts/SpellScript.h"
 
 enum
 {
@@ -193,9 +194,9 @@ struct mob_blood_elf_council_voice_triggerAI : public ScriptedAI
 ## mob_illidari_council
 ######*/
 
-struct mob_illidari_councilAI : public ScriptedAI, public TimerManager
+struct mob_illidari_councilAI : public ScriptedAI
 {
-    mob_illidari_councilAI(Creature* creature) : ScriptedAI(creature), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
+    mob_illidari_councilAI(Creature* creature) : ScriptedAI(creature, 0), m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
         AddCustomAction(GENERIC_ACTION_BALANCE, 0u, [&]()
         {
@@ -278,11 +279,6 @@ struct mob_illidari_councilAI : public ScriptedAI, public TimerManager
         if (Creature* voiceTrigger = m_instance->GetSingleCreatureFromStorage(NPC_COUNCIL_VOICE))
             voiceTrigger->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, m_creature, voiceTrigger);
     }
-
-    void UpdateAI(const uint32 diff) override
-    {
-        UpdateTimers(diff);
-    }
 };
 
 /*######
@@ -294,7 +290,10 @@ struct boss_illidari_councilAI : public CombatAI
     boss_illidari_councilAI(Creature* creature, uint32 combatActions) : CombatAI(creature, combatActions),
             m_instance(static_cast<ScriptedInstance*>(creature->GetInstanceData()))
     {
-
+        m_creature->GetCombatManager().SetLeashingCheck([&](Unit*, float x, float y, float z)
+            {
+                return x < 620.0f;
+            });
     }
 
     ScriptedInstance* m_instance;
@@ -378,19 +377,15 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         AddCombatAction(GATHIOS_ACTION_BLESSING, 19000, 26000);
         AddCombatAction(GATHIOS_ACTION_CONSECRATION, 10000u);
         AddCombatAction(GATHIOS_ACTION_HAMMER_OF_JUSTICE, 10000, 10000);
+        AddOnKillText(SAY_GATH_SLAY);
     }
 
     bool m_seal;
 
     void Reset() override
     {
-        CombatAI::Reset();
+        boss_illidari_councilAI::Reset();
         m_seal = false;
-    }
-
-    void KilledUnit(Unit* /*victim*/) override
-    {
-        DoScriptText(SAY_GATH_SLAY, m_creature);
     }
 
     void JustDied(Unit* killer) override
@@ -492,7 +487,6 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
 {
     boss_high_nethermancer_zerevorAI(Creature* creature) : boss_illidari_councilAI(creature, ZEREVOR_ACTION_MAX)
     {
-        m_attackDistance = 30.0f;
         SetMeleeEnabled(false);
 
         AddCombatAction(ZEREVOR_ACTION_BLIZZARD, 10000, 20000);
@@ -500,11 +494,10 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
         AddCombatAction(ZEREVOR_ACTION_ARCANE_BOLT, 3000u);
         AddCombatAction(ZEREVOR_ACTION_DAMPEN_MAGIC, 2000u);
         AddCombatAction(ZEREVOR_ACTION_ARCANE_EXPLOSION, 13000u);
-    }
 
-    void KilledUnit(Unit* /*victim*/) override
-    {
-        DoScriptText(SAY_ZERE_SLAY, m_creature);
+        SetRangedMode(true, 30.f, TYPE_FULL_CASTER);
+        AddMainSpell(SPELL_ARCANE_BOLT);
+        AddOnKillText(SAY_ZERE_SLAY);
     }
 
     void JustDied(Unit* killer) override
@@ -577,11 +570,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         AddCombatAction(MALANDE_ACTION_CIRCLE_OF_HEALING, 20000u);
         AddCombatAction(MALANDE_ACTION_DIVINE_WRATH, 10000u);
         AddCombatAction(MALANDE_ACTION_REFLECTIVE_SHIELD, 26000, 32000);
-    }
-
-    void KilledUnit(Unit* /*victim*/) override
-    {
-        DoScriptText(SAY_MALA_SLAY, m_creature);
+        AddOnKillText(SAY_MALA_SLAY);
     }
 
     void JustDied(Unit* killer) override
@@ -657,15 +646,11 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
                 target->CastSpell(nullptr, SPELL_ENVENOM_DUMMY_2, TRIGGERED_NONE);
         });
         AddCombatAction(VERAS_ACTION_VANISH, 10000u);
+        AddOnKillText(SAY_VERA_SLAY);
         Reset();
     }
 
     ObjectGuid m_envenomAnimTarget;
-
-    void KilledUnit(Unit* /*victim*/) override
-    {
-        DoScriptText(SAY_VERA_SLAY, m_creature);
-    }
 
     void JustDied(Unit* killer) override
     {
@@ -678,12 +663,12 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
     {
         if (action == VERAS_ACTION_VANISH)
         {
-            m_creature->CastSpell(nullptr, SPELL_DEADLY_STRIKE, TRIGGERED_NONE);
-            DoScriptText(SAY_VERA_VANISH, m_creature);
             if (DoCastSpellIfCan(nullptr, SPELL_VANISH) == CAST_OK)
+            {
+                m_creature->CastSpell(nullptr, SPELL_DEADLY_STRIKE, TRIGGERED_NONE);
+                DoScriptText(SAY_VERA_VANISH, m_creature);
                 ResetCombatAction(action, 55000);
-            if (Unit* victim = m_creature->GetVictim())
-                m_creature->getThreatManager().SetTargetSuppressed(victim);
+            }
         }
     }
 
@@ -691,69 +676,79 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
     {
         summoned->CastSpell(nullptr, SPELL_INSTANT_SPAWN, TRIGGERED_NONE);
         m_envenomAnimTarget = summoned->GetObjectGuid();
+        ResetTimer(VERAS_ENVENOM_ANIMATION, 1000);
         summoned->ForcedDespawn(4500);
     }
 };
 
-UnitAI* GetAI_mob_blood_elf_council_voice_trigger(Creature* creature)
+struct VerasVanish : public AuraScript
 {
-    return new mob_blood_elf_council_voice_triggerAI(creature);
-}
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (!apply)
+            aura->GetTarget()->CastSpell(nullptr, SPELL_VANISH_TELEPORT, TRIGGERED_NONE);
+    }
+};
 
-UnitAI* GetAI_mob_illidari_council(Creature* creature)
+struct VerasDeadlyPoison : public AuraScript
 {
-    return new mob_illidari_councilAI(creature);
-}
+    void OnPeriodicTrigger(Aura* aura, PeriodicTriggerData& data) const override
+    {
+        data.target = aura->GetTarget()->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_DEADLY_POISON, SELECT_FLAG_PLAYER);
+    }
+};
 
-UnitAI* GetAI_boss_gathios_the_shatterer(Creature* creature)
+struct VerasDeadlyPoisonTick : public AuraScript
 {
-    return new boss_gathios_the_shattererAI(creature);
-}
-
-UnitAI* GetAI_boss_lady_malande(Creature* creature)
-{
-    return new boss_lady_malandeAI(creature);
-}
-
-UnitAI* GetAI_boss_veras_darkshadow(Creature* creature)
-{
-    return new boss_veras_darkshadowAI(creature);
-}
-
-UnitAI* GetAI_boss_high_nethermancer_zerevor(Creature* creature)
-{
-    return new boss_high_nethermancer_zerevorAI(creature);
-}
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (!apply)
+        {
+            Unit* target = aura->GetTarget();
+            if (Unit* caster = aura->GetCaster())
+            {
+                caster->CastSpell(target, SPELL_ENVENOM, TRIGGERED_OLD_TRIGGERED);
+                if (caster->AI())
+                    caster->AI()->DoResetThreat();
+            }
+            target->CastSpell(nullptr, SPELL_ENVENOM_DUMMY_1, TRIGGERED_OLD_TRIGGERED);
+        }
+    }
+};
 
 void AddSC_boss_illidari_council()
 {
     Script* pNewScript = new Script;
     pNewScript->Name = "mob_illidari_council";
-    pNewScript->GetAI = &GetAI_mob_illidari_council;
+    pNewScript->GetAI = &GetNewAIInstance<mob_illidari_councilAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "mob_blood_elf_council_voice_trigger";
-    pNewScript->GetAI = &GetAI_mob_blood_elf_council_voice_trigger;
+    pNewScript->GetAI = &GetNewAIInstance<mob_blood_elf_council_voice_triggerAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "boss_gathios_the_shatterer";
-    pNewScript->GetAI = &GetAI_boss_gathios_the_shatterer;
+    pNewScript->GetAI = &GetNewAIInstance<boss_gathios_the_shattererAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "boss_lady_malande";
-    pNewScript->GetAI = &GetAI_boss_lady_malande;
+    pNewScript->GetAI = &GetNewAIInstance<boss_lady_malandeAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "boss_veras_darkshadow";
-    pNewScript->GetAI = &GetAI_boss_veras_darkshadow;
+    pNewScript->GetAI = &GetNewAIInstance<boss_veras_darkshadowAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "boss_high_nethermancer_zerevor";
-    pNewScript->GetAI = &GetAI_boss_high_nethermancer_zerevor;
+    pNewScript->GetAI = &GetNewAIInstance<boss_high_nethermancer_zerevorAI>;
     pNewScript->RegisterSelf();
+
+    RegisterAuraScript<VerasVanish>("spell_veras_vanish");
+    RegisterAuraScript<VerasDeadlyPoison>("spell_veras_deadly_poison");
+    RegisterAuraScript<VerasDeadlyPoisonTick>("spell_veras_deadly_poison_tick");
 }

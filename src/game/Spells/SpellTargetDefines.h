@@ -190,6 +190,15 @@ enum SpellTargetFilterScheme
     SCHEME_FURTHEST,
     SCHEME_HIGHEST_HP,
     SCHEME_LOWEST_HP_CHAIN,
+    SCHEME_PRIORITIZE_HEALTH,
+    SCHEME_PRIORITIZE_MANA,
+};
+
+enum SpellTargetLOS
+{
+    TARGET_LOS_CASTER           = 0,
+    TARGET_LOS_SRC,
+    TARGET_LOS_DEST,
 };
 
 #endif

@@ -102,7 +102,7 @@ void WorldSession::HandleArenaTeamInviteOpcode(WorldPacket& recv_data)
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", Invitedname, ERR_ARENA_TEAM_PLAYER_NOT_FOUND_S);
         return;
     }
-
+	
     if (player->getLevel() < sWorld.GetCurrentMaxLevel())
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", player->GetName(), ERR_ARENA_TEAM_TARGET_TOO_LOW_S);

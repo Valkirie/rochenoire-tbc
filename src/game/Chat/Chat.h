@@ -196,6 +196,8 @@ class ChatHandler
         void CheckIntegrity(ChatCommand* table, ChatCommand* parentCommand) const;
         ChatCommand* getCommandTable();
 
+#include "Anticheat/module/AnticheatChatCommandsFunctions.h"
+
         bool HandleAccountCommand(char* args);
         bool HandleAccountCharactersCommand(char* args);
         bool HandleAccountCreateCommand(char* args);
@@ -255,15 +257,18 @@ class ChatHandler
         bool HandleDebugArenaCommand(char* args);
         bool HandleDebugBattlegroundCommand(char* args);
         bool HandleDebugBattlegroundStartCommand(char* args);
+        bool HandleDebugListUpdateFieldsCommand(char* args);
         bool HandleDebugGetItemStateCommand(char* args);
         bool HandleDebugGetItemValueCommand(char* args);
         bool HandleDebugGetLootRecipientCommand(char* args);
-        bool HandleDebugGetValueCommand(char* args);
+        bool HandleDebugGetValueByIndexCommand(char* args);
+        bool HandleDebugGetValueByNameCommand(char* args);
         bool HandleDebugModItemValueCommand(char* args);
         bool HandleDebugModValueCommand(char* args);
         bool HandleDebugSetAuraStateCommand(char* args);
         bool HandleDebugSetItemValueCommand(char* args);
-        bool HandleDebugSetValueCommand(char* args);
+        bool HandleDebugSetValueByIndexCommand(char* args);
+        bool HandleDebugSetValueByNameCommand(char* args);
         bool HandleDebugSpellCheckCommand(char* args);
         bool HandleDebugSpellCoefsCommand(char* args);
         bool HandleDebugSpellModsCommand(char* args);
@@ -306,7 +311,16 @@ class ChatHandler
 
         bool HandleDebugFlyCommand(char* args);
 
-        bool HandleDebugPacketHistory(char* args);
+        bool HandleDebugOutPacketHistory(char* args);
+        bool HandleDebugIncPacketHistory(char* args);
+
+        bool HandleDebugTransports(char* args);
+
+        bool HandleDebugSpawnsList(char* args);
+        bool HandleDebugRespawnDynguid(char* args);
+
+        bool HandleDebugPacketLog(char* args);
+        bool HandleDebugDbscript(char* args);
 
         bool HandleSD2HelpCommand(char* args);
         bool HandleSD2ScriptCommand(char* args);
@@ -475,6 +489,13 @@ class ChatHandler
         bool HandleNpcWhisperCommand(char* args);
         bool HandleNpcYellCommand(char* args);
         bool HandleNpcTempSpawn(char* args);
+        bool HandleNpcEvade(char* args);
+        bool HandleNpcGroupInfoCommand(char* args);
+        //bool HandleNpcGroupBehaviorShowCommand(char* args);
+        //bool HandleNpcGroupBehaviorSetCommand(char* args);
+        bool HandleNpcFormationInfoCommand(char* args);
+        bool HandleNpcFormationResetCommand(char* args);
+        bool HandleNpcFormationSwitchCommand(char* args);
 
         // TODO: NpcCommands that needs to be fixed :
         bool HandleNpcAddWeaponCommand(char* args);
@@ -496,6 +517,8 @@ class ChatHandler
         bool HandleQuestAddCommand(char* args);
         bool HandleQuestRemoveCommand(char* args);
         bool HandleQuestCompleteCommand(char* args);
+
+        bool HandleReloadAnticheatCommand(char*);
 
         bool HandleReloadAllCommand(char* args);
         bool HandleReloadAllAreaCommand(char* args);
@@ -519,7 +542,6 @@ class ChatHandler
         bool HandleReloadCreaturesStatsCommand(char* args);
         bool HandleReloadCreatureQuestRelationsCommand(char* args);
         bool HandleReloadCreatureQuestInvRelationsCommand(char* args);
-        bool HandleReloadDbScriptStringCommand(char* args);
         bool HandleReloadDBScriptsOnCreatureDeathCommand(char* args);
         bool HandleReloadDBScriptsOnEventCommand(char* args);
         bool HandleReloadDBScriptsOnGossipCommand(char* args);
@@ -529,7 +551,6 @@ class ChatHandler
         bool HandleReloadDBScriptsOnSpellCommand(char* args);
         bool HandleReloadDBScriptsOnRelayCommand(char* args);
 
-        bool HandleReloadEventAITextsCommand(char* args);
         bool HandleReloadEventAISummonsCommand(char* args);
         bool HandleReloadEventAIScriptsCommand(char* args);
         bool HandleReloadGameGraveyardZoneCommand(char* args);
@@ -595,6 +616,9 @@ class ChatHandler
         bool HandleReloadTaxiShortcuts(char* args);
         bool HandleReloadSpellPetAurasCommand(char* args);
         bool HandleReloadExpectedSpamRecords(char* args);
+        bool HandleReloadCreatureCooldownsCommand(char* args);
+        bool HandleReloadCreatureSpellLists(char* args);
+        bool HandleReloadSpawnGroupsCommand(char* args);
 
         bool HandleResetAllCommand(char* args);
         bool HandleResetHonorCommand(char* args);
@@ -766,10 +790,19 @@ class ChatHandler
         bool HandleLinkCheckCommand(char* args);
 
         // worldstate
+        bool HandleVariablePrint(char* args);
         bool HandleWarEffortCommand(char* args);
+        bool HandleWarEffortPhaseCommand(char* args);
+        bool HandleWarEffortCounterCommand(char* args);
+        bool HandleScourgeInvasionCommand(char* args);
+        bool HandleScourgeInvasionStateCommand(char* args);
+        bool HandleScourgeInvasionBattlesWonCommand(char* args);
+        bool HandleScourgeInvasionStartZone(char* args);
         bool HandleSunsReachReclamationPhaseCommand(char* args);
         bool HandleSunsReachReclamationSubPhaseCommand(char* args);
         bool HandleSunsReachReclamationCounterCommand(char* args);
+        bool HandleSunwellGateCommand(char* args);
+        bool HandleSunwellGateCounterCommand(char* args);
         bool HandleExpansionRelease(char* args);
 
         // Battleground
@@ -811,6 +844,8 @@ class ChatHandler
         void HandleLearnSkillRecipesHelper(Player* player, uint32 skill_id);
         bool HandleGoHelper(Player* _player, uint32 mapid, float x, float y, float const* zPtr = nullptr, float const* ortPtr = nullptr);
         bool HandleGetValueHelper(Object* target, uint32 field, char* typeStr);
+        void ShowAllUpdateFieldsHelper(Object const* target);
+        void ShowUpdateFieldHelper(Object const* target, uint16 index);
         bool HandlerDebugModValueHelper(Object* target, uint32 field, char* typeStr, char* valStr);
         bool HandleSetValueHelper(Object* target, uint32 field, char* typeStr, char* valStr);
 
