@@ -80,7 +80,7 @@ struct boss_gluthAI : public CombatAI
             case GLUTH_MORTAL_WOUND: return sObjectMgr.GetScaleSpellTimer(m_creature, 10u * IN_MILLISECONDS, SPELL_MORTALWOUND);
             case GLUTH_ENRAGE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(10, 12) * IN_MILLISECONDS, SPELL_ENRAGE);
             case GLUTH_ROAR: return sObjectMgr.GetScaleSpellTimer(m_creature, 20u * IN_MILLISECONDS, SPELL_TERRIFYING_ROAR);
-            case GLUTH_DECIMATE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(100, 110) * IN_MILLISECONDS, SPELL_DECIMATE)
+            case GLUTH_DECIMATE: return sObjectMgr.GetScaleSpellTimer(m_creature, urand(100, 110) * IN_MILLISECONDS, SPELL_DECIMATE);
             case GLUTH_BERSERK: return sObjectMgr.GetScaleSpellTimer(m_creature, 5u * MINUTE * IN_MILLISECONDS, SPELL_BERSERK);
             default: return 0; // never occurs but for compiler
         }

@@ -2333,7 +2333,7 @@ struct npc_BlackMarket : public ScriptedAI
     TradeMap m_tradesStore;
     TradeMap m_offersStore;
     TradeMap m_dealsStore;
-    std::vector<TradeMap> TradeMaps {
+    std::vector<TradeMap> TradeMaps{
         m_tradesStore,
         m_offersStore,
         m_dealsStore
@@ -2413,7 +2413,7 @@ struct npc_BlackMarket : public ScriptedAI
 
         if (m_checkTimer < diff)
         {
-            if(IsAvailable() && !TradeMaps[STATUS_DEAL].empty())
+            if (IsAvailable() && !TradeMaps[STATUS_DEAL].empty())
                 m_phase = PHASE_CALLING;
             m_checkTimer = 30 * IN_MILLISECONDS;
         }
@@ -2422,106 +2422,109 @@ struct npc_BlackMarket : public ScriptedAI
 
         switch (m_phase)
         {
-            case PHASE_CALLING:
+        case PHASE_CALLING:
+        {
+            if (m_departTimer < diff)
             {
-                if (m_departTimer < diff)
+                DoScriptText(Speeches[0][urand(0, 3)], m_creature);
+
+                // Move to closest Mailbox
+                uint32 idx = m_creature->GetEntry() - NPC_START;
+                if (ObjectGuid guid = ObjectGuid(HIGHGUID_GAMEOBJECT, Mailboxes[idx][1], Mailboxes[idx][0]))
                 {
-                    DoScriptText(Speeches[0][urand(0, 3)], m_creature);
-
-                    // Move to closest Mailbox
-                    uint32 idx = m_creature->GetEntry() - NPC_START;
-                    if (ObjectGuid guid = ObjectGuid(HIGHGUID_GAMEOBJECT, Mailboxes[idx][1], Mailboxes[idx][0]))
+                    if (GameObject* Mailbox = m_creature->GetMap()->GetGameObject(guid))
                     {
-                        if (GameObject* Mailbox = m_creature->GetMap()->GetGameObject(guid))
-                        {
-                            Mailbox->GetContactPoint(m_creature, mailbox_x, mailbox_y, mailbox_z, 1.0f);
+                        Mailbox->GetContactPoint(m_creature, mailbox_x, mailbox_y, mailbox_z, 1.0f);
 
-                            m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+                        m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
-                            m_creature->GetMotionMaster()->MoveIdle();
-                            m_creature->GetMotionMaster()->MovePoint(1, mailbox_x, mailbox_y, mailbox_z);
+                        m_creature->GetMotionMaster()->MoveIdle();
+                        m_creature->GetMotionMaster()->MovePoint(1, mailbox_x, mailbox_y, mailbox_z);
 
-                            m_phase = PHASE_REACHING;
-                            break;
-                        }
+                        m_phase = PHASE_REACHING;
+                        break;
                     }
-                    m_phase = PHASE_HOMING; // if no mailbox nearby...
                 }
+                m_phase = PHASE_HOMING; // if no mailbox nearby...
+            }
+            else
+                m_departTimer -= diff;
+            break;
+        }
+        case PHASE_REACHING:
+        {
+            m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+            if (m_creature->GetDistance(mailbox_x, mailbox_y, mailbox_z) <= 2.0f)
+                m_phase = PHASE_REACHED;
+            break;
+        }
+        case PHASE_REACHED:
+        {
+            m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
+            DoScriptText(Speeches[1][urand(0, 3)], m_creature);
+            m_phase = PHASE_HOMING;
+            break;
+        }
+        case PHASE_HOMING:
+        {
+            if (m_returnTimer < diff)
+            {
+                npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(m_creature->AI());
+
+                if (CreatureDataAddon const* cainfo = m_creature->GetCreatureAddon())
+                    m_creature->HandleEmote(cainfo->emote);
                 else
-                    m_departTimer -= diff;
-                break;
-            }
-            case PHASE_REACHING:
-            {
-                m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
-                if (m_creature->GetDistance(mailbox_x, mailbox_y, mailbox_z) <= 2.0f)
-                    m_phase = PHASE_REACHED;
-                break;
-            }
-            case PHASE_REACHED:
-            {
-                m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
-                DoScriptText(Speeches[1][urand(0, 3)], m_creature);
-                m_phase = PHASE_HOMING;
-                break;
-            }
-            case PHASE_HOMING:
-            {
-                if (m_returnTimer < diff)
+                    m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+
+                m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
+                for (auto it = TradeMaps[STATUS_DEAL].cbegin(), next_it = it; it != TradeMaps[STATUS_DEAL].cend(); it = next_it)
                 {
-                    npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(m_creature->AI());
+                    ++next_it;
 
-                    if (CreatureDataAddon const* cainfo = m_creature->GetCreatureAddon())
-                        m_creature->HandleEmote(cainfo->emote);
-                    else
-                        m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
-
-                    m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-
-                    for (auto it = TradeMaps[STATUS_DEAL].cbegin(), next_it = it; it != TradeMaps[STATUS_DEAL].cend(); it = next_it)
+                    if (Item* pItem = pBlackMarketAI->GetOffer(it->first, STATUS_DEAL))
                     {
-                        ++next_it;
-
-                        if (Item* pItem = pBlackMarketAI->GetOffer(it->first, STATUS_DEAL))
+                        if (Player* pPlayer = pItem->GetOwner())
                         {
-                            if (Player* pPlayer = pItem->GetOwner())
+                            if (!pPlayer->IsInWorld())
+                                continue;
+
+                            if (WorldSession* m_session = pPlayer->GetSession())
                             {
-                                if (!pPlayer->IsInWorld())
-                                    continue;
+                                int loc_idx = m_session->GetSessionDbLocaleIndex();
 
-                                if (WorldSession* m_session = pPlayer->GetSession())
-                                {
-                                    int loc_idx = m_session->GetSessionDbLocaleIndex();
+                                ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
 
-                                    ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(pItem->GetEntry());
+                                std::string pName = pProto->Name1;
+                                sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
 
-                                    std::string pName = pProto->Name1;
-                                    sObjectMgr.GetItemLocaleStrings(pProto->ItemId, loc_idx, &pName);
+                                std::string body = m_session->GetMangosString(BLACKMARKET_MAIL_BODY);
+                                char textBuf[300];
+                                snprintf(textBuf, 300, body.c_str(), pName.c_str(), pPlayer->GetName());
 
-                                    std::string body = m_session->GetMangosString(BLACKMARKET_MAIL_BODY);
-                                    char textBuf[300];
-                                    snprintf(textBuf, 300, body.c_str(), pName.c_str(), pPlayer->GetName());
+                                const char* cSubject = m_session->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
 
-                                    const char* cSubject = m_session->GetMangosString(BLACKMARKET_MAIL_SUBJECT);
+                                MailDraft(cSubject, textBuf).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
 
-                                    MailDraft(cSubject, textBuf).AddItem(pItem).SendMailTo(pPlayer, MailSender(MAIL_CREATURE, m_creature->GetEntry()));
-
-                                    EraseOffer(pPlayer->GetObjectGuid(), STATUS_OFFER);
-                                    EraseOffer(pPlayer->GetObjectGuid(), STATUS_TRADE);
-                                    EraseOffer(pItem->GetObjectGuid(), STATUS_DEAL);
-                                }
+                                EraseOffer(pPlayer->GetObjectGuid(), STATUS_OFFER);
+                                EraseOffer(pPlayer->GetObjectGuid(), STATUS_TRADE);
+                                EraseOffer(pItem->GetObjectGuid(), STATUS_DEAL);
                             }
                         }
                     }
-
-                    m_creature->GetMotionMaster()->MoveTargetedHome(false);
-
-                    Reset();
                 }
-                else
-                    m_returnTimer -= diff;
-                break;
+
+                m_creature->GetMotionMaster()->MoveTargetedHome(false);
+
+                Reset();
             }
+            else
+                m_returnTimer -= diff;
+            break;
+        }
+        }
+    }
+};
 
 enum
 {

@@ -1446,10 +1446,10 @@ SpellType ObjectMgr::GetSpellDamageType(SpellEntry const* spellProto, SpellEffec
     return type;
 }
 
-float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &isScaled, SpellEntry const* spellProto, SpellEffectIndex eff_idx, bool isRevert) const
+float ObjectMgr::ScaleDamage(Unit* owner, Unit* target, float olddamage, bool& isScaled, SpellEntry const* spellProto, SpellEffectIndex eff_idx, bool isRevert) const
 {
-	if (isScaled || olddamage == 0)
-		return olddamage;
+    if (isScaled || olddamage == 0)
+        return olddamage;
 
     if (!IsScalable(owner, target))
         return olddamage;
@@ -1460,34 +1460,34 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     if (!owner || !target)
         return olddamage;
 
-	Creature* creature;
-	Player* player;
-	Player* player2;
+    Creature* creature;
+    Player* player;
+    Player* player2;
 
-	uint32 pAggro = 0;
-	bool isPvP = false;
+    uint32 pAggro = 0;
+    bool isPvP = false;
 
-	if (owner->IsCreature() && target->IsPlayer())
-	{
-		creature = (Creature *)owner;
-		player = (Player *)target;
-		pAggro = 2; // PvE : Creature is the attacker
-	}
-	else if (target->IsCreature() && owner->IsPlayer())
-	{
-		player = (Player *)owner;
-		creature = (Creature *)target;
-		pAggro = 1; // PvE : Player is the attacker
-	}
-	else if (target->IsPlayer() && owner->IsPlayer())
-	{
-		player = (Player *)owner;
-		player2 = (Player *)target;
-		pAggro = 3; // PvP : Not important ?
-		isPvP = true;
-	}
-	else
-		return olddamage;
+    if (owner->IsCreature() && target->IsPlayer())
+    {
+        creature = (Creature*)owner;
+        player = (Player*)target;
+        pAggro = 2; // PvE : Creature is the attacker
+    }
+    else if (target->IsCreature() && owner->IsPlayer())
+    {
+        player = (Player*)owner;
+        creature = (Creature*)target;
+        pAggro = 1; // PvE : Player is the attacker
+    }
+    else if (target->IsPlayer() && owner->IsPlayer())
+    {
+        player = (Player*)owner;
+        player2 = (Player*)target;
+        pAggro = 3; // PvP : Not important ?
+        isPvP = true;
+    }
+    else
+        return olddamage;
 
     float damage = olddamage;
     bool value_neg = (olddamage < 0) ? true : false;
@@ -1497,16 +1497,16 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         damage *= -1;
 
     int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
-	int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
+    int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
 
     SpellType spellType = spellProto ? GetSpellDamageType(spellProto, eff_idx) : SPELLTYPE_UNK;
 
     if (spellType == SPELLTYPE_CHARSTAT)
     {
-        float caster_funct = (0.0072 * pow(origin_level, 2) + 1.2594 * (origin_level) + 21.718);
+        float caster_funct = (0.0072 * pow(origin_level, 2) + 1.2594 * (origin_level)+21.718);
         float caster_ratio = damage / caster_funct;
 
-        float target_value = (0.0072 * pow(scaled_level, 2) + 1.2594 * (scaled_level) + 21.718);
+        float target_value = (0.0072 * pow(scaled_level, 2) + 1.2594 * (scaled_level)+21.718);
         damage = target_value * caster_ratio;
     }
     /* else if (spellType == SPELLTYPE_HEAL)
@@ -1518,16 +1518,16 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
         damage = target_value * caster_ratio;
     } */
     else if (pAggro == 1)
-	{
+    {
         uint32 max_value = spellType == SPELLTYPE_POWER ? creature->GetMaxPower(POWER_MANA) : creature->GetMaxHealth();
 
-		if (max_value <= 1)
-			return damage;
+        if (max_value <= 1)
+            return damage;
 
-		if (creature->GetTypeId() == TYPEID_UNIT)
-		{
-			if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
-			{
+        if (creature->GetTypeId() == TYPEID_UNIT)
+        {
+            if (CreatureInfo const* cinfo = creature->GetCreatureInfo())
+            {
                 if (CreatureClassLvlStats const* cCLSS = sObjectMgr.GetCreatureClassLvlStats(scaled_level, cinfo->UnitClass, cinfo->Expansion))
                 {
                     float scaled_value = spellType == SPELLTYPE_POWER ? cCLSS->BaseMana * cinfo->PowerMultiplier : cCLSS->BaseHealth * cinfo->HealthMultiplier;
@@ -1538,11 +1538,11 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
                     else
                         damage /= ratio;
                 }
-			}
-		}
-	}
-	else if (pAggro >= 2)
-	{
+            }
+        }
+    }
+    else if (pAggro >= 2)
+    {
         PlayerClassLevelInfo target_classInfo;
         PlayerClassLevelInfo owner_classInfo;
 
@@ -1579,8 +1579,9 @@ float ObjectMgr::ScaleDamage(Unit *owner, Unit *target, float olddamage, bool &i
     if (value_neg)
         damage *= -1;
 
-	isScaled = (damage != olddamage);
-	return ceil(damage);
+    isScaled = (damage != olddamage);
+    return ceil(damage);
+}
 
 CreatureImmunityVector const* ObjectMgr::GetCreatureImmunitySet(uint32 entry, uint32 setId) const
 {
@@ -2816,13 +2817,6 @@ void ObjectMgr::LoadGameObjects()
 
 		if (!((sWorld.GetWowPatch() >= patch_min) && (sWorld.GetWowPatch() <= patch_max)))
 			existsInPatch = false;
-
-        GameObjectInfo const* gInfo = GetGameObjectInfo(entry);
-        if (!gInfo && existsInPatch)
-        {
-            sLog.outErrorDb("Table `gameobject` has gameobject (GUID: %u) with non existing gameobject entry %u, skipped.", guid, entry);
-            continue;
-        }
 		
         if (entry == 0)
             if (uint32 randomEntry = GetRandomGameObjectEntry(guid))
@@ -2832,13 +2826,26 @@ void ObjectMgr::LoadGameObjects()
         if (entry)
         {
             gInfo = GetGameObjectInfo(entry);
-            if (!gInfo)
+            if (!gInfo && existsInPatch)
             {
                 sLog.outErrorDb("Table `gameobject` has gameobject (GUID: %u) with non existing gameobject entry %u, skipped.", guid, entry);
                 continue;
             }
 
-            if (gInfo->displayId && !sGameObjectDisplayInfoStore.LookupEntry(gInfo->displayId))
+            if (!gInfo->displayId)
+            {
+                switch (gInfo->type)
+                {
+                    // can be invisible always and then not req. display id in like case
+                case GAMEOBJECT_TYPE_TRAP:
+                case GAMEOBJECT_TYPE_SPELL_FOCUS:
+                    break;
+                default:
+                    sLog.outErrorDb("Gameobject (GUID: %u Entry %u GoType: %u) have displayId == 0 and then will always invisible in game.", guid, entry, gInfo->type);
+                    break;
+                }
+            }
+            else if (!sGameObjectDisplayInfoStore.LookupEntry(gInfo->displayId))
             {
                 sLog.outErrorDb("Gameobject (GUID: %u Entry %u GoType: %u) have invalid displayId (%u), not loaded.", guid, entry, gInfo->type, gInfo->displayId);
                 continue;

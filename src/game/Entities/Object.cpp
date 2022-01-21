@@ -1275,7 +1275,7 @@ void Object::MarkForClientUpdate()
     }
 }
 
-void Object::ForceValuesUpdateAtIndex(uint32 index)
+void Object::ForceValuesUpdateAtIndex(uint16 index)
 {
     m_changedValues[index] = true;
     if (m_inWorld && !m_objectUpdated)

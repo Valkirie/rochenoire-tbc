@@ -32,7 +32,7 @@ struct HuntersMark : public AuraScript
                     auraValue = otherAura->GetAmount(); // fetch ranged aura AP
             }
             else if (data.caster) // or newly calculate it
-                auraValue = data.caster->CalculateSpellEffectValue(data.target, data.spellProto, EFFECT_INDEX_1, nullptr, true, false);
+                auraValue = data.caster->CalculateSpellEffectValue(data.target, data.spellProto, EFFECT_INDEX_1, nullptr, nullptr, true, false);
 
             if (Unit* caster = data.caster)
             {

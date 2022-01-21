@@ -83,6 +83,7 @@ class BigNumber
 
         uint32 AsDword() const;
         std::vector<uint8> AsByteArray(int minSize = 0, bool reverse = true) const;
+        uint8* AsByteArrayB(int minSize = 0);
 
         const char* AsHexStr() const;
         const char* AsDecStr() const;

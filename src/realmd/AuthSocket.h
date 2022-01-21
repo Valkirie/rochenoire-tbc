@@ -50,8 +50,10 @@ public:
 
 	void SendProof(Sha1Hash sha);
 	void InitiateXfer(const char* dataName, uint64 fileSize, const uint8* fileHash);
-	void LoadRealmlist(ByteBuffer& pkt, uint32 acctid);
+	void LoadRealmlist(ByteBuffer& pkt, uint32 acctid, uint8 securityLevel);
 	int32 generateToken(char const* b32key);
+
+	uint8 getEligibleRealmCount(uint8 accountSecurityLevel);
 
 	bool VerifyVersion(uint8 const* a, int32 aLength, uint8 const* versionProof, bool isReconnect);
 	bool _HandleLogonChallenge();

@@ -884,7 +884,7 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
 	{
         bool cleanDamageScaled = isScaled;
 		uint32 cdamage = sObjectMgr.ScaleDamage(dealer, victim, cleanDamage->damage, cleanDamageScaled, spellProto);
-		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome);
+		cleanDamage = &CleanDamage(cdamage, cleanDamage->attackType, cleanDamage->hitOutCome, cleanDamage->takenOrAbsorbedDamage);
 	}
 
 	damage = sObjectMgr.ScaleDamage(dealer, victim, olddamage, isScaled, spellProto);
@@ -2350,8 +2350,8 @@ void Unit::HandleEmote(uint32 emote_id)
 
 float Unit::CalcArmorReducedDamage(WorldObject* attacker, Unit* victim, const float damage)
 {
-	float armor = (float)pVictim->GetArmor();
-	armor = sObjectMgr.ScaleArmor(this, pVictim, armor);
+	float armor = (float)victim->GetArmor();
+	armor = sObjectMgr.ScaleArmor((Unit*)attacker, victim, armor);
 
     // Ignore enemy armor by armor penetration
     if (attacker->IsUnit())
@@ -6113,11 +6113,11 @@ void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log)
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(log->SpellID);
 
     bool IsScaled = log->scaled;
-    uint32 damage = sObjectMgr.ScaleDamage(log->attacker, log->target, log->damage, IsScaled, spellProto);
+    uint32 damage = sObjectMgr.ScaleDamage((Unit*)log->attacker, log->target, log->damage, IsScaled, spellProto);
 
     bool r_Scaled = !IsScaled;
     if (log->attacker && log->attacker->IsPlayer())
-        damage = sObjectMgr.ScaleDamage(log->attacker, log->target, damage, r_Scaled, spellProto, EFFECT_INDEX_0, true); // revert
+        damage = sObjectMgr.ScaleDamage((Unit*)log->attacker, log->target, damage, r_Scaled, spellProto, EFFECT_INDEX_0, true); // revert
 
     WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
@@ -6403,7 +6403,7 @@ void Unit::SendAttackStateUpdate(CalcDamageInfo* calcDamageInfo) const
         uint32 subDamaged = sObjectMgr.ScaleDamage(calcDamageInfo->attacker, calcDamageInfo->target, line.damage, s_subDamaged);
 
         data << uint32(line.damageSchoolMask);
-        data << float(subDamaged)); // / float(totalDamage);   // Float coefficient of subdamage
+        data << float(subDamaged); // / float(totalDamage);   // Float coefficient of subdamage
         data << uint32(subDamaged);
         data << uint32(line.absorb);
         data << int32(line.resist);
@@ -9464,7 +9464,7 @@ DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
     return DIMINISHING_LEVEL_1;
 }
 
-void Unit::IncrDiminishing(DiminishingGroup group, uint32 duration, bool pvp)
+void Unit::IncrDiminishing(DiminishingGroup group, bool pvp)
 {
     const bool diminished = IsDiminishingReturnsGroupDurationDiminished(group, pvp);
 

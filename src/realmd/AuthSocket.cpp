@@ -280,12 +280,12 @@ void AuthSocket::_SetVSFields(const std::string& rI)
     uint8 mDigest[SHA_DIGEST_LENGTH];
     memset(mDigest, 0, SHA_DIGEST_LENGTH);
     if (I.GetNumBytes() <= SHA_DIGEST_LENGTH)
-        memcpy(mDigest, I.AsByteArray(), I.GetNumBytes());
+        memcpy(mDigest, I.AsByteArrayB(), I.GetNumBytes());
 
     std::reverse(mDigest, mDigest + SHA_DIGEST_LENGTH);
 
     Sha1Hash sha;
-    sha.UpdateData(s.AsByteArray(), s.GetNumBytes());
+    sha.UpdateData(s.AsByteArrayB(), s.GetNumBytes());
     sha.UpdateData(mDigest, SHA_DIGEST_LENGTH);
     sha.Finalize();
     BigNumber x;
@@ -515,12 +515,12 @@ bool AuthSocket::_HandleLogonChallenge()
                     pkt << uint8(AUTH_LOGON_SUCCESS);
 
                     // B may be calculated < 32B so we force minimal length to 32B
-                    pkt.append(B.AsByteArray(32), 32);      // 32 bytes
+                    pkt.append(B.AsByteArrayB(32), 32);      // 32 bytes
                     pkt << uint8(1);
-                    pkt.append(g.AsByteArray(), 1);
+                    pkt.append(g.AsByteArrayB(), 1);
                     pkt << uint8(32);
-                    pkt.append(N.AsByteArray(32), 32);
-                    pkt.append(s.AsByteArray(), s.GetNumBytes());// 32 bytes
+                    pkt.append(N.AsByteArrayB(32), 32);
+                    pkt.append(s.AsByteArrayB(), s.GetNumBytes());// 32 bytes
                     pkt.append(VersionChallenge.data(), VersionChallenge.size());
                     uint8 securityFlags = 0;
 
@@ -651,7 +651,7 @@ bool AuthSocket::_HandleLogonProof()
     uint8 t[32];
     uint8 t1[16];
     uint8 vK[40];
-    memcpy(t, S.AsByteArray(32), 32);
+    memcpy(t, S.AsByteArrayB(32), 32);
     for (int i = 0; i < 16; ++i)
     {
         t1[i] = t[i * 2];
@@ -707,7 +707,7 @@ bool AuthSocket::_HandleLogonProof()
     M.SetBinary(sha.GetDigest(), 20);
 
     ///- Check if SRP6 results match (password is correct), else send an error
-    if (!memcmp(M.AsByteArray(), lp.M1, 20))
+    if (!memcmp(M.AsByteArrayB(), lp.M1, 20))
     {
         if (lp.securityFlags & SECURITY_FLAG_AUTHENTICATOR || !_token.empty())
         {

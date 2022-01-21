@@ -818,7 +818,7 @@ SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
 
 SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
 {
-    Unit* pVictim = data.victim; uint32 damage = data.damage; uint32 olddamage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* procSpell = data.procSpell; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
+    Unit* pVictim = data.victim; uint32 damage = data.damage; uint32 olddamage = data.damage; Aura* triggeredByAura = data.triggeredByAura; SpellEntry const* spellInfo = data.spellInfo; uint32 procFlags = data.procFlags; uint32 procEx = data.procExtra; uint32 cooldown = data.cooldown;
     SpellEntry const* dummySpell = triggeredByAura->GetSpellProto();
     SpellEffectIndex effIndex = triggeredByAura->GetEffIndex();
     int32  triggerAmount = triggeredByAura->GetModifier()->m_amount;
@@ -839,7 +839,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
         Unit* owner = triggerScaled ? data.victim : data.attacker;
         Unit* victim = triggerScaled ? data.attacker : data.victim;
 
-        olddamage = sObjectMgr.ScaleDamage(owner, victim, damage, m_scaled, triggerScaled ? dummySpell : procSpell, triggeredByAura->GetEffIndex(), true);
+        olddamage = sObjectMgr.ScaleDamage(owner, victim, damage, m_scaled, triggerScaled ? dummySpell : spellInfo, triggeredByAura->GetEffIndex(), true);
     }
 
     switch (dummySpell->SpellFamilyName)

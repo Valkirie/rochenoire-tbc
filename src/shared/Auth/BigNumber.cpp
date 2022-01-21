@@ -178,6 +178,27 @@ std::vector<uint8> BigNumber::AsByteArray(int minSize, bool reverse) const
     return byteArray;
 }
 
+uint8* BigNumber::AsByteArrayB(int minSize)
+{
+    int length = (minSize >= GetNumBytes()) ? minSize : GetNumBytes();
+
+    delete[] _array;
+    _array = new uint8[length];
+
+    // If we need more bytes than length of BigNumber set the rest to 0
+    if (length > GetNumBytes())
+        memset((void*)_array, 0, length);
+
+    // Padding should add leading zeroes, not trailing
+    int paddingOffset = length - GetNumBytes();
+
+    BN_bn2bin(_bn, (unsigned char*)_array + paddingOffset);
+
+    std::reverse(_array, _array + length);
+
+    return _array;
+}
+
 const char* BigNumber::AsHexStr() const
 {
     return BN_bn2hex(_bn);

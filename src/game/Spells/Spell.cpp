@@ -7796,7 +7796,7 @@ void Spell::ProcReflectProcs(TargetInfo& targetInfo)
         Unit::ProcDamageAndSpell(ProcSystemArguments(m_caster, m_caster, PROC_FLAG_NONE, PROC_FLAG_TAKE_HARMFUL_SPELL, PROC_EX_REFLECT, 1, BASE_ATTACK, m_spellInfo));
 }
 
-void Spell::FilterTargetMap(UnitList& filterUnitList, SpellEffectIndex /*effIndex*/, SpellTargetFilterScheme scheme, uint32 chainTargetCount)
+void Spell::FilterTargetMap(UnitList& filterUnitList, SpellTargetFilterScheme scheme, uint32 chainTargetCount)
 {
     switch (scheme)
     {

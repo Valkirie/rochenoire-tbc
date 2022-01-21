@@ -583,7 +583,7 @@ enum DiminishingLevels
  */
 struct DiminishingReturn
 {
-    DiminishingReturn(DiminishingGroup group, uint32 t, uint32 count, uint32 duration)
+    DiminishingReturn(DiminishingGroup group, uint32 t, uint32 count)
         : DRGroup(group), stack(0), hitTime(t), hitCount(count)
     {}
 
@@ -704,7 +704,7 @@ struct CalcDamageInfo
 // Spell damage info structure based on structure sending in SMSG_SPELLNONMELEEDAMAGELOG opcode
 struct SpellNonMeleeDamage
 {
-    SpellNonMeleeDamage(Unit* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr, bool _scaled = false)
+    SpellNonMeleeDamage(WorldObject* _attacker, Unit* _target, uint32 _SpellID, SpellSchoolMask _schoolMask, Spell* _spell = nullptr, bool _scaled = false)
         : target(_target), attacker(_attacker), SpellID(_SpellID), damage(0), schoolMask(_schoolMask),
           absorb(0), resist(0), periodicLog(false), unused(false), blocked(0), HitInfo(0), spell(_spell), scaled(_scaled)
     {}
@@ -1135,7 +1135,7 @@ class Unit : public WorldObject
          * that DiminishingGroup
          * @param group The group to increase the level for by one
          */
-        void IncrDiminishing(DiminishingGroup group, uint32 duration, bool pvp);
+        void IncrDiminishing(DiminishingGroup group, bool pvp);
         /**
          * Calculates how long the duration of a spell should be considering
          * diminishing returns, ie, if the Level passed in is DIMINISHING_LEVEL_IMMUNE
@@ -1787,7 +1787,7 @@ class Unit : public WorldObject
         void SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype, bool isScaled = false) const;
         void SendEnvironmentalDamageLog(uint8 type, uint32 damage, uint32 absorb, int32 resist) const;
         void SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical = false, bool isScaled = false);
-        static void SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const;
+        static void SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log);
         static void SendSpellNonMeleeDamageLog(WorldObject* attacker, Unit* target, uint32 spellID, uint32 damage, SpellSchoolMask damageSchoolMask, uint32 absorbedDamage, int32 resist, bool isPeriodic, uint32 blocked, bool criticalHit = false, bool split = false);
         void SendPeriodicAuraLog(SpellPeriodicAuraLogInfo* pInfo) const;
         static void SendSpellMiss(WorldObject* caster, Unit* target, uint32 spellID, SpellMissInfo missInfo);

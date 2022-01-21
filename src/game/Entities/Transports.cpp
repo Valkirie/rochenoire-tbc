@@ -219,7 +219,7 @@ void Transport::SpawnPassengers()
     for (auto& data : guids)
     {
         if (data.first == TYPEID_UNIT)
-            WorldObject::SpawnCreature(data.second, GetMap(), this);
+            WorldObject::SpawnCreature(data.second, GetMap(), 0, this);
     }
 }
 
