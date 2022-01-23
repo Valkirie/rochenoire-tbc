@@ -1207,7 +1207,7 @@ void UnitAI::UpdateSpellLists()
                 if (castResult == CAST_OK)
                 {
                     success = true;
-                    OnSpellCast(sSpellTemplate.LookupEntry<SpellEntry>(spellId));
+                    OnSpellCast(sSpellTemplate.LookupEntry<SpellEntry>(spellId), target);
                     if (scriptId)
                         m_unit->GetMap()->ScriptsStart(sRelayScripts, scriptId, m_unit, target);
                     break;
@@ -1264,6 +1264,10 @@ std::pair<bool, Unit*> UnitAI::ChooseTarget(CreatureSpellListTargeting* targetDa
                     }
                     break;
                 }
+                case SPELL_LIST_TARGET_CURRENT_NOT_ALONE:
+                    result = m_unit->getThreatManager().getThreatList().size() > 1;
+                    target = m_unit->GetVictim();
+                    break;
             }
             break;
         case SPELL_LIST_TARGETING_ATTACK:

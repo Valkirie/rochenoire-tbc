@@ -1862,7 +1862,7 @@ void Creature::DeleteFromDB(uint32 lowguid, CreatureData const* data)
     WorldDatabase.BeginTransaction();
     WorldDatabase.PExecuteLog("DELETE FROM creature WHERE guid=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM creature_addon WHERE guid=%u", lowguid);
-    WorldDatabase.PExecuteLog("DELETE FROM creature_movement WHERE id=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM creature_movement WHERE Id=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM game_event_creature WHERE guid=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM game_event_creature_data WHERE guid=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM creature_battleground WHERE guid=%u", lowguid);
@@ -2383,7 +2383,12 @@ void Creature::UpdateSpell(int32 index, int32 newSpellId)
 {
     auto itr = m_spellList.Spells.find(index);
     if (itr != m_spellList.Spells.end())
-        (*itr).second.SpellId = newSpellId;
+    {
+        if (newSpellId == 0)
+            m_spellList.Spells.erase(itr);
+        else
+            (*itr).second.SpellId = newSpellId;
+    }
 }
 
 void Creature::SetSpellList(uint32 spellSet)
