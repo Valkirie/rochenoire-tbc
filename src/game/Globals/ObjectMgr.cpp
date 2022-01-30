@@ -1646,7 +1646,7 @@ std::shared_ptr<CreatureSpellListContainer> ObjectMgr::LoadCreatureSpellLists()
     std::shared_ptr<CreatureSpellListContainer> newContainer = std::make_shared<CreatureSpellListContainer>();
     uint32 count = 0;
 
-    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT Id, Type, Param1, Param2, Param3 FROM creature_spell_targeting"));
+    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT Id, Type, Param1, Param2, Param3, Comments FROM creature_spell_targeting"));
     if (result)
     {
         do
@@ -1666,6 +1666,7 @@ std::shared_ptr<CreatureSpellListContainer> ObjectMgr::LoadCreatureSpellLists()
             target.Param1 = fields[2].GetUInt32();
             target.Param2 = fields[3].GetUInt32();
             target.Param3 = fields[4].GetUInt32();
+            target.Comment = fields[5].GetCppString();
             newContainer->targeting[target.Id] = target;
         } while (result->NextRow());
     }
@@ -1707,6 +1708,12 @@ std::shared_ptr<CreatureSpellListContainer> ObjectMgr::LoadCreatureSpellLists()
             if (!sSpellTemplate.LookupEntry<SpellEntry>(spell.SpellId))
             {
                 sLog.outErrorDb("LoadCreatureSpellLists: Invalid creature_spell_list %u spell %u does not exist. Skipping.", spell.Id, spell.SpellId);
+                continue;
+            }
+
+            if (newContainer->spellLists[spell.Id].Spells.find(spell.SpellId) != newContainer->spellLists[spell.Id].Spells.end())
+            {
+                sLog.outErrorDb("LoadCreatureSpellLists: Invalid creature_spell_list %u contains duplicate position %u. Skipping.", spell.Id, spell.Position);
                 continue;
             }
 
@@ -1844,6 +1851,8 @@ void ObjectMgr::LoadSpawnGroups()
             guid.Id = fields[0].GetUInt32();
             guid.DbGuid = fields[1].GetUInt32();
             guid.SlotId = fields[2].GetInt32();
+            guid.OwnEntry = 0;
+            guid.RandomEntry = false;
 
             if (newContainer->spawnGroupMap.find(guid.Id) == newContainer->spawnGroupMap.end())
             {
@@ -2021,6 +2030,10 @@ void ObjectMgr::LoadSpawnGroups()
                 }
                 if (data->spawnMask == 0)
                     entry.EnabledByDefault = false;
+                if (data->id)
+                    guidData.OwnEntry = data->id;
+                if (GetAllRandomCreatureEntries(guidData.DbGuid))
+                    guidData.RandomEntry = true;
             }
             else
             {
@@ -2043,6 +2056,10 @@ void ObjectMgr::LoadSpawnGroups()
                 }
                 if (data->spawnMask == 0)
                     entry.EnabledByDefault = false;
+                if (data->id)
+                    guidData.OwnEntry = data->id;
+                if (GetAllRandomGameObjectEntries(guidData.DbGuid))
+                    guidData.RandomEntry = true;
             }
         }
     }
