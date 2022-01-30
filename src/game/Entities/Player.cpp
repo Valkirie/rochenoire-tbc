@@ -17207,15 +17207,15 @@ void Player::SaveToDB()
     SqlStatement stmt = CharacterDatabase.CreateStatement(delChar, "DELETE FROM characters WHERE guid = ?");
     stmt.PExecute(GetGUIDLow());
 
-    SqlStatement uberInsert = CharacterDatabase.CreateStatement(insChar, "INSERT INTO characters (guid,account,name,race,class,gender,level,xp,money,playerBytes,playerBytes2,playerFlags,"
+    SqlStatement uberInsert = CharacterDatabase.CreateStatement(insChar, "INSERT INTO characters (guid,account,name,race,class,gender,level,ilevel,xp,money,playerBytes,playerBytes2,playerFlags,"
                               "map, dungeon_difficulty, position_x, position_y, position_z, orientation, "
                               "taximask, online, cinematic, "
                               "totaltime, leveltime, rest_bonus, logout_time, is_logout_resting, resettalents_cost, resettalents_time, "
                               "trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, "
                               "death_expire_time, taxi_path, arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, "
                               "todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk, health, power1, power2, power3, "
-                              "power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, grantableLevels, ilevel) "
-                              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                              "power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, grantableLevels) "
+                              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, ?, "
@@ -17231,6 +17231,7 @@ void Player::SaveToDB()
     uberInsert.addUInt8(getClass());
     uberInsert.addUInt8(getGender());
     uberInsert.addUInt32(GetLevel());
+    uberInsert.addUInt32(GetItemLevel());
     uberInsert.addUInt32(GetUInt32Value(PLAYER_XP));
     uberInsert.addUInt32(GetMoney());
     uberInsert.addUInt32(GetUInt32Value(PLAYER_BYTES));
@@ -17356,7 +17357,6 @@ void Player::SaveToDB()
     uberInsert.addString(ss);
 
     uberInsert.addUInt32(uint32(GetByteValue(PLAYER_FIELD_BYTES, 2)));
-	uberInsert.addUInt32(GetItemLevel());
 
     uberInsert.addUInt32(uint32(m_grantableLevels));
 
