@@ -2119,13 +2119,8 @@ struct npc_flame_of_azzinothAI : public CombatAI
             case FLAME_ACTION_CHARGE:
             {
                 if (Unit* target = DoPickChargeTarget())
-                {
                     if (DoCastSpellIfCan(target, SPELL_CHARGE) == CAST_OK)
-                    {
                         ResetCombatAction(action, sObjectMgr.GetScaleSpellTimer(m_creature, 5000u, SPELL_CHARGE));
-                        Enrage();
-                    }
-                }
                 return;
             }
         }

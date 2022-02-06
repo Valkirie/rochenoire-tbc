@@ -1918,6 +1918,8 @@ void Creature::SetDeathState(DeathState s)
         SetWalk(true, true);
         ResetEntry(true);
 
+        m_killer = ObjectGuid();
+
         ResetSpellHitCounter();
 
         SetLootRecipient(nullptr);

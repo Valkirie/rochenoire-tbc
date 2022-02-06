@@ -125,6 +125,7 @@ set(LIBRARY_SRCS
     ${SRC_GRP_MT}
     Common.cpp
     Common.h
+    Filesystem.h
     revision_sql.h
     revision.h
     Threading.cpp
