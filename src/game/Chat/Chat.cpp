@@ -3476,28 +3476,31 @@ std::string ChatHandler::GetNameLink(Player* chr) const
     return playerLink(chr->GetName());
 }
 
+std::string ChatHandler::GetLocalItemQuality(uint32 Quality) const
+{
+    std::string result;
+
+    switch (Quality) // cffa335ee
+    {
+        default:
+        case ITEM_QUALITY_NORMAL: result = "Normal"; break;
+        case ITEM_QUALITY_POOR: result = "Poor"; break;
+        case ITEM_QUALITY_UNCOMMON: result = "Uncommon"; break;
+        case ITEM_QUALITY_RARE: result = "Rare"; break;
+        case ITEM_QUALITY_EPIC: result = "Epic"; break;
+        case ITEM_QUALITY_LEGENDARY: result = "Legendary"; break;
+        case ITEM_QUALITY_ARTIFACT: result = "Artifact"; break;
+    }
+
+    return result;
+}
+
 std::string ChatHandler::GetLocalItemQuality(Item* pItem) const
 {
     ItemPrototype const* pProto = pItem->GetProto();
 
     if (pProto)
-    {
-        std::string Quality;
-
-        switch (pProto->Quality) // cffa335ee
-        {
-        default:
-        case ITEM_QUALITY_NORMAL: Quality = "Normal"; break;
-        case ITEM_QUALITY_POOR: Quality = "Poor"; break;
-        case ITEM_QUALITY_UNCOMMON: Quality = "Uncommon"; break;
-        case ITEM_QUALITY_RARE: Quality = "Rare"; break;
-        case ITEM_QUALITY_EPIC: Quality = "Epic"; break;
-        case ITEM_QUALITY_LEGENDARY: Quality = "Legendary"; break;
-        case ITEM_QUALITY_ARTIFACT: Quality = "Artifact"; break;
-        }
-
-        return Quality;
-    }
+        return GetLocalItemQuality(pProto->Quality);
 
     return "";
 }
