@@ -2849,7 +2849,9 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
 
         pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), newItem, STATUS_TRADE);
 
-        ChatHandler(pPlayer).PSendSysMessage(pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_DETAILS), ChatHandler(pPlayer).GetLocalItemLink(newItem).c_str());
+        // get handler
+        ChatHandler handler = ChatHandler(pPlayer);
+        handler.PSendSysMessage(pPlayer->GetSession()->GetMangosString(BLACKMARKET_ANSWER_DETAILS), handler.GetLocalItemLink(newItem).c_str());
 
         pPlayer->SEND_GOSSIP_MENU(55139, pCreature->GetObjectGuid());
     }

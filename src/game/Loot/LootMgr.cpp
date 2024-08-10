@@ -2201,7 +2201,12 @@ InventoryResult Loot::SendItem(Player* target, LootItem* lootItem, bool sendErro
 
             // item was upgraded
             if (itemId != lootItem->itemId)
-                ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(newItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(newItem).c_str());
+            {
+                // get handler
+                ChatHandler handler = ChatHandler(target);
+                handler.PSendSysMessage(11200, handler.GetLocalItemQuality(newItem).c_str(), handler.GetLocalItemLink(newItem).c_str());
+                target->PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, target));
+            }
 
             if (lootItem->freeForAll)
             {

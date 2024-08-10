@@ -3852,7 +3852,9 @@ bool Spell::DoCreateItem(SpellEffectIndex /*eff_idx*/, uint32 itemtype, bool rep
             uint32 itemid = Item::LoadScaledLoot(newitemid, pProto->RequiredLevel, false);
             if (newitemid != itemid)
             {
-                ChatHandler(player).PSendSysMessage(11200, ChatHandler(player).GetLocalItemQuality(pItem).c_str(), ChatHandler(player).GetLocalItemLink(pItem).c_str());
+                // get handler
+                ChatHandler handler = ChatHandler(player);
+                handler.PSendSysMessage(11200, handler.GetLocalItemQuality(pItem).c_str(), handler.GetLocalItemLink(pItem).c_str());
                 player->PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, player));
             }
         }
