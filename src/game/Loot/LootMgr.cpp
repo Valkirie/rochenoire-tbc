@@ -1779,7 +1779,7 @@ Loot::Loot(Player* player, Creature* creature, LootType type) :
 
 				if (sObjectMgr.IsScalable(creature, player))
 				{
-					uint32 mob_level = creature->getLevel();
+					uint32 mob_level = creature->GetLevel();
 					uint32 avg_level = player->getAreaZoneLevel();
 
 					if (Group const* grp = player->GetGroup())

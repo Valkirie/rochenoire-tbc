@@ -8096,7 +8096,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
     {
         SetAura(slot, false);
         SetAuraFlag(slot, true);
-        SetAuraLevel(slot, caster ? caster->getLevel() : sWorld.GetCurrentMaxLevel());
+        SetAuraLevel(slot, caster ? caster->GetLevel() : sWorld.GetCurrentMaxLevel());
         UpdateAuraApplication();
 
         // update for out of range group members
@@ -8179,7 +8179,7 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
 
     SetAura(slot, true);
     SetAuraFlag(slot, false);
-    SetAuraLevel(slot, caster ? caster->getLevel() : sWorld.GetCurrentMaxLevel());
+    SetAuraLevel(slot, caster ? caster->GetLevel() : sWorld.GetCurrentMaxLevel());
 
     m_procCharges = 0;
     m_stackAmount = 1;

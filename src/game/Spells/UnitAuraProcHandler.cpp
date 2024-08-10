@@ -692,7 +692,7 @@ bool Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder*
 							if (spellData.SpellId == spellProto->Id)
 							{
 								uint32 rlevel = Item::ComputeRequiredLevel(pProto->Quality, pProto->ItemLevel);
-								chance = chance * std::pow(((float)getLevel() / (float)rlevel), 2.5f);
+								chance = chance * std::pow(((float)GetLevel() / (float)rlevel), 2.5f);
 							}
 						}
 					}

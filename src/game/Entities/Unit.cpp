@@ -9877,7 +9877,7 @@ uint32 Unit::GetLevelForTarget(Unit const* target) const
     if (sObjectMgr.IsScalable(owner, victim))
         return sObjectMgr.getLevelScaled(owner, victim);
     else
-        return getLevel();
+        return GetLevel();
 }
 
 void Unit::SetLevel(uint32 lvl)
@@ -9894,7 +9894,7 @@ bool Unit::hasAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
     uint32 area = AreaID != 0 ? AreaID : GetTerrain() ? GetAreaId() : 0;
     uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
-    uint32 pLevel = getLevel();
+    uint32 pLevel = GetLevel();
     const ZoneFlex* thisLocation = nullptr;
 
     if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))
@@ -9920,7 +9920,7 @@ uint32 Unit::getAreaZoneLevel(uint32 AreaID, uint32 ZoneID) const
     uint32 area = AreaID != 0 ? AreaID : GetTerrain() ? GetAreaId() : 0;
     uint32 zone = ZoneID != 0 ? ZoneID : GetTerrain() ? GetZoneId() : 0;
 
-    uint32 pLevel = getLevel();
+    uint32 pLevel = GetLevel();
     const ZoneFlex* thisLocation = nullptr;
 
     if (const ZoneFlex* thisArea = sObjectMgr.GetZoneFlex(area))

@@ -1765,7 +1765,7 @@ bool ChatHandler::HandleAddItemCommand(char* args)
         plTarget = pl;
 
 	int32 plevel;
-	if (!ExtractOptInt32(&args, plevel, pl->getLevel()))
+	if (!ExtractOptInt32(&args, plevel, pl->GetLevel()))
 		return false;
 
 	if(plevel != -1)
@@ -3650,7 +3650,7 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
         PSendSysMessage(LANG_NPCINFO_CHAR, target->GetGuidStr().c_str(), faction, npcflags, Entry, displayid, nativeid);
 
     PSendSysMessage("DbGuid: %u", target->GetDbGuid());
-    PSendSysMessage("Level: %u (%i).", target->getLevel(), target->GetLevelVar()); // TODO: USE LANG_XXX
+    PSendSysMessage("Level: %u (%i).", target->GetLevel(), target->GetLevelVar()); // TODO: USE LANG_XXX
     PSendSysMessage(LANG_NPCINFO_HEALTH, target->GetCreateHealth(), target->GetMaxHealth(), target->GetHealth());
     PSendSysMessage(LANG_NPCINFO_FLAGS, target->GetUInt32Value(UNIT_FIELD_FLAGS), target->GetUInt32Value(UNIT_DYNAMIC_FLAGS), target->GetCreatureInfo()->ExtraFlags);
     PSendSysMessage(LANG_COMMAND_RAWPAWNTIMES, defRespawnDelayStr.c_str(), curRespawnDelayStr.c_str());

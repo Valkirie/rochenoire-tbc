@@ -1342,7 +1342,7 @@ class Unit : public WorldObject
         bool hasAreaZoneLevel(uint32 AreaID = 0, uint32 ZoneID = 0) const;
         uint32 getAreaZoneLevel(uint32 AreaID = 0, uint32 ZoneID = 0) const;
 
-        uint32 getLevel() const { return GetUInt32Value(UNIT_FIELD_LEVEL); }
+        uint32 GetLevel() const override { return GetUInt32Value(UNIT_FIELD_LEVEL); }
         uint8 getRace() const { return GetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_RACE); }
         uint32 getRaceMask() const { return 1 << (getRace() - 1); }
         uint8 getClass() const { return GetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_CLASS); }
@@ -1521,7 +1521,7 @@ class Unit : public WorldObject
         int GetInstanceSize() const { return instance_number_players; };
         void SetInstanceSize(int value) { instance_number_players = value; };
 
-        uint16 GetSkillMaxForLevel(Unit const* target = nullptr) const { return (target ? GetLevelForTarget(target) : getLevel()) * 5; }
+        uint16 GetSkillMaxForLevel(Unit const* target = nullptr) const { return (target ? GetLevelForTarget(target) : GetLevel()) * 5; }
 
         void Suicide();
         static void DealDamageMods(Unit* dealer, Unit* victim, uint32& damage, uint32* absorb, DamageEffectType damagetype, SpellEntry const* spellProto = nullptr, bool isScaled = false);

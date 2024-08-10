@@ -799,7 +799,7 @@ void Pet::SetRequiredXpForNextLoyaltyLevel()
     Unit* owner = GetOwner();
     if (owner)
     {
-        uint32 ownerLevel = owner->getLevel();
+        uint32 ownerLevel = owner->GetLevel();
         m_xpRequiredForNextLoyaltyLevel = ownerLevel < sWorld.GetCurrentMaxLevel() ? sObjectMgr.GetXPForLevel(ownerLevel) * 5 / 100 : sObjectMgr.GetXPForLevel(ownerLevel - 1) * 5 / 100;
     }
 }
@@ -1137,8 +1137,8 @@ void Pet::GivePetXP(uint32 xp)
     if (!IsAlive())
         return;
 
-    uint32 level = getLevel();
-    uint32 maxlevel = std::min(sWorld.GetCurrentMaxLevel(), GetOwner()->getLevel());
+    uint32 level = GetLevel();
+    uint32 maxlevel = std::min(sWorld.GetCurrentMaxLevel(), GetOwner()->GetLevel());
 
     // pet not receive xp for level equal to owner level
     if (level < maxlevel)
@@ -2361,7 +2361,7 @@ void Pet::InitPetCreateSpells()
             if (!CreateSpells->spellid[i])
                 break;
 
-			uint32 spellid = p_owner ? ScalePetCreateSpells(CreateSpells->spellid[i], p_owner->getLevel()) : CreateSpells->spellid[i];
+			uint32 spellid = p_owner ? ScalePetCreateSpells(CreateSpells->spellid[i], p_owner->GetLevel()) : CreateSpells->spellid[i];
 
             SpellEntry const* learn_spellproto = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
             if (!learn_spellproto)

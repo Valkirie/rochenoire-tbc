@@ -2711,7 +2711,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
         accId = target->GetSession()->GetAccountId();
         money = target->GetMoney();
         total_player_time = target->GetTotalPlayedTime();
-        level = target->getLevel();
+        level = target->GetLevel();
 		ilevel = target->GetItemLevel();
         latency = target->GetSession()->GetLatency();
     }

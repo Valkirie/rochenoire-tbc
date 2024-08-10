@@ -1263,10 +1263,10 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
     target = target ? target->GetBeneficiary() : target;
 
     if (!owner || !target)
-		return owner ? owner->getLevel() : target ? target->getLevel() : 0;
+		return owner ? owner->GetLevel() : target ? target->GetLevel() : 0;
 
     if (!IsScalable(owner, target))
-        return target->getLevel();
+        return target->GetLevel();
 
 	Creature* creature;
 	Player* player;
@@ -1282,11 +1282,11 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
 		creature = (Creature *)target;
 	}
 	else if (target->IsPlayer() && owner->IsPlayer())
-		return owner->getLevel();
+		return owner->GetLevel();
 	else
-		return target->getLevel();
+		return target->GetLevel();
 
-	uint32 level = player->getLevel();
+	uint32 level = player->GetLevel();
 
     if (owner->IsCreature())
     {
@@ -1298,8 +1298,8 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
         // worldboss level should be able to go up to level 70 no matter the area
         if (creature->IsWorldBoss())
         {
-            if (arealevel < player->getLevel())
-                level = player->getLevel();
+            if (arealevel < player->GetLevel())
+                level = player->GetLevel();
 
             level += sWorld.getConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF);
         }
@@ -1307,7 +1307,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
         {
             if (const ZoneFlex* thisZone = sObjectMgr.getAreaZone(AreaID))
                 if (thisZone->isStartingZone())
-                    return creature->getLevel();
+                    return creature->GetLevel();
 
             level += creature->GetLevelVar();
 
@@ -1362,7 +1362,7 @@ uint32 ObjectMgr::ScaleArmor(Unit *owner, Unit *target, uint32 oldarmor) const
 		return oldarmor;
 
 	int32 scaled_level = creature->GetLevelForTarget(player);
-	int32 origin_level = creature->getLevel();
+	int32 origin_level = creature->GetLevel();
 
 	if (pAggro == 1)
 	{
@@ -1496,8 +1496,8 @@ float ObjectMgr::ScaleDamage(Unit* owner, Unit* target, float olddamage, bool& i
     if (value_neg)
         damage *= -1;
 
-    int32 scaled_level = isPvP ? player2->getLevel() : creature->GetLevelForTarget(player);
-    int32 origin_level = isPvP ? player->getLevel() : creature->getLevel();
+    int32 scaled_level = isPvP ? player2->GetLevel() : creature->GetLevelForTarget(player);
+    int32 origin_level = isPvP ? player->GetLevel() : creature->GetLevel();
 
     SpellType spellType = spellProto ? GetSpellDamageType(spellProto, eff_idx) : SPELLTYPE_UNK;
 

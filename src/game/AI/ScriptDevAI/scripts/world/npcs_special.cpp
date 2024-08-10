@@ -2725,7 +2725,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
             if (pProto->Class != Class || pProto->SubClass != SubClass)
                 continue;
 
-            if (pProto->RequiredLevel >= 10 && pProto->RequiredLevel < pPlayer->getLevel())
+            if (pProto->RequiredLevel >= 10 && pProto->RequiredLevel < pPlayer->GetLevel())
             {
                 std::string pName = pProto->Name1;
                 
@@ -2760,7 +2760,7 @@ void SendDefaultMenu_BlackMarket(Player* pPlayer, Creature* pCreature, uint32 ac
         if (npc_BlackMarket* pBlackMarketAI = dynamic_cast<npc_BlackMarket*>(pCreature->AI()))
             pBlackMarketAI->InsertOffer(pPlayer->GetObjectGuid(), pItem, STATUS_OFFER);
 
-        uint32 MaxLevel = pPlayer->getLevel();
+        uint32 MaxLevel = pPlayer->GetLevel();
         uint32 MinLevel = std::max(pProto->Quality >= 4 ? 40 : pProto->RequiredLevel, MaxLevel - 10) + 1;
 
         uint32 parent_ItemId = Item::LoadScaledParent(ItemId);

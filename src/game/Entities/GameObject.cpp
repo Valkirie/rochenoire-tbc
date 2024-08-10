@@ -1909,7 +1909,7 @@ void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
                 return;
 
             // required lvl checks!
-            uint8 level = player->getLevel();
+            uint8 level = player->GetLevel();
 			if (player && !player->hasAreaZoneLevel(info->meetingstone.areaID))
 				return;
 			/*

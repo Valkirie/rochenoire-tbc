@@ -10471,7 +10471,7 @@ InventoryResult Player::CanUseItem(ItemPrototype const* pProto) const
 			}
 		}
 
-        if (getLevel() < RequiredLevel)
+        if (GetLevel() < RequiredLevel)
             return EQUIP_ERR_CANT_EQUIP_LEVEL_I;
 
         return EQUIP_ERR_OK;
@@ -10782,7 +10782,7 @@ float Player::countRelevant(uint32 pQuality, bool inventory) const
 
 uint32 Player::getExpItemCount() const
 {
-	switch (getLevel())
+	switch (GetLevel())
 	{
 		case 1: return 4;
 		case 2: return 4;
@@ -10860,7 +10860,7 @@ uint32 Player::getExpItemCount() const
 
 uint32 Player::getExpItemLevel() const
 {
-	switch (getLevel())
+	switch (GetLevel())
 	{
 		case 70: return 112;
 		case 69: return 85;
@@ -10938,7 +10938,7 @@ float Player::getItemLevelCoeff(uint32 pQuality) const
 	float quantityModifier = 1.0f;
 
 	float pCount = countRelevant(pQuality, true);
-    uint32 pLevel = std::min((float)sWorld.GetCurrentMaxLevel(), (float)getLevel());
+    uint32 pLevel = std::min((float)sWorld.GetCurrentMaxLevel(), (float)GetLevel());
 
 	switch (pQuality)
 	{
@@ -13434,7 +13434,7 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
 uint32 Player::GetQuestLevelForPlayer(Quest const* pQuest, bool min) const
 {
     if (pQuest->IsSpecificQuest())
-        return pQuest->GetQuestLevel() > 0 ? (uint32)pQuest->GetQuestLevel() : getLevel();
+        return pQuest->GetQuestLevel() > 0 ? (uint32)pQuest->GetQuestLevel() : GetLevel();
     else
     {
         uint32 ZoneLevel = getAreaZoneLevel(0 /* AreadID */, pQuest->GetZoneOrSort());
@@ -13830,7 +13830,7 @@ void Player::RewardQuest(Quest const* pQuest_ori, uint32 reward, Object* questGi
 			uint32 l_timer = pQuest->GetLimitTime();
 			uint32 m_timer = q_status.m_timer / 1000;
 			uint32 e_timer = l_timer - m_timer;
-			LogsDatabase.PExecuteLog("REPLACE INTO `logs_quests` VALUES (%u,%u,%u,%u,%u)", GetSession()->GetAccountId(), GetGUIDLow(), getLevel(), pQuest->GetQuestId(), e_timer);
+			LogsDatabase.PExecuteLog("REPLACE INTO `logs_quests` VALUES (%u,%u,%u,%u,%u)", GetSession()->GetAccountId(), GetGUIDLow(), GetLevel(), pQuest->GetQuestId(), e_timer);
 		}
 	}
 
@@ -14117,8 +14117,8 @@ bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
 
     int32 QuestMinLevel = qInfo->IsSpecificQuest() ? qInfo->GetMinLevel() : GetQuestLevelForPlayer(qInfo, true);
 
-    if ((getLevel() + lowLevelDiff < QuestMinLevel) ||
-        (int32(getLevel()) - int32(highLevelDiff) > QuestMinLevel))
+    if ((GetLevel() + lowLevelDiff < QuestMinLevel) ||
+        (int32(GetLevel()) - int32(highLevelDiff) > QuestMinLevel))
     {
         if (msg)
             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
@@ -15161,32 +15161,41 @@ void Player::SendQuestReward(Quest const* pQuest, Object* questGiver, uint32 rew
     // bonus upgrade : is enabled ?
     if (sWorld.getConfig(CONFIG_BOOL_BONUS_UPGRADE_QUEST))
     {
-        bool sendClap = false;
+        // set flag
+        bool upgraded = false;
 
         // bonus upgrade : scroll RewChoiceItems
         if (Item* pItem = pQuest->RewChoiceItemIdUp[reward])
         {
-            ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
-            sendClap = true;
+            // get handler
+            ChatHandler handler = ChatHandler((Player*)this);
+            handler.PSendSysMessage(11200, handler.GetLocalItemQuality(pItem).c_str(), handler.GetLocalItemLink(pItem).c_str());
+
+            // set flag
+            upgraded = true;
         }
 
         // bonus upgrade : scroll RewItems
         for (uint32 i = 0; i < pQuest->GetRewItemsCount(); ++i)
             if (Item* pItem = pQuest->RewItemIdUp[i])
             {
-                ChatHandler((Player*)this).PSendSysMessage(11200, ChatHandler((Player*)this).GetLocalItemQuality(pItem).c_str(), ChatHandler((Player*)this).GetLocalItemLink(pItem).c_str());
-                sendClap = true;
+                // get handler
+                ChatHandler handler = ChatHandler((Player*)this);
+                handler.PSendSysMessage(11200, handler.GetLocalItemQuality(pItem).c_str(), handler.GetLocalItemLink(pItem).c_str());
+
+                // set flag
+                upgraded = true;
             }
 
-        if (sendClap)
+        if (upgraded)
         {
+            this->PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this));
+
             switch (questGiver->GetTypeId())
             {
             case TYPEID_UNIT:
                 Creature* creature = dynamic_cast<Creature*>(questGiver);
                 creature->HandleEmote(EMOTE_ONESHOT_APPLAUD);
-
-                PlayDirectSound(8960, PlayPacketParameters(PLAY_TARGET, this)); // dirty : temp
                 break;
             }
         }
@@ -15493,7 +15502,7 @@ void Player::_LoadIntoDataField(const char* data, uint32 startOffset, uint32 cou
 
 bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 {
-    //       0     1        2     3     4      5       6      7   8      9            10            11
+    //        0     1        2     3     4      5       6      7   8      9            10            11
     // SELECT guid, account, name, race, class, gender, level, xp, money, playerBytes, playerBytes2, playerFlags,"
     // 12          13          14          15   16           17        18         19         20         21          22           23                 24
     //"position_x, position_y, position_z, map, orientation, taximask, cinematic, totaltime, leveltime, rest_bonus, logout_time, is_logout_resting, resettalents_cost,"
@@ -15501,7 +15510,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     //"resettalents_time, trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, online, death_expire_time, taxi_path, dungeon_difficulty,"
     // 39           40                41                42                    43          44          45              46           47              48
     //"arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk,"
-    // 49      50      51      52      53      54      55             56              57      58           59          60
+    // 49      50      51      52      53      54      55             56              57      58           59          60               61
     //"health, power1, power2, power3, power4, power5, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, grantableLevels, ilevel  FROM characters WHERE guid = '%u'", GUID_LOPART(m_guid));
     QueryResult* result = holder->GetResult(PLAYER_LOGIN_QUERY_LOADFROM);
 
@@ -15554,7 +15563,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     SetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_DEBUFF_LIMIT, UNIT_BYTE2_PLAYER_CONTROLLED_DEBUFF_LIMIT);
 
     SetUInt32Value(UNIT_FIELD_LEVEL, fields[6].GetUInt8());
-    SetItemLevel(fields[60].GetUInt8());
+    SetItemLevel(fields[61].GetUInt8());
     SetUInt32Value(PLAYER_XP, fields[7].GetUInt32());
 
     _LoadIntoDataField(fields[55].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE);
@@ -19239,7 +19248,7 @@ void Player::TakeExtendedCost(uint32 extendedCostId, uint32 count)
 // Return true if the item is relevant for the player
 bool Player::IsRelevant(const Item* item) const
 {
-	return (((float)item->GetProto()->RequiredLevel / float(getLevel()) >= 0.75f) && CanUseItem(item->GetProto()) == EQUIP_ERR_OK);
+	return (((float)item->GetProto()->RequiredLevel / float(GetLevel()) >= 0.75f) && CanUseItem(item->GetProto()) == EQUIP_ERR_OK);
 }
 
 // Return true is the bought item has a max count to force refresh of window by caller
@@ -20655,34 +20664,34 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
 					switch (spell_id) {
 					case 33388: // Riding
 					case 33389: // Apprentice Riding
-						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL)))
+						if (GetLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_APPRENTICE_TRAIN_LEVEL)))
 						{
 							return false;
 						}
 						break;
 					case 33391: // Riding
 					case 33392: // Journeyman Riding
-						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL)))
+						if (GetLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_JOURNEYMAN_TRAIN_LEVEL)))
 						{
 							return false;
 						}
 						break;
 					case 34090: // Riding
 					case 34092: // Expert Riding
-						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL)))
+						if (GetLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_EXPERT_TRAIN_LEVEL)))
 						{
 							return false;
 						}
 						break;
 					case 34091: // Riding
 					case 34093: // Artisan Riding
-						if (getLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL)))
+						if (GetLevel() < uint32(sWorld.getConfig(CONFIG_UINT32_ARTISAN_TRAIN_LEVEL)))
 						{
 							return false;
 						}
 						break;
 					default: // any other spell
-						if (skillRCEntry->reqLevel && getLevel() < skillRCEntry->reqLevel)
+						if (skillRCEntry->reqLevel && GetLevel() < skillRCEntry->reqLevel)
 						{
 							return false;
 						}
@@ -22234,13 +22243,13 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
         requiredLevel = thisZone->LevelRangeMin;
 
     // Level Requirements
-    if (getLevel() < requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
+    if (GetLevel() < requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
     {
         miscRequirement = requiredLevel;
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;
     }
 
-    if (!isRegularTargetMap && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL) && getLevel() < requiredLevel)
+    if (!isRegularTargetMap && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL) && GetLevel() < requiredLevel)
     {
         miscRequirement = requiredLevel;
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;

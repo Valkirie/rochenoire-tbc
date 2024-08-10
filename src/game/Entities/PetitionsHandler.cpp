@@ -102,7 +102,7 @@ void WorldSession::HandlePetitionBuyOpcode(WorldPacket& recv_data)
     else
     {
         // TODO: find correct opcode
-        if (_player->getLevel() < sWorld.GetCurrentMaxLevel())
+        if (_player->GetLevel() < sWorld.GetCurrentMaxLevel())
         {
             SendNotification(LANG_ARENA_ONE_TOOLOW, sWorld.GetCurrentMaxLevel());
             return;
@@ -481,7 +481,7 @@ void WorldSession::HandlePetitionSignOpcode(WorldPacket& recv_data)
 
     if (type != 9)
     {
-        if (_player->getLevel() < sWorld.GetCurrentMaxLevel())
+        if (_player->GetLevel() < sWorld.GetCurrentMaxLevel())
         {
             SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", _player->GetName(), ERR_ARENA_TEAM_TARGET_TOO_LOW_S);
             return;
@@ -634,7 +634,7 @@ void WorldSession::HandleOfferPetitionOpcode(WorldPacket& recv_data)
 
     if (type != 9)
     {
-        if (player->getLevel() < sWorld.GetCurrentMaxLevel())
+        if (player->GetLevel() < sWorld.GetCurrentMaxLevel())
         {
             // player is too low level to join an arena team
             SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", player->GetName(), ERR_ARENA_TEAM_TARGET_TOO_LOW_S);

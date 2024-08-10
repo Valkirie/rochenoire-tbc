@@ -5288,7 +5288,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     return SPELL_FAILED_DONT_REPORT;
                 }
 
-				if (target->GetLevelForTarget(plrCaster) > plrCaster->getLevel() && !gmmode)
+				if (target->GetLevelForTarget(plrCaster) > plrCaster->GetLevel() && !gmmode)
                 {
                     plrCaster->SendPetTameFailure(PETTAME_TOOHIGHLEVEL);
                     return SPELL_FAILED_DONT_REPORT;
@@ -5688,7 +5688,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                             levelMax = thisZone->LevelRangeMax;
                         }
 
-                        if (instance->levelMin > target->getLevel())
+                        if (instance->levelMin > target->GetLevel())
                             return SPELL_FAILED_LOWLEVEL;
                         if (instance->levelMax && instance->levelMax < target->GetLevelForTarget(m_caster))
                             return SPELL_FAILED_HIGHLEVEL;
