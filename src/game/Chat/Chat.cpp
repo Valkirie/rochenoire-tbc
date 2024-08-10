@@ -3476,20 +3476,51 @@ std::string ChatHandler::GetNameLink(Player* chr) const
     return playerLink(chr->GetName());
 }
 
+static const std::string QualityNamesEn[] = {
+        "Poor",         // 0
+        "Common",       // 1
+        "Uncommon",     // 2
+        "Rare",         // 3
+        "Epic",         // 4
+        "Legendary",    // 5
+        "Artifact"      // 6
+};
+
+static const std::string QualityNamesFr[] = {
+    "Médiocre",         // 0
+    "Commun",           // 1
+    "Inhabituel",       // 2
+    "Rare",             // 3
+    "Épique",           // 4
+    "Légendaire",       // 5
+    "Artéfact"          // 6
+};
+
+static const std::string QualityNamesDe[] = {
+    "Schlecht",         // 0
+    "Gewöhnlich",       // 1
+    "Selten",           // 2
+    "Rar",              // 3
+    "Episch",           // 4
+    "Legendär",         // 5
+    "Artefakt"          // 6
+};
+
 std::string ChatHandler::GetLocalItemQuality(uint32 Quality) const
 {
     std::string result;
 
-    switch (Quality) // cffa335ee
+    // todo: improve me
+    int loc_idx = GetSessionDbLocaleIndex();
+    switch (loc_idx)
     {
-        default:
-        case ITEM_QUALITY_NORMAL: result = "Normal"; break;
-        case ITEM_QUALITY_POOR: result = "Poor"; break;
-        case ITEM_QUALITY_UNCOMMON: result = "Uncommon"; break;
-        case ITEM_QUALITY_RARE: result = "Rare"; break;
-        case ITEM_QUALITY_EPIC: result = "Epic"; break;
-        case ITEM_QUALITY_LEGENDARY: result = "Legendary"; break;
-        case ITEM_QUALITY_ARTIFACT: result = "Artifact"; break;
+    case LOCALE_frFR:
+        return QualityNamesFr[Quality];
+    case LOCALE_deDE:
+        return QualityNamesDe[Quality];
+    case LOCALE_enUS:
+    default:
+        return QualityNamesEn[Quality];
     }
 
     return result;
@@ -3502,7 +3533,7 @@ std::string ChatHandler::GetLocalItemQuality(Item* pItem) const
     if (pProto)
         return GetLocalItemQuality(pProto->Quality);
 
-    return "";
+    return GetLocalItemQuality(1);
 }
 
 std::string ChatHandler::GetLocalItemLink(Item* pItem) const
@@ -3528,7 +3559,7 @@ std::string ChatHandler::GetLocalItemLink(Item* pItem) const
 
         std::string name = std::string(pProto->Name1);
 
-        int loc_idx = m_session->GetSessionDbLocaleIndex();
+        int loc_idx = GetSessionDbLocaleIndex();
         if (loc_idx >= 0)
         {
             if (ItemLocale const* il = sObjectMgr.GetItemLocale(pProto->ItemId))
