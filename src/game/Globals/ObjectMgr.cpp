@@ -1292,7 +1292,7 @@ uint32 ObjectMgr::getLevelScaled(Unit *owner, Unit *target) const
     {
         // support specific behaviors
         uint32 AreaID = creature->GetTerrain() ? creature->GetAreaId() : 0;
-        uint32 arealevel = player->getAreaZoneLevel(AreaID);
+        uint32 arealevel = creature->getAreaZoneLevel(AreaID);
         level = arealevel;
 
         // worldboss level should be able to go up to level 70 no matter the area
