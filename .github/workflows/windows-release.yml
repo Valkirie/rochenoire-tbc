@@ -81,27 +81,27 @@ jobs:
     needs: build
     steps:
       - name: Download artifact snapshot-default
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4.1.7
         with:
           name: snapshot-default
           path: all_snapshots
       - name: Download artifact snapshot-with-all
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4.1.7
         with:
           name: snapshot-with-all
           path: all_snapshots
       - name: Download artifact snapshot-with-playerbot-ahbot
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4.1.7
         with:
           name: snapshot-with-playerbot-ahbot
           path: all_snapshots
       - name: Download artifact snapshot-with-playerbot
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4.1.7
         with:
           name: snapshot-with-playerbot
           path: all_snapshots
       - name: Download artifact snapshot-with-ahbot
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4.1.7
         with:
           name: snapshot-with-ahbot
           path: all_snapshots
